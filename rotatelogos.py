@@ -5,6 +5,7 @@
 import json
 import os
 import random
+import sys
 import wiki
 
 
@@ -18,15 +19,17 @@ if __name__ == '__main__':
     possible = w.get_page('Possible future wiki logos').split('\n')
     random.shuffle(possible)
 
+    main_page = w.get_page('Main Page').split('\n')
+    archive = w.get_page('Former wiki logos').split('\n')
+    archive.append(main_page[0])
+
     if possible:
         new_logo = possible[0]
-        main_page = w.get_page('Main Page').split('\n')
-        archive = w.get_page('Former wiki logos').split('\n')
-        archive.append(main_page[0])
+    else:
+        new_logo = '[[File:Trainhassailed.png]]'
 
-        # Do the updates
-        w.post_page('Possible future wiki logos', '\n'.join(possible[1:]))
-        w.post_page('Former wiki logos', '\n'.join(archive))
+    w.post_page('Possible future wiki logos', '\n'.join(possible[1:]))
+    w.post_page('Former wiki logos', '\n'.join(archive))
 
-        main_page = '%s\n%s' %(new_logo, '\n'.join(main_page[1:]))
-        w.post_page('Main Page', main_page)
+    main_page = '%s\n%s' %(new_logo, '\n'.join(main_page[1:]))
+    w.post_page('Main Page', main_page)
