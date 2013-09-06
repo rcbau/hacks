@@ -47,7 +47,7 @@ class Wiki(object):
         page_id = pages.keys()[0]
         return pages[page_id]['revisions'][0]['*']
 
-    def post_page(self, title, text, minor=True):
+    def post_page(self, title, text, minor=True, bot=True):
         page_token = self.wiki.call({'action': 'query',
                                      'prop': 'info',
                                      'titles': title,
@@ -57,7 +57,7 @@ class Wiki(object):
 
         response = self.wiki.call({'action': 'edit',
                                    'minor': minor,
-                                   'bot': True,
+                                   'bot': bot,
                                    'title': title,
                                    'text': json.dumps(text).replace(
                                        '\\n', '\n')[1:-1],

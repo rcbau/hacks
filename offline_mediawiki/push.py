@@ -46,7 +46,7 @@ def push():
                 continue
 
             with open(os.path.join(tempdir, title), 'r') as f:
-                w.post_page(title, f.read(), minor=False)
+                w.post_page(title, f.read(), minor=False, bot=False)
                 pass
 
         finally:
