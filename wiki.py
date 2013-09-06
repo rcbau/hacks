@@ -22,6 +22,22 @@ class Wiki(object):
                        'lgpassword': self.password})
         return self.wiki.call(packet)
 
+    def all_pages(self):
+        response = self.wiki.call({'action': 'query',
+                                   'list': 'allpages'})
+        marker = 'foo'
+        while marker:
+            if 'query-continue' in response:
+                marker = response['query-continue']['allpages']['apfrom']
+            else:
+                marker = None
+
+            for page in response['query']['allpages']:
+                yield page['title']
+            response = self.wiki.call({'action': 'query',
+                                       'list': 'allpages',
+                                       'apfrom': marker})
+
     def get_page(self, title):
         response = self.wiki.call({'action': 'query',
                                    'titles': title,
@@ -31,7 +47,7 @@ class Wiki(object):
         page_id = pages.keys()[0]
         return pages[page_id]['revisions'][0]['*']
 
-    def post_page(self, title, text):
+    def post_page(self, title, text, minor=True):
         page_token = self.wiki.call({'action': 'query',
                                      'prop': 'info',
                                      'titles': title,
@@ -40,7 +56,7 @@ class Wiki(object):
         page_id = pages.keys()[0]
 
         response = self.wiki.call({'action': 'edit',
-                                   'minor': True,
+                                   'minor': minor,
                                    'bot': True,
                                    'title': title,
                                    'text': json.dumps(text).replace(
