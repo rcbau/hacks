@@ -14,7 +14,9 @@ with open(os.path.expanduser('~/.mediawiki'), 'r') as f:
 if __name__ == '__main__':
     w = wiki.Wiki(conf['url'], conf['username'], conf['password'])
 
-    os.makedirs('.mediawiki')
+    if not os.path.exists('.mediawiki'):
+        os.makedirs('.mediawiki')
+
     for title in w.all_pages():
         print title
         with open(title, 'w') as f:
