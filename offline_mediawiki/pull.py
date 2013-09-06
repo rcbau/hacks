@@ -19,7 +19,8 @@ if __name__ == '__main__':
 
     for title in w.all_pages():
         print title
+        data = w.get_page(title).encode('ascii', 'replace')
         with open(title, 'w') as f:
-            f.write(w.get_page(title).encode('ascii', 'replace'))
+            f.write(data)
         with open(os.path.join('.mediawiki', title), 'w') as f:
-            f.write(w.get_page(title).encode('ascii', 'replace'))
+            f.write(data)
