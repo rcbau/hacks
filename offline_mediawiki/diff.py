@@ -11,14 +11,14 @@ import utils
 def diff():
     _, empty = tempfile.mkstemp()
     try:
-        file_is_new = False
-
         existing = []
         for ent in os.listdir('.mediawiki'):
             if os.path.isfile(ent):
                 existing.append(ent)
 
         for ent in os.listdir('.'):
+            file_is_new = False
+
             if os.path.isdir(ent):
                 continue
             if ent.endswith('~'):
