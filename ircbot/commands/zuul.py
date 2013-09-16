@@ -95,6 +95,9 @@ class ZuulWatcher(object):
                                             owner = patchset['uploader']['name']
                                             break
 
+                                    if not owner in self.conf['zuul']['usermap']:
+                                        continue
+
                                     self.cursor.execute('insert into patchsets'
                                                         '(ident, number, author, '
                                                         'monitored, seen) '
