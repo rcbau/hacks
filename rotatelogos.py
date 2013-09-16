@@ -10,7 +10,7 @@ import wiki
 
 
 with open(os.path.expanduser('~/.mediawiki'), 'r') as f:
-    conf = json.loads(f.read())
+    conf = json.loads(f.read())['ircbot']
 
 
 if __name__ == '__main__':
