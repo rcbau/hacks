@@ -62,6 +62,7 @@ class PPPHelper(object):
             else:
                 line = ' '.join(elems[1:])
 
+            user = user.rstrip('_')
             title = '%s PPP report %04d%02d%02d' %(user, tuesday.year,
                                                    tuesday.month, tuesday.day)
             self.log('Adding PPP entry for %s' % title)
