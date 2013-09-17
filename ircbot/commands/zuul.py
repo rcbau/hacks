@@ -80,6 +80,7 @@ class ZuulWatcher(object):
                         for head in queue['heads']:
                             for review in head:
                                 ident, number = review['id'].split(',')
+                                self.log('... zuul processing %s, %s' %(ident, number))
                                 owner = None
 
                                 self.cursor.execute('select * from patchsets where '
@@ -87,16 +88,14 @@ class ZuulWatcher(object):
                                                     [ident, number])
                                 rows = self.cursor.fetchall()
                                 if rows:
-                                    owner = rows[0][3]
+                                    owner = rows[0][2]
                                 else:
+                                    self.log('    looking up patchset info')
                                     info = utils.get_patchset_info(ident)
                                     for patchset in info['patchSets']:
                                         if patchset['number'] == number:
                                             owner = patchset['uploader']['name']
                                             break
-
-                                    if not owner in self.conf['zuul']['usermap']:
-                                        continue
 
                                     self.cursor.execute('insert into patchsets'
                                                         '(ident, number, author, '
@@ -106,13 +105,19 @@ class ZuulWatcher(object):
                                                          1, time.time()])
                                     self.database.commit()
 
+                                    if not owner in self.conf['zuul']['usermap']:
+                                        continue
+
                                     yield(channel, 'msg',
                                           ('OMG, %s did some work! %s'
                                            %(owner, review['url'])))
 
                                 nick = self.conf['zuul']['usermap'].get(owner, None)
+                                self.log('    nick for %s is %s' %(owner, nick))
                                 if nick:
                                     for job in review['jobs']:
+                                        self.log('    %s: %s' %(job['name'],
+                                                                job['result']))
                                         if not job['result']:
                                             continue
                                         if job['result'] == 'SUCCESS':
@@ -125,11 +130,14 @@ class ZuulWatcher(object):
                                         self.log('%s, %s status %s: %s'
                                                  %(ident, number, job['name'],
                                                    job['result']))
+                                        voting = ''
+                                        if not job['voting']:
+                                            voting = ' (non-voting)'
                                         yield(channel, 'msg',
-                                              ('%s: %s %s ... %s'
+                                              ('%s: %s %s ... %s%s'
                                                %(nick, review['url'],
                                                  job['name'].split('-')[-1],
-                                                 job['result'])))
+                                                 job['result'], voting)))
 
                                         self.statuses[key] = True
 
