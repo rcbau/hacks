@@ -10,6 +10,11 @@ import urllib2
 
 import utils
 
+
+EVENTS = {'check': 'did some work!',
+          'gate': 'tricked them into approving his code'}
+
+
 class ZuulWatcher(object):
     def __init__(self, log, conf):
         self.log = log
@@ -110,8 +115,11 @@ class ZuulWatcher(object):
                                         continue
 
                                     yield(channel, 'msg',
-                                          ('OMG, %s did some work! %s'
-                                           %(owner, review['url'])))
+                                          ('OMG, %s %s %s'
+                                           %(owner,
+                                             EVENTS.get(pipeline['name'],
+                                                        'howled into the wind'),
+                                             review['url'])))
 
                                 nick = self.conf['zuul']['usermap'].get(owner, None)
                                 self.log('    nick for %s is %s' %(owner, nick))
