@@ -52,7 +52,7 @@ class ZuulWatcher(object):
         """
         return ''
 
-    def Command(self, channel, verb, line):
+    def Command(self, user, channel, verb, line):
         """Execute a given verb with these arguments
 
         Takes the verb which the user entered, and the remainder of the line.
@@ -80,7 +80,8 @@ class ZuulWatcher(object):
                         for head in queue['heads']:
                             for review in head:
                                 ident, number = review['id'].split(',')
-                                self.log('... zuul processing %s, %s' %(ident, number))
+                                self.log('... zuul processing %s, %s'
+                                         %(ident, number))
                                 owner = None
 
                                 self.cursor.execute('select * from patchsets where '
@@ -130,13 +131,13 @@ class ZuulWatcher(object):
                                         self.log('%s, %s status %s: %s'
                                                  %(ident, number, job['name'],
                                                    job['result']))
+                                        test = '-'.join(job['name'].split('-')[2:])
                                         voting = ''
                                         if not job['voting']:
                                             voting = ' (non-voting)'
                                         yield(channel, 'msg',
                                               ('%s: %s %s ... %s%s'
-                                               %(nick, review['url'],
-                                                 job['name'].split('-')[-1],
+                                               %(nick, review['url'], test,
                                                  job['result'], voting)))
 
                                         self.statuses[key] = True

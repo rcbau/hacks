@@ -54,7 +54,7 @@ class MessageLogger:
 
 class Lcabot(irc.IRCClient):
     """A logging IRC bot."""
-    
+
     def __init__(self, factory):
         self.plugins = []
         self.verbs = {}
@@ -124,7 +124,7 @@ class Lcabot(irc.IRCClient):
                     elif method == 'describe':
                         self._send_describe(channel, data)
 
-            self.queue = self.queue[len(outgoing):]        
+            self.queue = self.queue[len(outgoing):]
             self.realtime_queue = self.realtime_queue[len(realtime_outgoing):]
 
     def _msg(self, channel, msg, realtime=False):
@@ -142,7 +142,7 @@ class Lcabot(irc.IRCClient):
     def _send_topic(self, channel, topic):
         self.topic(channel, topic)
         self._writeLog('%s >> Set topic to "%s"' %(channel, topic))
-    
+
     def _describe(self, channel, action, realtime=False):
         self._enqueue(('describe', channel, action), realtime)
         self._dequeue()
@@ -220,12 +220,12 @@ class Lcabot(irc.IRCClient):
     def connectionMade(self):
         irc.IRCClient.connectionMade(self)
         self.logger = MessageLogger(open(self.factory.filename, "a"))
-        self._writeLog("[connected at %s]" % 
+        self._writeLog("[connected at %s]" %
                        time.asctime(time.localtime(time.time())))
 
     def connectionLost(self, reason):
         irc.IRCClient.connectionLost(self, reason)
-        self._writeLog("[disconnected at %s]" % 
+        self._writeLog("[disconnected at %s]" %
                        time.asctime(time.localtime(time.time())))
         self.logger.close()
 
@@ -280,7 +280,7 @@ class Lcabot(irc.IRCClient):
             outchannel = user
         elif not msg.startswith(self.nickname + ':'):
             return
-        
+
         # Determine the command
         command = msg.rstrip()
         if msg.startswith(self.nickname + ':'):
@@ -302,7 +302,7 @@ class Lcabot(irc.IRCClient):
             if user in self.factory.conf.get('operators', []):
                 self._doHeartbeat()
             else:
-                self._msg(outchannel, 
+                self._msg(outchannel,
                           'I\'m sorry sonny, I can\'t quite hear you',
                           realtime=True)
 
@@ -311,7 +311,8 @@ class Lcabot(irc.IRCClient):
             try:
                 args = command[len(elems[0]):].lstrip()
                 self._writeLog('[Command sent to %s]' % module.Name())
-                self._handleResponse(list(module.Command(outchannel,
+                self._handleResponse(list(module.Command(user,
+                                                         outchannel,
                                                          elems[0],
                                                          args)))
             except Exception, e:
