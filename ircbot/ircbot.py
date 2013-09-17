@@ -119,6 +119,8 @@ class Lcabot(irc.IRCClient):
                     self._writeLog('Dequeue %s %s %s' %(method, channel, data))
                     if method == 'msg':
                         self._send_msg(channel, data)
+                        if data.startswith('ducking-bear: '):
+                            self.privmsg('ducking-bear', channel, data)
                     elif method == 'topic':
                         self._send_topic(channel, data)
                     elif method == 'describe':
