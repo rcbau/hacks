@@ -68,13 +68,18 @@ class Wiki(object):
 
         pages = response['query']['pages']
         page_id = pages.keys()[0]
+
+        if not 'revisions' in pages[page_id]:
+            # This is a new page
+            return ''
+
         return pages[page_id]['revisions'][0]['*']
 
     def post_page(self, title, text, minor=True, bot=True):
         response = self.wiki.call({'action': 'query',
-                                     'prop': 'info',
-                                     'titles': title,
-                                     'intoken': 'edit'})
+                                   'prop': 'info',
+                                   'titles': title,
+                                   'intoken': 'edit'})
         if DEBUG:
             print response
         assert_present('query', response)

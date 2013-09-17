@@ -120,6 +120,17 @@ class ZuulWatcher(object):
                                              EVENTS.get(pipeline['name'],
                                                         'howled into the wind'),
                                              review['url'])))
+                                    yield(channel, 'msg',
+                                          ('    Review title is: %s'
+                                           % info['subject']))
+
+                                    # Talk to ourselves to get a PPP report entry
+                                    nick = self.conf['zuul']['usermap'].get(owner,
+                                                                            None)
+                                    if nick:
+                                        yield(channel, 'msg',
+                                              ('ducking-bear: ppp progress %s [%s]'
+                                               %(info['subject'], nick)))
 
                                 nick = self.conf['zuul']['usermap'].get(owner, None)
                                 self.log('    nick for %s is %s' %(owner, nick))
