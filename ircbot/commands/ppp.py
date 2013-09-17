@@ -11,9 +11,6 @@ import wiki
 
 
 WIKI_SECTION_RE = re.compile('=+ (.*) =+')
-USER_MAP = {
-    'jhesketh': 'Joshua'
-}
 
 
 class PPPHelper(object):
@@ -66,7 +63,7 @@ class PPPHelper(object):
                 line = ' '.join(elems[1:])
 
             user = user.rstrip('_')
-            user = USER_MAP.get(user, user)
+            user = self.conf['ppp']['usermap'].get(user, user)
             title = '%s PPP report %04d%02d%02d' %(user, tuesday.year,
                                                    tuesday.month, tuesday.day)
             self.log('Adding PPP entry for %s' % title)
