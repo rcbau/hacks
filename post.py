@@ -96,15 +96,15 @@ if __name__ == '__main__':
 
                 l = f.readline()
 
-        if day and content:
-            post_page('rcbau irc log for %s' % ' '.join(day),
-                      ''.join(content), day)
+    if day and content:
+        post_page('rcbau irc log for %s' % ' '.join(day),
+                  ''.join(content), day)
 
-        if days:
-            content = ''
-            for day in reversed(days_order):
-                content += ' %s: ' % day
-                content += ' '.join(days[day])
-                content += '\n'
+    if days:
+        content = ''
+        for day in reversed(days_order):
+            content += ' %s: ' % day
+            content += ' '.join(days[day])
+            content += '\n'
 
-            post_page('rcbau irc log index', content, None)
+        post_page('rcbau irc log index', content, None)
