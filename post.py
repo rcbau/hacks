@@ -63,7 +63,10 @@ if __name__ == '__main__':
     day = None
     content = []
 
-    for filename in sorted(glob.glob(conf['logpath'])):
+    filenames = sorted(glob.glob(conf['logpath']))
+    ordered_filenames = filenames[1:]
+    ordered_filenames.append(filenames[0])
+    for filename in ordered_filenames:
         print filename
 
         with open(filename, 'r') as f:
