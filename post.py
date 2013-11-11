@@ -2,6 +2,7 @@
 
 # Read irc logs from our private channel and post them to our wiki
 
+import glob
 import json
 import os
 import re
@@ -61,42 +62,46 @@ if __name__ == '__main__':
 
     day = None
     content = []
-    with open(os.path.expanduser(conf['logpath']), 'r') as f:
-        l = f.readline()
-        while l:
-            if l.startswith('--- Day'):
-                m = day_re.match(l)
-                if m:
-                    print 'Day is %s' % day
-                    if content:
-                        post_page('rcbau irc log for %s' % ' '.join(day),
-                                  ''.join(content), day)
-                        content = []
-                    day = [m.group(1), m.group(2), m.group(3), m.group(4)]
-            elif day:
-                lines = textwrap.wrap(l.rstrip(), 120)
 
-                m = human_re.match(l)
-                if m and len(m.group(1)) > 1:
-                    content.append(' \'\'\'%s\'\'\'\n'
-                                   % '\n \'\'\'      '.join(lines))
-                elif l[7] == '*':
-                    content.append(' \'\'%s\'\'\n'
-                                   % '\n \'\'      '.join(lines))
-                else:
-                    content.append(' %s\n' % '\n       '.join(lines))
+    for filename in sorted(glob.glob(conf['logpath'])):
+        print filename
 
+        with open(filename, 'r') as f:
             l = f.readline()
+            while l:
+                if l.startswith('--- Day'):
+                    m = day_re.match(l)
+                    if m:
+                        print 'Day is %s' % day
+                        if content:
+                            post_page('rcbau irc log for %s' % ' '.join(day),
+                                      ''.join(content), day)
+                            content = []
+                        day = [m.group(1), m.group(2), m.group(3), m.group(4)]
+                elif day:
+                    lines = textwrap.wrap(l.rstrip(), 120)
 
-    if day and content:
-        post_page('rcbau irc log for %s' % ' '.join(day),
-                  ''.join(content), day)
+                    m = human_re.match(l)
+                    if m and len(m.group(1)) > 1:
+                        content.append(' \'\'\'%s\'\'\'\n'
+                                       % '\n \'\'\'      '.join(lines))
+                    elif l[7] == '*':
+                        content.append(' \'\'%s\'\'\n'
+                                       % '\n \'\'      '.join(lines))
+                    else:
+                        content.append(' %s\n' % '\n       '.join(lines))
 
-    if days:
-        content = ''
-        for day in reversed(days_order):
-            content += ' %s: ' % day
-            content += ' '.join(days[day])
-            content += '\n'
+                l = f.readline()
 
-        post_page('rcbau irc log index', content, None)
+        if day and content:
+            post_page('rcbau irc log for %s' % ' '.join(day),
+                      ''.join(content), day)
+
+        if days:
+            content = ''
+            for day in reversed(days_order):
+                content += ' %s: ' % day
+                content += ' '.join(days[day])
+                content += '\n'
+
+            post_page('rcbau irc log index', content, None)
