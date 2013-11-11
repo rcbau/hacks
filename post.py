@@ -75,12 +75,15 @@ if __name__ == '__main__':
                 if l.startswith('--- Day'):
                     m = day_re.match(l)
                     if m:
-                        print 'Day is %s' % day
-                        if content:
+                        new_day = [m.group(1), m.group(2), m.group(3),
+                                   m.group(4)]
+
+                        print 'Day %s to %s' %(day, new_day)
+                        if content and day != new_day:
                             post_page('rcbau irc log for %s' % ' '.join(day),
                                       ''.join(content), day)
                             content = []
-                        day = [m.group(1), m.group(2), m.group(3), m.group(4)]
+                        day = new_day
                 elif day:
                     lines = textwrap.wrap(l.rstrip(), 120)
 
