@@ -15,8 +15,8 @@ settings = {
 
 sync = """sync{
         default.rsync,
-        source="%(source)s",
-        target="%(target)s",
+        source="%(source)s/",
+        target="%(target)s:%(source)s/",
         rsyncOps={"%(flags)s", "-e", "/usr/bin/ssh -i /root/.ssh/id_rsa.lsyncd -o StrictHostKeyChecking=no"}
 }
 """

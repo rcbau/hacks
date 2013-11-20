@@ -17,9 +17,10 @@ if __name__ == '__main__':
     sys.stdout.write(templates.settings % locals())
     for system in config:
         sys.stdout.write('-- %s\n\n' % system)
-        for source in config[system]['sources']:
-            flags = config[system]['flags']
-            for target in config[system]['targets']:
+        flags = config[system]['flags']
+
+        for target in config[system]['targets']:
+            for source in config[system]['sources']:
                 sys.stdout.write(templates.sync % locals())
 
         sys.stdout.write('\n')
