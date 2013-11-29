@@ -20,6 +20,7 @@ if __name__ == '__main__':
     for title in w.all_pages():
         print title
         data = w.get_page(title).encode('ascii', 'replace')
+        title = title.replace('/', '!slash!')
         with open(title, 'w') as f:
             f.write(data)
         with open(os.path.join('.mediawiki', title), 'w') as f:

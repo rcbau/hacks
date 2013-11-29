@@ -43,9 +43,15 @@ class Wiki(object):
         assert_present('query', response)
 
         marker = 'foo'
+        marker_name = 'foo'
         while marker:
             if 'query-continue' in response:
-                marker = response['query-continue']['allpages']['apfrom']
+                for possible in ['apfrom', 'apcontinue']:
+                    if possible in response['query-continue']['allpages']:
+                        marker = \
+                            response['query-continue']['allpages'][possible]
+                        marker_name = possible
+                        break
             else:
                 marker = None
 
@@ -53,7 +59,7 @@ class Wiki(object):
                 yield page['title']
             response = self.wiki.call({'action': 'query',
                                        'list': 'allpages',
-                                       'apfrom': marker})
+                                       marker_name: marker})
             if DEBUG:
                 print response
 

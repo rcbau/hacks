@@ -38,7 +38,8 @@ def push():
             new_file_msg = ', page is new'
 
         print
-        print 'Editted file: %s (resolving in %s%s)' %(title, tempdir, new_file_msg)
+        print ('Editted file: %s (resolving in %s%s)'
+               %(title, tempdir, new_file_msg))
 
         try:
             with open(os.path.join(tempdir, title), 'w') as f:
@@ -54,7 +55,8 @@ def push():
 
             with open(os.path.join(tempdir, title), 'r') as f:
                 data = f.read()
-            w.post_page(title, data, minor=False, bot=False)
+            w.post_page(title.replace('!slash!', '/'), data, minor=False,
+                        bot=False)
 
         finally:
             pass
