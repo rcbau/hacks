@@ -50,10 +50,36 @@ class PPPHelper(object):
         Returns a string which is sent to the user.
         """
         if verb == 'ppp':
+            with open(os.path.expanduser('~/.mediawiki'), 'r') as f:
+                wikiconf = json.loads(f.read())['ircbot']
+            w = wiki.Wiki(wikiconf['url'], wikiconf['username'],
+                          wikiconf['password'])
+
             tuesday = datetime.datetime.now()
             while tuesday.weekday() != 1:
                 tuesday += datetime.timedelta(days=1)
 
+            # Make sure we have an index entry
+            day_name = tuesday.strftime('%d %B %Y')
+            found = False
+            text = w.get_page('PPP reports index').split('\n')
+            for index_line in text:
+                if index_line.startswith('* %s' % day_name):
+                    found = True
+                    break
+
+            if not found:
+                entry = '* %s: ' % day_name
+                for team_user in self.conf['ppp']['users']:
+                    entry += ('[[%s PPP report %04d%02d%02d|%s]] '
+                              %(team_user, tuesday.year, tuesday.month,
+                                tuesday.day, team_user))
+                entry += ('\'\'\'[[Final Combined PPP report %04d%02d%02d|Combined]]\'\'\''
+                          %(tuesday.year, tuesday.month, tuesday.day))
+                text.insert(0, entry)
+                w.post_page('PPP reports index', '\n'.join(text))
+
+            # Now the entry
             elems = line.split(' ')
             section = elems[0]
             if elems[-1].startswith('[') and elems[-1].endswith(']'):
@@ -72,10 +98,6 @@ class PPPHelper(object):
             self.log('... section %s' % section)
             self.log('    entry "%s"' % line)
 
-            with open(os.path.expanduser('~/.mediawiki'), 'r') as f:
-                wikiconf = json.loads(f.read())['ircbot']
-            w = wiki.Wiki(wikiconf['url'], wikiconf['username'],
-                          wikiconf['password'])
             text = w.get_page(title).split('\n')
 
             # This is a bit horrible. There is no support in the mediawiki api for
