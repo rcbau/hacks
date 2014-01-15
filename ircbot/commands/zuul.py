@@ -12,7 +12,7 @@ import utils
 
 
 EVENTS = {'check': 'did some work!',
-          'gate': 'tricked them into approving his code'}
+          'gate': 'tricked them into approving the commit'}
 
 
 class ZuulWatcher(object):
@@ -115,7 +115,7 @@ class ZuulWatcher(object):
                                         continue
 
                                     yield(channel, 'msg',
-                                          ('OMG, %s %s %s'
+                                          ('Woohoo!, %s %s %s'
                                            %(owner,
                                              EVENTS.get(pipeline['name'],
                                                         'howled into the wind'),
