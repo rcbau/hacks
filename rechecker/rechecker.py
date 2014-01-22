@@ -97,7 +97,6 @@ def check(review):
         out = subprocess.check_output(
             ('ssh review.openstack.org gerrit review -m "\'recheck no bug\'" %s'
             % patchset['revision']), shell=True, stderr=subprocess.PIPE)
-        sys.exit(0)
 
 
 def stream_events():
