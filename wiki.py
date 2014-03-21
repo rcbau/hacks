@@ -81,6 +81,22 @@ class Wiki(object):
 
         return pages[page_id]['revisions'][0]['*']
 
+    def check_for_page(self, title):
+        response = self.wiki.call({'action': 'query',
+                                   'titles': title,
+                                   'prop': 'revisions',
+                                   'rvprop': 'content'})
+        if DEBUG:
+            print response
+        assert_present('query', response)
+
+        pages = response['query']['pages']
+        page_id = pages.keys()[0]
+
+        if not 'revisions' in pages[page_id]:
+            return False
+        return True
+
     def post_page(self, title, text, minor=True, bot=True):
         response = self.wiki.call({'action': 'query',
                                    'prop': 'info',
