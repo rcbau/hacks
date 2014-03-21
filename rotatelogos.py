@@ -9,6 +9,8 @@ import random
 import sys
 import wiki
 
+from pytz import timezone
+
 
 with open(os.path.expanduser('~/.mediawiki'), 'r') as f:
     conf = json.loads(f.read())['ircbot']
@@ -21,9 +23,15 @@ if __name__ == '__main__':
     archive = w.get_page('Former wiki logos').split('\n')
     archive.append(main_page[0].replace('|right]]', ']]'))
 
+    sydney = timezone('Australia/Sydney')
+    now = datetime.datetime.now()
+    sydney_now = sydney.localize(now)
+    print 'System time: %s' % now
+    print 'Sydney time: %s' % sydney_now
+    
     for extension in ['png', 'jpg', 'jpeg', 'gif']:
         today_title = ('File:%s.%s'
-                       %(datetime.datetime.now().strftime('%Y%m%d'),
+                       %(sydney_now.strftime('%Y%m%d'),
                          extension))
         print 'Testing for %s' % today_title
         today_meme = w.check_for_page(today_title)
@@ -49,6 +57,7 @@ if __name__ == '__main__':
             random.shuffle(possible)
             new_logo = possible[0]
 
+    sys.exit(1)
     new_logo = new_logo.replace(']]', '|right]]')
     if possible_page:
         w.post_page(possible_page, '\n'.join(possible[1:]))
