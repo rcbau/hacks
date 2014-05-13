@@ -5,11 +5,15 @@ import json
 import utils
 
 
-def component_reviews(component):
+def component_reviews(component, reviewer=None):
     cmd = ('ssh review.openstack.org gerrit query --format json '
-           '--current-patch-set --all-approvals project:%s status:open '
+           '--current-patch-set project:%s status:open '
            'limit:10000'
            % component)
+    if reviewer:
+        cmd += ' reviewer:%s' % reviewer
+    else:
+        cmd += ' --all-approvals'
     stdout = utils.runcmd(cmd)
 
     reviews = []
@@ -29,7 +33,7 @@ def component_reviews(component):
     return reviews
 
 if __name__ == '__main__':
-    reviews = component_reviews('openstack/nova')
+    reviews = component_reviews('openstack/nova', reviewer='mikal@stillhq.com')
     print '%s reviews found' % len(reviews)
 
     for review in reviews:

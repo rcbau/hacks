@@ -53,7 +53,7 @@ def print_review(review, message):
     for approval in review.get('currentPatchSet', {}).get('approvals', []):
         if approval['by'].get('username', '') == 'mikalstill':
             return
-        if approval['type'] == 'APRV' and approval['value'] == '1':
+        if approval['type'] in ['APRV', 'Workflow'] and approval['value'] == '1':
             return
 
     votes, lowest, highest = get_votes(review)
