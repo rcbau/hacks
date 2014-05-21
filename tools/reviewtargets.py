@@ -1,29 +1,43 @@
 #!/usr/bin/python
 
+import argparse
 import os
 
 import reviews
 import utils
 
 
+ARGS = None
 RELEASE = 'juno'
 APPROVED_SPECS = []
 PROPOSED_SPECS = []
 
 
 def print_heading(header):
-    print
-    print '*****************************************************************'
-    print header
-    print '*****************************************************************'
+    if ARGS.html:
+        print '<h1>%s</h1>' % header
+    else:
+        print
+        print '*************************************************************'
+        print header
+        print '*************************************************************'
 
 
 def approval_to_string(approval):
-    return '%s:%s(%s)' % (approval['by'].get('username',
-                                             repr(approval['by'])),
-                          approval['type'],
-                          approval['value'])
-    
+    s = '%s:%s(%s)' % (approval['by'].get('username',
+                                          repr(approval['by'])),
+                       approval['type'],
+                       approval['value'])
+    if ARGS.html:
+        colors = {'-2': 'red',
+                  '-1': 'red',
+                  '0': 'gray',
+                  '1': 'green',
+                  '2': 'green'}
+        return '<font color="%s">%s</font>' % (colors[approval['value']], s)
+    else:
+        return s
+
 
 def get_votes(review):
     votes = []
@@ -53,22 +67,35 @@ def print_review(review, message):
     for approval in review.get('currentPatchSet', {}).get('approvals', []):
         if approval['by'].get('username', '') == 'mikalstill':
             return
-        if approval['type'] in ['APRV', 'Workflow'] and approval['value'] == '1':
+        if (approval['type'] in ['APRV', 'Workflow']
+            and approval['value'] == '1'):
             return
 
     votes, lowest, highest = get_votes(review)
     if lowest == -2:
         return
 
-    print review['subject']
-    if message:
-        print '    %s' % message
-    print '    %s (%s) in %s' % (review['owner']['username'],
-                                 review.get('topic'),
-                                 review.get('project'))
-    print '    Votes: %s' % ' '.join(votes)
-    print '    %s' % review['url']
-    print
+    if ARGS.html:
+        print '<p><b>%s</b><ul>' % review['subject']
+        if message:
+                print '<li><i>%s</i>' % message
+        print '<li>%s (%s) in %s' % (review['owner']['username'],
+                                     review.get('topic'),
+                                     review.get('project'))
+        print '<li>Votes: %s' % ' '.join(votes)
+        print '<li><a href="%s">review</a>' % review['url']
+        print '</ul></p>'
+
+    else:
+        print review['subject']
+        if message:
+                print '    %s' % message
+        print '    %s (%s) in %s' % (review['owner']['username'],
+                                     review.get('topic'),
+                                     review.get('project'))
+        print '    Votes: %s' % ' '.join(votes)
+        print '    %s' % review['url']
+        print
 
     PRINTED.append(review)
 
@@ -93,7 +120,6 @@ def targets():
     for review in filter_obvious(possible):
         if not review.get('topic', '').startswith('transifex/'):
             continue
-
         print_review(review, '')
 
     # Turbo Hipster
@@ -184,12 +210,14 @@ def targets():
 
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--html', default=False, action='store_true',
+                        help='Output HTML')
+    ARGS = parser.parse_args()
+
     print utils.runcmd('cd ~/src/openstack/nova-specs; '
                        'git checkout master; '
                        'git pull')
-    print
-    print '-----------------------------------------------------------------'
-    print
 
     for ent in os.listdir(os.path.expanduser('~/src/openstack/nova-specs'
                                              '/specs/%s'
@@ -197,8 +225,6 @@ if __name__ == '__main__':
         if not ent.endswith('.rst'):
             continue
         APPROVED_SPECS.append(ent[:-4])
-    print 'Approved specs: %s' % ' '.join(APPROVED_SPECS)
-    print
 
     possible = reviews.component_reviews('openstack/nova-specs')
     for review in filter_obvious(possible):
@@ -208,8 +234,6 @@ if __name__ == '__main__':
             bp_name = review.get('topic', '')
 
         PROPOSED_SPECS.append(bp_name)
-    print 'Proposed specs: %s' % ' '.join(PROPOSED_SPECS)
-    print
 
     targets()
 
