@@ -1,6 +1,7 @@
 #!/usr/bin/python
 
 import argparse
+import datetime
 import os
 
 import reviews
@@ -115,10 +116,11 @@ def targets():
     global PROPOSED_SPECS
     
     # Find translation reviews
-    print_heading('Translation reviews')
+    print_heading('Bot reviews')
     possible = reviews.component_reviews('openstack/nova')
     for review in filter_obvious(possible):
-        if not review.get('topic', '').startswith('transifex/'):
+        if (review['currentPatchSet'].get('author', {}).get('username', '')
+            != 'proposal-bot'):
             continue
         print_review(review, '')
 
@@ -142,7 +144,8 @@ def targets():
     bug_reviews = []
     uncategorized_reviews = []
 
-    for component in ['openstack/nova', 'openstack/python-novaclient']:
+    for component in ['openstack/nova', 'openstack/python-novaclient',
+                      'openstack/nova-specs']:
         possible = reviews.component_reviews(component)
         for review in filter_obvious(possible):
             topic = review.get('topic', '')
@@ -160,7 +163,8 @@ def targets():
                 previously_reviewed[vote].append(review)
             elif highest == 2:
                 plus_two.append(review)
-            elif topic.startswith('bp/'):
+            elif (topic.startswith('bp/')
+                  and component != 'openstack/nova-specs'):
                 bp_name = review.get('topic', '').split('/')[1]
                 if not bp_name in APPROVED_SPECS:
                     if bp_name in PROPOSED_SPECS:
@@ -239,3 +243,4 @@ if __name__ == '__main__':
 
     print
     print 'I printed %d reviews' % len(PRINTED)
+    print 'Generated at: %s' % datetime.datetime.now()
