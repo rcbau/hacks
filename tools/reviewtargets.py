@@ -54,7 +54,7 @@ def get_votes(review):
     
 
 PRINTED = []
-def print_review(review, message):
+def print_review(review, message, skip_reviewed_by_me=True):
     global PRINTED
 
     if review in PRINTED:
@@ -66,7 +66,8 @@ def print_review(review, message):
         return
 
     for approval in review.get('currentPatchSet', {}).get('approvals', []):
-        if approval['by'].get('username', '') == 'mikalstill':
+        if (skip_reviewed_by_me
+            and approval['by'].get('username', '') == ARGS.username):
             return
         if (approval['type'] in ['APRV', 'Workflow']
             and approval['value'] == '1'):
@@ -139,6 +140,7 @@ def targets():
     # Other nova
     previously_reviewed = {}
     plus_two = []
+    needs_merge_approve = []
     unapproved_spec_reviews = []
     approved_spec_reviews = []
     bug_reviews = []
@@ -151,11 +153,22 @@ def targets():
             topic = review.get('topic', '')
             votes, lowest, highest = get_votes(review)
 
+            # Does this patch just need a merge approval?
+            yeps = 0
+            merges = 0
+            for vote in votes:
+                if vote.find(':Code-Review(2)') != -1:
+                    yeps += 1
+                elif vote.find(':Workflow(2)') != -1:
+                    merges += 1
+            if yeps > 1 and merges == 0:
+                needs_merge_approve.append(review)
+
             # Determine my most recent votes
             vote = ''
             for ps in review['patchSets']:
                 for approval in ps.get('approvals', []):
-                    if approval['by'].get('username', '') == 'mikalstill':
+                    if approval['by'].get('username', '') == ARGS.username:
                         vote = approval_to_string(approval)
 
             if vote:
@@ -182,6 +195,10 @@ def targets():
             else:
                 uncategorized_reviews.append(review)
 
+    print_heading('Needs merge approval')
+    for review in needs_merge_approve:
+        print_review(review, '', skip_reviewed_by_me=False)
+                
     for vote in sorted(previously_reviewed.keys()):
         print_heading('Previously reviewed -- %s' % vote)
         for review in previously_reviewed[vote]:
@@ -217,6 +234,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--html', default=False, action='store_true',
                         help='Output HTML')
+    parser.add_argument('--username', default='mikalstill',
+                        help='Your gerrit username')
     ARGS = parser.parse_args()
 
     print utils.runcmd('cd ~/src/openstack/nova-specs; '
