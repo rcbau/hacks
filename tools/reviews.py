@@ -1,5 +1,6 @@
 #!/usr/bin/python
 
+import argparse
 import json
 
 import utils
@@ -33,7 +34,12 @@ def component_reviews(component, reviewer=None):
     return reviews
 
 if __name__ == '__main__':
-    reviews = component_reviews('openstack/nova', reviewer='mikal@stillhq.com')
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--username', default='mikalstill',
+                        help='The username (if any) to filter by')
+    ARGS = parser.parse_args()
+    
+    reviews = component_reviews('openstack/nova', reviewer=ARGS.username)
     print '%s reviews found' % len(reviews)
 
     for review in reviews:
