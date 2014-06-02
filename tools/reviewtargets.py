@@ -13,10 +13,39 @@ RELEASE = 'juno'
 APPROVED_SPECS = []
 PROPOSED_SPECS = []
 
+FAVORITE_PEOPLE_TO_REVIEW = [
+    'alaski',
+    'belliott',
+    'berrange',
+    'cbehrens',
+    'cerberus',
+    'cyeoh-0',
+    'dan-prince',
+    'danms',
+    'jogo',
+    'johngarbutt',
+    'klmitch',
+    'markmc',
+    'mriedem',
+    'ndipanov',
+    'p-draigbrady',
+    'russellb',
+    'sdague',
+    'vishvananda',
+    ]
+
+OUTPUT = []
+HEADERS = []
+
 
 def print_heading(header):
+    global OUTPUT
+    global HEADERS
+    
     if ARGS.html:
-        print '<h1>%s</h1>' % header
+        OUTPUT.append('<h1><a name="%s">%s</a></h1>'
+                      % (header.replace(' ', '_'), header))
+        HEADERS.append(header)
     else:
         print
         print '*************************************************************'
@@ -56,6 +85,7 @@ def get_votes(review):
 PRINTED = []
 def print_review(review, message, skip_reviewed_by_me=True):
     global PRINTED
+    global OUTPUT
 
     if review in PRINTED:
         return
@@ -78,15 +108,15 @@ def print_review(review, message, skip_reviewed_by_me=True):
         return
 
     if ARGS.html:
-        print '<p><b>%s</b><ul>' % review['subject']
+        OUTPUT.append('<p><b>%s</b><ul>' % review['subject'])
         if message:
-                print '<li><i>%s</i>' % message
-        print '<li>%s (%s) in %s' % (review['owner']['username'],
+                OUTPUT.append('<li><i>%s</i>' % message)
+        OUTPUT.append('<li>%s (%s) in %s' % (review['owner']['username'],
                                      review.get('topic'),
-                                     review.get('project'))
-        print '<li>Votes: %s' % ' '.join(votes)
-        print '<li><a href="%s">review</a>' % review['url']
-        print '</ul></p>'
+                                     review.get('project')))
+        OUTPUT.append('<li>Votes: %s' % ' '.join(votes))
+        OUTPUT.append('<li><a href="%s">review</a>' % review['url'])
+        OUTPUT.append('</ul></p>')
 
     else:
         print review['subject']
@@ -136,7 +166,7 @@ def targets():
     possible = reviews.component_reviews('openstack/governance')
     for review in filter_obvious(possible):
         print_review(review, '')
-        
+
     # Other nova
     previously_reviewed = {}
     plus_two = []
@@ -145,6 +175,7 @@ def targets():
     approved_spec_reviews = []
     bug_reviews = []
     uncategorized_reviews = []
+    favorites = []
 
     for component in ['openstack/nova', 'openstack/python-novaclient',
                       'openstack/nova-specs']:
@@ -152,6 +183,12 @@ def targets():
         for review in filter_obvious(possible):
             topic = review.get('topic', '')
             votes, lowest, highest = get_votes(review)
+
+            # My favorite developers (people who consistently produce high
+            # quality code and therefore get a fast pass)
+            if review['currentPatchSet']['author']['username'] in \
+              FAVORITE_PEOPLE_TO_REVIEW:
+                favorites.append(review)
 
             # Does this patch just need a merge approval?
             yeps = 0
@@ -198,6 +235,10 @@ def targets():
     print_heading('Needs merge approval')
     for review in needs_merge_approve:
         print_review(review, '', skip_reviewed_by_me=False)
+
+    print_heading('Favorites')
+    for review in favorites:
+        print_review(review, '')
                 
     for vote in sorted(previously_reviewed.keys()):
         print_heading('Previously reviewed -- %s' % vote)
@@ -260,6 +301,12 @@ if __name__ == '__main__':
 
     targets()
 
+    if ARGS.html:
+        for header in HEADERS:
+            print '<li><a href="#%s">%s</a>' % (header.replace(' ', '_'),
+                                                header)
+        print '<br/><br/>'
+        print '\n'.join(OUTPUT)
     print
     print 'I printed %d reviews' % len(PRINTED)
     print 'Generated at: %s' % datetime.datetime.now()
