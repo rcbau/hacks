@@ -2,6 +2,7 @@
 
 # Read irc logs from our private channel and post them to our wiki
 
+import datetime
 import glob
 import json
 import os
@@ -23,6 +24,9 @@ human_re = re.compile('.*<([^>]+)>.*')
 days = {}
 days_order = []
 
+months = {'Jan': 1, 'Feb': 2, 'Mar': 3, 'Apr': 4, 'May': 5, 'Jun': 6,
+          'Jul': 7, 'Aug': 8, 'Sep': 9, 'Oct': 10, 'Nov': 11, 'Dec': 12}
+
 
 def make_wiki_login_call(packet):
     packet.update({'lgname': conf['username'],
@@ -30,6 +34,23 @@ def make_wiki_login_call(packet):
     return wiki.call(packet)
 
 def post_page(title, text, day_tuple):
+    # If day_tuple is set, then this is a daily log file, not the index
+    if day_tuple:
+        key = '%s %s' %(day_tuple[1], day_tuple[3])
+        days.setdefault(key, [])
+        days[key].append('[[%s|%s]]' %(title, day_tuple[2]))
+
+        if not key in days_order:
+            days_order.append(key)
+
+        # Sample ['Wed', 'Jun', '25', '2014']
+        dt = datetime.datetime(int(day_tuple[3]),
+                               months[day_tuple[1]],
+                               int(day_tuple[2]))
+        age = datetime.datetime.now() - dt
+        if age.days > 30:
+            return
+
     page_token = wiki.call({'action': 'query',
                             'prop': 'info',
                             'titles': title,
@@ -46,24 +67,18 @@ def post_page(title, text, day_tuple):
     if not 'nochange' in response['edit']:
         print 'Modified %s' % title
 
-    if day_tuple:
-        key = '%s %s' %(day_tuple[1], day_tuple[3])
-        days.setdefault(key, [])
-        days[key].append('[[%s|%s]]' %(title, day_tuple[2]))
 
-        if not key in days_order:
-            days_order.append(key)
+def process_log(logglob, name):
+    global days
+    global days_order
 
-
-if __name__ == '__main__':
-    login = make_wiki_login_call({'action': 'login'})
-    token = make_wiki_login_call({'action': 'login',
-                                  'lgtoken': login['login']['token']})
+    days = {}
+    days_order = []
 
     day = None
     content = []
 
-    filenames = sorted(glob.glob(conf['logpath']))
+    filenames = sorted(glob.glob(logglob))
     ordered_filenames = filenames[1:]
     ordered_filenames.append(filenames[0])
     for filename in ordered_filenames:
@@ -78,9 +93,9 @@ if __name__ == '__main__':
                         new_day = [m.group(1), m.group(2), m.group(3),
                                    m.group(4)]
 
-                        print 'Day %s to %s' %(day, new_day)
+                        # print 'Day %s to %s' %(day, new_day)
                         if content and day != new_day:
-                            post_page('rcbau irc log for %s' % ' '.join(day),
+                            post_page('%s irc log for %s' % (name, ' '.join(day)),
                                       ''.join(content), day)
                             content = []
                         day = new_day
@@ -100,7 +115,7 @@ if __name__ == '__main__':
                 l = f.readline()
 
     if day and content:
-        post_page('rcbau irc log for %s' % ' '.join(day),
+        post_page('%s irc log for %s' % (name, ' '.join(day)),
                   ''.join(content), day)
 
     if days:
@@ -110,4 +125,13 @@ if __name__ == '__main__':
             content += ' '.join(days[day])
             content += '\n'
 
-        post_page('rcbau irc log index', content, None)
+        post_page('%s irc log index' % name, content, None)
+
+
+if __name__ == '__main__':
+    login = make_wiki_login_call({'action': 'login'})
+    token = make_wiki_login_call({'action': 'login',
+                                  'lgtoken': login['login']['token']})
+
+    for logconfig in conf['logpath']:
+        process_log(logconfig['glob'], logconfig['name'])
