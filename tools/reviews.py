@@ -8,13 +8,41 @@ import utils
 
 def component_reviews(component, reviewer=None):
     cmd = ('ssh review.openstack.org gerrit query --format json '
-           '--current-patch-set project:%s status:open '
+           '--current-patch-set --dependencies project:%s status:open '
            'limit:10000'
            % component)
     if reviewer:
         cmd += ' reviewer:%s' % reviewer
     else:
         cmd += ' --all-approvals'
+
+    def _filter(packet, value):
+        if packet.get('project') == value:
+            return True
+        return False
+        
+    return get_reviews(cmd, _filter, component)
+
+
+def author_reviews(author, reviewer=None):
+    cmd = ('ssh review.openstack.org gerrit query --format json '
+           '--current-patch-set --dependencies owner:%s status:open '
+           'limit:10000'
+           % author)
+    if reviewer:
+        cmd += ' reviewer:%s' % reviewer
+    else:
+        cmd += ' --all-approvals'
+
+    def _filter(packet, value):
+        if packet.get('owner', {}).get('username') == value:
+            return True
+        return False
+
+    return get_reviews(cmd, _filter, author)
+
+
+def get_reviews(cmd, filt, value):
     stdout = utils.runcmd(cmd)
 
     reviews = []
@@ -24,7 +52,7 @@ def component_reviews(component, reviewer=None):
 
         try:
             packet = json.loads(line)
-            if packet.get('project') == component:
+            if filt(packet, value):
                 reviews.append(packet)
         except ValueError as e:
             print 'Could not decode:'
@@ -39,7 +67,8 @@ if __name__ == '__main__':
                         help='The username (if any) to filter by')
     ARGS = parser.parse_args()
     
-    reviews = component_reviews('openstack/nova', reviewer=ARGS.username)
+    # reviews = component_reviews('openstack/nova', reviewer=ARGS.username)
+    reviews = author_reviews('mikalstill')
     print '%s reviews found' % len(reviews)
 
     for review in reviews:

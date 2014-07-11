@@ -2,8 +2,10 @@
 
 import argparse
 import datetime
+import json
 import os
 
+import bugs
 import reviews
 import utils
 
@@ -13,44 +15,19 @@ RELEASE = 'juno'
 APPROVED_SPECS = []
 PROPOSED_SPECS = []
 
-FAVORITE_PEOPLE_TO_REVIEW = [
-    'alaski',
-    'belliott',
-    'berrange',
-    'cbehrens',
-    'cerberus',
-    'cyeoh-0',
-    'dan-prince',
-    'danms',
-    'jogo',
-    'johngarbutt',
-    'klmitch',
-    'markmc',
-    'mriedem',
-    'ndipanov',
-    'p-draigbrady',
-    'russellb',
-    'sdague',
-    'vishvananda',
-    ]
-
 OUTPUT = []
 HEADERS = []
+
+CONFIG = None
 
 
 def print_heading(header):
     global OUTPUT
     global HEADERS
     
-    if ARGS.html:
-        OUTPUT.append('<h1><a name="%s">%s</a></h1>'
-                      % (header.replace(' ', '_'), header))
-        HEADERS.append(header)
-    else:
-        print
-        print '*************************************************************'
-        print header
-        print '*************************************************************'
+    OUTPUT.append('<h1><a name="%s">%s</a></h1>'
+                  % (header.replace(' ', '_'), header))
+    HEADERS.append(header)
 
 
 def approval_to_string(approval):
@@ -58,15 +35,12 @@ def approval_to_string(approval):
                                           repr(approval['by'])),
                        approval['type'],
                        approval['value'])
-    if ARGS.html:
-        colors = {'-2': 'red',
-                  '-1': 'red',
-                  '0': 'gray',
-                  '1': 'green',
-                  '2': 'green'}
-        return '<font color="%s">%s</font>' % (colors[approval['value']], s)
-    else:
-        return s
+    colors = {'-2': 'red',
+              '-1': 'red',
+              '0': 'gray',
+              '1': 'green',
+              '2': 'green'}
+    return '<font color="%s">%s</font>' % (colors[approval['value']], s)
 
 
 def get_votes(review):
@@ -83,9 +57,11 @@ def get_votes(review):
     
 
 PRINTED = []
-def print_review(review, message, skip_reviewed_by_me=True):
+def print_review(review, message, skip_reviewed_by_me=True, dependancy=False):
     global PRINTED
     global OUTPUT
+
+    local_output = []
 
     if review in PRINTED:
         return
@@ -103,32 +79,32 @@ def print_review(review, message, skip_reviewed_by_me=True):
             and approval['value'] == '1'):
             return
 
+    if review.get('topic', '').startswith('bug/'):
+        try:
+            age = bugs.get_bug_age(int(review['topic'].split('/')[1]))
+            review['topic'] += ' %s' % age
+        except:
+            pass
+
     votes, lowest, highest = get_votes(review)
     if lowest == -2:
         return
 
-    if ARGS.html:
-        OUTPUT.append('<p><b>%s</b><ul>' % review['subject'])
-        if message:
-                OUTPUT.append('<li><i>%s</i>' % message)
-        OUTPUT.append('<li>%s (%s) in %s' % (review['owner']['username'],
-                                     review.get('topic'),
-                                     review.get('project')))
-        OUTPUT.append('<li>Votes: %s' % ' '.join(votes))
-        OUTPUT.append('<li><a href="%s">review</a>' % review['url'])
-        OUTPUT.append('</ul></p>')
+    local_output.append('<p><b>%s</b><ul>' % review['subject'])
+    if message:
+        local_output.append('<li><i>%s</i>' % message)
+    local_output.append('<li>%s (%s) in %s' % (review['owner']['username'],
+                                               review.get('topic'),
+                                               review.get('project')))
+    local_output.append('<!-- %s -->' % review)
+    if 'dependsOn' in review:
+        number = review['dependsOn'][0]['number']
+        local_output.append('<li>Depends on: %s' % number)
+    local_output.append('<li>Votes: %s' % ' '.join(votes))
+    local_output.append('<li><a href="%s">review</a>' % review['url'])
+    local_output.append('</ul></p>')
 
-    else:
-        print review['subject']
-        if message:
-                print '    %s' % message
-        print '    %s (%s) in %s' % (review['owner']['username'],
-                                     review.get('topic'),
-                                     review.get('project'))
-        print '    Votes: %s' % ' '.join(votes)
-        print '    %s' % review['url']
-        print
-
+    OUTPUT.extend(local_output)
     PRINTED.append(review)
 
 
@@ -167,6 +143,12 @@ def targets():
     for review in filter_obvious(possible):
         print_review(review, '')
 
+    # Direct reports, which might not be in repos I track otherwise
+    direct_reports = []
+    for username in CONFIG['direct_reports']:
+        for review in reviews.author_reviews(username):
+            direct_reports.append(review)
+
     # Other nova
     previously_reviewed = {}
     plus_two = []
@@ -178,16 +160,21 @@ def targets():
     favorites = []
 
     for component in ['openstack/nova', 'openstack/python-novaclient',
-                      'openstack/nova-specs']:
+                      'openstack/nova-specs', 'stackforge/ec2-api']:
         possible = reviews.component_reviews(component)
         for review in filter_obvious(possible):
             topic = review.get('topic', '')
             votes, lowest, highest = get_votes(review)
 
+            # Direct reports get special attention
+            if review['currentPatchSet']['author']['username'] in \
+              CONFIG['direct_reports']:
+                direct_reports.append(review)
+
             # My favorite developers (people who consistently produce high
             # quality code and therefore get a fast pass)
             if review['currentPatchSet']['author']['username'] in \
-              FAVORITE_PEOPLE_TO_REVIEW:
+              CONFIG['favourites']:
                 favorites.append(review)
 
             # Does this patch just need a merge approval?
@@ -232,6 +219,10 @@ def targets():
             else:
                 uncategorized_reviews.append(review)
 
+    print_heading('Direct reports')
+    for review in direct_reports:
+        print_review(review, '')
+                
     print_heading('Needs merge approval')
     for review in needs_merge_approve:
         print_review(review, '', skip_reviewed_by_me=False)
@@ -273,11 +264,12 @@ def targets():
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--html', default=False, action='store_true',
-                        help='Output HTML')
     parser.add_argument('--username', default='mikalstill',
                         help='Your gerrit username')
     ARGS = parser.parse_args()
+
+    with open(os.path.expanduser('~/.reviewtargets')) as f:
+        CONFIG = json.loads(f.read())
 
     print utils.runcmd('cd ~/src/openstack/nova-specs; '
                        'git checkout master; '
@@ -301,12 +293,11 @@ if __name__ == '__main__':
 
     targets()
 
-    if ARGS.html:
-        for header in HEADERS:
-            print '<li><a href="#%s">%s</a>' % (header.replace(' ', '_'),
+    for header in HEADERS:
+        print '<li><a href="#%s">%s</a>' % (header.replace(' ', '_'),
                                                 header)
-        print '<br/><br/>'
-        print '\n'.join(OUTPUT)
+    print '<br/><br/>'
+    print '\n'.join(OUTPUT)
     print
     print 'I printed %d reviews' % len(PRINTED)
     print 'Generated at: %s' % datetime.datetime.now()
