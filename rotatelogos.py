@@ -15,9 +15,15 @@ with open(os.path.expanduser('~/.mediawiki'), 'r') as f:
     conf = json.loads(f.read())['ircbot']
 
 
-if __name__ == '__main__':
-    w = wiki.Wiki(conf['url'], conf['username'], conf['password'])
+def filter_files(lines):
+    files = []
+    for line in lines:
+        if line.startswith('[[File:'):
+            files.append(line)
+    return files
 
+
+def rotate_logos(w):
     main_page = w.get_page('Main Page').split('\n')
     archive = w.get_page('Former wiki logos').split('\n')
     archive.append(main_page[0].replace('|right]]', ']]'))
@@ -44,15 +50,16 @@ if __name__ == '__main__':
 
     else:
         possible_page = 'Possible future wiki logos'
-        possible = w.get_page(possible_page).split('\n')
+        possible = filter_files(w.get_page(possible_page).split('\n'))
         random.shuffle(possible)
 
+        print 'We have %d memes' % len(possible)
         if len(possible) > 0:
             new_logo = possible[0]
         else:
             print 'No memes! Error time.'
             possible_page = 'Error logos'
-            possible = w.get_page(possible_page).split('\n')
+            possible = filter_files(w.get_page(possible_page).split('\n'))
             random.shuffle(possible)
             new_logo = possible[0]
 
@@ -63,3 +70,38 @@ if __name__ == '__main__':
 
     main_page = '%s\n%s' %(new_logo, '\n'.join(main_page[1:]))
     w.post_page('Main Page', main_page)
+
+
+def squash_archive(w):
+    archive = w.get_page('Former wiki logos').split('\n')
+    files = []
+    former = ''
+    for line in archive:
+        if line.startswith('[[File:'):
+            files.append(line)
+        elif line.startswith('Former wiki logos'):
+            former = line
+
+    if len(files) > 10:
+        print 'Rotate archive (%d on main page)' % len(files)
+
+        # I bet you this stops working
+        upto = int(former.split('|')[-1][:-3].split('-')[1])
+        print 'Up to %d' % upto
+
+        while len(files) > 10:
+            title = ('Former wiki logos %03d-%03d' % (upto + 1, upto + 10))
+            w.post_page(title, '\n'.join(files[:10]))
+            former += '; [[%s|%03d-%03d]]' % (title, upto + 1, upto + 10)
+            print 'Posted %s' % title
+            upto += 10
+            files = files[10:]
+
+        w.post_page('Former wiki logos',
+                    '%s\n\n%s' % (former, '\n'.join(files)))
+
+
+if __name__ == '__main__':
+    w = wiki.Wiki(conf['url'], conf['username'], conf['password'])
+    rotate_logos(w)
+    squash_archive(w)
