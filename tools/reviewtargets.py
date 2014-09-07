@@ -143,11 +143,23 @@ def targets():
     for review in filter_obvious(possible):
         print_review(review, '')
 
+    # Ironic nova driver
+    print_heading('Ironic nova driver, remote repo')
+    possible = reviews.component_reviews('openstack/ironic')
+    for review in filter_obvious(possible):
+        ps = review['patchSets'][-1]
+        interesting = False
+        for file_details in ps.get('files', {}):
+            if file_details.get('file', '').startswith('ironic/nova'):
+                interesting = True
+        if interesting:
+            print_review(review, '')
+
     # Direct reports, which might not be in repos I track otherwise
-    direct_reports = []
+    print_heading('Direct reports')
     for username in CONFIG['direct_reports']:
         for review in reviews.author_reviews(username):
-            direct_reports.append(review)
+            print_review(review, '')
 
     # Other nova
     previously_reviewed = {}
@@ -166,14 +178,9 @@ def targets():
             topic = review.get('topic', '')
             votes, lowest, highest = get_votes(review)
 
-            # Direct reports get special attention
-            if review['currentPatchSet']['author']['username'] in \
-              CONFIG['direct_reports']:
-                direct_reports.append(review)
-
             # My favorite developers (people who consistently produce high
             # quality code and therefore get a fast pass)
-            if review['currentPatchSet']['author']['username'] in \
+            if review['currentPatchSet']['author'].get('username') in \
               CONFIG['favourites']:
                 favorites.append(review)
 
@@ -218,10 +225,6 @@ def targets():
 
             else:
                 uncategorized_reviews.append(review)
-
-    print_heading('Direct reports')
-    for review in direct_reports:
-        print_review(review, '')
                 
     print_heading('Needs merge approval')
     for review in needs_merge_approve:

@@ -8,7 +8,7 @@ import utils
 
 def component_reviews(component, reviewer=None):
     cmd = ('ssh review.openstack.org gerrit query --format json '
-           '--current-patch-set --dependencies project:%s status:open '
+           '--current-patch-set --files --dependencies project:%s status:open '
            'limit:10000'
            % component)
     if reviewer:
@@ -26,7 +26,7 @@ def component_reviews(component, reviewer=None):
 
 def author_reviews(author, reviewer=None):
     cmd = ('ssh review.openstack.org gerrit query --format json '
-           '--current-patch-set --dependencies owner:%s status:open '
+           '--current-patch-set --files --dependencies owner:%s status:open '
            'limit:10000'
            % author)
     if reviewer:
