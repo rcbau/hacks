@@ -1,6 +1,12 @@
 #!/usr/bin/python
 
 # Attempt to calculate who should be an extra ATC, based on co-authored-by
+#
+# How do I run this?
+#
+# - change directory to your project, git pull master
+# - ./extra-atcs.py --since=2014-04-01 --expires="September 2015" \
+#   --program Docs
 
 import argparse
 import re
