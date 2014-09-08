@@ -11,8 +11,8 @@ import urllib2
 import utils
 
 
-EVENTS = {'check': 'did some work!',
-          'gate': 'tricked them into approving the commit'}
+EVENTS = {'check': 'check',
+          'gate': 'merge'}
 
 
 class ZuulWatcher(object):
@@ -115,22 +115,15 @@ class ZuulWatcher(object):
                                         continue
 
                                     yield(channel, 'msg',
-                                          ('Woohoo!, %s %s %s'
+                                          ('%s %s %s (%s)'
                                            %(owner,
                                              EVENTS.get(pipeline['name'],
                                                         'howled into the wind'),
-                                             review['url'])))
-                                    yield(channel, 'msg',
-                                          ('    Review title is: %s'
-                                           % info['subject']))
+                                             review['url'], info['subject'])))
 
                                     # Talk to ourselves to get a PPP report entry
                                     nick = self.conf['zuul']['usermap'].get(owner,
                                                                             None)
-                                    if nick:
-                                        yield(channel, 'msg',
-                                              ('ducking-bear: ppp progress %s [%s]'
-                                               %(info['subject'], nick)))
 
                                 nick = self.conf['zuul']['usermap'].get(owner, None)
                                 self.log('    nick for %s is %s' %(owner, nick))
