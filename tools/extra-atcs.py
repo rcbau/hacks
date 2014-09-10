@@ -10,20 +10,28 @@
 
 import argparse
 import re
-
-import utils
+import subprocess
 
 
 AUTHOR_RE = re.compile('^Author: (.*) <(.*)>$')
 CO_AUTHOR_1_RE = re.compile('Co-authored-by: (.*) ?<(.*)>', re.IGNORECASE)
 CO_AUTHOR_2_RE = re.compile('Co-authored-by: (.*)', re.IGNORECASE)
 
+
+def runcmd(cmd):
+    obj = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                           stderr=subprocess.PIPE, shell=True)
+    (stdout, stderr) = obj.communicate()
+    returncode = obj.returncode
+    return stdout
+
+
 def find_authors(since, program, expires):
     authors = {}
     coauthors = {}
     names = {}
 
-    stdout = utils.runcmd('git log --since %s' % since)
+    stdout = runcmd('git log --since %s' % since)
     for line in stdout.split('\n'):
         m = AUTHOR_RE.match(line)
         if m:
