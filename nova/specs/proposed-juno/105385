@@ -1,0 +1,157 @@
+From bd014d021a821c284749b94656ee1406e484012d Mon Sep 17 00:00:00 2001
+From: renminmin <rminmin@cn.ibm.com>
+Date: Tue, 8 Jul 2014 02:55:04 -0500
+Subject: [PATCH] Leverage the features of IBM GPFS to store cached images and
+ instances
+
+Leverage the features of IBM GPFS to optimally store cached images and
+instance files.
+The bock-level format-agnostic Copy-On-Write(COW) mechanism enables quick
+instance provisioning and instance snapshot avoiding data copy.
+
+Change-Id: I23106186368ff181707e46037d3e90158003981b
+blueprint: gpfs-instance-store
+---
+ specs/juno/gpfs-instance-store.rst | 130 +++++++++++++++++++++++++++++++++++++
+ 1 file changed, 130 insertions(+)
+ create mode 100644 specs/juno/gpfs-instance-store.rst
+
+diff --git a/specs/juno/gpfs-instance-store.rst b/specs/juno/gpfs-instance-store.rst
+new file mode 100644
+index 0000000..4a56ba3
+--- /dev/null
++++ b/specs/juno/gpfs-instance-store.rst
+@@ -0,0 +1,130 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++======================================================================
++Leverage the features of IBM GPFS to store cached images and instances
++======================================================================
++
++https://blueprints.launchpad.net/nova/+spec/gpfs-instance-store
++
++In this blueprint we add the IBM GPFS cluster file system as instance store
++and image cached. Leverage the features of GPFS to optimally store cached
++images and instance files. The bock-level format-agnostic Copy-On-Write(COW)
++mechanism enables quick instance provisioning and instance snapshot avoiding
++data copy.
++
++
++Problem description
++===================
++
++When user selete GPFS as instance store and image cached store, GPFS
++Copy-On-Write feture will enhance the performence of spawn instances and
++instances snapshot.
++
++GPFS Copy-On-Write mechanism avoid the data copy when image cached to base
++directory and snapshot instance will be generated regardless of the image
++format.
++
++GPFS as glance image Store blueprint have been approved. The instance snapshot
++image cloud be updated to the same filesystem glance GPFS image store without
++http upload byte by byte.
++
++Proposed change
++===============
++
++Add gpfs image download module for GPFS image cached with GPFS COW avoiding
++date copy
++
++Add gpfs imagebackend for instance gpfs store leaverage GPFS COW to enhance
++instance spawn
++
++Alternatives
++------------
++
++None
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++None
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++None
++
++Performance Impact
++------------------
++
++None
++
++Other deployer impact
++---------------------
++
++Instance storage should be GPFS filesystem.
++
++Developer impact
++----------------
++
++None
++
++Implementation
++==============
++
++Add a new class Gpfs in nova/virt/libvirt/imagebackend.py
++
++Add a new file gpfs.py in nova/image/download/gpfs.py
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  renminmin
++
++Work Items
++----------
++
++Implement gpfs image download module support cached image leavarage the GPFS
++Copy-On-Write feature without data copy.
++
++Implement gpfs imagebckend support instance files generate leaverage the GPFS
++Copy-On-Write feature without date copy regardless image format.
++
++Dependencies
++============
++
++None
++
++Testing
++=======
++
++No tempest changes.
++Comprehensive unit tests to test the functionality have been written
++
++Documentation Impact
++====================
++
++None
++
++References
++==========
++
++None
+-- 
+1.9.1
+

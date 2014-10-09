@@ -1,0 +1,307 @@
+From 938f817099abcb8a188d35f453fa408f506b8151 Mon Sep 17 00:00:00 2001
+From: Sylvain Bauza <sbauza@redhat.com>
+Date: Wed, 23 Apr 2014 18:26:55 +0200
+Subject: [PATCH] Propose Isolate Scheduler DB
+
+Identifies work to do on scheduler for reducing dependencies to other
+Nova objects in order to prepare scheduler forklift.
+
+Implements: blueprint isolate-scheduler-db
+
+Change-Id: I489ab606341ed406024fff0c7e302fc158d20be2
+---
+ specs/juno/isolate-scheduler-db.rst | 282 ++++++++++++++++++++++++++++++++++++
+ 1 file changed, 282 insertions(+)
+ create mode 100644 specs/juno/isolate-scheduler-db.rst
+
+diff --git a/specs/juno/isolate-scheduler-db.rst b/specs/juno/isolate-scheduler-db.rst
+new file mode 100644
+index 0000000..e187dd5
+--- /dev/null
++++ b/specs/juno/isolate-scheduler-db.rst
+@@ -0,0 +1,282 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++==========================
++Isolate Scheduler Database
++==========================
++
++https://blueprints.launchpad.net/nova/+spec/isolate-scheduler-db
++
++We want to split out nova-scheduler into gantt. To do this, this blueprint is
++the second stage after scheduler-lib split. These two blueprints are
++independent however.
++
++In this blueprint, we need to isolate all accesses to the database that
++Scheduler is doing and refactor code (manager, filters,
++weighters) so that scheduler is only internally accessing scheduler-related
++tables or resources.
++
++
++Problem description
++===================
++
++In order to make decisions, the scheduler needs to know the state of very
++different Nova objects depending on which filter to run, like aggregates or
++instance groups. At the moment, the scheduler is directly reading values from
++DB or conductor while it should not, if we want to do a clean split.
++
++Here we can consider two distinct concerns :
++
++* things that scheduler should know (and persist) which are related to compute
++  nodes should by updated by ResourceTracker using update_available_resource()
++  or when instance_claim() (like aggregates whose host belongs to)
++
++* things the scheduler needs about the wider context of a specific scheduling
++  request need to be passed into select_destinations scheduler lib call, e.g.
++  instance groups
++
++
++Proposed change
++===============
++
++As said, this blueprint will focus on removing all accesses to other Nova
++objects for the Scheduler code. Filters will only either look at request_spec,
++filter_properties and compute_nodes table in order to make decisions.
++
++As of now, we identified so far four external Nova objects that are accessed
++externally by the Scheduler : aggregates (including AZ metadata), instance
++groups, instances and servicegroup API.
++
++Note: This blueprint is *not* targeting to replace calls to other Nova
++libraries such as nova.pci.pci_request or nova.compute.vm_states if
++these libraries only manipulate local dicts that are not persisted to DB or
++calling conductor.
++
++Below is the summary of where each distinct Nova object is identified in
++nova.scheduler namespace :
++
++* Aggregates (and AZs) (calls n.db.aggregate_metadata_get_by_host):
++
++  * AggregateImagePropertiesIsolation,
++  * AggregateInstanceExtraSpecsFilter,
++  * AggregateMultiTenancyIsolation,
++  * AvailabilityZoneFilter,
++  * AggregateCoreFilter (calls n.objects.aggregate.AggregateList.get_by_host)
++  * AggregateRamFilter (calls n.objects.aggregate.AggregateList.get_by_host)
++  * AggregateTypeAffinityFilter (calls
++    n.objects.aggregate.AggregateList.get_by_host)
++
++* Instance Groups:
++
++  * FilterScheduler._setup_instance_group (calls
++    nova.objects.instance_group_obj.InstanceGroup.get_by_hint)
++
++* Compute API for Instances:
++
++  * TypeAffinityFilter
++  * SameHostFilter
++  * DifferentHostFilter
++
++* ServiceGroup API:
++
++  * nova.scheduler.driver.Scheduler.hosts_up()
++  * ComputeFilter
++
++0. For aggregates allocation ratios (AggregateCoreFilter and
++   AggregateRamFilter), it will be covered by
++   bp/allocation-ratio-to-resource-tracker from jaypipes
++
++1. For InstanceGroups, proposal is made to move _setup_instance_group in
++   scheduler.utils and call it by conductor.manager.build_instances.
++
++2. Regarding accesses to aggregates table for other filters (see above) which
++   lookup aggregates of the host to get metadata corresponding to the filter,
++   we propose the following :
++
++  - Compute host reports to Scheduler (thanks to update_resource_stats) a extra
++    set of details (thanks to Extensible Resource Tracker blueprint) like :
++
++    - metadata "filter_tenant_id" from aggregates he is part of
++    - metadata "availability_zone" from aggregates he is part of
++    - all the metadata from aggregates he is part of (for extra specs filter)
++    - etc.
++
++  - Filters will look into HostState (populated thanks to Extensible RT
++    counterside in Scheduler) to access what they need
++
++    ie. the idea is to move the call to Aggregates object made at the moment
++    in the filter into a resource plugin called by Extensible Resource Tracker.
++
++    The current proposal implies that if a resource plugin is disabled for
++    performance reasons, the corresponding filter won't be able to decide.
++    That approach allows to reduce dramatically the number of calls to the
++    necessary ones defined by the operator.
++
++    On a mid-term view, we don't avoid ourselves to think about versioning
++    capabilities for plugins and possibly discovery features either from
++    Scheduler or from Computes to make sure both are talking the same
++    language.
++
++3. For instances, we propose a very close approach :
++
++  - RT.update_available_resource calls Extensible RT plugins, whom one is
++    responsible for reporting either instance UUIDs running on the host (for
++    SameHost and DifferentHost filters) and another one is responsible for
++    reporting all instance flavors on the host
++
++  - filters will look into HostState to know if host runs the instance asked in
++    the hint
++
++4. For ServiceGroups, nothing will be done in this blueprint (considering that
++   it will only be modified in Gantt).
++
++
++In order to provide compatibility in between distinct releases of compute nodes
++and scheduler, the idea is, for each filter, to check HostState if the field
++is there, and if not failback to calling the corresponding Nova object.
++So, Juno scheduler filters will have compatibility filters and upgrade to Kilo
++will see the failback mode removed (because Juno computes will provide stats)
++
++
++Alternatives
++------------
++
++Instead of passing data to the scheduler either thru RT or request property, we
++could let the scheduler place a call to conductor for having these values. That
++said, the problem here is that it increases response time (external call
++instead of direct DB access) and also creates an external dependency with Nova
++objects that would require to be turned into python-novaclient call once Gantt
++forklifted.
++Reporting aggregates capabilities (eg. metadata) can also be designed in
++various different ways, like having the conductor placing a call to aggregates
++and providing it in request_spec, or copying all the aggregate data in
++compute_nodes or moving the whole aggregate concept into the scheduler for its
++solely use, but we think the proposal we made is the most performance-wise.
++
++
++Data model impact
++-----------------
++
++None, as no other data except JSON will be changed in compute_nodes. There is
++no extra information to persist, as we will provide extra required data for
++filters either in request_spec or filter_properties.
++
++
++REST API impact
++---------------
++
++None
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None.
++
++
++Other end user impact
++---------------------
++
++None
++
++Performance Impact
++------------------
++
++Possibly some little increases in performance as the scheduler won't no longer
++access other Nova objects thru conductor but rather will look at
++filter_properties or request_spec that are passed thru RPC payload.
++
++
++Other deployer impact
++---------------------
++
++As said above, it's up to the deployer to synchronize which plugins are
++reporting stats to the scheduler with which filters he wants to run.
++
++Developer impact
++----------------
++
++Ideally:
++
++* Filters should no longer place calls to other bits of code except Scheduler.
++  This will be done by modifying Scheduler component to proxy conductor calls
++  to a Singleton which will refuse anything but scheduler-related objects.
++  See footnote [1] as example. As said above, we will still provide a failback
++  mode for Juno release in order to have compatibility with N-1 release.
++
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  sylvain-bauza
++
++Other contributors:
++  None
++
++
++Work Items
++----------
++
++* Write RT plugins for reporting stats to Scheduler, one per type of stats
++  to report (tenancy metadata, AZ metadata, list of instances, etc.)
++
++* Write Scheduler plugins for adding those stats into HostState
++
++* Modify filters to look at HostState (and failback to Nova object)
++
++* Move _setup_instance_group to scheduler.utils
++
++* Modify scheduler entrypoint to block conductor accesses to other Nova objects
++  (once K release development will be open)
++
++
++Dependencies
++============
++
++* https://blueprints.launchpad.net/nova/+spec/scheduler-lib
++
++* https://blueprints.launchpad.net/nova/+spec/extensible-resource-tracking
++
++
++Testing
++=======
++
++Covered by existing tempest tests and CIs.
++
++
++Documentation Impact
++====================
++
++None
++
++
++References
++==========
++
++* Extensible ResourceTracker could avoid DB change for adding 'aggregates' and
++  'instances' field to compute_nodes
++  https://blueprints.launchpad.net/nova/+spec/extensible-resource-tracking
++  (pmurray)
++
++* Other effort related to RT using objects is not mandatory for this blueprint
++  but both efforts can mutually benefit
++  https://blueprints.launchpad.net/nova/+spec/make-resource-tracker-use-objects
++  (pmurray)
++
++* https://etherpad.openstack.org/p/icehouse-external-scheduler
++
++* http://eavesdrop.openstack.org/meetings/gantt/2014/gantt.2014-03-18-15.00.html
++
++[1] http://git.openstack.org/cgit/openstack/nova/commit/?id=e5cbbcfc6a5fa31565d21e6c0ea260faca3b253d
+-- 
+1.9.1
+

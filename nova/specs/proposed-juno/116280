@@ -1,0 +1,140 @@
+From 38acf0e6a432e9ccb1b0f046364c17ea5ee8e0f8 Mon Sep 17 00:00:00 2001
+From: ram-nalluri <ram_nalluri@persistent.co.in>
+Date: Fri, 22 Aug 2014 18:25:58 +0530
+Subject: [PATCH] Add a new filter to implement project isolation feature
+
+This blueprint proposes a new scheduler filter which
+routes instance to a pre-associated host aggregates
+
+Change-Id: I14fccc2bf0160060ea0374ea0428323686c81630
+---
+ specs/juno/projects-to-aggregate.rst | 117 +++++++++++++++++++++++++++++++++++
+ 1 file changed, 117 insertions(+)
+ create mode 100644 specs/juno/projects-to-aggregate.rst
+
+diff --git a/specs/juno/projects-to-aggregate.rst b/specs/juno/projects-to-aggregate.rst
+new file mode 100644
+index 0000000..d004ff0
+--- /dev/null
++++ b/specs/juno/projects-to-aggregate.rst
+@@ -0,0 +1,117 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++=======================================================
++Add a new filter to implement project isolation feature
++=======================================================
++
++https://blueprints.launchpad.net/nova/+spec/projects-to-aggregate
++This blueprint proposes a new scheduler filter which
++routes instance to a pre-associated host aggregates
++
++
++Problem description
++===================
++At present, there is no scheduler filter to route all instances created by an
++user to pre-associated aggregates without having to specify zones as part of
++the nova boot command.
++
++Proposed change
++===============
++
++This filter aims to route tenant instances to pre-associated aggregate,
++
++* Administrator has to associate tenant projects to aggregate as metadata field
++  with  key as 'project_to_aggregate' and set of projectids as values
++* Hosts which are tagged under the aggregates are given high priority
++  while creating instances for those specified projects
++* One tenant can be mapped to more than one host aggregate
++
++This change does not restrict projects which are
++not attached to any specific aggregate.
++(i.e) If a project is not tagged to any aggregate,then its instances
++are free to boot on any of the filtered hosts irrespective of the aggregates.
++
++Alternatives
++------------
++In each boot request, user has to specify the Zone to which the
++instance has to reach.
++
++Data model impact
++-----------------
++None.
++
++
++REST API impact
++---------------
++
++None.
++
++Security impact
++---------------
++None.
++
++Notifications impact
++--------------------
++None.
++
++Other end user impact
++---------------------
++None.
++
++Performance Impact
++------------------
++As scheduler filters get called once per host for every instance being created,
++the database calls might impact the performance of the system in cases of
++huge multi node architectures.
++
++Other deployer impact
++---------------------
++Config Options includes addition of the filter class in
++nova.conf under the scheduler_available_filters attribute.
++
++Developer impact
++----------------
++None.
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++Primary assignee:
++  Ram-nalluri
++
++Other contributors:
++  himapriya
++
++Work Items
++----------
++* Implement the filter and develop unit test cases.
++
++Dependencies
++============
++None.
++
++
++Testing
++=======
++Unit test cases are being developed.
++No special tempest tests are necessary to test the new filter.
++
++Documentation Impact
++====================
++We expect to have the following document changes:
++
++* The scheduler_available_filters flag should include
++  project-to-aggregate filter class.
++* Documentation for the project-to-aggregate filter should be added.
++
++
++References
++==========
++https://blueprints.launchpad.net/nova/+spec/projects-to-aggregate
+-- 
+1.9.1
+

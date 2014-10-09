@@ -1,0 +1,188 @@
+From d3f2b2dcf989d161c543491b926eafa627d1ca18 Mon Sep 17 00:00:00 2001
+From: wingwj <wingwj@gmail.com>
+Date: Tue, 22 Apr 2014 11:42:23 +0800
+Subject: [PATCH] Add an index column to 'nova list'
+
+To make 'nova list' more clear and efficient for operation
+Implements: blueprint add-an-index-column-to-nova-list
+
+Change-Id: I1d8d381c3aed40218493824e0de19a83f8a0c65f
+---
+ specs/juno/add-an-index-column-to-nova-list.rst | 164 ++++++++++++++++++++++++
+ 1 file changed, 164 insertions(+)
+ create mode 100644 specs/juno/add-an-index-column-to-nova-list.rst
+
+diff --git a/specs/juno/add-an-index-column-to-nova-list.rst b/specs/juno/add-an-index-column-to-nova-list.rst
+new file mode 100644
+index 0000000..4a5d54f
+--- /dev/null
++++ b/specs/juno/add-an-index-column-to-nova-list.rst
+@@ -0,0 +1,164 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++=================================================================
++add an index column to 'nova list'
++=================================================================
++
++https://blueprints.launchpad.net/python-novaclient/+spec/
++add-an-index-column-to-nova-list
++
++Now 'nova list' can not give the amount of instances easily,
++so I want to add an index column to 'nova list' in python-novaclient.
++
++Problem description
++===================
++
++* Now 'nova list' only shows 'ID'/'Name'/'Status'/.. columns.
++  That's OK for normal using
++
++* But if you have more than 200 VMs or even larger in one environment,
++  'nova list' will print out lots of lines even if
++  I add some filters (such as '--name'/'--status'/..)
++
++* My environment often has more than 500 instances, so it's very hard to
++  count the amount of them. Here's a result of 'nova list' on one environment
++  only has 150 instances: (http://paste.openstack.org/show/60553/)
++
++* Now I just have to use "nova list | wc" to count them(minus 4 lines).
++
++So, if an index column add to 'nova list' in novaclient,
++it can easily give the amount of the VMs under any filters.
++
++It'll benefit the operation and improve the usability.
++
++P.S. Cinder also has the similar problem if one environment has much volumes.
++I have submitted a similar BP in launchpad:
++(https://blueprints.launchpad.net/python-cinderclient/+spec/
++add-an-index-column-to-cinder-list-functions)
++
++Proposed change
++===============
++
++Only add one 'index' column to 'nova list' in novaclient.
++The response of the command will print like this:
+++-------+-------+------+---------+------------+-------------+---------------+
++| Index | ID    | Name | Status  | Task State | Power State | Networks      |
+++-------+-------+------+---------+------------+-------------+---------------+
++| 1     | uuid1 | vm01 | SHUTOFF | -          | Shutdown    | test=10.0.0.3 |
++| 2     | uuid2 | vm02 | ACTIVE  | -          | Running     | test=10.0.0.4 |
++| 3     | uuid3 | vm03 | ACTIVE  | -          | Running     | test=10.0.0.5 |
++| 4     | uuid4 | vm04 | ACTIVE  | -          | Running     | test=10.0.0.6 |
++| 5     | uuid5 | vm05 | ACTIVE  | -          | Running     | test=10.0.0.7 |
++| 6     | uuid6 | vm06 | SHUTOFF | -          | Shutdown    | test=10.0.0.8 |
+++-------+-------+------+---------+------------+-------------+---------------+
++
++* The 'index' will always be sorted consecutively in ascending order
++* It won't add any records/columns into database, and also won't influence
++  the behaviour of those commands
++
++Alternatives
++------------
++
++Add one filter like '--number' to instead of the design above.
++
++* If we add one filter like 'nova list --number', the response may only print
++  the amount number, like this:
++
++  # nova list --number
++  > 6
++
++* This filter can be also executed with other filters, like this:
++
++  # nova list --status active --number
++  > 4
++
++This modification will not change the response of 'nova list',
++it only add one filter to count.
++So I think it's also a usable method to achieve the goal
++even if it's not more clear for operators than the former design.
++
++Therefore, I paste it here to hear your advice. Thanks.
++
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++None
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++None
++
++Performance Impact
++------------------
++
++None
++
++Other deployer impact
++---------------------
++
++None
++
++Developer impact
++----------------
++
++None
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Assignee: wingwj <wingwj@gmail.com>
++
++
++Work Items
++----------
++
++Code this function & related tests in python-novaclient
++
++
++Dependencies
++============
++
++None
++
++
++Testing
++=======
++
++Unit tests will add to check this function in python-novaclient
++
++
++Documentation Impact
++====================
++
++None
++
++
++References
++==========
++
++None
+\ No newline at end of file
+-- 
+1.9.1
+

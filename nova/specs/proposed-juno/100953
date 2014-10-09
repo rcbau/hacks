@@ -1,0 +1,177 @@
+From ad7148c83c30e02b594bd7a5a18adf2250e0b124 Mon Sep 17 00:00:00 2001
+From: Phil Day <philip.day@hp.com>
+Date: Wed, 18 Jun 2014 16:31:34 +0000
+Subject: [PATCH] Fail resize operations that attempt to reduce disk size
+
+Current hypervisors have a range of checks against reduction in disk size for
+resize operations, ranging from checking root and ephemeral to not checking at
+all. Blocking any resize operation to a flavor with less disk capacity will
+provide a better and more consistent user experience.
+
+Change-Id: Ie95cb7a67d0d0de5a257a4f4cdb1a5779529ae90
+---
+ specs/juno/no-downward-resize.rst | 152 ++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 152 insertions(+)
+ create mode 100644 specs/juno/no-downward-resize.rst
+
+diff --git a/specs/juno/no-downward-resize.rst b/specs/juno/no-downward-resize.rst
+new file mode 100644
+index 0000000..e04d786
+--- /dev/null
++++ b/specs/juno/no-downward-resize.rst
+@@ -0,0 +1,152 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++===================================
++Don't allow resize to smaller disks
++===================================
++
++https://blueprints.launchpad.net/nova/+spec/no-downward-resize
++
++Current hypervisors have a range of checks against reduction in disk size for
++resize operations, ranging from checking root and ephemeral to not checking at
++all. Blocking any resize operation to a flavor with less disk capacity will
++provide a better and more consistent user experience.
++
++Problem description
++===================
++
++Hypervisor checks on resize to a smaller disc are currently inconsistent:
++
++Baremetal:  No support for resize
++Hyperv: Checks and fails root disk only
++Libvirt: Checks and fails for root and ephemeral
++Vmware: Currently no checks, patch submitted to check and fail root disk
++Xen: Allows root disk resize, but fails ephemeral disk
++
++Because these checks are only implemented at the driver failures cannot be
++easily detected by the user (the instance remains active).
++
++Even where implemented resize operations will not work if the source disk
++already contains more data that the new flavor allows.
++
++This gives an inconsistent user experience.
++
++
++Proposed change
++===============
++
++Consensus on the mailing list was that resize operations where the root or
++ephemeral disk capacity is reduced should be treated as an error and blocked
++at the API layer.
++
++The new check will be implemented as an API extension, which if loaded will
++return an error if either of the root or ephemeral disks in the target flavor
++are smaller than the current sizes used by the instance.
++
++
++Alternatives
++------------
++
++As the current behavior is either that checks exist (but are buried in the
++system), or is inconsistent (the operation may fail under some conditions) an
++alternative implantation would be to considered this as enhanced validation in
++the API rather than a change in behavior, and so add the check to the existing
++API code rather than as an extension.   However that would prevent users from
++being able to detect if the new check was being enforced, and prevent
++operators who do have a hypervisor that partially implements the resize from
++continuing to do so.
++
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++Adds a new API extension:
++
++Name = "NoResizeDown"
++Alias = "os-no-resize-down"
++
++Loading this extension will modify the behavior of the resize operation so
++that if the root disk size or ephemeral disk size are less than the current
++sizes used by the instance it will return 400
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++Users will get an error result for operations that would have previously
++been accepted (but may not have been successful)
++
++Performance Impact
++------------------
++
++None
++
++Other deployer impact
++---------------------
++
++Deployers will need to decide whether to load this new extension or not,
++taking into account the capabilities of their hypervisor.
++
++Developer impact
++----------------
++
++None
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Phil Day
++
++Work Items
++----------
++
++Will be implemented as a single change
++
++Dependencies
++============
++
++None
++
++
++Testing
++=======
++
++Tempest will not be affected as it currently only includes a resize upwards
++(resize to a smaller flavor would have failed silently on libvirt).
++
++The new additional validation check can be adequate covered by unit tests.
++
++
++Documentation Impact
++====================
++
++The new API extension will need to be documented.
++
++
++References
++==========
++
++The issue and approach was discussed on openstack-dev:
++http://lists.openstack.org/pipermail/openstack-dev/2014-June/037609.html
++
+-- 
+1.9.1
+

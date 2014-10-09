@@ -1,0 +1,166 @@
+From 47889f57b5fb8f3918768df87c3a2c5cac9ea1e4 Mon Sep 17 00:00:00 2001
+From: Liyi Meng <liyi.meng@ericsson.com>
+Date: Wed, 16 Apr 2014 14:53:06 +0200
+Subject: [PATCH] Audit compute node for controller node recovery
+
+Implements: blueprint audit-compute-node-for-controller-node-recovery
+
+Change-Id: Ie89a327dac3278c62fb9ae5d60fac13e34d7ae75
+---
+ .../audit-compute-node-on-controller-recovery.rst  | 144 +++++++++++++++++++++
+ 1 file changed, 144 insertions(+)
+ create mode 100644 specs/juno/audit-compute-node-on-controller-recovery.rst
+
+diff --git a/specs/juno/audit-compute-node-on-controller-recovery.rst b/specs/juno/audit-compute-node-on-controller-recovery.rst
+new file mode 100644
+index 0000000..bf861fc
+--- /dev/null
++++ b/specs/juno/audit-compute-node-on-controller-recovery.rst
+@@ -0,0 +1,144 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++===============================================
++Audit compute node for controller node recovery
++===============================================
++
++Launchpad blueprint:
++
++Not created
++
++This blueprint proposes an mechanism to audit compute node, which could be used
++during a controller node is recovered from crash and make the information in
++database sync with the status in compute node ASAP,therefore bring the controller
++node back in service with minimum services disturbance.
++
++Problem description
++===================
++
++A controller node is the central part of OpenStack. It normally serves a lot of
++services that keep OpenStack running, e.g. database, message queue, keystone,
++nova-scheduler, nova-conductor, neutron server, dashboard, etc. In OpenStack, HA
++services are supported on controller node in order to improve system availability,
++but there is no clear solution on how to recover from crash in case of a disaster
++happens. This could not fill the requirement on a critical system that well.
++Because: 
++As End User, it is important to have OpenStack and guest services with minimum
++interruption when OpenStack is recovered from crash or backup. 
++
++As Deployer, it should be possible to backup and recover OpenStack system.
++
++To make these possible, audit compute node against controller node database is a
++basic requirement.
++
++The similar idea could go with network and storage as well. However, this
++blueprint will only focus on compute service.
++
++Proposed change
++===============
++
++The proposal is described in the diagram below from the high level
++
++.. image:: https://wiki.openstack.org/wiki/File:Audit-compute-node-on-controller-recovery.png 
++         :width: 768 px
++         :height: 640 px
++         :align: center
++         :scale: 100%
++
++As described in the diagram: 
++
++* 1 When nova-conductor is created, it associates to message queue. 
++* 2-5 Right after that, it issue an audit request to all active compute nodes.
++* 6-7 compute node reports the instances status back to into database through
++  nova-conductor. It will flag set timestamp of audit activity in database as well.
++* 8-10 compute node reports the current compute resource to database through nova
++  conductor. After update compute resource, it will always check if an audit
++  procedure is needed by checking audit timestamp.
++* 11-14 This is the same as 3-7
++
++Instances and compute resource are the items to be audited.
++
++Alternatives
++------------
++None
++
++Data model impact
++-----------------
++
++
++In the ComputeNode table, there will a new column named last_audit to store a
++timestamp. This should be updated in nova/db/sqlalchemy/models.py:class ComputeNode
++
++REST API impact
++---------------
++None
++
++Security impact
++---------------
++None
++
++Notifications impact
++--------------------
++
++A new notifications that notify Deployer the outcome of the audit. 
++
++Other end user impact
++---------------------
++None
++
++Performance Impact
++------------------
++Might slow system startup
++
++Other deployer impact
++---------------------
++None
++
++Developer impact
++----------------
++
++None
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++
++Primary assignee:
++  <liyi-meng>
++
++Other contributors:
++  <launchpad-id or None>
++
++Work Items
++----------
++* Update ComputeNode scheme
++* Update ComputeManager to collect node information during audition
++* Update nova-conductor
++
++Dependencies
++============
++
++None
++
++Testing
++=======
++
++TODO
++
++Documentation Impact
++====================
++
++Deployment document to describe the feature.
++
++References
++==========
++
++None
++
+-- 
+1.9.1
+

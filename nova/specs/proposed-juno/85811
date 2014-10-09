@@ -1,0 +1,258 @@
+From 066430da2639d037a42a5272d6edfa22daccbb9e Mon Sep 17 00:00:00 2001
+From: Andre <afaranha@lsd.ufcg.edu.br>
+Date: Mon, 7 Apr 2014 17:30:55 -0300
+Subject: [PATCH] Change Instances Ownership
+
+Instances in Nova should have its ownership (User Owner and
+Project Owner field) transferable.
+
+blueprint change-instance-ownership
+Change-Id: I5da3cb523fd58c344a0e4f0894fac9f94fa9183b
+---
+ specs/juno/change-instances-ownership.rst | 234 ++++++++++++++++++++++++++++++
+ 1 file changed, 234 insertions(+)
+ create mode 100644 specs/juno/change-instances-ownership.rst
+
+diff --git a/specs/juno/change-instances-ownership.rst b/specs/juno/change-instances-ownership.rst
+new file mode 100644
+index 0000000..5b964b2
+--- /dev/null
++++ b/specs/juno/change-instances-ownership.rst
+@@ -0,0 +1,234 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++==========================================
++Change Server Owernship
++==========================================
++
++https://blueprints.launchpad.net/nova/+spec/change-instance-ownership
++
++We want to add a new feature in Nova to allow it to perform ownership change in
++nova servers. It should be able to change the owner in both an user level and
++also project level. This will allow to move one server between projects and
++change the user who is responsible for it when needed.
++
++
++Problem description
++===================
++
++As a cloud admin I want to be able to give a server responsability to a new
++owner, this is mainly for a new user owner but there are some cases where a new
++project need to be set in the server, for example, when the actual user changes
++project, or when the new user are in a different project.
++
++Use Case 1
++----------
++
++* The user was transfered to another project;
++* The user needs to keep his server;
++* It's need to transfer the server to the new project;
++
++Use Case 2
++----------
++
++* The actual project was splited in two projects (For example, Google was
++  working on Google Docs development and them the project was splited in Google
++  Docs and Google Spreadsheet);
++* Some users was moved to the new project;
++* These users server need to be transfered with them;
++
++
++Proposed change
++===============
++
++We are goig to add a server action to allow users to change a server ownership.
++The users allowed to perform this action will be specified in the policy file.
++
++Our proposal are going to follow a similar guideline used in volume transfer
++blueprint (https://wiki.openstack.org/wiki/VolumeTransfer), a blueprint that
++creates a similar feature, but for volumes in Cinder, that was already approved
++and merged.
++
++We are going to change the server to the new owner and also all the attached
++resources that it depends on project or user: Volume, network address, Flavor,
++Security Group and Quota. And apply some checks before changing the ownership,
++like checking the new owner available quota.
++
++For volume, the VolumeTransfer feature can be used to transfer any attached
++volume to the new project owner. For flavor, it'll continue with the previous
++one, since it represents in which flavor it was created, also, when booting an
++server with a flavor A, and then deleting the flavor, the server still with
++the deleted flavor name. For Security Group, the API will have an optional
++field that will allow the user to set the new security group, by default, it
++will be set to the default security group. For network address, it'll works
++similar to security group, the user will pass an IP, and by deafult the server
++will get an available IP in the new project. For the Quota, it'll change to the
++new project default quota.
++
++
++Alternatives
++------------
++
++Actually a directly server transference cannot be made. In order to simulate it
++this can be made by booting a new server from a snapshot with the same
++attributes (Falvors, quota, network, etc).
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++V2 API specification:
++POST: /v2/​{project_id}​/servers/​{server_id}​/action
++
++V3 API specification:
++POST: /v3/servers/​{server_id}​/action
++
++Request parameters:
++
++* project_id: The ID for the project where the server to be transfered is
++  hosted.
++* server_id: The UUID for the server to be transfered.
++* user_id (Optional): Specify the new server user owner in the request body.
++* project_id (Optional): Specify the new server project owner in the request
++  body.
++* security_group_id (Optional): Specify the security group ID.
++* addr (Optional): Specify the server network address.
++
++JSON request::
++
++    {
++        "user_id": "1ff5aca21382468085df62c12d74b280",
++        "project": {
++            "project_id": "3560124f13754b1da30b52ed3593ba69",
++            "security_group_id": "1",
++        },
++        "addr": "1.2.3.4"
++    }
++
++
++JSON response:
++
++This operation does not return a response body.
++
++
++Sample v2 request:
++
++PUT: /v2/9d67101f/servers/4e12-90b4-4aa8/action -d '{"user_id":"new_user_id"}'
++
++
++Sample v3 request:
++
++PUT: /v2/servers/4e12-90b4-4aa8/action -d '{"user_id":"new_user_id"}'
++
++
++HTTP response codes:
++
++Normal HTTP Response Code: 200 on success
++
++Validation:
++
++* 'user_id' must be of a id-str format and an existing user id.
++* 'project_id' must be of a id-str format and an existing project id.
++* 'security_group_id' must be of a id-str format and an existing security group
++  ID.
++* 'addr' must be of a valid network address.
++
++Security impact
++---------------
++
++As it may need to change resources from one project to another, it can be
++dangerous to lose control of a resource, since the permission to do it
++is in the policy file, and a resource can be placed in an undesirable place
++that is unreachable to the user. Also, an error may occur and some resources
++may not be tranfered, raising an inconsistence in the server.
++
++When changing the ownership is also dangerous to change it to an user or a
++project that is not desired to have access to that server. As example,
++changing the server from an Apple project to a Microsoft project.
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++None.
++
++Performance Impact
++------------------
++
++This new feature will only perform when the user calls it, and then will take
++a time to change the resources. After the resource is changed and checked the
++feature stops.
++
++Other deployer impact
++---------------------
++
++None
++
++Developer impact
++----------------
++
++None
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  <afaranha>
++
++Other contributors:
++  <tellesmvn>
++
++Work Items
++----------
++
++* Implement change server user ownership (continues in the same project)
++* Implement change server project ownership (also changing the server
++  resources that depends on the project)
++* Implement restrictions (the new user needs to participates in the new
++  project, check if there is avaiable quota for the new user and the new
++  project, etc)
++* Create tempest tests
++
++
++Dependencies
++============
++
++It needs to use the Keystone Client in order to check that the new user
++participates in the new project.
++
++
++Testing
++=======
++
++We need tests that ensure the new feature is working correctly, if the checks
++are raising exception when expected, the resources attached to the nova
++server are being transfered also, etc.
++
++
++Documentation Impact
++====================
++
++A description of this functionality will be added into Compute API V2 and V3
++Reference.
++
++
++References
++==========
++
++Volume Transfer
++* https://wiki.openstack.org/wiki/VolumeTransfer
+-- 
+1.9.1
+

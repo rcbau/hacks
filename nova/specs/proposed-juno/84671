@@ -1,0 +1,208 @@
+From c8a9e3232720984f80500bf148329c561c1e73f1 Mon Sep 17 00:00:00 2001
+From: Vincent Hou <sbhou@cn.ibm.com>
+Date: Wed, 2 Apr 2014 05:13:05 -0400
+Subject: [PATCH] Propose: adding plug-in modules for direct uploads to glance
+
+To make image/snapshot upload more efficient by providing a plug-in
+for other protocols to implement.
+
+Related to blueprint image-upload-module-plugin
+
+Change-Id: I6f8b3c5144505c1ddfecef53368c4f39f8b4bad5
+---
+ specs/juno/image-upload-module-plugin.rst | 183 ++++++++++++++++++++++++++++++
+ 1 file changed, 183 insertions(+)
+ create mode 100644 specs/juno/image-upload-module-plugin.rst
+
+diff --git a/specs/juno/image-upload-module-plugin.rst b/specs/juno/image-upload-module-plugin.rst
+new file mode 100644
+index 0000000..237ea71
+--- /dev/null
++++ b/specs/juno/image-upload-module-plugin.rst
+@@ -0,0 +1,183 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++==========================================================
++Add plug-in modules for direct uploads to glance locations
++==========================================================
++
++https://blueprints.launchpad.net/nova/+spec/image-upload-module-plugin
++
++To make image/snapshot upload to the glance more efficient by providing
++a plug-in for other protocols to implement.
++
++
++Problem description
++===================
++
++The image needs to download from glance to nova when a VM is launched,
++and the image/snapshot needs to upload from nova to glance when an VM
++image/snapshot is created. By default, HTTP is used to transfer the image
++data, even if it quite huge, even the nova-compute and the glance share
++the same disk, etc. Nova has already implemented a download plug-in
++to allow direct file access to the image in glance and potentially provide
++a chance for other transfer protocols to implement. This proposal will
++introduce an upload plug-in for nova, so that direct file access to the
++VM image/snapshot becomes possible, and other protocols are also possible
++to implement for the image/snapshot upload.
++
++The use cases can be:
++1. If nova-compute and glance share the same disk, it will save a lot
++of time to use the direct access when the image data are huge.
++
++2. If nova-compute does not share the disk with glance and the image
++data are very large, transferring data via other protocols, like ftp,
++bitTorrent, etc, can improve the efficiency. One new protocol may bring in
++a new plug-in by implementing the interface this plug-in provides.
++
++
++Proposed change
++===============
++
++This blueprint will start the implementation for libvirt. When it
++gets mature, we can considering to generalize it for other hypervisors.
++
++* The nova.conf file needs to have a new configuration,
++  like glance_upload_handler, to indicate the transfer protocol.
++  For example, glance_upload_handler=file means to transfer with direct
++  file access.
++
++* How to implement the update method for the glance api(image_service) needs to
++  change. Take the libvirt driver for instance, the image data is saved into
++  image_file, then call image_service.update(context, image_href, metadata,
++  image_file). We can check if a direct file access is allowed. If so,
++  instead of give the image_file, We can add one parameter,
++  like image_path, to this update method. Within this update method, we do not
++  set image_meta['data'] = data, but set image_meta['data'] = None.
++  In this case, the metadata is created, but the image file is missing for
++  glance. To prepare the image for glance, we can call get_location to retrieve
++  the path for this glance image and directly copy the VM image/snapshot into
++  it. If glance does not provide the location for the empty image data, we can
++  upload a dummy image and then replace it with the real image data afterwards.
++  In summary, we separate the HTTP transfer of image data and image metadata
++  into three steps:
++  1. Update the image status with the metadata, telling glance that the image
++  is reserved first and the image data will be uploaded via other protocols.
++  All the image information can be prepared in this step and the status is
++  set to 'saving'.
++  2. Upload the image data via other protocols.
++  3. When the image is ready in the glance store, update the image status with
++  the metadata to set it to 'active'.
++
++
++
++Alternatives
++------------
++
++We can make glance actively "take" the image/snapshot as well. Nova upload the
++image metadata with empty image data, glance receives the VM image path, so it
++can directly "take" the VM image via the specified protocol. However, this
++will bring change to glance and glance needs to be enabled with other transfer
++protocols within the code.
++
++Data model impact
++-----------------
++
++No changes to the current data model. One new package to be loaded with
++stevedore is added.
++
++REST API impact
++---------------
++
++None.
++
++Security impact
++---------------
++
++None for the direct file access. However, for other protocols, the
++authentication needs to be shared with Keystone. Otherwise we need to maintain
++several security mechanism.
++
++Notifications impact
++--------------------
++
++None.
++
++Other end user impact
++---------------------
++
++None.
++
++Performance Impact
++------------------
++
++I think the image download and upload will have better performance to bypass
++the HTTP.
++
++Other deployer impact
++---------------------
++
++The deployer can configure the image transfer in the way, which is more
++appropriate besides HTTP.
++
++Developer impact
++----------------
++
++The developer will have other choices rather than to put the data into the
++HTTP request, when one needs to transfer data between glance and nova.
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  houshengbo(Vincent Hou)
++
++Other contributors:
++  TBD
++
++Work Items
++----------
++
++
++* Add a new configuration direct_url_upload_schemes for nova.conf.
++
++* Add a new package "upload" nova.image to be loaded with stevedore.
++
++* Implement the direct file access for the image upload.
++
++* Implement the direct upload to swift for the image upload.
++
++* Implement the ftp protocol for the image upload.
++
++* Separate the metadata update and the image upload into two steps.
++
++
++Dependencies
++============
++
++The implementation needs to use glance v2:
++https://blueprints.launchpad.net/nova/+spec/use-glance-v2-api
++
++Testing
++=======
++
++To test the direct file access, direct access to swift and ftp for
++upload.
++
++Documentation Impact
++====================
++
++New documentation need to explain how this upload plug-in is configured.
++
++
++References
++==========
++
++* http://tropicaldevel.wordpress.com/2013/08/26/http-get-outta-here
++
+-- 
+1.9.1
+

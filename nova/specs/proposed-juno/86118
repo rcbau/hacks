@@ -1,0 +1,376 @@
+From 81cf357508d72a7ba3fccfe83d5987d80cf789b9 Mon Sep 17 00:00:00 2001
+From: JingYuan <yj.yuan@huawei.com>
+Date: Mon, 2 Jun 2014 23:18:37 +0800
+Subject: [PATCH] Support passthrough of USB device
+
+Add support to specify usb device when creating VM.
+
+blueprint usb-passthrough
+
+Change-Id: Ica9e28b3e9736cb0d18e99b30cc966757baab36c
+---
+ specs/juno/usb-passthrough.rst | 352 +++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 352 insertions(+)
+ create mode 100644 specs/juno/usb-passthrough.rst
+
+diff --git a/specs/juno/usb-passthrough.rst b/specs/juno/usb-passthrough.rst
+new file mode 100644
+index 0000000..78b5982
+--- /dev/null
++++ b/specs/juno/usb-passthrough.rst
+@@ -0,0 +1,352 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++=================================
++Support passthrough of USB device
++=================================
++
++Include the URL of your launchpad blueprint:
++
++https://blueprints.launchpad.net/nova/+spec/usb-passthrough
++
++We provide VDI(Virtual Desktop) and server virtualization solutions for
++customers, our customers have strong requirements for using USB devices.
++
++The typical use cases and our solutions are described as below:
++
++1.In VDI solution, customers want to use local USB printers or USB scanners
++with TC(Thin-Client), because remote desktop protocol like ICA have already
++supported USB-redirection, so customers only need to attach USB device to
++TC,  the protocol can map USB device to VM.
++
++2. In virtualization solution, when starting or restarting some
++business-critical applications, a connected USB-KEY is needed for
++authentication, some applications even need a daily authentication by USB-KEY
++. we suggest the following solutions:
++
++(1) Using physical 'USB-HUB' box and technology of USB-redirection over
++TCP/IP. Customers need to buy USB-HUB and install software in guest os,
++the software helps redirecting USB device to VM.
++
++(2) Using USB-Passthrough functions provided by our virtualization software.
++The end users(normally application or system administrators) insert USB
++devices to host that containing the VM, then can see USB device list in
++portal and choose USB device to attach.
++
++This solution has advantages that
++
++1. It doesn't need additional physical devices.
++
++2. It doesn't need a special server to run spice client for USB-Redirection.
++
++3. Business-critical applications commonly need stable and long-standing
++USB-KEY to attach, USB-Passthrough maybe more stable than USB-Redirection
++over TCP/IP or remote desktop protocol.
++
++As described above, I think USB-Passthrough is valuable in Openstack.
++
++This BP is focus on how to provide USB-Passthrough function in Openstack
++
++
++Problem description
++===================
++
++Use cases:
++
++In private cloud, a end user wants to create a VM to run ERP software which
++needs a USB-KEY for authentication, he proposes request to system
++administrator, they perform the following steps:
++
++1. The administrator goes to the machine room and chooses a host to insert
++USB-KEY to.
++
++2. The system automatically discovery the device and store device information
++to DB.
++
++3. The administrator queries USB-KEY information from API or portal.
++
++4. The administrator creates a flavor with USB-KEY information.
++
++5. The end user creates a VM with above flavor, the system chooses the host
++which contains the USB-KEY to run VM and attach USB-KEY to it.
++
++
++Proposed change
++===============
++
++The idea of how to implement this function can refer to pci-passthrough.
++
++We should add the following functions to nova:
++
++1. Nova should support to auto-discover usb devices and store them in DB.
++
++2. Nova should support to create a flavor which contains usb device
++information.
++
++3. Nova should support to create VM with a flavor which contains usb device
++information.
++
++Alternatives
++------------
++
++None
++
++Data model impact
++-----------------
++
++The idea of how to implement this function can reference to pci-passthrough.
++
++1. In libvirt driver layer, add function to discover USB devices.
++
++There maybe some USB devices in a host, like USB controller, USB keyboard,
++USB disk, but user only want to use USB disk. we can do the following
++steps to find proper device:
++
++(1) Libvirt driver use self._conn.listDevices('usb_device', 0) to get
++USB device information.
++
++(2) Use black-list function to filter out USB controller and
++USB keyboard, only retain USB disk.
++
++For example: usb_passthrough_blacklist =
++'[{"vendor_id": "1d6b", "product_id": "0002"}]', which is the
++'Linux ehci_hcd'
++
++2. In DB layer, (1) add a new table 'usb_devices' to store USB device
++information. (2) add a key-value pair to instance_system_metadata table to
++store USB device information which will be assigned to the VM.
++
++usb_devices:
++
+++-----------------+--------------+------+-----+---------+----------------+
++| Field           | Type         | Null | Key | Default | Extra          |
+++-----------------+--------------+------+-----+---------+----------------+
++| created_at      | datetime     | YES  |     | NULL    |                |
++| updated_at      | datetime     | YES  |     | NULL    |                |
++| deleted_at      | datetime     | YES  |     | NULL    |                |
++| deleted         | int(11)      | NO   |     | NULL    |                |
++| id              | int(11)      | NO   | PRI | NULL    | auto_increment |
++| compute_node_id | int(11)      | NO   | MUL | NULL    |                |
++| address         | varchar(12)  | NO   |     | NULL    |                |
++| product_id      | varchar(4)   | YES  |     | NULL    |                |
++| vendor_id       | varchar(4)   | YES  |     | NULL    |                |
++| bus_id          | int(10)      | YES  |     | NULL    |                |
++| device_id       | int(10)      | YES  |     | NULL    |                |
++| port_id         | int(10)      | YES  |     | NULL    |                |
++| dev_id          | varchar(255) | YES  |     | NULL    |                |
++| status          | varchar(36)  | NO   |     | NULL    |                |
++| extra_info      | text         | YES  |     | NULL    |                |
++| instance_uuid   | varchar(36)  | YES  | MUL | NULL    |                |
+++-----------------+--------------+------+-----+---------+----------------+
++
++3. In scheduler layer, add a filter to find proper host which contains the
++usb devices and create VM in this host.
++
++4. The schema of flavor which contains USB device information may like this:
++{"usb_devices":[{"id": 5}]}
++
++5. How to distinguish USB device is important because user wants to specify
++which USB device to which VM.
++
++I consider it as follows:
++
++1. The identifier of a USB device which are supported by libvirt are
++vendor id, product id, bus and device. Bellow is a example:
++
++<hostdev mode='subsystem' type='usb'>
++<source>
++<vendor id='0x136b'/>
++<product id='0x0003'/>
++<address bus='2' device='3'/>
++</source>
++</hostdev>
++
++Different USB devices may have the same vendor id and product id, so they are
++not appropriate to distinguish devices.
++
++The bus+device maybe a good choice to distinguish devices, but I have made some
++tests and found that the device id will change every time reboot host or
++detach/reattach USB device from/to host.
++
++I have tested vsphere and saw some documents, they in fact pass-through
++physical port of a host to VM, if user insert a USB device to this port,
++guest os will automatic discovery the new devices.
++
++I think libvirt doesn't support this function by now.
++
++So I think bus+device maybe the best choice.
++
++6. Use which usb controller is also an important thing to consider. I have
++made some tests with libvirt-1.2.0-1.el6.x86_64 and qemu-kvm-1.6.2-00001.x86_64
++in centos 6.5. The test results are:
++
++guest           xp(sp3)		    win7		    centos6.5
++usb controller  uhci	ehci	uhci	ehci	uhci	ehci
++create vm	    OK	    NOK	    NOK	    OK	    OK	    OK
++detach usb	    OK		                OK	    OK	    OK
++atach usb	    OK		                OK	    OK	    OK
++start vm	    OK		                OK	    OK	    OK
++restart	        OK		                OK	    OK	    OK
++suspend/resume 	OK		                OK	    OK	    OK
++
++xp(sp3)+ehci: Device is in abnormal status. After shutdown VM the device will
++not be normally released to hypervisor. Is the guest os problem?
++
++win7+uhci: Device is in abnormal status. After shutdown VM the device will be
++normally released to hypervisor. A related bug about it in
++https://bugs.launchpad.net/qemu/+bug/685096
++
++So I think the default uhci controller can not meet the requirements. I
++suggest two options:
++
++Option 1: Create a default ehci USB controller in libvirt driver, all usb
++devices use this default controller. Guest os should support ehci controller
++by installing driver or they will not been supported by this function.
++
++Option 2: User can specify USB controller type when specify USB device, then
++system create USB controller(ehci, xhci) for USB device.
++
++I suggest option 2 because although it is more complex to implement but it
++is more flexible for future extension.
++
++7. Restriction on max supported USB devices: I think a VM with 2 USB devices
++will cover 99% use scenarios. So it is not necessary to consider USB hub
++or some other mechanisms to extend more ports for more USB device. Every
++kind of USB controller has only one.
++
++REST API impact
++---------------
++
++* API for query USB device information of a hypervisor
++
++V2 API specification:
++
++GET v2/{tenant_id}/os-hypervisors/{hypervisor_hostname}
++
++V3 API specification:
++
++GET v3/os-hypervisors/{hypervisor_hostname}
++
++The response JSON contains the variable "usb_device_stats"
++{"hypervisor":{"usb_device_stats":[{"id": 1,"compute_node_id": 1,
++"address": "usb_2_3", "product_id": "1520","vendor_id": "8086",
++"bus_id": "2", "device_id": "3","port_id": "", "status":"available",
++"extra_info": """instance_uuid":""}]}}
++
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++I have implemented a demo and made some tests:
++
++1. If migrate(live-migration, with shared storage or not) a VM with USB device
++from host A to host B, because the destination host doesn't have USB device
++the migration may be failed.
++
++2. Currently I want to use <address bus='2' device='3'/> to exclusively
++identify a physical USB device of a host. But I found that every time reboot
++host or detach/re-attach USB device from/to host the device id will change.
++
++For this problem I suggest to refer to pci-passthrough:
++
++(1) System change the 'invalid' device's status to 'deleted', and create a new
++device record in DB.
++
++(2) If user starts VM with 'invalid' device, the libvirt driver will
++automatically ignore the 'invalid' device when construct xml. So VM will start
++normally but user can not see USB device in guest os.
++
++(3) If user wants to use USB device again, him can create a new flavor with
++this 'new' USB device and resize VM with the new flavor.
++
++3. System has restriction on max supported USB device number because a single
++USB controller has restricted port numbers.For example a uhci controller has
++2 ports so only supports two USB devices.
++
++4. Different guest os may have restriction on supporting USB device.
++
++5. Currently I only plan to provide this function in KVM so not consider too
++much for xen.
++
++
++Performance Impact
++------------------
++
++None
++
++Other deployer impact
++---------------------
++
++None
++
++Developer impact
++----------------
++
++I have implemented a demo and made some tests:
++
++1. This new function doesn't affect other server actions including
++start, stop, reboot, pause/unpause, suspend/resume, rebuild.
++
++2. We need to add some processes of USB devices in resize function,
++like resize VM from flavor A with USB device A to flavor B with USB device B.
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  <Jing Yuan>
++
++
++Work Items
++----------
++
++Step 1: Implement function of discover usb device in libvirt driver.
++
++Step 2: Implement function of periodically update USB device information
++from nova-compute to DB.
++
++Step 3: Implement function of query USB devices of hypervisor.
++
++Step 4: Implement function of create VM with USB device.
++
++Step 5: Modify other functions which have been affected by this new
++function.
++
++Dependencies
++============
++
++None
++
++
++Testing
++=======
++
++It is necessary to add tempest for this new function.
++
++Documentation Impact
++====================
++
++It is necessary to add doc for how to use this new function.
++
++
++References
++==========
++
++None
+-- 
+1.9.1
+

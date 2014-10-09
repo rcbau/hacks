@@ -1,0 +1,245 @@
+From d0d32ed308ecf4d772bbc694890cd6c05972d5da Mon Sep 17 00:00:00 2001
+From: He Jie Xu <xuhj@linux.vnet.ibm.com>
+Date: Fri, 9 May 2014 06:22:38 +0800
+Subject: [PATCH] Neutron network support in V3 API
+
+This BP is proposing add new REST API format for removing the proxy
+of neutron in nova in the future.
+
+Part of blueprint v3-api-remove-nova-network
+
+Change-Id: Ibbf29ccdc772dc7fb4c53bd597ca3cde8aa9819b
+---
+ specs/juno/v3-api-neutron-network-support.rst | 220 ++++++++++++++++++++++++++
+ 1 file changed, 220 insertions(+)
+ create mode 100644 specs/juno/v3-api-neutron-network-support.rst
+
+diff --git a/specs/juno/v3-api-neutron-network-support.rst b/specs/juno/v3-api-neutron-network-support.rst
+new file mode 100644
+index 0000000..b0df90a
+--- /dev/null
++++ b/specs/juno/v3-api-neutron-network-support.rst
+@@ -0,0 +1,220 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++==========================================
++Neutron network support in V3 API
++==========================================
++
++https://blueprints.launchpad.net/nova/+spec/v3-api-remove-nova-network
++
++V3 API didn't want to proxy any API call for other openstack service. It's
++include the proxy of openstack network service - Neutron. Currently nova
++REST API accept network-id as parameter to create new instance. Then nova
++will proxy Neutron API call to create port for new instance. V3 API is
++expected to only accept port-id as parameter to create new instance. The
++port should be created by user through Neutron REST API directly.
++
++Problem description
++===================
++
++Currently some V3 API still proxy Neutron API call.
++
++* Currently accept network-id, fixed-address when associate instance with
++  network (include creating new instance with network, attach/detach port with
++  instance). Accepting those parameters means user expect to Nova proxy
++  neutron call to create port for instance.
++
++* The response of showing detail of instances include the detail information
++  of ports. Nova will proxy the neutron call to get the port detail
++  information.
++
++Proposed change
++===============
++
++* Add os-networks extension for neutron network support. In this extension,
++  it will provide server create extension point, server's response extending,
++  and attach/detach port.
++
++    * Only accept port-id when associate instance with network. User should be
++      responsible for creating port from neutron api.
++
++    * Only show the list of port-id when show the detail of server. If user
++      want to know the port detail info, user should call neutron api.
++
++* Disable create/delete port automaticlly when create/delete instance.
++  create/delete the port.
++
++This proposing only provide a REST API without any proxy information. Because
++v2(.1) won't be depreciated for a while, the neutron proxy code can't be
++removed for now. So propose to pass a parameter down to the code to
++distinguish different behavior.
++
++Alternatives
++------------
++
++None
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++* Create new server with the list of port-ids
++
++  POST '/v3/servers'
++
++  * Example::
++
++      {"server": {
++          ...
++          "os-networks:ports": [{"id": "354e2be8-2591-4337-86e3-1a6066c90b82"},
++                                {"id": "b9c07cd8-e9c6-4179-8ff1-dfd9130f2741"}]
++          }
++      }
++
++  * JSONSchema::
++
++      'os-networks:ports': {
++          'type': 'array',
++          'items': {
++              'type': 'object',
++              'properties': {
++                  'id': {'type': 'string', 'format': 'uuid'},
++              },
++              'additionalProperties': False,
++          }
++      }
++
++
++* Attach/detach port with server
++
++  POST 'v3/servers/[server id]/action'
++
++  * Example::
++
++      {'attach_port': {'id': '354e2be8-2591-4337-86e3-1a6066c90b82'}}
++      {'detach_port': {'id': '354e2be8-2591-4337-86e3-1a6066c90b82'}}
++
++  * JSONSchema::
++
++      {
++          'type': 'object',
++          'properties': {
++              'attach_port': {
++                  'type': 'object',
++                  'properties': {
++                      'id': {'type': 'string', 'format': 'uuid'}
++                  },
++                  'required': ['id'],
++                  'additionalProperties': False,
++              }
++          },
++          'required': ['attach_port'],
++          'additionalProperties': False,
++      }
++
++     {
++         'type': 'object',
++         'properties': {
++             'detach_port': {
++                 'type': 'object',
++                 'properties': {
++                     'id': {'type': 'string', 'format': 'uuid'}
++                 },
++                 'required': ['id'],
++                 'additionalProperties': False,
++             }
++         },
++         'required': ['detach_port'],
++         'additionalProperties': False,
++     }
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++After this change, user should create port from neutron directly, not
++expect nova create port from specified network. When delete server,
++the port that assocaited this server won't be deleted by nova anymore.
++
++This is also effect python-novaclient. It need update python-novaclient
++to support this.
++
++Performance Impact
++------------------
++
++Nova didn't proxy neutron call to create port for servers. This will
++speed up the server creation.
++
++Other deployer impact
++---------------------
++
++None
++
++Developer impact
++----------------
++
++If nova didn't proxy any neutron, nova also need disable create/delete port
++automaticlly, the port should be created/deleted by user through neutron api.
++But for now nova also need support nova-network. So for distinguish different
++behavior new v3 neutron support behavior and nova-network support, it will
++pass a parameter 'legacy_network' down to the code. When
++'legacy_network=True', the nova code will try to create/delete port
++automaticlly that follow nova-network behavior. When 'legacy_network=False',
++the nova code will skip the code for create/delete port.
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  Alex Xu <xuhj@linux.vnet.ibm.com>
++
++Work Items
++----------
++
++* Disable auto allocate port when create server
++* Disable auto deallocate port when delete server
++* Create server with port_id list
++* Enable pass port_id for multiple create
++* Create server with port_id list
++* Extend server response with port_id list
++* Attach/detach port with port_id
++* Delete old network stuff from v3 API
++
++Dependencies
++============
++
++None
++
++Testing
++=======
++
++Add unittest and tempest test for new neutron network support
++
++Documentation Impact
++====================
++
++None
++
++References
++==========
++
++None
+-- 
+1.9.1
+

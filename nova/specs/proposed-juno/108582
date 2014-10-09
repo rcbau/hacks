@@ -1,0 +1,150 @@
+From fb6717cb002382c981e8defdb25d1009b55eeb1c Mon Sep 17 00:00:00 2001
+From: Faizan Barmawer <faizan.barmawer@gmail.com>
+Date: Tue, 22 Jul 2014 11:29:46 +0530
+Subject: [PATCH] Add ironic boot mode filters
+
+This spec proposes to add new filters to be used with ironic virt driver
+to select the ironic node based on the given boot mode.
+
+Change-Id: Icc68a18dcbaa0d93650f2ab0995635b4d8af992a
+---
+ specs/juno/add-ironic-boot-mode-filters.rst | 127 ++++++++++++++++++++++++++++
+ 1 file changed, 127 insertions(+)
+ create mode 100644 specs/juno/add-ironic-boot-mode-filters.rst
+
+diff --git a/specs/juno/add-ironic-boot-mode-filters.rst b/specs/juno/add-ironic-boot-mode-filters.rst
+new file mode 100644
+index 0000000..b79bb02
+--- /dev/null
++++ b/specs/juno/add-ironic-boot-mode-filters.rst
+@@ -0,0 +1,127 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++=====================================
++Add ironic boot mode filters
++=====================================
++
++
++https://blueprints.launchpad.net/nova/+spec/add-ironic-boot-mode-filters
++
++This spec proposes to add new filter to be used with ironic virt driver
++to select the ironic node based on the given boot mode.
++
++Problem description
++===================
++
++Operator wants an ability to specify the boot mode for deploying an image
++on an ironic node which supports the given boot mode.
++
++
++Proposed change
++===============
++
++Add a filter to select the ironic node based on a given
++boot mode.
++
++1. A filter which uses image property to select the node.
++   The required boot mode is given as an image property - boot_mode=uefi|bios.
++   The filter will extract this image property and compares it with the ironic
++   node property "supported_boot_modes".
++
++2. A filter which uses a key-value pair present in flavor extra_specs field.
++   The required boot mode is given as boot_mode=uefi|bios in flavor extra_specs
++   field. This filter will extract the "boot_mode" from flavor extra_specs
++   filed and compares it with the ironic node property "supported_boot_modes".
++
++3. Make necessary changes in nova.virt.ironic driver to update the ironic
++   node's instance_info field with the requested boot_mode.
++
++Alternatives
++------------
++
++None
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++None
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++None
++
++Performance Impact
++------------------
++
++None
++
++Other deployer impact
++---------------------
++
++The operator needs to update the scheduler's nova.conf to activate filters,
++also he has to set approiate image property or nova flavor extra_specs field
++with boot_mode=ueif|bios.
++
++Developer impact
++----------------
++
++None
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  Faizan Barmawer
++
++Other contributors:
++  <None>
++
++Work Items
++----------
++
++* New filter IronicBootModeFilter
++* Pass the boot_mode to ironic nodes instance_info field.
++
++
++Dependencies
++============
++
++https://blueprints.launchpad.net/nova/+spec/add-ironic-driver
++
++Testing
++=======
++
++Unit testing.
++
++Documentation Impact
++====================
++This filter has to be appropriately documented in ironic virt driver
++documents.
++
++References
++==========
++
++None
+-- 
+1.9.1
+

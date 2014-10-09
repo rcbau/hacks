@@ -1,0 +1,180 @@
+From a8db1f240d5c57eff21d6668442c24ee32020951 Mon Sep 17 00:00:00 2001
+From: Ken Thomas <krt@yahoo-inc.com>
+Date: Mon, 2 Jun 2014 18:33:05 +0000
+Subject: [PATCH] Only allow admins to delete VMs from down compute nodes
+
+Only allow admins to do local deletes to avoid the possibility of
+multiple VMs using the same IP.
+
+Change 1: Fix RST syntax errors
+
+Change 2: Fix a couple of typos
+
+Change-Id: I89d3f784e73a166d91dd29515955f8b4c76bbac3
+---
+ .../juno/only-allow-admins-to-do-local-delete.rst  | 153 +++++++++++++++++++++
+ 1 file changed, 153 insertions(+)
+ create mode 100644 specs/juno/only-allow-admins-to-do-local-delete.rst
+
+diff --git a/specs/juno/only-allow-admins-to-do-local-delete.rst b/specs/juno/only-allow-admins-to-do-local-delete.rst
+new file mode 100644
+index 0000000..c7e57fe
+--- /dev/null
++++ b/specs/juno/only-allow-admins-to-do-local-delete.rst
+@@ -0,0 +1,153 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++========================================================
++Only allow admins to delete VMs from down compute nodes
++========================================================
++
++https://blueprints.launchpad.net/nova/+spec/only-allow-admins-to-do-local-delete
++
++Currently any user is allowed to do a local delete (delete a VM from a
++compute node which is currently down). This is useful functionality but
++we've seen first hand that there is a potential issue. We locally patch
++the code to restrict local deletes to only admins. Since we find this
++change extremely useful, it may be of benefit to the community.
++
++Problem description
++===================
++
++Consider the following scenario.
++
++* A compute node goes down for some unknown cause. All of the VMs currently
++  running on it are unavailable to users.
++
++* The users do 'nova delete' on their VMs. The local delete processing
++  cleans up things and releases the IPs from those VMs back into the pool.
++
++* New VMs are started which may reuse some or all of those IPs.
++
++* Through the valiant efforts of the operations team, the compute node is
++  brought back and all of the VMs hosted on it are restarted.
++
++* We now have multiple VMs with the same IP.
++
++Proposed change
++===============
++
++The local delete functionality is still extremely important to have in
++order to clean up VMs from down compute nodes. Our proposal (and what
++we do with a local patch) is to only allow admins to use it since they're the
++ones who know if the compute node has a chance of coming back or not.
++
++The exact chance would be to modify nova/compute/api.py before _local_delete
++is called to check if the current user is an admin. If so, go ahead and
++do the local delete as before. If the user is not an admin, then clear
++the current task state and raise an error stating that the delete can't
++happen because the compute node is down, so please contact your local
++administrator.  Note that as part of raising the error, a call to
++QUOTAS.rollback will happen to make sure that the delete quota change does
++not go through.
++
++
++Alternatives
++------------
++
++We could leave it as it is, but as we've seen, this can be a dangerous
++situation.  We could provide a config setting to retain the old behavior
++for folks who want to go ahead and let their users keep the ability to
++do local deletes.
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++None
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++A new error message will be generated to tell a non-admin user that
++they aren't being allowed to delete their VM because the compute node
++is down and that they should contact their administrator.
++
++Other end user impact
++---------------------
++
++None
++
++Performance Impact
++------------------
++
++None
++
++Other deployer impact
++---------------------
++
++As mentioned above, a new config setting could be added to keep the old
++behavior for folks who like living on the edge. If this config setting is
++added, I strongly recommend that the default setting be to use the new
++more restrictive (and safer) behavior.
++
++Developer impact
++----------------
++
++None
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  krt
++
++Other contributors:
++  None
++
++Work Items
++----------
++
++* Modify nova/compute/api.py
++* Modify/write unit tests (if possible)
++
++
++Dependencies
++============
++
++* None
++
++Testing
++=======
++
++* To prevent from breaking any existing local delete tests, we'll need to
++  make sure that the user being used is an admin, or we that the config
++  setting is set to use the old behavior.
++
++* If possible, a new test for non-admin user doing local delete will be
++  written and check that the expected error is returned.
++
++
++Documentation Impact
++====================
++
++We may need to add a note to nova delete that it may be rejected by non-admin
++users if the compute node is down.
++
++References
++==========
++
++None
++
+-- 
+1.9.1
+

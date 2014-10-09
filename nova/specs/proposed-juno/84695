@@ -1,0 +1,719 @@
+From a1ec5683fe7708814b94edd628ac7a16059a0c19 Mon Sep 17 00:00:00 2001
+From: Chris Yeoh <cyeoh@au1.ibm.com>
+Date: Wed, 2 Apr 2014 21:44:31 +1030
+Subject: [PATCH] Blueprint for implementing the V2 API using the V3 API code
+
+This is a proposed blueprint for implementing the V2 API (V2.1)
+using the V3 API code base. From a user's point of view it would
+be identical to the V2 API with the exception that it has much
+better input validation.
+
+Part of blueprint v2-on-v3-api
+
+Change-Id: Id755f1f49c41df89c06ef2496e261d49bdd09ceb
+---
+ specs/juno/v2-on-v3-api.rst | 692 ++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 692 insertions(+)
+ create mode 100644 specs/juno/v2-on-v3-api.rst
+
+diff --git a/specs/juno/v2-on-v3-api.rst b/specs/juno/v2-on-v3-api.rst
+new file mode 100644
+index 0000000..ca850aa
+--- /dev/null
++++ b/specs/juno/v2-on-v3-api.rst
+@@ -0,0 +1,692 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++=============================================
++Implement the V2.1 API on the V3 API codebase
++=============================================
++
++https://blueprints.launchpad.net/nova/+spec/v2-on-v3-api
++
++Implement a V2.1 API on top of the V3 API implementation such that we
++have a single API implementation that supports the V3 API as well as
++the V2.1 API with minimal maintenance overhead, whilst still having a
++clean easy to understand codebase.
++
++Problem description
++===================
++
++We would like to make a significant number of backwards incompatible
++changes to the Nova API as well as improve the infrastructure that
++supports the API layer and have been developing a V3 API which allows
++us to do this.
++
++There is a fairly comprehensive description of the problems with the
++V2 API for users, operators and developers here:
++http://ozlabs.org/~cyeoh/V3_API.html
++
++However, there have been intensive discussions over the future of Nova
++and the maintenance overhead implications from having to support two
++APIs such as v2 and v3 simultaneously for a long period of time. Out
++of these discussions came the idea that we could support a slightly
++modified V2 API built on top of the V3 API codebase.
++
++In addition in the long term as our API continues to evolve we need to:
++
++- Make it possible to evolve the API in an incremental manner, which
++  is our strength as a community.
++- Provide backwards compatibility for consumers
++- Provide cleanliness in the code to make it less likely that we'll
++  do the wrong thing and break the world.
++
++A great interface is one that goes out of it's way to make it hard to
++use incorrectly. A good interface tries to be a great interface, but
++bends to the realities of the moment.
++
++Proposed change
++===============
++
++In order to reduce the long term maintenance costs of supporting both
++the V2 and V3 API we would implement the V2 API on top of the V3 API
++codebase primarily using decorators to translate V2 API requests that
++can be understood by the V3 API. It would also translate V3 API
++responses into V2 API formatted ones.
++
++This new V2 API which we will call the V2.1 API which would be
++implemented on top of the V3 API would be identical to the existing V2
++API with the following exceptions:
++
++* Strong input validation
++
++  * Invalidly formatted requests which are currently accepted/ignored
++    may be rejected.
++  * Any application which currently uses the API correctly will be
++    unaffected.
++
++* Some cases of less flexibility in what combination of extensions can
++  be deployed by a cloud operator
++
++  * Part of the API V3 development involved consolidating the number
++    of extensions as many were only created in order to add missing
++    functionality in a backwards compatible way. As a result some
++    features which were optional in a V2 API extensions are always
++    enabled in the V3, and therefore in the V2.1 extension.
++
++  * Operators define what extensions are enabled by their V3 API
++    extension equivalents rather than their V2 API names.
++
++  * This does imply that there are certain configurations of the
++    enabled extensions in the V2 API that are no longer possible in
++    the V2.1 API. However, consolidation was performed in cases where
++    it was obvious that a separate extension was only used because it
++    is the only mechanism of introducing even backwards compatible
++    changes. Reintroducing an artificial split would not be impossible,
++    but unlikely to be required.
++
++  * Users of the V2.1 still see the original V2 extensions in the V2
++    API extension format. The extensions listed corresponds to the
++    features enabled in the API provided by the V3 API.
++
++  * This may require operators to define policies for the V2.1 API if
++    they have diverged from the V2 API defaults. From an REST API user
++    point of view behaviour will remain the same.
++
++* Failure return codes may change.
++
++  * Part of the V3 API development work was to clean up the code to
++    use more appropriate http status codes. Some, but not all of this
++    work has been applied to the V2 API so there may be some
++    outstanding issues. These changes are not considered backwards
++    incompatible according to the API change guidelines
++    https://wiki.openstack.org/wiki/APIChangeGuidelines
++
++
++Because there is now some confusion of what V2 vs V2.1, V3 and
++microversions (which forms part of a separate specification to handle
++API changes) we will use the following terminology within this
++document:
++
++* v2 - the current state of the V2 API
++
++* v2.1 - the current state of the V2 API with strong input validation
++
++* v2.1microversions - v2.1 with changes (both backwards and
++  incompatible) but the changes are only occur when explicitly
++  requested using a client accept header
++
++* v3 - the V2 API with a collection of changes applied, the majority
++  which we eventually want applied to v2.1microversions. These can get
++  applied on case-by-case basis to v2.1microversions by removing any
++  v2.1 translation when the microversion client accept header is
++  appropriate. If the decision is made on specific cases of a v3
++  feature, it can be removed.
++
++In order to fully explore what is necessary and possible a POC is
++under development and for clarity patches have been referenced below
++to specific code examples.
++
++The following API infrastructure changes are required in order for the
++V3 API codebase to be exported under a /v2 or /v2.1 resource path:
++
++* An APIRouterV21 class which inherits from APIRouterV3 which can
++  be used by the api paste configuration.
++
++  * https://review.openstack.org/#/c/80198/7/nova/api/openstack/compute/__init__.py
++
++* A separate plugin namespace in setup.cfg for the V2.1 and V3 API
++  which allows deployers to have a different set of plugins loaded
++  between the V2.1 and V3 APIs when having both active. This separate
++  namespace is not intended to be kept long term but instead added to
++  facilitate regression testing of functionality added for V3 until it
++  is integrated into V2.1microversions or dropped.
++
++  * https://review.openstack.org/#/c/84296/4
++
++* The V2.1 needs to handle a project id in the URL path even though
++  it is not used.
++
++  * https://review.openstack.org/#/c/77105/33/nova/api/openstack/__init__.py
++
++In order to implement the V2.1 API on V3 we need to be handle the
++following various scenarios depending on exactly what ways the V2 API
++differs from the V3 API.
++
++* V2 API is identical to the V3 API except with poorer input validation
++
++  * The V3 API plugin can just be loaded directly without any
++    modification.
++
++* Need to translate incoming V2 API body requests or outgoing V3 API
++  responses but the semantics of the operation remain the same.
++
++  * A decorator on the V3 API method which references a dictionary
++    which defines the transformation required.
++  * https://review.openstack.org/#/c/84347/4/nova/api/openstack/compute/plugins/v3/access_ips.py
++  * More complicated cases where there is not a transformation
++    possible are handled below.
++
++* A success response code is different
++
++  * A decorator on the V3 API method to change the response code when
++    in V2.1 mode
++  * https://review.openstack.org/#/c/84348/5/nova/api/openstack/compute/plugins/v3/agents.py
++
++* A resource path has changed. Eg /os-keypairs (V2) vs /keypairs (V3 API)
++
++  * This is handled by the get_resources method in an extension being
++    passed version information and it changes the resource path for the
++    resource extension based upon this information
++  * https://review.openstack.org/#/c/80198/7/nova/api/openstack/compute/plugins/v3/keypairs.py
++
++* An action has changed name. Eg os-migrateLive -> migrate_live
++
++  * This is handled by adding an additional action decorator to the
++    method which specifies a different action name for a specific
++    version
++  * https://review.openstack.org/#/c/80198/7/nova/api/openstack/compute/plugins/v3/migrate_server.py
++
++* Interface does not exist in the V3 API
++
++  * Examples of this are volumes and images which are proxying APIs
++    removed from the V3 API
++  * Port the V2 API version to plugins/v3 with the framework used by
++    the V3 API.
++
++    * Only loaded by the V2.1 API so not visible in the V3 API
++    * Add strong input validation
++    * Add expected_error decorators
++
++* REST API style changes or semantic behaviour changes
++
++  * Example
++
++    * V2: /os-hypervisors/[filters]/search
++    * V3: /os-hypervisors/search?query=[filters]
++
++  * Decorator on controller internal methods which allows
++    specification whether it is for V2.1 or V3. Allows for multiple
++    definitions of internal methods which are chosen dynamically
++    dependent on the API instantiated.
++  * https://review.openstack.org/#/c/82301/11/nova/api/openstack/compute/plugins/v3/hypervisors.py
++  * Another example is difference in private flavor creation and whether
++    access is automatically given to the tenant or not.
++  * Another example is Location header generation differences
++  * This approach is the most intrusive but also the most flexible
++    able to handle the difficult cases.
++
++* Difference in input validation for names
++
++  * Part of the V3 API work tightened and made input validation of
++    names consistent across the Nova API. This is potentially an issue
++    for existing clouds deployments if a name used by the V2 API is no
++    longer valid.  Further evaluation of whether this is a significant
++    issue or not is ongoing. In the worst case we could relax input
++    validation for names in some specific cases when the V3 API is
++    emulating the V2.1 API
++
++The initial implementation of V2.1 will be configured to export the
++V2.1 API via /v2.1 rather than /v2. This will allow for cloud
++operators to initially provide both the original v2 and v2.1 APIs
++simultaneously allowing users to test their applications against v2.1
++without having to commit everyone to using it. This also allows more
++flexibility for cloud providers using CD to decide if or when they
++enable the V2.1 API.
++
++The implementation of V2.1 is designed to allow the V2.1 API to be
++exported via the /v2 resource path. So when a cloud operator is ready
++to replace the old V2 API implementation it can be done with a single
++line to the api-paste.ini file. Strictly speaking api-paste.ini is not
++a configuration file, but in this case it is the most straightforward
++way of being able to implement being able to swap the V2
++implementation for the V2.1.
++
++It may be possible to add an ability for V2.1 to work in an input
++validation mode where there is logging of invalid requests done
++instead of rejection. Notably however this would result in a mode
++where there is less input validation compared to V2 as the underlying
++V3 API code now assumes that input validation is done before it
++receives the user data. In this mode invalid input would most likely
++lead to an internal server error response. There would also need to be
++some careful consideration of any security implications this would
++have. However this mode may be of interest to cloud providers so they
++can attempt to measure which users or apps are making invalid V2 API
++requests.
++
++A major design goal of the implementation is to cleanly separate V2
++specific functionality from the V3 code whilst at the same time
++minimising the amount of duplicated code. As described below this
++allows us to gradually incorporate changes originally aimed at V3 into
++V2.1microversions with minimal overhead and rework.
++
++The underlying changes made for the V3 API would remain at least in
++the short to medium term while V2.1 was validated as being functionally
++equivalent to the V2 API. As V2.1 evolves through microversions,
++specific V3 API changes can either be enabled or abandoned on a case
++by case basis. The former would involve removing any translation when
++a high enough microversion is requested, however translation is
++retained for lower levels of microversion requests. This is the
++general model that we would use for introducing changes to the
++API. The underlying implementation is always the latest (highest)
++version of the API. Earlier versions are implemented using translation
++techniques which where as much as is possible leave the underlying
++code as simple as possible without a complicated trail of logic
++dependent on what version is being supported.
++
++Where a decision is made that a feature originally targeted for the V3
++API will never be supported, the underlying implementation will be
++reverted to the V2.1 API behavior (eg input validation still
++supported) but without any translation required. Although adding
++translation code just to remove it at a later date if it is found that
++a feature is not required will be wasted work, it also needs to be
++kept in mind that the vast majority of changes between v2 and v3 are
++not controversial for where we want to head in the long term. The
++overhead of the translation code required is in most cases very small
++and the alternative of attempting to re-convert the V3 code to act
++like V2 along with all the tests and then at a later stage to revert
++the revert (after most likely losing a lot of knowledge about exactly
++why and changes to make) and as well have to add translation code
++anyway (as we need to support the older V2 API even when we support
++V2.1.microversions) will be in comparison a huge amount of work.
++
++Also having a concrete implementation that developers can see,
++deployers and users can actually run against before we roll it out as
++a microversion is much easier to discuss than an abstract
++specification.
++
++Microversioning details
++-----------------------
++
++As mentioned previously the v2.1 implementation acts exactly the same
++as the v2 API, just with strong input validation. However to support
++future changes (both backwards compatible and incompatible) a client
++is able to request through a header a newer version of the API. A lack
++of a version header in a request would result in v2.1 behaviour by
++default.
++
++(For the purposes of the following discussion "the API" is all core
++and optional extensions in the upstream Nova tree.)
++
++Versioning of the API should be 1 monotonic counter. It should be in
++the form X.Y.Z though X.Y is acceptable, and assumes Z is 0.
++
++- X is incremented for backwards incompatible changes
++- Y is incremented for backwards compatible changes
++- Z is reserved for critical bug fixes on stable branches.
++
++
++A version response would look as follows
++
++::
++
++    GET /
++    {
++         "versions": [
++            {
++                "id": "v2.1",
++                "links": [
++                      {
++                        "href": "http://localhost:8774/v2/",
++                        "rel": "self"
++                    }
++                ],
++                "status": "CURRENT",
++                "version": "2.115"
++                "min_version": "2.1"
++            },
++       ]
++    }
++
++This specifies the min and max version that the server can
++understand. min_version will start at 2.1 representing the current 2.0
++API. It may eventually be uplifted if there are support burdens we
++don't feel are adequate to support.
++
++Microversion Client Interaction
++-------------------------------
++
++A client specifies the version of the API they want via the following
++approach, a new header::
++
++  X-OS-Compute-Version: 2.114, experimental, vendor:rax
++
++This conceptually acts like the accept header, with some nuance.  We
++introduce 3 concepts here, global API version, experimental flag, and
++vendor flags.
++
++Semantically:
++
++- if X-OS-Compute-Version is not provided, act as if min_version was
++  sent. This would initially be equivalent to v2.1 (eg the original v2 API)
++- if X-OS-Compute-Version is sent, respond with the API at that
++  version. If that's outside of the range of versions supported,
++  return 406 (or some other future determined appropriate error).
++- if X-OS-Compute-Version: latest (special keyword) return Max
++  Version response.
++- if experimental is sent, return results with *all* experimental
++  extensions enabled.
++- if vendor:VENDORNAMESPACE is sent, return results that include that
++  out of tree vendor extensions.
++
++This means out of the box, with an old client, an OpenStack
++installation will return vanilla OpenStack responses at v2. The user
++or SDK will have to ask for something different.
++
++Neither experimental nor vendor benefit from versioning. It's an all
++or nothing affair. There are fewer unique snowflakes in the world than
++people think, and we actually want these things in tree.
++
++Microversion Nova Tree
++----------------------
++
++The initial implementation of v2.1 would only handle routing of
++behaviour between v2.1 and v3 as described in the initial
++section. This is to prioritize implementation and verification of the
++correctness of v2.1 in Juno. This means there are not any ways to access
++v3's interfaces through /v2.1 at the end of Juno because of time/resources/
++review bandwidth.
++
++With the first microversion release, which may be a simple backwards
++compatible change the infrastructure which allows switching between
++v2.1 or v3 behaviour will be upgraded to allow selection between
++multiple microversions as well as v2.1, rather than just two
++alternatives. However the implementation will strongly follow the
++original criteria of an implementation such that
++
++- we minimise maintenance overhead of having multiple API versions in
++  the codebase
++- ensure that the latest version of the API code is clean and easy
++  to understand (eg no maze of version switching code).
++
++
++Alternatives
++------------
++
++One alternative would be to implement a separate V2 API proxy
++server. It would:
++
++* Accept V2 API requests and translate them to V3 API requests calling
++  the Nova API server
++
++* On return it would translate V3 API body responses to V2 API
++  equivalents. It would also transform success return codes if
++  required.
++
++This has the advantage that it could sit completely outside of the Nova
++tree. However it has the following potential issues:
++
++* Can't easily handle semantic changes unless the V3 API methods had
++  flags added to be able to act in the V2 API manner.
++
++* Still need to support features not present in the V3 API such as
++  images or volumes so a subset of the V2 API code would need to
++  remain in the Nova tree anyway.
++
++A second alternative to reducing the amount of maintenance overhead
++would be to abstract a lot of the common content in the V2 and V3 API
++implementations into methods that both APIs can call. This would
++significantly reduce the amount of code that needs to be modified when
++internal changes are made. However it is not clear that this would be
++considered a sufficient reduction in maintenance overhead.
++
++Also since we will be keeping the V2 API for a significant period of
++time it would be advantageous to move the V2 API to the V3 API
++framework as well as improve input validation. The approach proposed
++essentially does so in a way which allows cloud operators to allow
++their users to test their apps against the modified V2 without having
++to commit to it entirely which is what would happen if we attempted to
++modify the V2 API in-place. An in-place upgrade model would
++potentially result in accidental backwards incompatible API changes
++which are not discovered for a significant period of time.
++
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++The V2.1 REST API presented will be identical to the V2 API except as
++noted above.
++
++Note however that V2.1 will not support the XML version of the V2 API,
++only the JSON one. However the XML version of the V2 API is currently
++marked as deprecated.
++
++Security impact
++---------------
++
++Better up front input validation will reduce the ability for malicious
++user input to exploit security bugs.
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++Potentially it may be advantageous if python novaclient could talk to
++/v2.1 instead of /v2 but code changes may not be required to change
++this. It may be simpler just to do this through keystone
++configuration. The API itself remains identical.
++
++SDK authors will need to start using the X-OS-Compute-Version header
++to get access to new features. The fact that new features will only be
++added in new versions will encourage them to do so.
++
++Performance Impact
++------------------
++
++There is some overhead in translating API body requests and responses
++but I don't believe it will be significant or probably even big enough
++to be measurable. More stringent input validation also means more work
++that is needed to be done in the API layer but overall this is a good
++thing.
++
++Where the API significantly changes what data is returned such as
++possibly with the proposed Tasks API then possibly some caching of
++information will be required to minimise the performance impact so
++translation to the V2 API format is still possible.
++
++
++Other deployer impact
++---------------------
++
++V2.1 would have to be explicitly enabled through a config option
++v2_1_emulation_enabled in the osapi_v3 section.
++
++If the deployer wanted to export the API as /v2 rather than /v2.1 then
++they would need to modify the api-paste.ini file (a couple of line
++change to disable the original V2 API and use the APIRouterV21 as
++the /v2 API.
++
++The long term goal would be to deprecate and eventually remove the
++original V2 API code when deployers and users are satisfied that v2.1
++satisfies their requirements.
++
++The process which we would use is:
++
++* V2.1 fully implemented with Tempest verification (including extra
++  verification that is being added in terms of response data)
++* Verification from multiple sources (cloud providers, users etc) that
++  V2.1 is compatible with V2
++
++  * This could be done in various ways
++
++    * Keystone changes so /v2.1 is advertised instead of /v2
++    * Exporting the V2.1 as /v2
++    * Combined with the possibility of putting V2.1 input validation into
++      a log rather than reject mode.
++
++* V2.1 is in an openstack release for N versions
++* After widespread confirmation that the V2.1 API is compatible, V2
++  would be marked as deprecated
++
++Developer impact
++----------------
++
++Long term advantages for developers are:
++
++* All the API implementations are on the new API framework
++
++* Reduction in maintenance overhead of supporting two major API
++  versions
++
++* Have a better framework for handling future backwards incompatible
++  changes.
++
++* Clear delineation between V2 and V3 specific code and at the same
++  time minimising code duplication
++
++In the short term while the old V2 API code exists there will still be
++a dual maintenance overhead.
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  cyeoh-0
++
++Other contributors:
++  oomichi
++  Alex Xu
++
++Work Items
++----------
++
++Much of this is a summary of what is described in the Proposed Changes
++section
++
++* Infrastructure to support a V2.1 API Router which is based on the V3 API
++
++  * API paste changes
++  * Namespace in setup.cfg for v2.1 plugins to be loaded
++  * Ability to selectively enable/disable the v2.1 API
++  * V3 API codebase to be able to handle a project id in the path if in
++    V2 API emulation mode
++
++* Infrastructure to support decorators which reference dictionary
++  definitions to translate incoming V2 API requests and outgoing V3
++  API responses
++
++* Infrastructure to support translation of response codes for the V2.1 API
++
++* Infrastructure to support cases where resource paths are different
++  in V2.1 compared to V3
++
++* Infrastructure to support cases where action names have changed
++
++* Porting of functionality which exists in the V2 API but which does
++  not exist at all in the V3 API (eg images/volumes proxying)
++
++* Infrastructure to support decorators which allow more generic
++  handling of v2.1 vs v3 specific differences (the harder cases)
++
++* Use the infrastructure developed to implement the V2.1 on the V3 API on an
++  extension by extension basis
++
++* Document the v2.1 reference listing and example request response
++  JSON with WADL
++
++* Write a document describing the differences for end-users that we'll
++  publish as part of the Compute API Reference
++
++* Add a section in the admin guide which describes how to configure the various
++  API options and the implications of the various options.
++
++* Infrastructure support for microversions
++
++
++Dependencies
++============
++
++* Nova-network support ported to the V3 API so it can be exposed in
++  the V2.1 API
++
++Testing
++=======
++
++We already have a substantial number of Nova V2 Tempest Tests. These
++can be used to help verify that the V2.1 API behaves in the same way
++as the V2 API. These tempest tests are already being used to check the
++proof of concept V2.1 implementation using a patch which exports the
++V2.1 API as /v2.1. As can be seen V2.1 is already able to successfully
++boot a server.
++
++https://review.openstack.org/#/c/83256/
++
++Work has also begun to improve the existing V2 API tests. They
++previously did not check that the responses from Nova remained
++backwards compatible. A substantial number of patches have already
++merged or are in progress which adds verification of body
++responses. This helps keep an extra check on both the original V2 API
++codebase as well as the development of the V2.1 POC and the V3 API.
++
++As part of ongoing V3 API development work where there are APIs which
++are not currently tested new tests are progressively being added for
++both the V2 and V3 APIs. The goal would be to have complete tempest
++coverage of the Nova API.
++
++Historically API stability in Nova was really only maintained because
++Tempest covered such a large portion of the API. That will not be
++realistic for all versions possible here.
++
++Nova unit tests will need to be enhanced to do most of the heavy
++lifting.
++
++When new tests are added to Tempest, they will specify the minimum
++version they function on (we are already starting down that path for
++novaclient testing).
++
++Tempest will run Nova tests twice during a run. At min_version
++(escentially specifying no OS-Compute-Version), and at at version
++detected by the setup tool (currently devstack) for the max version
++Nova supports in the branch in question.
++
++Scenario tests will occur at max version.
++
++
++Documentation Impact
++====================
++
++The documentation for the V2 API will essentially remain the same as
++the API will not change except for improvements in input
++validation. There will need to be some updates on possible error
++status codes.
++
++Longer term the improved infrastructure for input validation and the
++development of JSON schema for response validation will make it much
++easier to automate the generation of documentation for both the V2 and
++V3 APIs rather relying on the current mostly manual process.
++
++References
++==========
++
++* Juno design summit discussion https://etherpad.openstack.org/p/juno-nova-v2-on-v3-api-poc
++
++* Mailing list discussions about the Nova V3 API and the maintenance
++  overhead
++
++  * http://lists.openstack.org/pipermail/openstack-dev/2014-March/028724.html
++  * http://lists.openstack.org/pipermail/openstack-dev/2014-February/027896.html
++
++* Etherpad page which discusses the V2 on V3 Proof of Concept and
++  keeps track of the ongoing work.
++
++  * https://etherpad.openstack.org/p/NovaV2OnV3POC
++
++* Document about the problems with the V2 API
++
++  * http://ozlabs.org/~cyeoh/V3_API.html
++
++* Document describing the current differences between the V2 and V3 API
++
++  * https://wiki.openstack.org/wiki/NovaAPIv2tov3
+-- 
+1.9.1
+

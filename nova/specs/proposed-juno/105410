@@ -1,0 +1,176 @@
+From 5efc2362b35388b1af2acf0827b5cb740df35b5f Mon Sep 17 00:00:00 2001
+From: Alvaro Lopez Garcia <aloga@ifca.unican.es>
+Date: Tue, 8 Jul 2014 12:08:05 +0200
+Subject: [PATCH] Propose: Implement percentage-based RAM Weigher
+
+Continuation of the bp normalize-scheduler-weights. This blueprint is
+targeted on the adaptation of the RAMWeigher to be able to use
+percentages (i.e. relative values) for scheduling.
+
+Change-Id: Ie4b83bbdca3617b8d3910803e422895f90acc69e
+Implements: blueprint ram-as-percentage
+---
+ specs/juno/ram-as-percentage.rst | 151 +++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 151 insertions(+)
+ create mode 100644 specs/juno/ram-as-percentage.rst
+
+diff --git a/specs/juno/ram-as-percentage.rst b/specs/juno/ram-as-percentage.rst
+new file mode 100644
+index 0000000..13bcf99
+--- /dev/null
++++ b/specs/juno/ram-as-percentage.rst
+@@ -0,0 +1,151 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++========================================
++ Implement percentage-based RAM Weigher
++========================================
++
++https://blueprints.launchpad.net/nova/+spec/ram-as-percentage
++
++This blueprint is just a continuation of a blueprint already approved for
++Havana that missed feature freeze:
++https://blueprints.launchpad.net/nova/+spec/normalize-scheduler-weights
++
++Nova's scheduler used the raw values returned by each of the weighers to
++compute the final weight of a compute host or cell. This made difficult for
++operators to setup and use multipliers to establish the relative importance
++between weighers since they weren't able to know the maximim weight for an
++object in advance, as it was a variable value. Moreover, in order to make a
++weigher prevail among others in some cases it was needed to artificially
++inflate either the weigher's returned value or the weigher's multiplier.
++
++The blueprint that was already implemented introduced weight normalization.
++This mechanism maps all the values returned from a weigher between 0 and 1,
++thus they have an even relative influence in the final weight for a host.
++Therefore, an operator knows a-priori that a host with a weight of 1 is the
++winner of that weighing process, and a host with 0 is the loser, making easier
++to setup multipliers in order to establish the relative importance between
++weighers.
++
++Problem description
++===================
++
++The current RAM weigher weights objects using absolute values. This means that,
++for example, two nodes with 10GB of free RAM will get the same score, even if
++the first has 10GB free out of 20GB and the second 10GB out of 200GB. In some
++cases (for example in infrastructures with heterogeneous nodes) it may be
++desirable to select hosts based on the percentage of free RAM used, instead of
++using the absolute values.
++
++Without weight normalization it was difficult to use percentages for the RAM
++weigher, but with the normalization in place the RAM weigher can be easily
++improved to support that.
++
++Proposed change
++===============
++
++The 'nova.scheduler.weights.ram.RAMWeigher' will be adapted to use relative
++values (i.e. percentage based). This way operators can change the scheduling
++behaviour in their infrastructure being able to schedule based on the
++percentage of RAM that is used/available. Currently only absolute values are
++used, making scheduling difficult in heterogeneous infrastructures.
++
++A new flag will be introduced to select this behaviour (i.e. percentage based
++scheduling), thus the RAMWeigher will remain compatible with its current
++status (i.e. use absolute values).
++
++Alternatives
++------------
++
++None.
++
++Data model impact
++-----------------
++
++None.
++
++REST API impact
++---------------
++
++None.
++
++Security impact
++---------------
++
++None.
++
++Notifications impact
++--------------------
++
++None.
++
++Other end user impact
++---------------------
++
++None.
++
++Performance Impact
++------------------
++
++None.
++
++Other deployer impact
++---------------------
++
++A new configuration option will be included for the 'RAMWeigher':
++'ram_weight_percentage=False' so as to use the percentage of free RAM available
++instead of the usage of the absolute values.
++
++Developer impact
++----------------
++
++None.
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  aloga
++
++Other contributors:
++  None
++
++Work Items
++----------
++
++- Modify RamWeigher so that percentages can be used instead of absolute values
++  (new flag 'ram_weight_percentage').
++- Update both the developer documentation and the Cloud Admin Guide.
++
++Dependencies
++============
++
++This blueprint is a continuation of the following (already implemented):
++https://blueprints.launchpad.net/nova/+spec/normalize-scheduler-weights
++
++Testing
++=======
++
++There is no need for new tempest tests.
++
++Documentation Impact
++====================
++
++A new configuration option 'ram_weight_percentage' will be introduced, so
++that the RAM weighing will take into account the percentage of free ram
++instead of the absolute values.
++
++These configuration changes will be noted in the Release Notes and the Cloud
++Admin Guide will be updated along with this blueprint.
++
++
++References
++==========
++
++None.
+-- 
+1.9.1
+

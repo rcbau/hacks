@@ -1,0 +1,242 @@
+From 57ff913e23f5c591ec92eae29fae18e36f30ec3e Mon Sep 17 00:00:00 2001
+From: kirankv <kiran-kumar.vaddi@hp.com>
+Date: Mon, 9 Jun 2014 00:29:17 -0700
+Subject: [PATCH] VMware nova-Storage optimization for clusters with multiple
+ datastores
+
+This blueprint storage-optimization-for-multi-datastore-clusters allows
+images to launch faster and saves disk space by creating linked clones
+of instances using the base disk already present in the image cache of
+other datastore of the ESX cluster.
+VMware ESX cluster can have multiple datastores that are shared across all the
+hosts of the cluster. Its much more efficient to have a single copy of the
+image in only one datastore of the cluster and create linked clones using
+this image.
+
+blueprint: storage-optimization-for-multi-datastore-clusters
+Change-Id: I6442137549804f0632a28199d25df403ebf18e0d
+---
+ ...e-optimization-for-multi-datastore-clusters.rst | 211 +++++++++++++++++++++
+ 1 file changed, 211 insertions(+)
+ create mode 100644 specs/juno/storage-optimization-for-multi-datastore-clusters.rst
+
+diff --git a/specs/juno/storage-optimization-for-multi-datastore-clusters.rst b/specs/juno/storage-optimization-for-multi-datastore-clusters.rst
+new file mode 100644
+index 0000000..27928b2
+--- /dev/null
++++ b/specs/juno/storage-optimization-for-multi-datastore-clusters.rst
+@@ -0,0 +1,211 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++=============================================================================
++VMware nova driver storage optimization for clusters with multiple datastores
++=============================================================================
++
++https://blueprints.launchpad.net/nova/+spec/storage-optimization-for-multi-datastore-clusters
++
++This blueprint storage-optimization-for-multi-datastore-clusters allows images
++to launch faster and saves disk space by creating linked clones of instances
++using the base disk already present in the image cache in another datastore of
++the ESX cluster.
++VMware ESX cluster can have multiple datastores that are shared across all the
++hosts of the cluster. It is much more efficient to have a single copy of the
++image in only one datastore of the cluster and create linked clones using
++this image.
++
++Problem description
++===================
++
++ESX clusters can have multiple shared datastores configured.
++A datastore is a logical container that stores the virtual machine files.
++This includes both the disk (vmdk), configuration (vmx) files and
++snapshot files.
++
++A datastore can be created from different types of physical storage
++like local direct attached storage, iSCSI, FC SAN and NFS.
++The physical storage is presented to all host in the cluster and therefore
++the datastore is accessible from all the hosts of the cluster.
++Each cluster will typically have its own set of datastores and this is
++the recommended configuration. This configuration enable the live migration
++of VMs across all hosts of the cluster.
++
++When using the VMware vCenter nova driver for such clusters with
++multiple shared datastores the image can get cached in each datastore.
++Additionally a disk of size equal to the flavor of the instance is also
++created in the cache. Instances are created as linked clones to this flavor
++sized disks.
++This approach has the following problems
++
++* Every time a new datastore is selected by the driver for deployment, a new
++  cache is created on the datastore and the image is copied.
++* A copy of the image expanded to the size of the flavor is created for each
++  instance deployed with a different flavor
++
++This approach leads to a reduction of the actual storage space available for
++creating instances.
++
++In the existing design, when an instance creation is done, the following
++occurs
++
++* Step 1. The driver determines the best datastore to place the instance. It
++  does this by selecting the datastore with maximum free space.
++* Step 2. The existence of the image is checked in the cache
++  (directory named _vmware_base) on the clusters datastore
++* Step 3. If the image is not available in the cache, then
++  (i) the image is downloaded from glance into nova-compute
++  (the VM where the compute service runs)
++  (ii) Then the image is transferred from the nova-compute to the datastore
++  by vCenter
++* Step 4.Instance is spawned using the cached image by first creating a disk
++  of the size of the specified in the flavor (if it doesnt exist). Then
++  creating a linked clone using the flavor sized disk as the base disk.
++
++The problems exist in Step 1 and Step 2 since the the driver is not utilizing
++the cache in other datastores.
++
++Proposed change
++===============
++
++* 1. The drivers datastore selection can be modified to select the datastore
++  that has the image already cached and if has enough space for the new
++  instance (as per Step 4 above)
++* 2. If the datastore where the image is cached does not have enough space for
++  the new instance, then create a linked clone in a different datastore but
++  still using the cached image as the base disk.
++  This is based on the configuration option set in nova.conf. The
++  configuration parameter is span_datastores.
++  This is configurable because in vCenter a datastore can be placed in
++  maintenance mode. A datastore can be placed in maintenance mode when there
++  are no VMs accessing the datastore. In the case where the instances are
++  referencing base disk in different datastores it would be difficult for the
++  admin to identify the children of a specific base disk and move the disks.
++  By making it configurable, admins who do not use the datastore maintenance
++  feature or admins who can identify dependent disks using scripts can set
++  this option.
++
++  Default would be not to create linked that are across datastores of the
++  cluster (Existing implementation). However the download from glance will be
++  avoided if the image is present in the cache of other datastores. This is
++  the additional change introduced.
++
++  When this option is set, then the linked clone creation is modified so
++  that base disk in another datastore is used.
++
++  When this option is not set, then the following occur:
++  a. The lock on the image is aquired. The lock is the same as the one
++  aquired by the periodic task during image cache cleanup.
++  b. The image is copied from the datastore to the cache of the datastore
++  that is selected for the instance.
++  c. The lock is released
++  d. The existing spawn implementation continues
++  If the lock cannot be aquired since the image was deleted by the image
++  cache cleanup periodic task, then the download from glance will occur.
++
++Alternatives
++------------
++
++Another alternative is to schedule instances to the clusters that have the
++image already cached. This will work fine until the cluster is at capacity.
++To use this alternative, the following changes will be required
++(1) the VMware nova driver will have to publish the
++list of images in its cache.
++(2) A new scheduler filter will then select the nova-compute (cluster) that
++already has the image in its cache. If there are no clusters that have the
++image then it would return all clusters (existing behaviour). This can be
++implemented using weights as well. This will be addressed a separate
++blueprint (will be submitting this).
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++None
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++None
++
++Performance Impact
++------------------
++
++Given that in a private cloud there will be different set of standard
++images, and the number of datastores per cluster is generaly more than 1,
++enhancing the datastore selection logic and creating linked clones across
++datastores will significantly improve user experience, reduce instance
++creation times since multiple caches are not created and improve storage
++utilization.
++
++Other deployer impact
++---------------------
++
++None
++
++Developer impact
++----------------
++
++* The similar approach can be used by other nova drivers that support nodes
++  with multiple logical storage where cache is maintained per logical storage.
++* This change only impacts the VMware nova driver. Other drivers will not be
++  impacted due to this change.
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  aiswarya-sundaran
++
++Other contributors:
++  kiran-kumar-vaddi
++
++Work Items
++----------
++
++* Modify the code the selects the datastore to spawn an instance to also use
++  the cache as a criteria
++* Modify the instance creation code to be able to point to a different
++  datastore for the instance base disk
++
++Dependencies
++============
++
++None
++
++Testing
++=======
++
++The unit tests will be modified to test the branches introduced by the above
++work items
++
++Documentation Impact
++====================
++
++A new config option span_datastores is added.
++
++References
++==========
++
++None
+-- 
+1.9.1
+

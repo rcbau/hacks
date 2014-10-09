@@ -1,0 +1,146 @@
+From bf7b5b633b90aae4f463dceee91ca89355bf9772 Mon Sep 17 00:00:00 2001
+From: Antony Messerli <amesserl@rackspace.com>
+Date: Tue, 6 May 2014 17:25:43 -0500
+Subject: [PATCH] Blueprint for Specifying Number of Cores Per Socket on
+ Instance
+
+The proposal is to add an image property that specifies cores_per_socket on an
+image which would allow you to override the default of one core per socket and
+specify the number you want on the instance.
+
+Change-Id: Ib6909bce5e13faf929273ce9ba69461a30fb0eea
+---
+ specs/juno/specify-number-of-cores-per-socket.rst | 121 ++++++++++++++++++++++
+ 1 file changed, 121 insertions(+)
+ create mode 100644 specs/juno/specify-number-of-cores-per-socket.rst
+
+diff --git a/specs/juno/specify-number-of-cores-per-socket.rst b/specs/juno/specify-number-of-cores-per-socket.rst
+new file mode 100644
+index 0000000..ba3f081
+--- /dev/null
++++ b/specs/juno/specify-number-of-cores-per-socket.rst
+@@ -0,0 +1,121 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++==================================
++Specify Number of Cores Per Socket
++==================================
++
++https://blueprints.launchpad.net/nova/+spec/specify-number-of-cores-per-socket
++
++The proposal is to add an image property that specifies cores_per_socket on an
++image which would allow you to override the default of one core per socket and
++specify the number you want on the instance.
++
++Problem description
++===================
++
++Typically an instance is assigned a single core per socket ( instance with 4
++vcpus would have 4 sockets ). In some cases of licensed images like Microsoft
++SQL, the licensing is done by socket. In this case it's advantageous to stack
++as many cores as possible on a socket. XenServer 6.2 provides this
++functionality for free now (used to be part of the licensed version).
++
++This could be something useful to other hypervisors as well if they support
++this feature.
++
++Proposed change
++===============
++
++Add support for an image property to specify cores_per_socket.  If this is set,
++the instance would receive a cores-per-socket parameter to allow the number of
++cores per socket:
++
++xe vm-param-set platform:cores-per-socket=’X’ uuid=<VM UUID>
++
++If not set, the default configuration of a single core per socket would apply.
++
++Alternatives
++------------
++
++None
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++None
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++A user requiring a specific layout of cores based on their instance type would
++need to specify the cores_per_socket image property in order to take advantage
++of it.
++
++Performance Impact
++------------------
++
++None
++
++Other deployer impact
++---------------------
++
++None
++
++Developer impact
++----------------
++
++None
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  antonym
++
++Work Items
++----------
++
++Add image property for cores_per_socket and make the appropriate changes to
++vm-params on instance creation.
++
++Dependencies
++============
++
++None
++
++Testing
++=======
++
++None
++
++Documentation Impact
++====================
++
++Create documentation about the new cores_per_socket value and how it works.
++
++References
++==========
++
++* Information on cores-per-socket in XenServer:
++  https://support.citrix.com/article/CTX126524
+-- 
+1.9.1
+

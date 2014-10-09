@@ -1,0 +1,179 @@
+From 8972fa92dde3052c0b2e8ad9503cf619c86d92e7 Mon Sep 17 00:00:00 2001
+From: liu-sheng <liusheng@huawei.com>
+Date: Wed, 25 Jun 2014 14:32:02 +0800
+Subject: [PATCH] Specs for get-floatingip-by-all-tenants
+
+This blueprint allow admin get floatingips of all tenants.
+
+Implements blueprint get-floatingip-by-all-tenants
+
+Change-Id: I170c715defed37900fc508a11908d51e3d90bed2
+---
+ specs/juno/get-floatingip-by-all-tenants.rst | 155 +++++++++++++++++++++++++++
+ 1 file changed, 155 insertions(+)
+ create mode 100644 specs/juno/get-floatingip-by-all-tenants.rst
+
+diff --git a/specs/juno/get-floatingip-by-all-tenants.rst b/specs/juno/get-floatingip-by-all-tenants.rst
+new file mode 100644
+index 0000000..9b59aaa
+--- /dev/null
++++ b/specs/juno/get-floatingip-by-all-tenants.rst
+@@ -0,0 +1,155 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++==========================================
++Allow admin get floatingips of all tenants
++==========================================
++
++https://blueprints.launchpad.net/nova/+spec/get-floatingip-by-all-tenants
++
++Currently, in Nova API, there are several commands support "all-tenants" flag.
++e.g. listing volumes, listing servers, list-secgroup. this blueprint support
++getting floatingips of all tenants.
++
++Problem description
++===================
++
++There is a basic requirement that admin wants to know how much floating ips
++have been created/associated because of 'floating ips' is one type of limited
++resources.
++
++The neutron API supports admin to get all tenants' floating ips now. But if we
++use neutron as network component, admin user(user has associated admin role)
++can not get all tenants' floating ips by Nova API, because nova adds the
++'project_id' as one filter when calling neutronclient to get floatingips.
++This is hard-coding.
++
++This blueprint try to relax the restriction of Nova API about listing
++floatingips.
++
++Proposed change
++===============
++
++* Add an "all_tenants" flag to Nova indexing action of os-floating-ips API.
++
++* Add policy rules and policy validation for all-tenants authority
++
++* Allow nova-network getting floatingips of all tennats, this needs refactor
++  the relevant methods and adds db query methods.
++
++* Add parameter that nova can get floatingips of all tenants and get
++  floatingips of current tenant by calling Neutronclient.
++
++* Novaclient supports "all_tenants" flag of "nova floating-ip-list" command.
++
++Alternatives
++------------
++
++None
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++The new 'floatingip-list' rest API in v2 have following choices:
++
++* The original API usage:
++  GET /v2/{tenant_id}/os-floating-ips
++
++* The new API usage support a filter "all_tenants" to get floatingips of all
++  tenants:
++  GET /v2/{tenant_id}/os-floating-ips？all_tenants={True in bool}
++  The new API response body format and response code is same as the original
++  API usage.
++
++Security impact
++---------------
++
++Admin user can get other tenants' floatingip info.
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++Allow user to specify "all-tenants" flag to get floatingips of all tenants,
++and this change is forward compatible.
++
++Performance Impact
++------------------
++
++None
++
++Other deployer impact
++---------------------
++
++None
++
++Developer impact
++----------------
++
++None
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++    liusheng<liusheng@huawei.com>
++
++Work Items
++----------
++
++* Add "all_tenants" parameter to API layer process of listing floatingip, and
++  the relevant policy rule validation.
++
++* Implement the listing floatingip API with "all_tenants" and without
++  "all_tenants" in nova-network.
++
++* Implement the process that Nova call neutronclient to list floatingips of
++  all tenants.
++
++* Implement Nova CLI supporting "--all-tenants" flag in
++  "nova floating-ip-list" command.
++
++* Add unit tests to test the new methods, and add integration tests to tempest
++  to test the functional API.
++
++* Update the API documentation about this new API.
++
++Dependencies
++============
++
++None
++
++Testing
++=======
++
++This code will be tested in unit tests for this function.
++
++The API will be tested by adding tempest.
++
++Documentation Impact
++====================
++
++The nova API documentation will be updated for the all-tenants flag of listing
++floatingip.
++
++References
++==========
++
++https://blueprints.launchpad.net/nova/+spec/get-floatingip-by-all-tenants
++http://lists.openstack.org/pipermail/openstack-dev/2014-June/037304.html
++http://lists.openstack.org/pipermail/openstack-dev/2014-June/037536.html
+-- 
+1.9.1
+

@@ -1,0 +1,281 @@
+From 4ba1986645b0e012206badc3b5d254c411e4cf89 Mon Sep 17 00:00:00 2001
+From: yangxurong <yangxurong@huawei.com>
+Date: Wed, 23 Apr 2014 17:11:52 +0800
+Subject: [PATCH] nova-specs for "add-delete-on-termination-option"
+
+Change-Id: I7d37b5382764d2dbeb5750422ef1fd8eaa8eb3ce
+Implements: blueprint add-delete-on-termination-option
+---
+ specs/juno/add-delete-on-termination-option.rst | 260 ++++++++++++++++++++++++
+ 1 file changed, 260 insertions(+)
+ create mode 100644 specs/juno/add-delete-on-termination-option.rst
+
+diff --git a/specs/juno/add-delete-on-termination-option.rst b/specs/juno/add-delete-on-termination-option.rst
+new file mode 100644
+index 0000000..151c214
+--- /dev/null
++++ b/specs/juno/add-delete-on-termination-option.rst
+@@ -0,0 +1,260 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++===========================================================================
++add delete_on_termination option for attaching volume to an existing server
++===========================================================================
++
++https://blueprints.launchpad.net/nova/+spec/add-delete-on-termination-option
++
++Add delete_on_termination option when attaching volume for an exist server.
++
++Problem description
++===================
++
++There is parameter known as delete_on_termination option for attaching volume
++when creating a new server, but no option when attaching a volume to an exist
++server. so the result will be different when deleting the server.
++
++Attach a volume when creating a new server, the API contains
++'block_device_mapping', such as:
++"block_device_mapping": [
++{"volume_id": "<VOLUME_ID>", "device_name": "/dev/vdc",
++"delete_on_termination": "true"}]
++
++There is no option 'delete_on_termination' when attaching a
++volume to an exsit server, the POST data likes:
++{"volumeAttachment":{"volumeId":"<VOLUME_ID>", "device":"/dev/sdb"}}
++
++Proposed change
++===============
++
++Add the same option 'delete_on_termination' when attaching a
++volume to an exsit server, the POST data likes:
++{"volumeAttachment":{"volumeId":"<VOLUME_ID>", "device":"/dev/sdb"
++"delete_on_termination": "true"}}
++
++
++Alternatives
++------------
++
++None.
++
++Data model impact
++-----------------
++
++None.
++
++REST API impact
++---------------
++
++API for attaching a volume to an exist instance:
++
++Scenarios:
++Case 1: If delete_on_termination is true, the volume will be delete when
++delete the instance.
++Case 2: If delete_on_termination is false, the volume will not be delete
++when delete the instance.
++(Default behavior)
++
++V2 API specification:
++POST: v3/{tenant_id}/servers/{server_id}/os-volume_attachments
++
++V3 API specification:
++POST: v3/servers/{server_id}/os-volume_attachments
++
++Request parameters:
++* server_id: The UUID for the server of interest to you.
++* volumeId: ID of the volume to attach.
++* device: Name of the device such as, /dev/vdb.
++* delete_on_termination(Optional): Whether to remove the volume when the
++server is terminated(default: False).
++* volumeAttachment: A dictionary representation of a volume attachment.
++
++  JSON request:
++             {
++              "volumeAttachment":
++                        {
++                         "volumeId": "a26887c6-c47b-4654-abb5-dfadf7d3f803",
++                         "device": "/dev/vdd",
++                         "delete_on_termination": True
++
++                        }
++
++             }
++
++ JSON response:
++            {
++             "volumeAttachment":
++                        {
++                         "device": "/dev/vdd",
++                         "id": "a26887c6-c47b-4654-abb5-dfadf7d3f803",
++                         "serverId": "0c92f3f6-c253-4c9b-bd43-e880a8d2eb0a",
++                         "volumeId": "a26887c6-c47b-4654-abb5-dfadf7d3f803",
++                         "delete_on_termination": True
++
++                        }
++
++            }
++
++ Sample v2 request:
++   POST: v2/{tenant_id}/servers/{server_id}/os-volume_attachments -d '{
++     "volumeAttachment": {
++                          "volumeId": "a26887c6-c47b-4654-abb5-dfadf7d3f803",
++                          "device": "/dev/vdd",
++                          "delete_on_termination": True
++
++                         }
++
++    }'
++
++ Sample v3 request:
++  POST: v3/servers/{server_id}/os-volume_attachments -d '{
++    "volumeAttachment": {
++                         "volumeId": "a26887c6-c47b-4654-abb5-dfadf7d3f803",
++                         "device": "/dev/vdd",
++                         "delete_on_termination": True
++
++                        }
++
++   }'
++
++ JSON schema definition::
++  attach = {
++            'type': 'object',
++             'properties':
++              {'attach':
++                {
++                 'type': 'object',
++                  'properties':
++                   {
++                    'volume_id': {'type': 'string', 'format': 'uuid'},
++
++                    'device': {
++                     'type': 'string',
++                     # NOTE: The validation pattern from match_device() in
++                     #       nova/block_device.py.
++
++                     'pattern': '(^/dev/x{0,1}[a-z]{0,1}d{0,1})([a-z]+)[0-9]*$'
++
++                              },
++
++                    'disk_bus':
++                     {
++                      'type': 'string'
++
++                     },
++
++                    'device_type':
++                     {
++                      'type': 'string',
++
++                     },
++
++                    'delete_on_termination':
++                     {
++                      'type': 'boolean',
++
++                     },
++
++                   },
++
++                 'required': ['volume_id'],
++                 'additionalProperties': False,
++
++                },
++
++              },
++
++            'required': ['attach'],
++            'additionalProperties': False,
++
++           }
++
++HTTP response codes:
++v2:
++Normal HTTP Response Code: 202 on success
++v3:
++Normal HTTP Response Code: 200 on success
++
++Validation:
++'delete_on_termination' must be boolean.
++
++Security impact
++---------------
++
++None.
++
++Notifications impact
++--------------------
++
++None.
++
++Other end user impact
++---------------------
++
++None.
++
++Performance Impact
++------------------
++
++None.
++
++Other deployer impact
++---------------------
++
++None.
++
++Developer impact
++----------------
++
++If developers attach a volume to an exist server.
++they must define 'delete_on_termination' option to determine
++whether or not delete the volume when deleting server.
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  idopra
++
++Work Items
++----------
++
++* add option 'delete_on_termination' when attaching a volume to an exsit
++
++* server.
++
++* users whether or not delete the volume based on 'delete_on_termination'
++
++* option.
++
++Dependencies
++============
++
++None.
++
++Testing
++=======
++
++Tempest tests to be added to ensure the various hypervisor drivers implement
++this feature.
++
++Documentation Impact
++====================
++
++Changes to be made to the attach volume API documentation to include the
++additional
++parameter 'delete_on_termination' that can be passed in.
++
++References
++==========
++
++None.
++
+-- 
+1.9.1
+

@@ -1,0 +1,172 @@
+From 254c2b56ce7bf2c28e6ae61a94c940e3c54afaa9 Mon Sep 17 00:00:00 2001
+From: Meghal Gosalia <meghal@yahoo-inc.com>
+Date: Wed, 18 Jun 2014 21:17:46 +0000
+Subject: [PATCH] Blueprint to enable tls mode for spice/vnc console
+
+In this blueprint, we aim to connect to spice/vnc console
+of the vm using SSL wrapped socket, if enabled in the configuration.
+
+Part of blueprint console-tls-mode
+
+Change-Id: Ia44a9814f27bbed8af5e229e896cc6b315ca012d
+---
+ specs/juno/console-tls-mode.rst | 147 ++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 147 insertions(+)
+ create mode 100644 specs/juno/console-tls-mode.rst
+
+diff --git a/specs/juno/console-tls-mode.rst b/specs/juno/console-tls-mode.rst
+new file mode 100644
+index 0000000..9006646
+--- /dev/null
++++ b/specs/juno/console-tls-mode.rst
+@@ -0,0 +1,147 @@
++..
++     This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++===============================================
++Enable tls mode for console access in openstack
++===============================================
++
++https://blueprints.launchpad.net/nova/+spec/console-tls-mode
++
++In this blueprint, we aim to connect to spice/vnc console
++of the vm using SSL wrapped socket, if enabled in the configuration.
++
++Problem description
++===================
++
++Both spice and vnc have tls mode configuration available in qemu.conf.
++If it is turned on, additional tls port is opened up for spice/vnc which
++accepts SSL connection.
++
++Currently openstack provides a way to connect to the spice/vnc console of vm
++using nova-spicehtml5proxy or nova-novncproxy.
++
++These proxies connect to the console using non-SSL socket.
++
++There should be a configuration option provided in nova.conf
++called console_tls_mode. If it is turned on,
++then the proxy will attempt to connect to the spice/vnc tls port using SSL.
++
++This will help provide authentication
++and encrypt all connections from proxy to the console.
++
++Proposed change
++===============
++
++ * Introduce console_tls_mode parameter in nova.conf.
++ * Today, when users request spice/vnc console url,
++   nova-consoleauth stores mapping of token -> console info
++   which includes port at which spice/vnc server is listening.
++   Change: normal port or tlsPort will be stored in the mapping
++   based on what console_tls_mode is configured in nova.conf.
++ * Currently, when users connect to the console url via novncproxy
++   or nova-spicehtml5proxy, nova-consoleauth will validate console port of vm,
++   which user is trying to connect by calling validate_console_port rpcapi.
++   It calls validate_console_port in nova compute manager.
++   Change: nova compute manager will validate normal port or tlsPort
++   based on what console_tls_mode is set in the configuration.
++ * Currently, nova websocketproxy uses non-SSL socket
++   to connect to spice/vnc server.
++   Change: nova websocketproxy will use SSL wrapped socket
++   to connect to spice/vnc server based on what console_tls_mode is configured.
++
++Alternatives
++------------
++
++None
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++None
++
++Security impact
++---------------
++
++* Mapping corresponding to the token stored in consoleauth
++  will contain tlsPort or normal port based on what
++  console_tls_mode is configured.
++* If console_tls_mode is configured, nova websocket proxy will connect
++  to spice/vnc server using ssl wrapped socket.
++  This will provide authentication and encrypted communication
++  between proxy and compute node.
++
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++None
++
++Performance Impact
++------------------
++
++None
++
++Other deployer impact
++---------------------
++
++* If console_tls_mode is configured, deployer will have to ensure
++  ssl certificates are mentioned in compute driver config file.
++* Also, ensure that tls mode is turned on
++  so that spice/vnc server listens on secure tls port.
++
++
++Developer impact
++----------------
++
++None
++
++Implementation
++==============
++
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  meghal
++
++Other contributors:
++  None
++
++Work Items
++----------
++
++Defined above in Proposed Change section.
++
++Dependencies
++============
++
++None
++
++Testing
++=======
++
++Existing tempest tests will have to be enhanced.
++
++Documentation Impact
++====================
++
++New console_tls_mode will have to be documented.
++
++References
++==========
++
++None
+-- 
+1.9.1
+

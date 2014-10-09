@@ -1,0 +1,175 @@
+From 419fb25c518f9b6c75d5511b1ab8a7fdea3e018a Mon Sep 17 00:00:00 2001
+From: Sungju Kwon <sungju.kwon@gmail.com>
+Date: Wed, 4 Jun 2014 05:14:31 -0700
+Subject: [PATCH] Fix vcpus output in 'nova hypervisor-stats'
+
+Currently, 'vcpus' field in 'nova hypervisor-stats' and vcpus
+in horizon shows physical CPU number instead of vCPUs available
+in the system that should do reflect 'cpu_allocation_ratio'.
+$ grep "cpu_allocation_ratio" /etc/nova/nova.conf
+cpu_allocation_ratio=16.0
+$ cat /proc/cpuinfo | grep processor |wc -l
+8
+$ nova hypervisor-stats | grep "vcpus "
+| vcpus                | 8     |
+It shows 8 for vcpus even though cpu_allocation_ratio is 16.0.
+With this patches, nova client can get the right value that should
+be '128' in the above case.
+
+Change-Id: I75258ad5e843bc6febeacfaf43a17e253438bc60
+---
+ specs/juno/vcpus-in-api.rst | 142 ++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 142 insertions(+)
+ create mode 100644 specs/juno/vcpus-in-api.rst
+
+diff --git a/specs/juno/vcpus-in-api.rst b/specs/juno/vcpus-in-api.rst
+new file mode 100644
+index 0000000..0f984c0
+--- /dev/null
++++ b/specs/juno/vcpus-in-api.rst
+@@ -0,0 +1,142 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++=======================================================
++correction vcpus in 'nova hypervisor-stats' and horizon
++=======================================================
++
++https://blueprints.launchpad.net/nova/+spec/vcpus-in-api
++
++vcpus returned from API should be reflect total vCPUs
++provided from hypervisor, but it returns number of physical
++CPUs that confuses users.
++
++Problem description
++===================
++
++Currently, 'vcpus' field in 'nova hypervisor-stats' and vcpus
++in horizon shows physical CPU number instead of vCPUs available
++in the system that should do reflect 'cpu_allocation_ratio'.
++
++$ grep "cpu_allocation_ratio" /etc/nova/nova.conf
++cpu_allocation_ratio=16.0
++
++$ cat /proc/cpuinfo | grep processor | wc -l
++8
++
++$ nova hypervisor-stats | grep "vcpus "
++| vcpus | 8 |
++
++It shows 8 for vcpus even though cpu_allocation_ratio is 16.0.
++It should be 128 in above case.
++
++It causes of confusion to the user who especially wants to know
++how many vCPUs available to use.  In Horizon, the graph becomes
++weird when vcpus_used becomes bigger than vcpus as vcpus returns
++physical CPU numbers, not physical cpu # * cpu_allocation_ratio.
++
++Proposed change
++===============
++
++We should correct API implementation to make it return vcpus
++based on the below calculation.
++
++(physical CPU number) X (cpu_allocation_ratio in the current filter)
++
++If there's no CoreFilter such as CoreFilter or AggregateCoreFilter,
++it will return the same number as physical CPU number.
++
++Alternatives
++------------
++
++None.
++
++Data model impact
++-----------------
++
++None.
++
++REST API impact
++---------------
++
++None.
++
++Security impact
++---------------
++
++None.
++
++Notifications impact
++--------------------
++
++None.
++
++Other end user impact
++---------------------
++
++'nova hypervisor-stats' will return different value for 'vcpus' based
++on 'cpu_allocation_ratio' in the filter in hypervisor.
++
++If there's any custom script customer is using based on above, that will
++impact in the number, but as there's no way to get 'cpu_allocation_ratio'
++via REST API, custom script wouldn't get higher value than actually
++available vCPUs.
++
++Performance Impact
++------------------
++
++Minimal as only traverse filter list to get cpu_allocation_ratio
++
++Other deployer impact
++---------------------
++
++None.
++
++Developer impact
++----------------
++
++None.
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  <sungju-kwon>
++
++Other contributors:
++  <None>
++
++Work Items
++----------
++
++
++Dependencies
++============
++
++None.
++
++Testing
++=======
++
++Unit test should reflect vcpus, not physical cpus which is proposed
++in patch in references session.
++
++
++Documentation Impact
++====================
++
++None as detailed output is not described in doc for 'nova hypervisor-stats'.
++
++References
++==========
++
++* Patch : https://review.openstack.org/#/c/93168/
++* Bug 1: https://bugs.launchpad.net/nova/+bug/1202965
++* Bug 2: https://bugs.launchpad.net/nova/+bug/1326147
+-- 
+1.9.1
+

@@ -1,0 +1,170 @@
+From 2055d0702b09df6070cd7d8f94af071d9120e8e6 Mon Sep 17 00:00:00 2001
+From: melanie witt <melwitt@yahoo-inc.com>
+Date: Thu, 26 Jun 2014 01:08:19 +0000
+Subject: [PATCH] Propose associate least recently used fixed IP address
+
+This blueprint would associate the least recently used fixed IP address
+instead of the first available one.
+
+Related to blueprint associate-lru-fixed-ip-address
+
+Change-Id: Id7ff0e0c2a2d83178f448e12c399d01a5e9b2716
+---
+ specs/juno/associate-lru-fixed-ip-address.rst | 145 ++++++++++++++++++++++++++
+ 1 file changed, 145 insertions(+)
+ create mode 100644 specs/juno/associate-lru-fixed-ip-address.rst
+
+diff --git a/specs/juno/associate-lru-fixed-ip-address.rst b/specs/juno/associate-lru-fixed-ip-address.rst
+new file mode 100644
+index 0000000..938dc91
+--- /dev/null
++++ b/specs/juno/associate-lru-fixed-ip-address.rst
+@@ -0,0 +1,145 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++==============================================
++Associate least recently used fixed IP address
++==============================================
++
++https://blueprints.launchpad.net/nova/+spec/associate-lru-fixed-ip-address
++
++In this blueprint, we propose to enhance the fixed IP associate DB API
++functions by having them return the least recently used IP address instead
++of the lowest address, which is likely the most recently used address.
++
++Problem description
++===================
++
++End users creating servers have an optimal experience when they can get
++their applications serving in the cloud as immediately as possible. This
++includes networking infrastructure having routes already populated and
++services such as DNS resolving as expected, right away.
++
++Problems can arise if an end user receives a fixed IP address that was
++very recently released by a different user, which is likely in a busy
++and dynamic cloud environment that assigns IP addresses on a first-available
++basis. The IP address associated with the new user's server may have had
++reverse DNS set to point elsewhere or the old user may have had a custom
++hostname configured, requiring DNS to be updated before the new server
++can serve traffic. The problem can be made less likely if IP addresses
++were to be associated on a least recently used basis, instead.
++
++Proposed change
++===============
++
++We propose a change to the fixed_ip_associate, fixed_ip_associate_pool, and
++floating_ip_fixed_ip_associate functions to add a call e.g.::
++
++  fixed_ip_ref = model_query(context, models.FixedIp, session=session,
++                             read_deleted="no").\
++                             filter(network_or_none).\
++                             filter_by(reserved=False).\
++                             filter_by(instance_uuid=None).\
++                             filter_by(host=None).\
++ +                           order_by('updated_at').\
++                             with_lockmode('update').\
++                             first()
++
++order_by('updated_at') to pick the least recently used fixed IP address and
++return it, instead of the first available, in nova/db/sqlalchemy/api.py
++
++Alternatives
++------------
++
++Another approach would be a configurable policy for associating fixed IP
++addresses with policies like 'least recently used' and 'first available.'
++This would be a more significant change and involves adding yet another
++configuration flag. It is hoped that the least recently used policy is
++an overall improvement for users creating servers.
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++None
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++None
++
++Performance Impact
++------------------
++
++Calls of the fixed_ip_associate, fixed_ip_associate_pool, and
++floating_ip_fixed_ip_associate functions will be more costly as the filtered
++rows will be ordered by 'updated_at' before returning the first item.
++
++Other deployer impact
++---------------------
++
++None
++
++Developer impact
++----------------
++
++None
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  melwitt
++
++Other contributors:
++  None
++
++Work Items
++----------
++
++ * Add an order_by('updated_at') call to the query of the FixedIp model, right
++   before the with_lockmode('update') call, in the fixed_ip_associate,
++   fixed_ip_associate_pool, and floating_ip_fixed_ip_associate functions in
++   nova/db/sqlalchemy/api.py
++
++Dependencies
++============
++
++None
++
++Testing
++=======
++
++This change can be tested by adding unit tests to nova/tests/db/test_db_api.py
++which verify that the fixed_ip_associate, fixed_ip_associate_pool, and
++floating_ip_fixed_ip_associate functions return the least recently used/updated
++IP address in the fake DB.
++
++Documentation Impact
++====================
++
++None
++
++References
++==========
++
++None
+-- 
+1.9.1
+

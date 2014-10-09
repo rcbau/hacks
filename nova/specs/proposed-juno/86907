@@ -1,0 +1,178 @@
+From 1b919ec1c6493833282a6cf5cb7eab3f3cbc41f7 Mon Sep 17 00:00:00 2001
+From: Tiago Mello <tmello@linux.vnet.ibm.com>
+Date: Fri, 11 Apr 2014 10:56:17 -0300
+Subject: [PATCH] Continue moving cold migrations to conductor
+
+There are pending changes that need to be made to
+move all code from cold migrations to conductor.
+
+bp cold-migrations-to-conductor-final
+
+Change-Id: I65c956e72a44e7cb118769af16ba166529e4c761
+---
+ specs/juno/cold-migrations-to-conductor-final.rst | 153 ++++++++++++++++++++++
+ 1 file changed, 153 insertions(+)
+ create mode 100644 specs/juno/cold-migrations-to-conductor-final.rst
+
+diff --git a/specs/juno/cold-migrations-to-conductor-final.rst b/specs/juno/cold-migrations-to-conductor-final.rst
+new file mode 100644
+index 0000000..37979a8
+--- /dev/null
++++ b/specs/juno/cold-migrations-to-conductor-final.rst
+@@ -0,0 +1,153 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++=====================================================
++Conductor: finish moving cold migrations to conductor
++=====================================================
++
++https://blueprints.launchpad.net/nova/+spec/cold-migrations-to-conductor-final
++
++Continue the pending work and move all remaining resize/migrate functions
++to conductor.
++
++Problem description
++===================
++
++Today, there is a minimal coordination for cold migrations outside of the
++compute nodes. The migration/resize operation starts in the source
++compute host and it ends up in the target compute host.
++
++The consensus is that the coordination of the migrations should be moved to
++conductor, where we can eventually elimitate the migration state living
++on the compute nodes and the implicit trust between compute nodes required
++to pull off a migration.
++
++In order to do that, we still need to move all remaining resize/migrate
++functions out of compute manager to conductor.
++
++The change should allow all migrations related functions to co-exist and
++share code as much as possible.
++
++The current Resize/Migrate workflow is -
++
++- compute.api.resize
++- conductor.ComputeTaskAPI.resize_instance
++- conductor.rpcapi.ComputeTaskAPI.migrate_server
++- conductor.manager.migrate_server
++- conductor.manager._cold_migrate
++  (calls scheduler for destinations, deals with quota reservations)
++- compute.rpcapi.prep_resize
++- compute.manager.prep_resize (creates migration object)
++- compute.rpcapi.resize_instance (call for the same host)
++- compute.manager.resize_instance
++- compute.rpcapi.finish_resize (call for destination compute host)
++
++Proposed change
++===============
++
++This is a continuation of the previous blueprint implemented in icehouse-3.
++
++The follow workflow is expected after the change -
++
++- compute.api.resize
++- conductor.ComputeTaskAPI.resize_instance
++- conductor.rpcapi.ComputeTaskAPI.migrate_server
++- conductor.manager.migrate_server
++- conductor.manager._cold_migrate
++  (calls scheduler for destinations, deals with quota reservations)
++
++The conductor.manager._cold_migrate method would deal with preparation for
++resize/migrate as compute.manager.prep_resize does nowadays.
++
++The calls for resize_instance, finish_resize and confirm_resize
++would be made by the conductor method. Removing the implicit trust
++between compute nodes and putting all the control under the conductor
++service.
++
++Alternatives
++------------
++
++None.
++
++Data model impact
++-----------------
++
++None.
++
++REST API impact
++---------------
++
++None.
++
++Security impact
++---------------
++
++None.
++
++Notifications impact
++--------------------
++
++None.
++
++Other end user impact
++---------------------
++
++None.
++
++Performance Impact
++------------------
++
++None.
++
++Other deployer impact
++---------------------
++
++None.
++
++Developer impact
++----------------
++
++None.
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  timello
++
++Work Items
++----------
++
++None.
++
++Dependencies
++============
++
++None.
++
++Testing
++=======
++
++None.
++
++Documentation Impact
++====================
++
++None.
++
++References
++==========
++
++ * Initial blueprint for the change -
++   https://blueprints.launchpad.net/nova/+spec/cold-migrations-to-conductor
++ * Mailing list discussions -
++   http://lists.openstack.org/pipermail/openstack-dev/2013-April/007997.html
++   http://lists.openstack.org/pipermail/openstack-dev/2013-April/008213.html
++ * Russell's blog post -
++   http://blog.russellbryant.net/2013/05/13/openstack-compute-nova-roadmap-for-havana/
+-- 
+1.9.1
+

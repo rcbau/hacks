@@ -1,0 +1,179 @@
+From 75ce0012edf24610862f2111e96a2dc6fd5d4190 Mon Sep 17 00:00:00 2001
+From: Edward Hope-Morley <edward.hope-morley@canonical.com>
+Date: Fri, 11 Jul 2014 11:12:53 +0100
+Subject: [PATCH] Add support for cinder scheduler hints
+
+When booting an instance with nova boot --block-device i.e.
+asking Nova to auto-create storage for a new instance, there
+is currently no way for Nova to hint to the Cinder scheduler
+how it should go about creating/placing this volumes. This
+specification proposes adding support for storing cinder
+extra_specs in Nova flavors and passing them to Cinder when
+volumes are created.
+
+Change-Id: If79cdcdc31b570e2d1e16c5ed014242c961417b8
+---
+ .../add-support-for-cinder-scheduler-hints.rst     | 151 +++++++++++++++++++++
+ 1 file changed, 151 insertions(+)
+ create mode 100644 specs/juno/add-support-for-cinder-scheduler-hints.rst
+
+diff --git a/specs/juno/add-support-for-cinder-scheduler-hints.rst b/specs/juno/add-support-for-cinder-scheduler-hints.rst
+new file mode 100644
+index 0000000..1bbefd6
+--- /dev/null
++++ b/specs/juno/add-support-for-cinder-scheduler-hints.rst
+@@ -0,0 +1,151 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++======================================================================
++Add support for providing cinder scheduler hints when creating volumes
++======================================================================
++
++https://blueprints.launchpad.net/nova/+spec/add-support-for-cinder-scheduler-hints
++
++When booting an instance with nova boot --block-device i.e. asking Nova to
++auto-create storage for a new instance, there is currently no way for Nova to
++hint to the Cinder scheduler how it should go about creating/placing this
++volumes. This specification proposes adding support for storing cinder
++extra_specs in Nova flavors and passing them to Cinder when volumes are
++created.
++
++
++Problem description
++===================
++
++Cinder supports volume placement based on type, capacity etc using the Cinder
++scheduler but Nova does not support passing any such information to Cinder when
++auto-creating volumes to be attached to a new instance.
++
++The cinderclient supports passing scheduler hints when using the v2 API. By
++adding hints to Nova flavors we can control where Cinder creates storage,
++whether that be physical location, type or indeed any other filter Cinder
++supports.
++
++
++Proposed change
++===============
++
++The proposed change is envisaged to be reasonably simple. It does, however,
++depend on support in Nova for the Cinder V2 API which is being added as part of
++https://review.openstack.org/43986. Once this lands, the solution proposed here
++would allow Nova to do the following:
++
++* Store Cinder scheduler hints in Nova flavors
++
++* On creation of new instance that requires volumes to be created, pass those
++  hints to Cinder (if v2 API is available/enabled)
++
++Alternatives
++------------
++
++There are no current alternatives supported in Nova at this time since no such
++volume info is passed to cinder when creating volumes.
++
++Data model impact
++-----------------
++
++No change to the current data model will be required since we will be using the
++existing extra_specs container.
++
++REST API impact
++---------------
++
++None.
++
++Security impact
++---------------
++
++None.
++
++Notifications impact
++--------------------
++
++None.
++
++Other end user impact
++---------------------
++
++None.
++
++Performance Impact
++------------------
++
++None.
++
++Other deployer impact
++---------------------
++
++* No change to Nova deployment will be required. For this to work, Cinder v2
++  API must be available and Cinder must support the scheduler hints provided to
++  it.
++
++* If the v2 API is not available/enabled and cinder scheduler hints have been
++  set in a flavor used to boot an instance, an error will be raised.
++
++
++Developer impact
++----------------
++
++None.
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  hopem
++
++Other contributors:
++  None.
++
++Work Items
++----------
++
++* Should be possible to do all this in one patchset.
++
++
++Dependencies
++============
++
++* This change will depend on the Cinder V2 api in order to have any affect as
++  support for passing hints is a cinderclient v2 API operation.
++
++* Requires https://blueprints.launchpad.net/nova/+spec/support-cinderclient-v2
++
++
++Testing
++=======
++
++The primary test case here would be as follows:
++
++1. Configure cinder with > 1 storage backend and volume type.
++2. Create nova flavor with extra-spec container cinder scheduler hint.
++3. Nova boot with --block-device-mapping and --flavor from (2).
++4. Check that instance booted correctly and that auto-created vols are as
++   expected.
++
++
++Documentation Impact
++====================
++
++Nova flavor documentation should be updated to reflect this new support for
++cinder scheduler hints in extra_specs.
++
++
++References
++==========
++
++[1] https://blueprints.launchpad.net/cinder/+spec/scheduler-hints
++[2] https://blueprints.launchpad.net/nova/+spec/support-cinderclient-v2
+-- 
+1.9.1
+

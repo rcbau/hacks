@@ -1,0 +1,765 @@
+From 6613849d337d34716daa1cdd48e230421954e628 Mon Sep 17 00:00:00 2001
+From: John Garbutt <john.garbutt@rackspace.com>
+Date: Tue, 24 Jun 2014 13:39:48 +0100
+Subject: [PATCH] WIP: Microversions for the REST API
+
+A super super rough specification of microversion proposal
+
+Please feel free to upload patch updates yourself if you are an
+advocate of one of the proposals.
+
+Change-Id: I4f645d2406a6ac76a72944f2c6fb398266ded2dc
+---
+ specs/juno/api-microversions.rst | 740 +++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 740 insertions(+)
+ create mode 100644 specs/juno/api-microversions.rst
+
+diff --git a/specs/juno/api-microversions.rst b/specs/juno/api-microversions.rst
+new file mode 100644
+index 0000000..028574f
+--- /dev/null
++++ b/specs/juno/api-microversions.rst
+@@ -0,0 +1,740 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++==========================================
++API Microversions
++==========================================
++
++Include the URL of your launchpad blueprint:
++
++https://blueprints.launchpad.net/nova/+spec/api-microversions
++
++Over the long term we need a way to be able to introduce changes to
++the REST API to both fix bugs and add new features, in a more
++controlled and efficient way.
++
++Some of these may be backwards incompatible. But this needs to be
++done in a way which both deployers and users of the REST API are able
++to reasonably manage the changes which will occur.
++
++At the same time, we really would like a way to introduce new APIs
++as "experimental", have no backwards compatibility guarantees until
++we are happy the API is stable and well tested. Note, a client will
++have to explicitly request the "experimental" version.
++
++Problem description
++===================
++
++Over time we need to be able to make changes to the Nova REST API some
++of which are backwards compatible and others which are backwards
++incompatible. We need a way to simultaneously support cloud operators
++and users of the REST API who want the old behaviour as well as those
++who want the newer behaviour, sometimes in the same deployment.
++
++A simple backwards compatible change may be the addition of an extra
++parameter in a response to a query. In a more complicated change a
++change may be wanted such that a request parameter is no longer valid
++or the meaning of what the parameter being specified changes.
++
++In both of these examples we would like to have a mechanism where the
++user of the API is able to specify how they would like the REST API to
++behave. There also needs to be a default behaviour if no explicit
++request is made by the API caller.
++
++
++What does the version mean?
++---------------------------
++
++So each API version is one of:
++
++* stable: will be available forever
++
++* experimental: may be removed, at any time, and might be changed
++  in a backwards compatible way, as any time
++
++In addition, each API version is also one of:
++
++* backwards compatible with existing clients of previous stable versions.
++  Changes that are backwards compatible include the addition or return values,
++  or extra parameters could be added, and error return codes may have changed.
++
++* not backwards compatible with existing clients, so return values
++  may have been removed, or renamed, success return codes may have
++  changed, and the semantics of the return values may have changed.
++
++What the client needs
++---------------------
++
++From the API user perspective, it needs to:
++
++* know if the feature it needs is available, i.e. needs to know the
++  specific version of an extension
++
++* ensure it gets the data it is looking for, in the format it expects.
++  We can assume json clients don't mind if they get extra data
++
++So the client will request the version major version it wants, so it
++get the data in a compatible form. But it can query the specific
++extension to find if that is value. Basically it request the "latest"
++version, but the "latest" in a stream of backwards compatible versions.
++
++Older clients, will continue to request the API in the same way they
++have always done, so they will always get the "original" format of
++the API.
++
++Note: we could make clients request a specific version of the API
++extension. Howerver, if the changes are backwards compatible, the
++client shouldn't break if given the latest version in the same
++compatible services of versions. This also simplifies the server
++side filters of API versions.
++
++What the server needs
++---------------------
++
++The server needs to know what format to output, so:
++
++* if no version is requested, we default to the old format
++* if a version is requested, that format is supported
++
++The client will request the version using Accepts headers,
++but this is covered in more detail in the proposed changes section.
++
++What developers need
++--------------------
++
++Currently, updating an existing extension to return extra values is extremely
++heavy weight for developers, and doesn't really help clients very much.
++
++When we add a new value into the stable API, that value must stay there
++forever. Similarly, adding a new stable API extension, we probably have
++to maintain that forever.
++
++Given people deploy from trunk, we effectively have to maintain a compatible
++API from each commit to the next. This really slows down the review of API
++changes, because it is so expensive when we get it wrong.
++
++This spec proposes that we add APIs in a very explicitly "experimental" form.
++The main aim is to allow us to evolve new APIs within the nova tree.
++
++The idea with the experimental version is that it could be removed,
++rather than becoming stable in a future release. The idea being that we can
++try out things, and get them tested, before we make it stable.
++
++Out of tree API extensions
++--------------------------
++
++Officially, we provide zero support for out of tree extensions.
++
++However, we want interoperability between all OpenStack clouds, so we
++should have a way for vendors to iterate quickly, and be able to upstream
++their changes.
++
++To do this, lets have vendor out of tree extensions be presented as
++experimental APIs, that may be altered when they are upstreamed,
++and are not guaranteed to be stable until they are upstreamed.
++
++
++Proposed change
++===============
++
++There are two main proposals for micro visioning:
++
++* version the whole API as one
++
++* version every API extension individually
++
++This proposal is a third way, where we have both a global version,
++and a per extension version. This works in a similar to how we version
++our RPC interfaces.
++
++The global version helps us:
++
++* encourage a level of consistency between all the API extensions
++
++* allow clients can request a simple single version that represents the
++  latest version of all plugins, at the point of that client being
++  written
++
++But also having a version for each extension means:
++
++* client writers can tell which extensions have actually changed
++
++
++What does the version number mean?
++----------------------------------
++
++The global version will be of the form: "X.Y.Z" or "X.Y" (where Z=0)
++and X Y Z are all integers, except Z can also be "beta"
++
++* Z changes for bug fixes, on stable branches
++
++* Y changes for any backwards compatible changes to the API
++
++* X changes for any backwards incompatible changes to the API
++
++* if Z = "beta" then it is an experimental version
++
++Any time any extensions changes, the global number increments, and the
++changed extension uses that new version as its version number.
++
++Now each extension has the following properties:
++
++* supported_versions (full list of all versions, in order,
++  including experimental version, if any)
++* introduced
++* last_changed
++* deprecated (?)
++
++Globally we have the following properties:
++
++* latest stable versions (i.e. v2 latest and v3 latest, once its stable)
++
++How do you request a specific version
++-------------------------------------
++
++If just want the latest stable version, then you can request:::
++
++  Accept: application/vnd.openstack-org.compute-v2+json
++
++In the server response you get the latest version where X=2 for the
++specific extension you are talking to, for example:::
++
++  Content-Type: application/vnd.openstack-org.compute-v2.24+json
++
++To make backports work, if the client requests a specific stable version:::
++
++  Accept: application/vnd.openstack-org.compute-v2.123+json
++
++You might get that version with a bug fix, say v2.123.2, but it
++should still just report:::
++
++  Content-Type: application/vnd.openstack-org.compute-v2.123+json
++
++If you request a stable version, and our extensions does have that version
++you just get the stable version that was before the requested version. So
++it is matching on 2.A where A > 123. So you request this:::
++
++  Accept: application/vnd.openstack-org.compute-v2.123+json
++
++And you might get this version returned:::
++
++  Content-Type: application/vnd.openstack-org.compute-v2.22+json
++
++But you must always request experimental versions directly:::
++
++  Accept: application/vnd.openstack-org.compute-v2.123.beta+json
++
++If an extension doesn't implement that exact version, it responses with
++the error 406 (Not Acceptable).
++
++If the client doesn't send an Accept header, then we return the default
++version, which is basically the version that would have been returned
++before we introduced this versioning.
++
++Versioning Examples
++-------------------
++
++To make this clearer, I will talk through some use examples...
++
++Old v2 clients
++**************
++
++Older clients will not request a version, so they will always get back v2.0
++which is currently the v2 API.
++
++To cover the general case, we report the "default" version.
++
++Introducing what used to be v2.1
++********************************
++
++In Juno we want v2.1 to be experimental. So by default clients get routed
++to the old v2 implementation, which its old visioning rules.
++
++In the mean time, all versions of the API will be experimental, and as such
++that means the client will have to always explicitly request the version
++it is testing, such as:::
++
++  Accept: application/vnd.openstack-org.compute-v2.123.beta+json
++
++Note that the beta version must be backwards compatible with the last stable
++version of that major version, so in this case 2.0.0. But any following stable
++version only need by compatible with the last stable version, it can ignore
++any previous stable versions.
++
++The v2.1 changes will introduce some better sanity checking, so its possible
++it breaks "badly behaved" clients, but should not break any "well behaved"
++client. The plan is to release this v2.1 with Juno, so people can test this
++and ensure client will continue to work after all the extra versions have
++been added.
++
++To help this effort, there will be an special header to request the latest
++version of what we previously called "v2.1":::
++
++  Accept: application/vnd.openstack-org.compute-v2.beta+json
++
++This should itself be considered experimental, as it will be removed when v2
++becomes a stable API. It would then return the actual version in the
++usual way:::
++
++  Content-Type: application/vnd.openstack-org.compute-v2.123.beta+json
++
++When we want v2.1 to be come the default, the default version will be updated
++to be the last beta of v2.
++
++From that point, clients with no version specified will get that version.
++And the server will update its "default_version" flag from 2.0.0 to the
++chosen version.
++
++Changes to the default version
++******************************
++
++For bugs and additions to v2, we handle them as normal, until v2.1 becomes
++the new default. Except to say, and change to v2 should also be made in
++v2.1 and ideally tested in both APIs.
++
++Once v2.1 is the default version, should there turn out to be a bug in that
++version, we will use the Z number to hotfix the default version,
++as if we were backporting a fix in a stable branch, and update the default
++version the server reports.
++
++Note this means, if we backport a fix to a stable branch, we must backport
++all the fixes to that extension.
++
++Introducing what used to be v3
++********************************
++
++v3 is a backwards incompatible change, that could be made available as an
++experimental API.
++
++This should be treated like v2.1, except the client requests:::
++
++  Accept: application/vnd.openstack-org.compute-v3.beta+json
++
++Again, this alias to the latest beta will be removed once v3 is stable.
++
++The version returned to clients from the server would be something like:::
++
++  Content-Type: application/vnd.openstack-org.compute-v3.123.beta+json
++
++Once we have a stable version, it should be requested by:::
++
++  Accept: application/vnd.openstack-org.compute-v3+json
++
++What happens to v2 after we have v3?
++************************************
++
++While this is not a property that is required by the above versioning
++scheme. One it makes sense for a client to request the v3 API and do
++everything they need to do, we should stop adding features in the v2
++API.
++
++Without this, we start to get parallel streams of development, and
++clients would have to choose between what was available in v2 vs v3.
++
++Note, we are planning to have parallel streams of development on the
++beta version of v3, as it has proved impossible to develop the next
++version of the API in one "big bang".
++
++It is very possible that we choose not ever release the version that is
++currently called v3, and keep only v2.x, but that is a valid step forward
++with this proposed version scheme. We could create a future versions of v3
++that proposes a radically different API, and that is fine within this
++proposed scheme.
++
++Introducing a new extension
++***************************
++
++As with any API change, you bump the global number, and use that number
++as the first version of that API.
++
++Should the first version be 2.5, if a client requested 2.4, the server
++should reposed with 406 Not Acceptable. But if you request the latest
++stable version of v2, it would respond with the latest version of that
++plugin.
++
++Checking the servers latest version would tell you if the new extension
++is happening.
++
++Modifying an exiting extension
++******************************
++
++If it is just a bug fix, and has no client impact (no extra values,
++and no extra features), simply change 2.4 to 2.4.1 on the specific
++extension.
++
++Any backwards compatible modification, you bump 2.4 to 2.5 and use that
++version to start activating that modification.
++
++If the client requests an older version, you should work as you did
++before.
++
++Modifying an exiting experimental version
++*****************************************
++
++If a client requests a specific experimental version, it should never
++change, just like any specific stable version that is requested.
++
++However, we could delete that version at any time during a release
++cycle, without warning.
++
++In addition, any experimental version need only be backwards compatible
++with the previous stable version, you don't need to be backwards
++compatible with any previous experimental versions.
++
++So, consider the extension with a version 1.2, we then need
++1.3.beta, global version is 1.3. That might add a new attribute
++"colour".
++
++Then version 1.4.beta might add "color" instead, and we remove
++version 1.3.beta from the code. As it is in beta, there is no
++need for a deprecation cycle. The client has to expect it may
++get deleted at any time, and is only there for testing.
++
++Then we need to add "transparency" field. Now we create a version
++1.4.beta that adds in "transparency", but its best to make that
++change on top of 1.4.beta, so it adds both transparency and "color"
++to the previous stable.
++
++Once we have tested the new value in tempest, etc, we can decide
++when to turn that into a table release. We do that by adding a new
++global version, say 1.14, and we delete the 1.3.beta version.
++
++Note we cannot just make 1.4.beta into 1.4, because that would
++change the result of request the API version 1.5 from that extension
++which would have returned the 1.2 version before the API came out
++of beta.
++
++However we now have 1.4.beta, but we might decide we didn't need that
++after all, so we remove it, or we could promote it later.
++
++TODO - this breaks down should we have dropped color and kept transparency
++If we kept them independent, so transparency only add transparency and does
++not add color, then they race each other to graduate as a stable API.
++
++Possible fix - we only ever allow a single beta version per extension,
++so if you make changes, you always delete the old one, and create a new
++merged proposal. This will hurt the testing a little, but could work.
++
++Deprecating an exiting extension
++********************************
++
++Should we want to remove an extension we can deprecate it.
++
++When deprecated, we increment the global version, such that:
++
++* clients requesting the latest stable get 406 Not Accepted Errors
++* but a client could still request the specific version if they want it
++
++Say the global version was 2.14, we bump to 2.15. And if the client
++whats the now deprecated API, it has to request it like this:::
++
++  Accept: application/vnd.openstack-org.compute-v2.15.deprecated+json
++
++TODO - does this even make sense? its basically a backwards incompatible
++change.
++
++Backporting an API fix
++**********************
++
++When we backport the fix, we bump the revision number of the extension.
++So 2.4.0 becomes 2.4.1. As normal, the fix is first applied to trunk,
++then back ported into the stable branch.
++
++Should the stable branch only contain 2.3.0, and we want to backport 2.4.3
++to a branch, we will have to backport all the versions up to and including
++2.4.3. Such that if you request that version the API is always the same.
++
++However, in trunk, we can add 2.4.3, even if the current version is 2.8.0
++
++
++Vendor specific extension
++*************************
++
++This follows the same rules as "beta" extensions, except beta is replace
++by "vnd-XXX" where XXX the company name, so examples could be:
++"vhd-hp-public-cloud" or "vnd-rax"
++
++The key thing to note is this version is considered experimental, just like
++beta version. The only reason for the different version key is to ensure
++trunk would not release a version that matches what the vendor has produced.
++
++Just as with experimental versions, it should be backwards compatible with
++any previous major versions of the extension.
++
++
++How the API server advertises the versions
++------------------------------------------
++
++Request the root URL of the and you get something like this:::
++
++    TODO - json home doc goes here to describe request/response/query
++    parms for each available version
++
++    http://tools.ietf.org/html/draft-nottingham-json-home-03
++
++Request "/versions" and you get a description of the global versions:::
++
++    {
++        "default_version": "application/vnd.openstack-org.compute-v2+json",
++        "versions": {
++          "application/vnd.openstack-org.compute-v2+json": "2.0",
++          "application/vnd.openstack-org.compute-v2.beta+json": "2.29.beta"
++          "application/vnd.openstack-org.compute-v3.beta+json": "3.66.beta"
++        }
++    }
++
++Notes:
++
++* removing the version from the URL
++* leaving old URLs to only respond to the "v2.1" version
++
++
++Alternatives
++------------
++
++There are various things we could change about the current proposal:
++
++* See the TODOs
++
++* we could have started at v1 for v2, but that is probably more confusing
++  than it is worse
++
++Properties Common to all proposals
++**********************************
++
++* V2.1 will replace V2
++  https://blueprints.launchpad.net/nova/+spec/v2-on-v3-api
++* Older clients never get broken
++* Allow new clients to discover what new parameters they can send
++* Allow new clients to request more information from newer APIs
++* Out of scope of this specification for both proposals are issues
++  around of discovery as they would work the same way with both.
++
++Proposal 1 - Every plugin is versioned
++**************************************
++
++With the V3 API framework everything is a plugin and has its own
++version number. The version number of any plugin could be changed
++independently from the version number of any other plugin.
++
++Pros/Cons:
++
++* (Pros) It is easy to increase each microversion because the order is
++  separated in each plugin.
++* (Cons) It is difficult to specify microversion when clients want to
++  use new features because they need to check each plugin microversion
++  before sending a request.
++
++Proposal 2 - API wide microversion
++**********************************
++
++There is a single monotonically incrementing microversion which
++applies across the API:
++
++* eg 201, 202, 203, 204, 205, ... , 310, 311, ...
++* With each version increment the new API contains an API change that
++  may or may not be backwards compatible.
++* Note that version 204 of the API has all the changes contained in
++  versions before it, ie changes in 201, 202 and 203.
++* It is not possible for a client to request only the API changes
++  contained in version 201 and 204. If a client wants the API changes
++  contained in version 204, it will also have all the API changes
++  which occurred before then (which may be quite unrelated to the
++  specific API they are making the request to).
++
++A client is able to send an Accepts header specifying the range of the
++micoversioned API that they are willing to deal with the server:
++
++* Server would respond with a version range that they can comply with
++  which may or may not be within the range requested.
++* Client would make a request with an accepts header acceptable to the
++  server with the request in a format for that version
++* If no server version is acceptable, client would need to give up/upgrade
++  (long term goal would be eventually be to drop very old microversions).
++* plugin specific versioning may not be relevant, though it could be
++  left so a version 0 still indicates "experimental"
++
++Pros/Cons:
++
++* (Pros) It is easy to specify microversion when clients want to use
++  new features because they don't need to check each plugin microversion
++  and can use a single microversion for all plugin features.
++* (Cons) If deployers apply some upstream patches, which add new features,
++  to their own OpenStack environments, the behaviors would be different
++  from the upstream OpenStack behaviors. For example, I'd like to pick the
++  following case that some deployer applies the patches of microversions 205
++  and 206 without 203/204. In this case if clients specify 206 as the
++  microversion for plugin A, the environments based on upstream provide
++  feature 1 and feature 2 to the clients. However the deployer's one does
++  not provide these features because of not applying 203 and 204 patches.
++  These different behaviors are not good for the interoperability.
++
++===================================   ===========================
++upstream (microversion)               some deployer's environment
++===================================   ===========================
++add new feature 1 to plugin A (203)   not apply
++add new feature 2 to plugin A (204)   not apply
++add new feature 3 to plugin B (205)   apply 205
++add new feature 4 to plugin B (206)   apply 206
++===================================   ===========================
++
++Proposal 3 - The combination of both microversions
++**************************************************
++
++Described above.
++
++Pros/Cons:
++
++* (Pros) Nova project can provide stable combination of new features when
++  each cycle release by choosing plugin microversions for the API wide
++  microversion.
++* (Pros) By defining the combination, Nova project(upstream) will be able
++  to reduce different behaviors on different environments. That is good
++  for the interoperability.
++* (Pros) We can remove some plugin microversion behaviors if these behavoirs
++  are not included in the API wide microversions.
++
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++Need a definition of what the client accept header will actually look like here
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++python-novaclient will need to support sending a client accept header.
++
++
++Performance Impact
++------------------
++
++None
++
++Other deployer impact
++---------------------
++
++Discuss things that will affect how you deploy and configure OpenStack
++that have not already been mentioned, such as:
++
++* What config options are being added? Should they be more generic than
++  proposed (for example a flag that other hypervisor drivers might want to
++  implement as well)? Are the default values ones which will work well in
++  real deployments?
++
++* Is this a change that takes immediate effect after its merged, or is it
++  something that has to be explicitly enabled?
++
++* If this change is a new binary, how would it be deployed?
++
++* Please state anything that those doing continuous deployment, or those
++  upgrading from the previous release, need to be aware of. Also describe
++  any plans to deprecate configuration values or features.  For example, if we
++  change the directory name that instances are stored in, how do we handle
++  instance directories created before the change landed?  Do we move them?  Do
++  we have a special case in the code? Do we assume that the operator will
++  recreate all the instances in their cloud?
++
++Developer impact
++----------------
++
++Discuss things that will affect other developers working on OpenStack,
++such as:
++
++* If the blueprint proposes a change to the driver API, discussion of how
++  other hypervisors would implement the feature is required.
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Who is leading the writing of the code? Or is this a blueprint where you're
++throwing it out there to see who picks it up?
++
++If more than one person is working on the implementation, please designate the
++primary author and contact.
++
++Primary assignee:
++  cyeoh-0
++
++Other contributors:
++  <launchpad-id or None>
++
++Work Items
++----------
++
++Work items or tasks -- break the feature up into the things that need to be
++done to implement it. Those parts might end up being done by different people,
++but we're mostly trying to understand the timeline for implementation.
++
++
++Dependencies
++============
++
++* Include specific references to specs and/or blueprints in nova, or in other
++  projects, that this one either depends on or is related to.
++
++* If this requires functionality of another project that is not currently used
++  by Nova (such as the glance v2 API when we previously only required v1),
++  document that fact.
++
++* Does this feature require any new library dependencies or code otherwise not
++  included in OpenStack? Or does it depend on a specific version of library?
++
++
++Testing
++=======
++
++Please discuss how the change will be tested. We especially want to know what
++tempest tests will be added. It is assumed that unit test coverage will be
++added so that doesn't need to be mentioned explicitly, but discussion of why
++you think unit tests are sufficient and we don't need to add more tempest
++tests would need to be included.
++
++Is this untestable in gate given current limitations (specific hardware /
++software configurations available)? If so, are there mitigation plans (3rd
++party testing, gate enhancements, etc).
++
++
++Documentation Impact
++====================
++
++What is the impact on the docs team of this change? Some changes might require
++donating resources to the docs team to have the documentation updated. Don't
++repeat details discussed above, but please reference them here.
++
++
++References
++==========
++
++Please add any useful references here. You are not required to have any
++reference. Moreover, this specification should still make sense when your
++references are unavailable. Examples of what you could include are:
++
++* Links to mailing list or IRC discussions
++
++* Design summit session https://etherpad.openstack.org/p/juno-nova-v3-api
++
++* Recent discussions:
++  https://wiki.openstack.org/wiki/Nova/ProposalForAPIMicroVersions
+-- 
+1.9.1
+

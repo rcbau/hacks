@@ -1,0 +1,210 @@
+From 2568f6ae2e01b55af116eac500c15b6865de04c7 Mon Sep 17 00:00:00 2001
+From: Jay Lau <liugya@cn.ibm.com>
+Date: Sat, 19 Apr 2014 20:17:54 +0800
+Subject: [PATCH] Persist scheduler hints
+
+The aim of this spec is to implement bp persist-scheduler-hints
+
+Change-Id: I2855ae9219082c3f1a52c574ebd78b94cb9c39de
+---
+ specs/juno/persist-scheduler-hints.rst | 188 +++++++++++++++++++++++++++++++++
+ 1 file changed, 188 insertions(+)
+ create mode 100644 specs/juno/persist-scheduler-hints.rst
+
+diff --git a/specs/juno/persist-scheduler-hints.rst b/specs/juno/persist-scheduler-hints.rst
+new file mode 100644
+index 0000000..03c6205
+--- /dev/null
++++ b/specs/juno/persist-scheduler-hints.rst
+@@ -0,0 +1,188 @@
++
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++===========================================
++Persist scheduler hints
++===========================================
++
++https://blueprints.launchpad.net/nova/+spec/persist-scheduler-hints
++
++The aim of this feature is to persist scheduler hints when creating
++VM instance so that the scheduler hints can be available for the whole
++VM life cycle.
++
++
++Problem description
++===================
++
++When creating VM instance with scheduler hints, scheduler hints will
++only take effect at deploying time. After the VM was deployed, scheduler
++hints will be lost.
++
++Later on when an admin tries to migrate the VM, this VM can be migrated to
++a host which might violated the original scheduler hints. The same problems
++also exist for resize, cold migration etc.
++
++The proposed solution is to store scheduler hints so that it can be available
++for the whole life cycle of the VM instance, this can make sure the VM can
++retrieve and evaluate the scheduler hints before doing some VM operations
++so as to make sure the VM will always obey its scheduler hints during its
++life cycle.
++
++It is up to the admin to decide if they want to obey scheduler hints when
++doing VM operations but the scheduler hints will always be there.
++
++For example, when admin creates a vm with different_host scheduler hints, then
++when migrate the VM, the VM will always migrate to different hosts specified
++by scheduler hints.
++
++Create a VM with different host filter: nova boot --image test --flavor 1
++--hint different_host=1-1-1-1-1 vm1
++
++Migrate the VM instance with scheduler validation: nova live-migration vm1
++--scheduler_validation, Nova scheduler will help select the best target host
++for live migration which can satisfy the different host scheduler hints.
++
++Migrate the VM instance without scheduler validation: nova live-migration vm1,
++if not specify scheduler_validation, the scheduler hints will be ignored by
++nova scheduler. This will be covered by bp validate-targethost-live-migration.
++
++This blueprint was mainly for persisting the scheduler hints to nova instance
++database and also enable "nova show" can list the scheduler hints.
++
++
++Proposed change
++===============
++
++* A new field named as scheduler_hints will be added to the table of
++  instances, its type is text.
++* A new field named as scheduler_hints will be added to instance object,
++  its type is DictOfNullableStringsField.
++* Update nova api to enable persisting scheduler hints when creating VM
++  instance.
++
++Alternatives
++------------
++None
++
++Data model impact
++-----------------
++
++* Add a new field scheduler_hints to the table of instances to persist
++  scheduler hints.
++* Add script for DB upgrade and downgrade.
++
++REST API impact
++---------------
++
++* Enable "nova show" can list scheduler hints for both V2 and V3 API.
++* Both admin and normal user can get scheduler hints.
++* For V2 API, need add an API extension to enable this feature.
++* Response body for V2 API::
++
++       server = {
++                     "id": uuid,
++                     "user_id": "fake_user",
++                     "tenant_id": "fake_project",
++                     "updated": "2010-11-11T11:00:00Z",
++                     "created": "2010-10-10T12:00:00Z",
++                     "progress": progress,
++                     "name": "server1",
++                     "status": status,
++                     "accessIPv4": "",
++                     "accessIPv6": "",
++                     "hostId": "",
++                     "OS-SCH-HNT:scheduler_hints": "{'foo': 'bar'}"
++       }
++
++* Response body for V3 API::
++
++       server = {
++                     "id": uuid,
++                     "user_id": "fake_user",
++                     "tenant_id": "fake_project",
++                     "updated": "2010-11-11T11:00:00Z",
++                     "created": "2010-10-10T12:00:00Z",
++                     "progress": progress,
++                     "name": "server1",
++                     "status": status,
++                     "os-access-ips:access_ip_v4": "",
++                     "os-access-ips:access_ip_v6": "",
++                     "host_id": "",
++                     "os-scheduler-hints:scheduler_hints": "{'foo': 'bar'}"
++       }
++
++Security impact
++---------------
++None
++
++Notifications impact
++--------------------
++None
++
++Other end user impact
++---------------------
++None
++
++Performance Impact
++------------------
++None
++
++Other deployer impact
++---------------------
++None
++
++Developer impact
++----------------
++None
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++    jay-lau-513 (liugya@cn.ibm.com)
++
++Other contributors:
++    Yassine Lamgarchal (yassine.lamgarchal@enovance.com)
++
++Work Items
++----------
++
++* Add a new table named as instance_scheduler_hints.
++* Add DB upgrade logic for the new table.
++* Update API v2/v3 for "nova show".
++
++
++Dependencies
++============
++None
++
++
++Testing
++=======
++
++* Add unit test for testing scheduler hints inclduing DB and resource
++  tracker.
++* Add unit test for API change related to "nova show".
++* Add tempest function tests.
++
++
++Documentation Impact
++====================
++
++* "nova show" will also list all scheduler hints
++* Update Cloud Admin Guide and Operations Guide to tell admin that
++  scheduler hints will be persisted when creating VMs.
++
++
++References
++==========
++None
+-- 
+1.9.1
+

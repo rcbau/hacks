@@ -1,0 +1,457 @@
+From 124a5b652590707a09a496b2aa19a2863f96bf4c Mon Sep 17 00:00:00 2001
+From: wingwj <wingwj@gmail.com>
+Date: Fri, 23 May 2014 10:10:25 +0800
+Subject: [PATCH] API: Live Resize
+
+'Cold-resize' had been implemented previously.
+But instance needs to be rebooted during the period.
+
+So this plan aims to add 'live-resize' function into Nova.
+This is useful and convenient for users.
+
+Change-Id: I656f7b79ad22583c19bd044b81e69143ee8d3304
+Implements: blueprint hot-resize
+---
+ specs/juno/hot-resize.rst | 430 ++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 430 insertions(+)
+ create mode 100644 specs/juno/hot-resize.rst
+
+diff --git a/specs/juno/hot-resize.rst b/specs/juno/hot-resize.rst
+new file mode 100644
+index 0000000..ac49c9c
+--- /dev/null
++++ b/specs/juno/hot-resize.rst
+@@ -0,0 +1,430 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++==========================================
++API: Live Resize
++==========================================
++
++https://blueprints.launchpad.net/nova/+spec/hot-resize
++
++'Cold-resize' had been implemented previously. But instance needs to be
++rebooted during the period.
++
++So this plan aims to add 'live-resize'(or 'hot-resize'?) function into Nova.
++This is useful and convenient for users.
++
++Cpu hot-add feature has been supported by qemu(since version 1.6.2)
++and libvirt(since version 1.2).
++VMware can support cpu-hot-add/remove, mem-hot-add/remove.
++It will be implemented if this function merged.
++
++Problem description
++===================
++
++There is no current API that can resize servers online.
++The original resize API is equal to cold-resize, or offline resize.
++That's not convenient for end users.
++
++The use cases that are driving this API extension are derived from a user's
++experience.
++
++Proposed change
++===============
++
++0. Only images contain 'QEMU Guest Agent'(qga) could support this function
++   in libvirt. It uses 'hw_qemu_guest_agent' tag in image's metadata
++   to indicate(Implemented in Havana [1]).
++
++   Image without qga in libvirt will be raised 'NotSupportedException'
++   for "live-resize".
++
++1. Add a new key-value pair in image's metadata like {'max_vcpus_limit':<int>}.
++   This value will be effective in spawn/rebuild/rescue/resize/live-resize.
++
++2. Add a new extension API "live-resize" which the owner and admin can use it.
++   The API can specify whether execute "live_migration"
++   when original host doesn't have enough resources to hotplug or not.
++   See details in the API part.
++
++3. Add a new 'LIVE_RESIZING' to task states.
++   It means the request is sent to compute node to execute.
++
++4. Add a new "live-resize" ComputeTaskAPI & related logic in nova-conductor
++   to decide whether need/how to select a new target host.
++
++5. Add new "check_live_resize_supported" & "live-resize" APIs
++   in base virt driver.
++
++   The former one allows each hypervisor can check its supported
++   for live-resizing by comparing the requested flavor with the old one.
++   And the latter one will implement specific execution for live-resizing.
++   The default of the two APIs is to raise 'NotImplementedError'
++   in base virt driver.
++
++6. Add a new field called 'max_vcpus_limit' in 'Instance.system_metadata'
++   (or Instance?) table in DB to record max vCPUs of instances.
++   It aims to ensure max vCPUs number correct even if the image's metadata
++   was modified.
++
++   If image does not have the 'max_vcpus_limit' tag in its metadata,
++   the value of 'max_vcpus_limit' will be 0('NO LIMIT'). Besides, all instances
++   upgraded from lower version, this value will also be equals to 0.
++
++7. Change one element in the config-xml of instance in libvirt driver
++   from "<vcpu>X</vcpu>" style to "<vcpu current='X'>'Y'</vcpu>"
++   if 'max_vcpus_limit' is specified in image's metadata.
++
++   Here, the 'X' will be the value of flavor's 'vcpus',
++   and the 'Y' will be equal to 'max_vcpus_limit' we added in the step1.
++
++8. The API 'DescribeInstance' needs to add one key-pair property
++   into the response body like <'max_vcpus_limit':4> to show the
++   max vcpus limit of this instance which can be obtained from DB table.
++   (Now only vcpus live-resize will be implemented in libvirt driver)
++
++
++Alternatives
++------------
++
++1. Support image without QEMU guest agent(qga)
++
++   In the above design, only the image installed qga can support this feature
++   in libvirt.
++
++   Actually, if image doesn't contain gqa, after "live-resize" action
++   in libvirt, the user can execute some commands manually in the instance
++   to activate the new plugged resources(choose vcpus to explain):
++
++   'echo 1 > /sys/devices/system/cpu/cpuX/online'
++
++   * The 'X' means which vCPU you want to activate.
++   * The range of 'X' is from 0 to (amount of vCPUs - 1).
++   * For example, the 'cpu0' means your instance only has one vCPU.
++   * The count of the executions relies on the vCPUs number your instance has.
++
++   The reason why this proposal isn't chosen is
++   the manual operations is not friendly enough to end-users.
++
++   * If normal images need to be supported, the API response ought to
++     give two different answers to end-users based on your image attribute,
++     like 'Your operation took effort.' or 'Your operation is applied, but you
++     need to execute some commands in your instance...'.
++
++   * Moreover, if one instance plugged new 4 vCPUs,
++     end-user needs to execute the command four times.
++
++   So this is not a good idea IMO.
++
++2. Don't touch 'DescribeInstance'
++
++   Why I add a new param in response body of 'DescribeInstance' is
++   I want to provide a mechanism for user to check the 'max_vcpus_limit'
++   of instances.
++
++   * If not, the only way to get this info is to check it in DB,
++     and that's not a convenient and acceptable way for normal users.
++
++   * Image's metadata could be changed therefore it can't be the evidence.
++
++   * Moreover, I don't think it's necessary to add a new API
++     for describing the max vcpus limit of instances.
++
++   Therefore, I modified the response body of 'DescribeInstance'.
++
++3. The 'disk-over-commit' in live_migration
++
++   The 'disk-over-commit' means whether allow disk overcommit
++   in "live_migration".
++   The default value of it is 'False', and I'm also preferred to use 'False'.
++
++   And I don't think it's clear to expose this param in the 'live-resize'
++   because this param doesn't suit all conditions
++   (only effective for one condition).
++
++   But I paste it here to see other reviewers' opinion.
++
++4. The behaviour of 'resize' API
++
++   In the above design, we want to keep the consistency between
++   "resize" & "live-resize".
++
++   * If images without 'max_vcpus_limit', the instances will be handled
++     as usual, no restriction in "resize", but no "live-resize" available.
++
++   * If images include 'max_vcpus_limit', the instance will have a restriction
++     that new flavor's item can't be greater than the limitation(like vcpus),
++     both in "resize" & "live-resize".
++
++   * But the 'max_vcpus_limit' of instance can't be modified
++     after initialization. It's not convenient.
++
++   So, should we need to remove the 'max_vcpus_limit' restriction in "resize"?
++
++   * If item value(like 'vcpus') of new flavor in "resize" is greater than the
++     'max_vcpus_limit' in DB, we change the DB value to this new value,
++     instead raising an exception.
++
++   * The advantage is we'll have a method to change the 'max_vcpus_limit'
++     in DB table.
++   * The disadvantage is it'll brings difference between "resize" &
++     "live-resize". Because "live_resize" needs to follow the restriction.
++
++   Therefore, I'm still preferred to the original design.
++
++5. 'max_vcpus_limit' stored in flavor's extra_specc, not in image's metadata
++
++   In the earlier discussion in one deprecated nova-spec for 'cpu hot-add' [2],
++   I use flavor's extra_spec to restore the 'max_vcpus_limit' to "live-resize".
++
++   Right now, I think image's metadata is a better place to store the tag.
++   There are three reasons for my choice:
++
++   * Firstly, storing the tag in flavor's extra_spec is not friendly for users.
++     The modifications may confuse original flavor's scope for understanding,
++     especially when user wants to resize their instances, what should they
++     choose to use? Resize with new flavor's vpus or live-resize with old
++     flavor's 'max_vcpus_limit' in extra_spec?
++
++   * Secondly, many commercial systems use flavor to be the foundation of their
++     billing systems. The modification of flavor may impact their exist billing
++     principles. We need to cautious about that.
++
++   * Lastly but importantly, this feature is strongly associated with
++     each guestOS' abilities. One OS may has distinguish behaviours under
++     different versions the rather that we need to support the feature
++     under different OSs.
++
++   Therefore, I choose to store the 'max_vcpus_limit' in each image's metadata.
++
++
++Data model impact
++-----------------
++
++Table 'instance_system_metadata'(or Instances?) needs to add one filed:
+++-----------------+--------------+------+-----+---------+----------------+
++| Field           | Type         | Null | Key | Default | Extra          |
+++-----------------+--------------+------+-----+---------+----------------+
++| max_vcpus_limit | int(11)      | YES  |     | NULL    |                |
+++-----------------+--------------+------+-----+---------+----------------+
++
++* This value is initialled in the procession of instance creation,
++  and can't be modified afterwards.
++* The value of 'max_vcpus_limit' will be equal to the 'max_vcpus_limit'
++  in image's metadata.
++* But if image doesn't have the tag, the value of it will be 0('No Limit').
++
++The related DB modification will also be merged
++into /nova/db/sqlalchemy/migrate_repo/versions/.
++
++REST API impact
++---------------
++
++1. Add one API "live_resize"
++
++The rest API look like this in v2::
++ /v2/{project_id}/servers/{server_id}/action
++
++    {
++        'live_resize':{
++        'flavor_id':2,
++        'allow_live_migration':True
++        }
++
++    }
++
++and in v3 it is like::
++ /v3/servers/{server_id}/action
++
++    {
++        'live_resize':{
++        'flavor_id':2,
++        'allow_live_migration':True
++        }
++
++    }
++
++  * The <int> 'flavor_id' means the new flavor you want to change to.
++    No default value.
++  * The <boolean> 'allow_live_migration' means whether execute "live_migration"
++    if instance's original host doesn't have enough resources.
++    The default value should be 'False'.
++
++The response body of it is like::
++
++    {
++        'task_states':'LIVE_RESIZING'(/'MIGRATING')
++    }
++
++  * The 'task_states' will be 'LIVE_RESIZING'/'MIGRATING'.
++
++    * The 'LIVE_RESIZING' means the request is sent to compute node to execute
++      the real-logic.
++    * The 'MIGRATING' means the original host doesn't have enough resources;
++      we need to "live_migrate" instance to another suitable host and
++      execute "live-resize" later if 'allow_live_migration' equals to 'True'.
++
++The status code will be HTTP 202 when the request has succeeded.
++
++If the request fails, corresponding exception will be raised.
++The related states/information will be roll back.
++
++* The state of instance will always be ACTIVE during the procession.
++
++* If flavor or instance doesn't exist, the request will fail.(HTTP 404)
++
++* If 'max_vcpus_limit' of the instance is smaller than the request
++  flavor's vcpus, one new exception like 'VCPUsLimitExceeded' will be raised.
++  (HTTP 400)
++
++* If instance's original host doesn't have enough resources to "live-resize"
++  and 'allow_live_migration' equals to 'False' in request body,
++  then the request will fail and 'ComputeResourcesUnavailable' exception
++  will be raised.(HTTP 400)
++
++* The task_state will be roll backed if fails happened during the verification.
++  (validation in API/host selection in conductor/supported check in compute)
++
++
++2. Modify API "DescribeInstance"
++
++Add one optional key-pair property into the response body to show
++the 'max_vcpus_limit' of this instance. This value will not be None or '':
++
++{
++    'server':{
++    ...
++    'max_vcpus_limit':4,
++    ...
++    }
++
++}
++
++* The 'max_vcpus_limit' can be captured from 'max_vcpus_limit' in DB
++  'instance_system_metadata' table.
++
++3. Change in "CreateInstances"
++
++If tag 'max_vcpus_limit' includes in image's metadata, its value will be
++recorded in DB 'instance_system_metadata' table for instance.
++
++If not, the value of 'max_vcpus_limit' in DB will be 0. It means 'No Limit'.
++
++4. Change in "resize"
++
++Now we add 'max_vcpus_limit' for every instance, so we need to restrict
++all related APIs to obey the same rule.
++
++* If images without 'max_vcpus_limit', "resize" action will be handled
++  as usual.
++
++* If images includes 'max_vcpus_limit', "resize" action will have a new
++  restriction that new flavor's item can't be greater than
++  the limitation(like 'max_vcpus_limit') in DB.
++  Or a new exception will be raised.
++
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++Needs to add two new types of notification:
++1. live_resize.start
++2. live_resize.end
++
++Other end user impact
++---------------------
++
++This function will be added into python-novaclient when the work finish.
++
++Performance Impact
++------------------
++
++None
++
++Other deployer impact
++---------------------
++
++* The 'max_vcpus_limit' of all instances upgraded from lower version will be 0.
++  They'll be treated as the instances without 'max_vcpus_limit' specified.
++
++* The images contain 'QEMU Guest Agent'(qga) are required by this function
++   in libvirt.
++
++* A new key-value pair in image's metadata like {'max_vcpus_limit': <int>}
++  is required.
++
++Developer impact
++----------------
++
++Now only cpu-hot-add will be implemented in libvirt driver.
++Memory & disk functions will be added when QEMU supports them.
++
++Later, the VMware Driver support will be added if this function merged [3].
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Assignee: wingwj <wingwj@gmail.com>
++
++Work Items
++----------
++
++1. Code this function in v2/v3
++
++1.1 DB modification
++1.2 API "live-resize" Implementation in v2/v3
++1.3 Related APIs(create/resize/..) modification
++
++2. Finish tempest tests
++3. Code this function in python-novaclient
++
++
++Dependencies
++============
++
++Now only vcpus live-resize will be implemented in libvirt driver firstly
++
++1. QEMU >= 1.5.0
++2. libvirt >= 1.1.0
++
++
++Testing
++=======
++
++Unit tests and tempest tests will verify this function.
++UTs for API/DB/libvirt driver will be examined separately.
++In integrated tests and tempest, it will be tested together.
++
++
++Documentation Impact
++====================
++
++A description of this function will be added into Compute API V2
++and V3 Reference.
++
++Moreover, a "live-resize" support matrix of GuestOSs under each hypervisor
++is planed to add into the Reference.
++
++
++References
++==========
++
++A "live-resize" support matrix of GuestOSs under each hypervisor
++is planed to add into a new wiki page in wiki.openstack.org.
++(Under Construction)
++
++* [1] https://blueprints.launchpad.net/nova/+spec/qemu-guest-agent-support
++
++* [2] https://review.openstack.org/#/c/86273/
++
++* [3] http://kb.vmware.com/selfservice/microsites/search.do?language=en_US&cmd=displayKC&externalId=2020993
+-- 
+1.9.1
+

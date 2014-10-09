@@ -1,0 +1,183 @@
+From abd1da67aa45340ad18e29805547be6e464c825b Mon Sep 17 00:00:00 2001
+From: Alessandro Pilotti <apilotti@cloudbasesolutions.com>
+Date: Mon, 7 Jul 2014 01:23:18 +0300
+Subject: [PATCH] Spec for Hyper-V RemoteFX support
+
+This blueprint introduces RemoteFX support in the Nova Hyper-V driver.
+
+bp hyper-v-remotefx
+
+Change-Id: If99b4fe51653de2098056da6ecca1190afa0799e
+---
+ specs/juno/hyper-v-remotefx.rst | 159 ++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 159 insertions(+)
+ create mode 100644 specs/juno/hyper-v-remotefx.rst
+
+diff --git a/specs/juno/hyper-v-remotefx.rst b/specs/juno/hyper-v-remotefx.rst
+new file mode 100644
+index 0000000..b8afea4
+--- /dev/null
++++ b/specs/juno/hyper-v-remotefx.rst
+@@ -0,0 +1,159 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++==========================================
++Hyper-V RemoteFX support
++==========================================
++
++https://blueprints.launchpad.net/nova/+spec/hyper-v-remotefx
++
++This blueprint introduces RemoteFX support in the Nova Hyper-V driver.
++
++
++Problem description
++===================
++
++OpenStack VDI support on Hyper-V can greatly benefit from enabling RemoteFX
++in the Nova driver.
++
++RemoteFX allows a guest VM to access the hypervisor's GPU features for 3D
++graphical acceleration.
++
++Guest configuration is performed by specifying the number of virtual desktops
++to be used by the VM and the maximum resolution, with a given set of predefined
++values:
++
++"1024x768"
++"1280x1024"
++"1600x1200"
++"1920x1200"
++"2560x1600"
++
++The hypervisor available resources include the total video memory provided by
++the combined video adapters configured for RemoteFX.
++
++
++Proposed change
++===============
++
++The RemoteFX resources are provided by the hypervisor and need to be handled
++in a way similar to other compute resources. In particular:
++
++* The Nova Hyper-V driver needs to report the amount of available RemoteFX
++  video memory as part of the host capabilities
++* The Nova Hyper-V driver needs to evaluate video memory requirements specified
++  in the flavor extra specs when spawning images
++* The Nova scheduler needs a filter to allocate instances based on video memory
++  flavor requirements. The filter needs also to be taken into account for live
++  migration / cold migration / resize operations.
++
++Example flavor with RemoteFx support:
++
++    nova flavor-key remotefx1 set "hyperv:remotefx=1280x1024,2"
++
++The amount of video memory consumed by an instance based on a given resolution
++and monitor count can be calculated as:
++
++video_memory = 64*horizontal_res*vertical_res*monitor_count
++e.g.: 64*1280*1024*2 = 167772160 bytes
++
++During the configuration of Hyper-V instances, RemoteFX resources can be
++assigned by using the Msvm_Synthetic3DDisplayControllerSettingData WMI class.
++
++On each compute host, the "Remote Desktop Services Virtualization Host" (RDVH)
++role must be enabled on the host and one or more physical GPUs with RemoteFX
++support need to be available.
++
++RDVH can be enabled with:
++
++    Add-WindowsFeature –Name RDS-Virtualization
++
++
++Alternatives
++------------
++
++None
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++None
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++None
++
++Performance Impact
++------------------
++
++None
++
++Other deployer impact
++---------------------
++
++None
++
++Developer impact
++----------------
++
++None
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  alexpilotti
++
++Work Items
++----------
++
++* Hyper-V Nova driver feature implementation
++* Unit tests
++
++Dependencies
++============
++
++None
++
++Testing
++=======
++
++* Unit tests
++* Additional Tempest tests can be evaluated
++
++Documentation Impact
++====================
++
++None
++
++References
++==========
++
++* Initial discussion (Juno design summit):
++  https://etherpad.openstack.org/p/nova-hyperv-juno
++
++* Partial implementation submitted during the Havana cycle:
++  https://review.openstack.org/#/c/42529/
+-- 
+1.9.1
+

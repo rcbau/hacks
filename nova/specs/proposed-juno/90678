@@ -1,0 +1,162 @@
+From 509fa6d4fb55f766ecf263549067579e71384bd9 Mon Sep 17 00:00:00 2001
+From: jichenjc <jichenjc@cn.ibm.com>
+Date: Mon, 28 Apr 2014 18:12:23 +0800
+Subject: [PATCH] Add application level lock for services
+
+Add add-app-lock.rst
+
+Change-Id: I48a088a1e30d22f496261bd16103cb141fc761b3
+---
+ specs/juno/add-app-lock.rst | 140 ++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 140 insertions(+)
+ create mode 100644 specs/juno/add-app-lock.rst
+
+diff --git a/specs/juno/add-app-lock.rst b/specs/juno/add-app-lock.rst
+new file mode 100644
+index 0000000..45e7ac0
+--- /dev/null
++++ b/specs/juno/add-app-lock.rst
+@@ -0,0 +1,140 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++==========================================
++Add application lock VM support for nova
++==========================================
++
++https://blueprints.launchpad.net/nova/+spec/add-app-lock
++
++Problem description
++===================
++
++Services like Trove use run in Nova Compute Instances.  These Services try
++to provide an integrated and stable platform for which the service can run
++in a predictable manner.  Such elements include configuration of the
++service, networking, installed packages, etc.  In today¹s world, when Trove
++spins up an Instance to deploy a database on, it creates that Instance with
++the Users Credentials.  Thus, to Nova, the User has full access to that
++Instance through Nova API.  This access can be used in ways which
++unintentionally compromise the service.
++
++In Nova side, we need to provide a method to put such Instances in a read-only or
++invisible mode from the perspective of Nova, that is, the Instance can only
++be managed from the Service from which it was created.
++
++http://lists.openstack.org/pipermail/openstack-dev/2014-April/031952.html
++has detailed requirement and discussion result.
++
++Proposed change
++===============
++
++Add an applock role like we did for admin role. the applock role will uesd:
++
++User without AppLock role  - can apply/remove user lock to instance.
++                             Cannot perform operations is any lock is
++                             set on the instance
++User with AppLock role - can apply/remove application lock to instance.
++                         Cannot perform operations on the instance if
++                         the admin lock is set
++User with Admin role - can apply/remove admin lock.
++                       Can perform any operations on the instance.
++
++Alternatives
++------------
++
++The service need to manage the instance by itself and
++
++Data model impact
++-----------------
++
++No data model changed
++
++REST API impact
++---------------
++
++There is no update in v2/v3 API from caller perspective. Instead, in
++implementation in the v2/v3 API, the role of the caller will be checked
++and will be used (in the context param)
++
++in policy.json file, something like following can be added by user:
++
++"context_is_applock" : "role:applock"
++"admin_or_applock_or_owner":  "is_admin:True or is_applock:True or project_id:%(project_id)s",
++
++"compute_extension:admin_actions:lock": "rule:admin_or_applock_or_owner",
++
++Security impact
++---------------
++
++The administrator is responsible for grant the applock role to users.
++and the user who have applock role is only able to lock/unlock the instance,
++and the actions it takes can be reverted by amdin, so the security impact is low.
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++End user will find they can't operator their VM if their instances are locked by
++the user with applock or admin role and they can't unlock it.
++
++Performance Impact
++------------------
++
++None
++
++Other deployer impact
++---------------------
++
++None
++
++Developer impact
++----------------
++
++None
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  jichenjc
++
++Work Items
++----------
++
++Support applock logic in compute layer
++v2 API update
++v3 API update
++policy update
++
++Dependencies
++============
++
++None
++
++Testing
++=======
++
++unit test will be used to guarantee the code added
++and tempest cases will also be added.
++
++
++Documentation Impact
++====================
++
++Doc need to be updated to let operator know they can define a applock role
++to user and the user with that role can lock/unlock user created vm.
++
++References
++==========
++http://lists.openstack.org/pipermail/openstack-dev/2014-April/032149.html
+-- 
+1.9.1
+

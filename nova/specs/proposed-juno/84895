@@ -1,0 +1,227 @@
+From e91125f3ed7588e59b3ec46a23f5ad613d9ca932 Mon Sep 17 00:00:00 2001
+From: Sandy Walsh <sandy@sandywalsh.com>
+Date: Wed, 2 Apr 2014 20:24:50 -0300
+Subject: [PATCH] Host Metric Hook
+
+Change-Id: I8697df06a80f3e8ddd54d7eec48a18be57c1d8d0
+---
+ specs/juno/host-metric-hook.rst | 207 ++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 207 insertions(+)
+ create mode 100644 specs/juno/host-metric-hook.rst
+
+diff --git a/specs/juno/host-metric-hook.rst b/specs/juno/host-metric-hook.rst
+new file mode 100644
+index 0000000..c1bcf3b
+--- /dev/null
++++ b/specs/juno/host-metric-hook.rst
+@@ -0,0 +1,207 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++==========================================
++Host Metric Hook
++==========================================
++
++Include the URL of your launchpad blueprint:
++
++https://blueprints.launchpad.net/nova/+spec/host-metric-hook
++
++Provide a hook into the HV host stats periodic_task
++
++Problem description
++===================
++
++The compute.manager has a large number of periodic tasks that collect data
++about the running host. The typical solution for monitoring hypervisors is
++to install agents on the host to collect and relay this data. This seems
++like a duplication of effort and makes deployment complicated.
++
++In large deployments it would be unwise to emit
++this data for every instance on the host as it would quickly saturate the
++system. Instead we are proposing to provide a means where an in-service
++plugin can be called to process the collected data locally (and in-memory)
++and only report on exceptional cases.
++
++The typical use-case for this would be QoS and Alarming. If we were to see
++customer that has a 5Gb pipe has been running at 20Gb, we'd like to catch
++that early. Likewise, if a customer is running at 100% CPU on a 4 core
++image, that should be reported. Alternatively, the plugin could be as
++simple as taking this collected data and emitting it to a reporting
++tool like statsd/graphite via UDP.
++
++The existing notification system would be a good place for these metrics
++to be passed on. The recent addition of the `Routing Notifier`_ and the `SAMPLE
++notification priority`_ gives us all the means we need to not clutter up
++the usage/audit notifications with metering data.
++
++.. _Routing Notifier: https://blueprints.launchpad.net/oslo.messaging/+spec/configurable-notification
++.. _SAMPLE notification priority: http://docs.openstack.org/developer/oslo.messaging/#a3
++
++Periodic Tasks in compute.manager
++---------------------------------
++
++* update_available_resource() - yes
++
++  * potentially also call with resource_tracker information that
++    includes requested resources (not just what hypervisor is reporting)
++
++  * actually called in resource_tracker.update_available_resource()
++
++* _cleanup_running_deleted_instances - Should emit notification
++
++* _run_image_cache_manager_pass - Should emit notification
++
++* _run_pending_deletes - Should emit notification
++
++* _check_instance_build_time - Should emit notification
++
++* _heal_instance_info_cache - maybe?
++
++* _poll_rebooting_instances - Might emit notification on anomalies
++
++* _poll_rescued_instances - Might emit notification on anomalies
++
++* _poll_unconfirmed_resizes - Might emit notification on anomalies
++
++* _poll_shelved_instances - meh
++
++* _instance_usage_audit - maybe, but unlikely
++
++* _poll_bandwidth_usage - yes
++
++* _poll_volume_usage - yes
++
++* _sync_power_states - calls virt.get_info() which has mem/max_mem info ... dunno?
++
++* _reclaim_queued_deletes - meh
++
++
++Proposed change
++===============
++
++The above period tasks will emit notifications at the SAMPLE priority so
++they can be picked up by the Routing Notifier and sent to the appropriate
++downstream systems.
++
++Most of the heavy lifting has been done for this feature and the hooks
++were already established in a previous branch. This previous attempt
++was abandoned because it used a plugin approach and not the routing
++notifier. But the hooks were proven to be viable.
++
++Alternatives
++------------
++
++Hypervisor meter collection can currently be performed by many different
++existing open source tools, such as Diamond or the Ceilometer pollsters.
++But, these approaches require agents to be installed on the compute nodes
++and the don't associate the hypervisor information with the Nova metadata.
++By putting this feature in the core nova code (optionally enabled) we give
++one less thing the deployer has to deal with. And, we're already collecting
++this data anyway ... DRY.
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++None
++
++Security impact
++---------------
++
++The collected hypervisor data has to be scrubbed to remove any sensitive
++information, just as with any notification. Since we're leveraging the
++existing notification framework, any efforts here can be shared with
++other notifications.
++
++Notifications impact
++--------------------
++
++New notifications will be generated with a SAMPLE priority. These can
++be ignored or processed using the Routing Notifier.
++
++Other end user impact
++---------------------
++
++This is not an end-user facing feature. Its benefits will be felt by
++downstream metering/monitoring systems such as Ceilometer, Heat and
++StackTach (to name a few).
++
++Performance Impact
++------------------
++
++The routing notifier will need to inspect each notification for
++suitability and, depending on the routing path chosen, could
++cause an impact to performance. However, it is not recommended
++that any slow export of notification data be used. Instead,
++AMQP or UDP-based notification drivers should be selected.
++
++Other deployer impact
++---------------------
++
++Setting up the Routing Notifier requires editting a json
++configuration file, which could be a little complicated for
++some deployers. However, all notifications are disabled by
++default, so it won't affect the majority of users.
++
++Developer impact
++----------------
++
++New periodic tasks should consider publishing collected data via
++this SAMPLE priority notification as well, if applicable.
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  sandy.walsh
++
++Other contributors:
++  None
++
++Work Items
++----------
++
++Convert https://review.openstack.org/#/c/51249/ to use the SAMPLE
++priority notification and ditch the existing plugin scheme.
++
++
++Dependencies
++============
++
++None
++
++Testing
++=======
++
++Unit tests are already established in the above branch. They will be fixed up
++to cover the new approach.
++
++
++Documentation Impact
++====================
++
++None - the Routing Notifier is already documented.
++
++May need to update the `System Usage Data`_ wiki page.
++
++.. _System Usage Data: https://wiki.openstack.org/wiki/SystemUsageData
++
++
++References
++==========
++
++None.
+-- 
+1.9.1
+

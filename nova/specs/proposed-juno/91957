@@ -1,0 +1,211 @@
+From 9636ea87c7a39e50bca237b9c26c1f476c9a7744 Mon Sep 17 00:00:00 2001
+From: "vitas.yuzhou" <vitas.yuzhou@huawei.com>
+Date: Sat, 3 May 2014 09:55:54 +0800
+Subject: [PATCH] support multiple image backends for libvirt driver
+
+Currently, the cloud administrator can not choose ephemeral storage backend
+device (e.g. SSD or non-SSD) and driver (e.g. qcow2 or ceph) for per flavor.
+The lack of these features restrict the price strategy for different
+performance and functional requirements. So we should add support to
+configure multiple libvirt image backends, and then in the flavor
+indicate which backend should be used for per instance.
+
+Related to blueprint libvirt-multiple-image-backends
+
+Change-Id: I9c30f2cc15357301f033a2d10c2f9da464e8247b
+---
+ specs/juno/libvirt-multiple-image-backends.rst | 181 +++++++++++++++++++++++++
+ 1 file changed, 181 insertions(+)
+ create mode 100644 specs/juno/libvirt-multiple-image-backends.rst
+
+diff --git a/specs/juno/libvirt-multiple-image-backends.rst b/specs/juno/libvirt-multiple-image-backends.rst
+new file mode 100644
+index 0000000..dd70799
+--- /dev/null
++++ b/specs/juno/libvirt-multiple-image-backends.rst
+@@ -0,0 +1,181 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++===============================================================
++support multiple image backends for libvirt driver
++===============================================================
++
++https://blueprints.launchpad.net/nova/+spec/libvirt-multiple-image-backends
++
++Currently, the cloud administrator can not choose ephemeral storage backend
++device (e.g. SSD or non-SSD) and driver (e.g. qcow2 or ceph) for per flavor.
++The lack of these features restrict the price strategy for different
++performance and functional requirements. So we should add support to
++configure multiple libvirt image backends, and then in the flavor
++indicate which backend should be used for per instance.
++
++Problem description
++===================
++
++1. The administrator have no ability to create flavor with ephemeral
++   storage assigned on SSD as some Amazon EC2 instance types (e.g. m3.large).
++
++2. The administrator have no ability to choose among different libvirt
++   image types for instance disks. To strive for high performance, local disk
++   (e.g. raw/qcow2) may be better. To strive for live migration or single
++   storage backend for glance, nova and cinder, choosing ceph is more 
++   reasonable.
++
++3. The administrator have no ability about more fine grained configuration
++   for ephemeral storage backend, i.e. separately set which backend to be 
++   used for root disk, ephemeral disk and swap disk. For example, there is 
++   the case where the administrator wants some flavours with root disk and
++   swap disk on SSD, and other flavors with only swap disk on SSD.
++
++Proposed change
++===============
++
++1. The <libvirt_image_type> in nova.conf would need to allow a list of image
++   backend names + types, and we use existing config parameters:
++   raw/qcow2-<instances_path>,
++   lvm-<libvirt_images_volume_group>,
++   rbd-<libvirt_images_rbd_pool>.
++
++   these parameters need to be extended to allow a list of values, instead of
++   a single value. For example, if we want to do a choice of local qcow2 and 
++   two rbd pools, one of which is fast ssd backend, we should configure:
++   libvirt_image_type=default:qcow2, fast:qcow2, shared:rbd, sharedfast:rbd
++   instance_path=default:/var/nova/images/hdd, fast:/var/nova/imges/ssd
++   libvirt_images_rbd_pool=shared:main,sharedfast:mainssd
++
++   The names 'default', 'fast', 'shared', 'sharedfast' are set by deployer
++   freely, and would be used to tag ephemeral storage backend in the flavour.
++
++2. In periodic task about update_available_resource, resource tracker retrieve
++   the detail info of each ephemeral storage back-ends. These info include 
++   backend name, free size, used size and total size.
++
++3. Modify the disk_filter, and then based on ephemeral storage backend type and
++   available size, nova-scheduler choose compute node reasonably.
++
++4. Modify the imagebackend, and then based on ephemeral storage backend type,
++   create_image for root disk, ephemeral disk and swap disk, which involves
++   four image type: raw, qcow2, lvm and rbd.
++
++Alternatives
++------------
++
++none
++
++Data model impact
++-----------------
++
++Add a table compute_node_storage_resource, its fields contain:
++compute_node_id, backend_name, total_size, free_size, used_size
++disk_available_least.
++
++
++REST API impact
++---------------
++
++none
++
++Security impact
++---------------
++
++none
++
++Notifications impact
++--------------------
++
++none
++
++Other end user impact
++---------------------
++
++None
++
++Performance Impact
++------------------
++
++Modify a scheduler filter (i.e. disk filter) and a periodic task
++(i.e. update_available_resource), but not add any new scheduler filters and 
++periodic tasks. So there are little impact on nova. 
++
++
++Other deployer impact
++---------------------
++
++The <libvirt_image_type> in nova.conf allow a list of image backend names
+++ types, and we use existing config parameters:
++raw/qcow2-<instances_path>,
++lvm-<libvirt_images_volume_group>,
++rbd-<libvirt_images_rbd_pool>
++
++but these parameters have been extended to allow a list of values, instead of
++a single value. For example, if we want to do a choice of local qcow2 and 
++two rbd pools, one of which is fast ssd backend, we should configure:
++libvirt_image_type=default:qcow2, fast:qcow2, shared:rbd, sharedfast:rbd
++instance_path=default:/var/nova/images/hdd, fast:/var/nova/imges/ssd
++libvirt_images_rbd_pool=shared:main,sharedfast:mainssd
++
++The names 'default', 'fast', 'shared', 'sharedfast' are set by deployer
++freely, and would be used to tag ephemeral storage backend in the flavour.
++
++Developer impact
++----------------
++
++none
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  Zhou Yu <vitas.yuzhou@huawei.com>
++
++Work Items
++----------
++
++1. In periodic task about update_available_resource, resource tracker retrieve
++   the detail info of each ephemeral storage back-ends. These info include 
++   backend name, free size, used size and total size.
++
++2. Modify the disk_filter, and then based on ephemeral storage backend type and
++   available size, nova-scheduler choose compute node reasonably.
++
++3. Modify the imagebackend, and then based on ephemeral storage backend type,
++   create_image for root disk, ephemeral disk and swap disk, which involves
++   four image type: raw, qcow2, lvm and rbd.
++
++
++Dependencies
++============
++
++none
++
++Testing
++=======
++
++none
++
++
++Documentation Impact
++====================
++
++1. In the installation and configuration guide, we need to add content
++   about how to configure the parameters of libvirt multiple image
++   backends.
++
++2. In the admin guide, we need to add content about how to specify
++   ephemeral storage backend in flavor.
++
++References
++==========
++
++https://www.mail-archive.com/openstack-dev%40lists.openstack.org/msg22152.html
+\ No newline at end of file
+-- 
+1.9.1
+

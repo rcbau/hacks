@@ -1,0 +1,243 @@
+From ea6e036d99e82a3ac1ce0490874f32145ad1530a Mon Sep 17 00:00:00 2001
+From: "boh.ricky" <boh.ricky@gmail.com>
+Date: Tue, 22 Apr 2014 22:31:03 +0800
+Subject: [PATCH] Support pci passthrough device hotplug
+
+Add the ability to hotplug and hotunplug a pci passthrough device
+to an instance.
+
+blueprint pci-hotplug
+
+Change-Id: I19ef76c2c5aa127fa33f5a163bcdca46d6475f24
+---
+ specs/juno/pci-hotplug-juno.rst | 218 ++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 218 insertions(+)
+ create mode 100644 specs/juno/pci-hotplug-juno.rst
+
+diff --git a/specs/juno/pci-hotplug-juno.rst b/specs/juno/pci-hotplug-juno.rst
+new file mode 100644
+index 0000000..e812e4d
+--- /dev/null
++++ b/specs/juno/pci-hotplug-juno.rst
+@@ -0,0 +1,218 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++==========================================
++Libvirt support PCI passthrough hotplug
++==========================================
++
++https://blueprints.launchpad.net/nova/+spec/pci-hotplug
++
++Currently, openstack only support pci passthrough statically before the
++instance is booted.
++This blueprint is aim to provide the ability to allow user to hotplug
++the pci passthrough device when the instance is running for libvirt.
++
++Problem description
++===================
++
++* An instance called "green", "green" has one or more passthrough pci device.
++  Someday, one pci device becomes into failed. User can unplug the passthrough
++  pci device and plug a normal one.
++
++* An instance called "blue", "blue" has a passthrough pci device(nic).
++  Someday, we found one nic is not enough. We need more nics for more
++  network throughout. User can plug another passthrough pci device(nic).
++  Or maybe, we found two nics is a waste for the instance. The instance
++  doesn't has so large network throughout, we can unplug one passthrough pci
++  device(nic).
++
++Proposed change
++===============
++Initially, only the libvirt driver will support this function, and
++only with qemu/kvm as the hypervisor.
++
++* api to hot plug/unplug pci passthrough devices for an instance
++* api to query attached pci passthrough devices for an instance
++* add plug/unplug RPC method
++* add plug/unplug method in the libvirt driver 
++
++Alternatives
++------------
++None
++
++Data model impact
++-----------------
++* add two new columns in table "pci_devices"
++  "inner_address" : the device address in the instance like "0000:00:00.0"
++  "attachment_id" : an uuid to identify a pci attachment of the instance
++
++* migration
++  upgrade : we need to add the two new columns
++  downgrade : we need to remove the two new columns
++
++* initial the column data
++  "attachment_id" can be generated in migration. It's just an UUID for
++  user to specify to unplug which attachment of the pci passthrough device
++  "inner_address" is better to be updated when an pci passthrough device
++  is pluged/unpluged to the instance or on instance startup
++
++REST API impact
++---------------
++API for hotplug a pci device
++
++V2 API specification:
++POST: v2/{tenant_id}/servers/{server_id}/os-pci_attachments
++V3 API specification:
++POST: v3/servers/{server_id}/os-pci_attachments
++
++JSON Request::
++    {
++        "pciAttachment":{
++            "pci_passthrough:alias":"a1:2"
++
++        }
++
++    }
++
++JSON Response::
++    {
++        "pci_devices": [
++            {
++                "attachment_id":"a26887c6-c47b-4654-abb5-dfadf7d3f803",
++                "serverId": "4d8c3732-a248-40ed-bebc-539a6ffd25c0",
++                "dev_id":"pci_0000_02_00_0",
++                "address":"0000:02:00.0",
++                "inner_address":"0000:03:00.0",
++                "vendor_id":"8086",
++                "product_id":"10c9"
++            },{
++                "attachment_id":"a26887c6-c47b-4654-abb5-dfadf7d3f704",
++                "serverId": "4d8c3732-a248-40ed-bebc-539a6ffd25c0",
++                "dev_id":"pci_0000_02_00_1",
++                "address":"0000:02:00.1",
++                "inner_address":"0000:03:01.0",
++                "vendor_id":"8086",
++                "product_id":"10c9"
++
++            }
++
++        ]
++
++    }
++
++API for hotunplug a pci device
++
++V2 API specification:
++DELETE: v2/{tenant_id}/servers/{server_id}/os-pci_attachments/{attachment_id}
++V3 API specification:
++DELETE: v3/servers/{server_id}/os-pci_attachments/{attachment_id}
++
++HTTP response codes:
++v2:
++Normal HTTP Response Code: 200 on success
++v3:
++Normal HTTP Response Code: 202 on success
++
++API for query plugged pci devices of an instance
++
++V2 API specification:
++GET: v2/{tenant_id}/servers/{server_id}/os-pci_attachments
++V3 API specification:
++GET: v3/servers/{server_id}/os-pci_attachments
++
++JSON Response::
++    {
++        "pciAttachment": [
++            {
++                "attachment_id":"a26887c6-c47b-4654-abb5-dfadf7d3f803",
++                "serverId": "4d8c3732-a248-40ed-bebc-539a6ffd25c0",
++                "dev_id":"pci_0000_02_00_0",
++                "address":"0000:02:00.0",
++                "inner_address":"0000:03:00.0",
++                "vendor_id":"8086",
++                "product_id":"10c9"
++
++            },{
++
++                "attachment_id":"a26887c6-c47b-4654-abb5-dfadf7d3f803",
++                "serverId": "4d8c3732-a248-40ed-bebc-539a6ffd25c0",
++                "dev_id":"pci_0000_02_00_1",
++                "address":"0000:02:00.1",
++                "inner_address":"0000:03:01.0",
++                "vendor_id":"8086",
++                "product_id":"10c9"
++
++            }
++
++        ]
++
++    }
++
++Security impact
++---------------
++None
++
++Notifications impact
++--------------------
++Add notification for the operation of plug/unplug pci passthrough device.
++
++Other end user impact
++---------------------
++None
++
++Performance Impact
++------------------
++None
++
++Other deployer impact
++---------------------
++Initially, only the libvirt driver will support this function, and
++only with qemu/kvm as the hypervisor.
++
++Developer impact
++----------------
++Need to add two APIs in driver.
++* plug a pci device to instance
++* unplug a pci device from instance
++This blueprint will implement them for libvirt.
++
++Data to pass.
++* plug RPC method : instance id, pci alias name and number of pci devices
++* unplug RPC method : instance id and pci device's attachment id
++* plug driver method : instance id and pci device address
++* unplug driver method : instance id and pci device address in instance
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  boh.ricky
++
++Work Items
++----------
++* query instance's pci passthrough device
++* hotplug pci passthrough device to an instance
++* hotunplug pci passthrough device to an instance
++
++Dependencies
++============
++* https://blueprints.launchpad.net/nova/+spec/pci-passthrough-base
++* https://wiki.openstack.org/wiki/Pci_passthrough
++
++Testing
++=======
++unit tests.
++
++Documentation Impact
++====================
++Need to document the APIs.
++
++References
++==========
++None
+-- 
+1.9.1
+

@@ -1,0 +1,223 @@
+From 12f4c7b360e5741a2a677f5922a00d4ececd8d29 Mon Sep 17 00:00:00 2001
+From: kirankv <kiran-kumar.vaddi@hp.com>
+Date: Wed, 2 Apr 2014 01:24:53 -0700
+Subject: [PATCH] VMware nova driver - datastore image cache update
+ improvements
+
+If an image is available in the cache of one cluster, then copy of
+image from glance to nova (proxy VM) can be completely avoided by using
+vCenter APIs to copy the cached image from one datastore to another
+datastore.
+
+Change-Id: I0ef1e073afaabd66416937a028bd1611b244b79d
+---
+ .../datastore-image-cache-update-improvements.rst  | 197 +++++++++++++++++++++
+ 1 file changed, 197 insertions(+)
+ create mode 100644 specs/juno/datastore-image-cache-update-improvements.rst
+
+diff --git a/specs/juno/datastore-image-cache-update-improvements.rst b/specs/juno/datastore-image-cache-update-improvements.rst
+new file mode 100644
+index 0000000..875a9a6
+--- /dev/null
++++ b/specs/juno/datastore-image-cache-update-improvements.rst
+@@ -0,0 +1,197 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++==============================================================
++VMware nova driver - datastore image cache update improvements
++==============================================================
++
++https://blueprints.launchpad.net/nova/+spec/datastore-image-cache-update-improvements
++
++This blueprint allows images to launch faster by copying images from other
++image caches, rather than always from glance. With VMware ESX, you copy
++images from glance, to nova-compute, then from nova-compute to the
++datastore. Its much more efficient to use vCenter APIs to copy the image
++from a datastore where the image is already cached.
++
++Problem description
++===================
++
++When using the VMware ESX hypervisor driver each ESX cluster is presented
++to Nova as a single compute node, with the nova-compute service acting as
++a proxy into the VMware controller. In the general Nova model each compute
++node is considered a separate service with its own image cache, but in the
++VMware case this it is possible to provide a more efficient image cache
++mechanism which extends across compute nodes.
++
++A datastore is a logical container that stores the virtual machine files.
++This includes both the disk (vmdk), configuration (vmx) files and
++snapshot files.
++
++A datastore can be created from different types of physical storage
++like local direct attached storage, iSCSI, FC SAN and NFS.
++The physical storage is presented to all host in the cluster and therefore
++the datastore is accessible from all the hosts of the cluster.
++Each cluster will typically have its own set of datastores and this is
++the recommended configuration. This configuration enable the live migration
++of VMs across all hosts of the cluster.
++
++In the existing design, when an instance creation is done, the following occur
++
++* Step 1.The existence of the image is checked in the cache
++  (directory named _base_dir) on the clusters datastore
++* Step 2.If the image is not available in the cache, then
++  (i) the image is downloaded from glance into nova-compute
++  (the VM where the compute service runs)
++  (ii) Then the image is transferred from the nova-compute to the datastore
++  by vCenter
++* Step 3.Instance is spawned using the cached image
++
++Step 2 is a CPU intensive and time and bandwidth consuming task.
++The existing optimization being done throttle the number of images
++transferred and removed unnecessary queues.
++This is applicable for the first time the image is transferred to
++a datastore cache.
++
++Since the cache is maintained at a per cluster level, In case the same image
++is deployed into another cluster that exists on the same vCenter
++the process is repeated. This would mean that the same image
++is getting transferred multiple times between glance and nova for each
++cluster present in vCenter.
++
++Proposed change
++===============
++
++If an image is available in the cache of one cluster, then copy of
++image from glance to nova-compute can be completely avoided by using
++vCenter APIs to copy the cached image from one datastore to another datastore.
++By using vCenter the progress of the task can be tracked as well.
++This approach works for clusters within the same vCenter.
++With this approach the modified steps would be
++
++* Step1. The existence of the image is checked in the cache (_base directory)
++  on ALL the clusters datastores using vCenter APIs
++* Step2. If the image is not available in any clusters cache, then the
++  image is downloaded from glance into nova-compute, and then from the
++  compute service to the datastore in vCenter (i.e existing functionality)
++* Step3. If the image is available in the cache of another cluster, then the
++  image is copied to the other clusters cache using the vCenter API. This
++  is very much efficient than the two hop transfer.
++* Step4. Instance is spawned using the cached image as normal.
++
++The list of images available in the cache will be maintained in a map on a
++per cluster basis. In the VMware nova driver, there already exists a
++periodic task that deletes unused images from the cache. The same periodic
++task will be enhanced to update the map that has the details of the
++images available in cache
++
++Alternatives
++------------
++
++Another alternative is to schedule instances to the clusters that have the
++image already cached. This will work fine until the cluster has capacity.
++To use this alternative, the following changes will be required
++(1) the VMware nova driver will have to publish the
++list of images in its cache.
++(2) A new scheduler filter will then select the nova-compute (cluster) that
++already has the image in its cache. If there are no clusters that have the
++image then it would return all clusters (existing behaviour)
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++None
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++None
++
++Performance Impact
++------------------
++
++Given that in a private cloud there will be different set of standard
++images, and the number of clusters in vCenter can be between 12 to 64,
++enhancing the model used to update the image cache in the datastore will
++significantly improve user experience, reduce instance creation times,
++reduce CPU load on the server(typically VM) running nova-compute and
++reduce traffic on the network
++In the intial tests we notice that a tranfer of a 2GB image takes
++3 minutes. The CPU utilization of nova-compute during image copy goes
++upto 80% for the time of the transfer.
++After this change, it will take 1 minute and nova-compute CPU will not be
++used for the transfer, since the transfer is delegated to vCenter and
++vCenter does utilizes less amount of CPU to do the transfer.
++
++Other deployer impact
++---------------------
++
++None
++
++Developer impact
++----------------
++
++* The similar approach can be used by other nova drivers that support clusters
++  and cache images on a per cluster basis.
++* This change only impacts the VMware nova driver. Other drivers will not be
++  impacted due to this change.
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  kiran-kumar-vaddi
++
++Other contributors:
++  None
++
++Work Items
++----------
++
++* Build the map of image cache ids on start of the compute service
++* Update the map of the image cache ids when new image is uploaded
++* During spawn, If image is already present in the cache then use the new
++  code to copy the image from one datastore to another
++* During spawn, If image is _not_ already present in the cache then use
++  existing code.
++
++Dependencies
++============
++
++None
++
++Testing
++=======
++
++Unit tests are sufficient since the actual copy is done by the vCenter API
++The unit tests will be modified to test the branches introduced
++
++Documentation Impact
++====================
++
++None
++
++References
++==========
++
++None
+-- 
+1.9.1
+

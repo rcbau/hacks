@@ -1,0 +1,173 @@
+From 263f22fdb95cd5d93ffa47c704561b6d1bbf22df Mon Sep 17 00:00:00 2001
+From: Lianhao Lu <lianhao.lu@intel.com>
+Date: Sun, 4 May 2014 15:01:28 +0800
+Subject: [PATCH] Adding API to list metrics data
+
+This proposes a new API to list the metrics data of compute node.
+
+bp compute-node-metrics-api
+
+Change-Id: I60a8576ff07f2e5ba34e969e9d9312a711a9d646
+---
+ specs/juno/compute-node-metrics-api.rst | 149 ++++++++++++++++++++++++++++++++
+ 1 file changed, 149 insertions(+)
+ create mode 100644 specs/juno/compute-node-metrics-api.rst
+
+diff --git a/specs/juno/compute-node-metrics-api.rst b/specs/juno/compute-node-metrics-api.rst
+new file mode 100644
+index 0000000..79348d1
+--- /dev/null
++++ b/specs/juno/compute-node-metrics-api.rst
+@@ -0,0 +1,149 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++==================================================
++Adding API to list the metrics of the hypervisors
++==================================================
++
++https://blueprints.launchpad.net/nova/+spec/compute-node-metrics-api
++
++We need to add an API to list the metrics of each hypervisor stored
++in the DB.
++
++Problem description
++===================
++
++With the Icehouse blueprint implementation
++https://blueprints.launchpad.net/nova/+spec/utilization-aware-scheduling,
++now various monitor plug-ins can be configured to report hypervisor
++metrics periodically. These metrics could be used in scheduling process
++through the MetricsWeigher configured by the administrator.
++
++Adding an API extension to list the available metrics of each compute
++node could help the administrator configure the MetricWeigher.
++
++Proposed change
++===============
++
++New API extensions will be added:
++
++GET /v2/os-hypervisors/{hypervisor_id}/metrics
++GET /v3/os-hypervisors/{hypervisor_id}/metrics
++
++
++Alternatives
++------------
++
++We could also change the currently API:
++
++    GET /v2/os-hypervisors/{hypervisor_id}
++    GET /v3/os-hypervisors/{hypervisor_id}
++
++to return metrics data along with the current hypervisor informations.
++
++However, consider the potential amount of data returned here(there
++might be dozens or hundreds metrics monitored), it would be better to
++have a separate API to list the metrics data.
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++GET /v2/os-hypervisors/{hypervisor_id}/metrics
++GET /v3/os-hypervisors/{hypervisor_id}/metrics
++
++A array 'metrics' will be returned in the response of this API, listing
++all the metrics data available. The new response will looks like::
++
++    {
++        "metrics": [
++            {
++                "name": "metric.name1",
++                "source": "source",
++                "timestamp": "2014-04-01T00:00:00Z",
++                "value": 1.0,
++            },
++            {
++                "name": "metric.name1",
++                "source": "source",
++                "timestamp": "2014-04-01T00:00:00Z",
++                "value": 5.0,
++            },
++        ]
++    }
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++None
++
++Performance Impact
++------------------
++
++None
++
++Other deployer impact
++---------------------
++
++None
++
++Developer impact
++----------------
++
++None
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  lianhao-lu
++
++Work Items
++----------
++
++None
++
++
++Dependencies
++============
++
++None
++
++
++Testing
++=======
++
++None
++
++
++Documentation Impact
++====================
++
++This will impact the API doc.
++
++
++References
++==========
++
++None
+-- 
+1.9.1
+

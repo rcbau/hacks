@@ -1,0 +1,195 @@
+From 5052a603ba6ed39a917b21e891fc04b3436ada06 Mon Sep 17 00:00:00 2001
+From: "Wei W. Du" <weidu@yahoo-inc.com>
+Date: Thu, 3 Jul 2014 01:13:39 +0000
+Subject: [PATCH] make nova hypervisor to list available resources for
+ scheduling
+
+This will make nova hypervisor-* to return the current available
+resources for scheduling on the host.
+
+Change-Id: I18030a9c0400807731b880b6fdbf12b13b26c7be
+---
+ specs/juno/extends-nova-hypervisor.rst | 171 +++++++++++++++++++++++++++++++++
+ 1 file changed, 171 insertions(+)
+ create mode 100644 specs/juno/extends-nova-hypervisor.rst
+
+diff --git a/specs/juno/extends-nova-hypervisor.rst b/specs/juno/extends-nova-hypervisor.rst
+new file mode 100644
+index 0000000..5da27a2
+--- /dev/null
++++ b/specs/juno/extends-nova-hypervisor.rst
+@@ -0,0 +1,171 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++======================================================================
++Spec - make nova hypervisor to list available resources for scheduling
++======================================================================
++
++https://blueprints.launchpad.net/nova/+spec/extends-nova-hypervisor
++
++Problem description
++===================
++
++Currently, there is no easy way to check the current available resources on a
++given hypervisor. If we only monitor the actual resource usage, there might be
++cases where real usage is < 75% but the scheduler sees no more capacity
++available to scheduling vm's. For example, we have a 10G RAM on a hypervisor.
++By running ‘proc’ on the compute node, we see the actual RAM usage is only
++3G. With these data point, we cannot say the available RAM is 7G.
++
++By checking nova.compute_nodes table, the current free RAM is -3G. Assuming
++ram_allocation_ratio is 1.5, the correct available RAM seen by scheduler is 2G.
++The correct calculation is as follows:
++
++Physical RAM: 10G
++Free RAM: -3G
++Actual used RAM: 3G
++ram_allocation_ratio: 1.5
++Available RAM seen by scheduler: 10*1.5-(10-(-3)) = 2
++
++We need an easy way to get the current available resources on a given
++hypervisor for both alerting and planning purposes. We should capture the total
++capacity as the scheduler would see it. This should take into consideration
++the overcommit ratios too.
++
++
++Proposed change
++===============
++
++We patch '/os-hypervisors' to also return available resources for
++scheduling, as well as the overcommit ratio.
++
++All the available resources calculations are in the same way as scheduler.
++ram : https://github.com/openstack/nova/blob/master/nova/scheduler/filters/ram_filter.py
++core : https://github.com/openstack/nova/blob/master/nova/scheduler/filters/core_filter.py
++disk : https://github.com/openstack/nova/blob/master/nova/scheduler/filters/disk_filter.py
++
++
++Alternatives
++------------
++
++None
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++* No new extension needed, the existing hypervisor REST API will be updated to
++  return the resources available for scheduling, as well as the overcommit
++  ratios
++
++* URL: existed hypervisors extension as:
++       * /v2/{tenant_id}/os-hypervisors/{id}
++
++  JSON response body:
++
++    {"hypervisor": {
++            "vcpus_used": 4,
++            "hypervisor_type": "QEMU",
++            "local_gb_used": 80,
++            "host_ip": "172.25.110.34",
++            "hypervisor_hostname": "otccloud06",
++            "memory_mb_used": 8704,
++            "memory_mb": 23638,
++            "current_workload": 0,
++            "vcpus": 16,
++            "cpu_info": {"vendor": "Intel}
++            "running_vms": 2,
++            "free_disk_gb": 439,
++            "hypervisor_version": 1000000,
++            "disk_available_least": 408,
++            "local_gb": 519,
++            "free_ram_mb": 14934,
++            "id": 1,
++            "cpu_allocation_ratio": 16.0,
++            "disk_allocation_ratio": 1.0,
++            "ram_allocation_ratio": 1.5,
++            "available_disk_gb": 439,
++            "available_ram_mb": 26753,
++            "available_vcpus": 252}}
++
++  The new fields are:
++    'cpu_allocation_ratio'
++    'disk_allocation_ratio'
++    'ram_allocation_ratio'
++    'available_disk_gb'
++    'available_ram_mb'
++    'available_vcpus'
++
++Security impact
++---------------
++
++No
++
++Notifications impact
++--------------------
++
++No
++
++Other end user impact
++---------------------
++
++Yes, this will impact the python-novaclient. novaclient should show the new
++fields on the 'nova hypervisor' command.
++
++Performance Impact
++------------------
++
++No
++
++Other deployer impact
++---------------------
++
++No
++
++Developer impact
++----------------
++
++No
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++    weidu@yahoo-inc.com
++
++Work Items
++----------
++
++* Changes to V2 API
++* Changes to novaclient
++
++
++Dependencies
++============
++
++No
++
++Testing
++=======
++
++Both unit and Tempest tests will be created to ensure the correct
++implementation.
++
++Documentation Impact
++====================
++
++Document the change to the REST API.
++
++References
++==========
++No
+-- 
+1.9.1
+

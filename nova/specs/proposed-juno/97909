@@ -1,0 +1,166 @@
+From eceaca39a94c413389ca04690d21a8d5d111a724 Mon Sep 17 00:00:00 2001
+From: "Chris St. Pierre" <stpierre@metacloud.com>
+Date: Wed, 4 Jun 2014 13:20:58 -0700
+Subject: [PATCH] Support arbitrary DNSMasq options
+
+Change-Id: I0d85734e4f43ac7dee6d471518bf10210a974878
+---
+ specs/juno/dnsmasq-options-config.rst | 146 ++++++++++++++++++++++++++++++++++
+ 1 file changed, 146 insertions(+)
+ create mode 100644 specs/juno/dnsmasq-options-config.rst
+
+diff --git a/specs/juno/dnsmasq-options-config.rst b/specs/juno/dnsmasq-options-config.rst
+new file mode 100644
+index 0000000..1ed9aa5
+--- /dev/null
++++ b/specs/juno/dnsmasq-options-config.rst
+@@ -0,0 +1,146 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++===================================
++ Support arbitrary DNSMasq options
++===================================
++
++https://blueprints.launchpad.net/nova/+spec/dnsmasq-options-config
++
++This feature will allow admins to specify arbitrary dnsmasq options in
++``nova.conf``.
++
++Problem description
++===================
++
++In order to specify options to the dnsmasq command run by
++``linux_net.py``, it is necessary to hack ``linux_net.py``; there is
++no way to specify arbitrary options currently.  Nova supports a small
++subset of options, but dnsmasq has many, many more.
++
++This is similar to the ``extra-dhcp-opts`` extension to Neutron that
++allows setting arbitrary, potentially vendor-specific DHCP options on
++specific ports.  Since Nova networking only supports a single "vendor"
++-- dnsmasq -- that simplifies matters somewhat.  Additionally, since
++Nova networking does not have hardware ports, the dnsmasq options set
++will apply to all clients.
++
++Proposed change
++===============
++
++Add a new ``dnsmasq_opts`` option to ``nova.conf`` that accepts a list
++of command-line options that will be passed directly to ``dnsmasq``.
++This will be a simple cherry-pick (with unit tests added) of
++https://review.openstack.org/#/c/20197/
++
++Alternatives
++------------
++
++Individual options could be added to ``nova.conf`` for each dnsmasq
++option needed.  This is not future-proof.
++
++Instead of always setting dnsmasq options globally, we could allow
++setting them on a per-network basis.  We already run one dnsmasq
++server per DHCP network, but we would need to find an elegant way to
++configure options for each network.  If this approach were taken, we
++would want to make at least some of the other dnsmasq options that
++have been abstracted individually into ``nova.conf`` similarly
++flexible -- ``dnsmasq_config_file``, ``dns_server``, ``multi_host``,
++etc.
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++None
++
++Security impact
++---------------
++
++This will permit an administrator with access to modify ``nova.conf``
++to pass potentially dangerous or insecure options to dnsmasq.  This is
++not a security flaw *per se*; caveat configurator, obviously.
++
++Since write access to ``nova.conf`` is required to modify the dnsmasq
++options, there is no possibility of a privilege escalation attack
++unless permissions on ``nova.conf`` were already incorrect.
++
++Notifications impact
++--------------------
++
++None.
++
++Other end user impact
++---------------------
++
++None.
++
++Performance Impact
++------------------
++
++None.
++
++Other deployer impact
++---------------------
++
++This adds a new option to ``nova.conf``, but it has a sane default
++(empty) that matches the current state.  No changes will be necessary
++to existing deployment workflows.
++
++Developer impact
++----------------
++
++None
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  stpierre
++
++Other contributors:
++  nicolas.simonds
++
++Work Items
++----------
++
++* Cherry-pick https://review.openstack.org/#/c/20197/ onto the latest
++  master.
++* Add logic to ensure that ``dnsmasq_opts`` does not override or
++  duplicate any DNSMasq options set through other means (e.g., as
++  defaults or with other configuration options).  Update the sample
++  configuration to avoid containing a duplicate option
++  (``--strict-order``).
++* Add unit tests.
++
++All of this is done in https://review.openstack.org/#/c/97969/
++
++Dependencies
++============
++
++None.
++
++Testing
++=======
++
++Unit tests will be added for the new functionality.
++
++Documentation Impact
++====================
++
++Update the sample ``nova.conf`` to demonstrate the new options.
++
++References
++==========
++
++Original code review: https://review.openstack.org/#/c/20197/
+-- 
+1.9.1
+

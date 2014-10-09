@@ -1,0 +1,138 @@
+From abf592e126f3208a8e1b809c7dc2827ee4e52d4d Mon Sep 17 00:00:00 2001
+From: Vladik Romanovsky <vladik.romanovsky@enovance.com>
+Date: Thu, 17 Apr 2014 09:19:50 -0400
+Subject: [PATCH] Schedule vms per flavour cpu overcommit
+
+Add support to schedule VMS according to the CPU overcommit ratio,
+specified in extra_specs of it's flavour.
+
+blueprint flavor-cpu-overcommit
+
+Change-Id: Id6920b39167984c93b4f88d6fb8d45340ba36380
+---
+ specs/juno/flavor-cpu-overcommit.rst | 113 +++++++++++++++++++++++++++++++++++
+ 1 file changed, 113 insertions(+)
+ create mode 100644 specs/juno/flavor-cpu-overcommit.rst
+
+diff --git a/specs/juno/flavor-cpu-overcommit.rst b/specs/juno/flavor-cpu-overcommit.rst
+new file mode 100644
+index 0000000..b4b8e64
+--- /dev/null
++++ b/specs/juno/flavor-cpu-overcommit.rst
+@@ -0,0 +1,113 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++==========================================
++Flavour CPU overcommit
++==========================================
++https://blueprints.launchpad.net/nova/+spec/flavor-cpu-overcommit
++
++The aim of this blueprint is to provide an option to schedule VMS according
++to the CPU overcommit ratio, specified in extra_specs of it's flavour.
++
++
++Problem description
++===================
++Currently there is no way to group vms according to it’s cpu overcommit
++ratio. Such option is required in order to allow the users to group vms
++by its workload characteristics, cpu intensive and not, and by a flavour price
++for cpu usage.
++
++Proposed change
++===============
++Host Capabilities:
++Exposing the cpu_allocation_ratio parameter in host capabilities.
++It will make this parameter be presented to the scheduler filter.
++
++Scheduler:
++2 changes are being proposed.
++
++1.  Add a CpuOvercommitFilter filter. The filter will use
++    the alloc:cpu_ratio provided in the flavour extra_specs,
++    by the administrator, and will return a list of host that exactly match
++    the requested value or, in case such value doesn't exist, return
++    a list of host that closely match the above value.
++
++2. Modify the CpuOvercommitWeigher class, exposing the cpu_allocation_ratio
++   value as a weighting parameter, in order to have the Vms being scheduled
++   on host with the closest to the requested cpu overcommit value.
++
++Setting the overcommit ratio to 1, should effectively set the vm on
++dedicated core.
++
++Alternatives
++------------
++None
++
++Data model impact
++-----------------
++None
++
++REST API impact
++---------------
++None
++
++Security impact
++---------------
++None
++
++Notifications impact
++--------------------
++None
++
++Other end user impact
++---------------------
++None
++
++Performance Impact
++------------------
++Although, this is a new filter that is being introduced,
++the filter will only be functional in case alloc:cpu_ratio
++value is being provided in the flavour extra_spec, otherwise
++the filter will be skipped
++
++
++Other deployer impact
++---------------------
++None
++
++Developer impact
++----------------
++None
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++Vladik Romanovsky <vladik.romanovsky@enovance.com>
++
++Work Items
++----------
++
++
++Dependencies
++============
++None
++
++Testing
++=======
++None
++
++
++Documentation Impact
++====================
++None
++
++
++References
++==========
++None
+-- 
+1.9.1
+

@@ -1,0 +1,186 @@
+From d5cd07ba387411580fcaa20ef3817e87ba3d2af1 Mon Sep 17 00:00:00 2001
+From: JingYuan <yj.yuan@huawei.com>
+Date: Tue, 10 Jun 2014 22:05:58 +0800
+Subject: [PATCH] Add support for USB controller
+
+Support to create USB controller for VM
+
+blueprint add-usb-controller
+
+Change-Id: I22c8f9bbf5c34b87fefdea3ab911efc0e1ca3508
+---
+ specs/juno/add-usb-controller.rst | 162 ++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 162 insertions(+)
+ create mode 100644 specs/juno/add-usb-controller.rst
+
+diff --git a/specs/juno/add-usb-controller.rst b/specs/juno/add-usb-controller.rst
+new file mode 100644
+index 0000000..5793342
+--- /dev/null
++++ b/specs/juno/add-usb-controller.rst
+@@ -0,0 +1,162 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++==============================
++Add support for USB controller
++==============================
++
++Include the URL of your launchpad blueprint:
++
++https://blueprints.launchpad.net/nova/+spec/add-usb-controller
++
++Users have requirements of using USB device, the detailed information can
++refer to BP in
++https://blueprints.launchpad.net/nova/+spec/usb-passthrough.
++
++If not specify appropriate USB controller for USB device, USB device will
++use the default piix3-usb-uhci, which results in some problems.
++
++1. The low speed of USB device.
++
++2. If use spice client to redirect USB device to VM, the mismatched speed may
++prevent the connection.
++
++USB 2.0 has other good point that it will result in dramatically lower CPU
++usage when the USB tablet is present for VNC/SPICE.
++
++As described above, I think that support USB 2.0 controller is valuable in
++Openstack.
++
++
++Problem description
++===================
++
++Use cases:
++
++1. User creates a VM, the system creates a default ehci USB controller,
++attach USB tablet to the ehci controller.
++
++Proposed change
++===============
++
++1. Add function of create ehci controller in libvirt driver when create
++VM.
++
++Details:
++
++Use object 'LibvirtConfigGuestController' for USB controller in libvirt
++driver, create ehci xml in 'get_guest_config' function.
++
++The xml may like:
++
++<controller type='usb' index='1' model='ehci'/>
++
++All values of above properties are constant.
++
++2. Add function of specify USB controller for USB tablet in libvirt driver
++when create VM.
++
++Details:
++
++Add 'address' element to USB tablet object 'LibvirtConfigGuestInput',
++specify ehci controller in 'get_guest_config' function.
++
++The xml may like:
++
++<input type='tablet' bus='usb'>
++
++<address type='usb' bus='1' port='1'/>
++
++</input>
++
++The values of address are constant.
++
++Alternatives
++------------
++
++None
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++None
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++None
++
++Performance Impact
++------------------
++
++USB 2 / USB 3 controllers will improve guest performance as compared to USB 1
++controller. eg if we plug USB tablet into a USB2 controller,  guest CPU usage
++will be much reduced.
++
++Other deployer impact
++---------------------
++
++None
++
++Developer impact
++----------------
++
++None
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  <Jing Yuan>
++
++
++Work Items
++----------
++
++Step 1: Create ehci xml in 'get_guest_config' function.
++
++Step 2: Modify USB tablet object, specify ehci controller for USB tablet
++in 'get_guest_config' function.
++
++Dependencies
++============
++
++None
++
++
++Testing
++=======
++
++None
++
++Documentation Impact
++====================
++
++None
++
++
++References
++==========
++
++https://blueprints.launchpad.net/nova/+spec/usb-passthrough
+-- 
+1.9.1
+

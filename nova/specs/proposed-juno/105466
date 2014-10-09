@@ -1,0 +1,107 @@
+From c6fe5ca439453e5e1ce07a01573f5a9f8c6cfed6 Mon Sep 17 00:00:00 2001
+From: Dafna Ron <dron@redhat.com>
+Date: Tue, 8 Jul 2014 13:01:57 +0100
+Subject: [PATCH] new spect for blueprint solving ssh-key issues on localhost
+ resize
+
+Change-Id: I599b1a86011f1df058d9e9c0b4611343d46cf420
+---
+ specs/juno/no-migration-resize.rst | 86 ++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 86 insertions(+)
+ create mode 100644 specs/juno/no-migration-resize.rst
+
+diff --git a/specs/juno/no-migration-resize.rst b/specs/juno/no-migration-resize.rst
+new file mode 100644
+index 0000000..b5ddcea
+--- /dev/null
++++ b/specs/juno/no-migration-resize.rst
+@@ -0,0 +1,86 @@
++allow instance resize without migration
++^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
++
++https://blueprints.launchpad.net/nova/+spec/no-migration-resize
++
++Allow resize of instance disk without instance host migration
++
++Problem Description
++^^^^^^^^^^^^^^^^^^^^^
++
++following bug https://bugs.launchpad.net/nova/+bug/1323578, the current allow_resize_to_same_host=True only adds the localhost to the pool of computes used to migrate during resize. 
++
++Proposed change
++^^^^^^^^^^^^^^^^^^^^^
++
++I am not sure the current allow_resize_to_same_host usage is clear to the user 
++
++**Alternative**
++
++1. if we do not change allow_resize_to_same_host to only allow resize to the localhost I think we should create a new option to configure resize without migration. 
++2. if we see a need in adding localhost to the hosts pool on resize, than I would also suggest that we add optional argument of manual host selection for resize. 
++
++(--host or --target)
++
++**Data model Impact**
++
++None
++
++**REST API impact**
++
++depends on the solution selected 
++
++**Security Impact**
++
++None
++
++**Notification impact**
++
++depending on solution selected
++
++**Other end user impact**
++
++depending on solution selected
++
++**Other deployer impact**
++
++depending on solution selected
++
++** Developer impact**
++
++depending on solution selected
++
++
++Implementation
++^^^^^^^^^^^^^^^
++
++**Assignee(s)**
++
++None
++
++**Work Items**
++
++depending on solution selected
++
++
++Dependencies
++^^^^^^^^^^^^^^^
++
++None
++
++Testing
++^^^^^^^^
++
++depending on solution selected
++
++Documentation Impact
++^^^^^^^^^^^^^^^^^^^^^
++
++depending on solution selected
++
++References
++^^^^^^^^^^^^
++
++https://bugs.launchpad.net/nova/+bug/1323578
++
++
+-- 
+1.9.1
+

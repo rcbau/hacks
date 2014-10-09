@@ -1,0 +1,154 @@
+From fe3f69be83fb7ead6df60d548924f108ea1a1724 Mon Sep 17 00:00:00 2001
+From: "vitas.yuzhou" <vitas.yuzhou@huawei.com>
+Date: Fri, 28 Mar 2014 19:54:33 +0800
+Subject: [PATCH] Allow setting the location of VM swapfile for libvirtDriver
+
+Add support to set the location of virtual machine swap files separately
+for libvirtDriver. With such a feature enabled, swapfiles can be placed onto
+a specified storage, e.g. a SSD, separately, that improve the performance
+of guest VM.
+
+Related to blueprint set-vm-swapfile-location.
+
+Change-Id: Icc917a26a0ac797d8496ead320144bb8078462fb
+---
+ specs/juno/set-vm-swapfile-location.rst | 127 ++++++++++++++++++++++++++++++++
+ 1 file changed, 127 insertions(+)
+ create mode 100644 specs/juno/set-vm-swapfile-location.rst
+
+diff --git a/specs/juno/set-vm-swapfile-location.rst b/specs/juno/set-vm-swapfile-location.rst
+new file mode 100644
+index 0000000..aba4bcd
+--- /dev/null
++++ b/specs/juno/set-vm-swapfile-location.rst
+@@ -0,0 +1,127 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++=================================================================
++add configuration item to set virtual machine swap file location
++=================================================================
++
++https://blueprints.launchpad.net/nova/+spec/set-vm-swapfile-location
++
++Add support to set the location of virtual machine swap files separately.
++with such a feature enabled, swapfiles can be placed onto a specified storage,
++e.g. a SSD, separately, that improve the performance of guest VM.
++
++Problem description
++====================
++
++Currently, disk.swap(the swap file of instance) is created in the
++<instances_path> (default is /var/lib/nova/instances/<vm-uuid>),
++the base file is in /var/lib/nova/instances/_base/swap_XXX.
++We cannot place the swap files onto a specified storage, e.g. a SSD,
++separately.
++
++This feature that I want to implement is targeted for
++libvirt-kvm.
++
++Proposed change
++================
++
++1.Add configuration item <swap_files_path> in nova.conf to
++  set the location of virtual machine swap file, such as:
++  swap_files_path=/var/lib/nova/swapfiles/
++
++2.Place the swap file and its base file onto <swap_files_path>.
++
++Alternatives
++-------------
++
++None
++
++Data model impact
++------------------
++
++None
++
++REST API impact
++----------------
++
++None
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++---------------------
++
++None
++
++Other end user impact
++-----------------------
++
++None
++
++Performance Impact
++---------------------
++
++1.If the swap files are placed on a SSD, I think it will improve
++the performance of guest vm in some cases.
++
++2.There is no impact about the performance of nova.
++
++Other deployer impact
++----------------------
++
++To strive for better performance, deployers can configure <swap_files_path>
++to place the swap files of VM onto a specified storage, e.g. a SSD.
++
++Developer impact
++----------------
++
++None
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++assignee:Zhou Yu <vitas.yuzhou@huawei.com>
++
++
++Work Items
++----------
++
++Only implement this feature in libvirtDriver.
++
++
++Dependencies
++============
++
++None
++
++
++Testing
++=======
++
++Unit tests will check if nova create swapfiles onto <swap_files_path>,
++the code changes about this bp are little, I think unit tests are sufficient.
++
++
++Documentation Impact
++====================
++
++Add a suggestion in configuration doc, such as:
++To strive for better performance, deployers can configure <swap_files_path>
++to place the swap files of VM onto a specified storage, e.g. a SSD.
++
++
++References
++==========
++
++None
+-- 
+1.9.1
+

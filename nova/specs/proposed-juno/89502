@@ -1,0 +1,179 @@
+From 7e6fa00107a31faf1379ea4703bfd74ef764edfb Mon Sep 17 00:00:00 2001
+From: Jay Lau <liugya@cn.ibm.com>
+Date: Tue, 22 Apr 2014 16:15:11 +0800
+Subject: [PATCH] validate target host for live migration
+
+This spec is for bp validate-targethost-live-migration
+
+Change-Id: I86e6032271c86054cfd9f10845737e85ce7f4810
+---
+ specs/juno/validate-targethost-live-migration.rst | 157 ++++++++++++++++++++++
+ 1 file changed, 157 insertions(+)
+ create mode 100644 specs/juno/validate-targethost-live-migration.rst
+
+diff --git a/specs/juno/validate-targethost-live-migration.rst b/specs/juno/validate-targethost-live-migration.rst
+new file mode 100644
+index 0000000..2f53cad
+--- /dev/null
++++ b/specs/juno/validate-targethost-live-migration.rst
+@@ -0,0 +1,157 @@
++
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++===========================================
++Validate target host for live migration
++===========================================
++
++https://blueprints.launchpad.net/nova/+spec/validate-targethost-live-migration
++
++The aim of this feature is to let nova scheduler evaluate the scheduler hints
++when live migrate a VM with target host.
++
++
++Problem description
++===================
++
++At the moment, for live migration with target host, the current implementation
++is that once target host was specified for live migration, the conductor only
++validates the host by nova compute.
++
++For some cases, there is also a need to validate the host in nova scheduler,
++as there might be some requirement that admin wants to validate the target host
++for live migration with scheduler hints and filters.
++
++In the current implementation the user can specify scheduler hints related to
++the placement of the instance. Those scheduler hints are used when the
++instance run for the first time and they are ignored afterwards. In order to
++achieve the validation of the target host we need to persist scheduler hints
++into the database which makes it possible to verify that the target host
++passes scheduler filters/hints during live migration.
++
++There are some cases when this verification during live migration will lead
++the system locked and the user will not be able to migrate an instance, so a
++new option should be added in order to force the migration without verifying
++the target host by nova-scheduler.
++
++
++Proposed change
++===============
++
++Modify the current live migration work flow to let the scheduler verify the
++scheduler hints and filters when live migration with a target host.
++
++
++Alternatives
++------------
++
++None
++
++
++Data model impact
++-----------------
++
++None
++
++
++REST API impact
++---------------
++
++* Enable ignores scheduler validation for both V2/V3 API.
++    * Request body::
++
++        {
++            "os-migrateLive": {
++                "host": "0443e9a1254044d8b99f35eace132080",
++                "block_migration": false,
++                "disk_over_commit": false,
++                "scheduler_validation": true
++            }
++        }
++
++
++Security impact
++---------------
++None
++
++Notifications impact
++--------------------
++None
++
++Other end user impact
++---------------------
++
++python-novaclient will be modified to have scheduler_validation option when
++live migrate a VM instance with target host.
++
++The user can enable scheduler validation by:
++nova live-migration server --scheduler_validation
++
++
++Performance Impact
++------------------
++None
++
++Other deployer impact
++---------------------
++None
++
++Developer impact
++----------------
++None
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++    jay-lau-513 (liugya@cn.ibm.com)
++
++Other contributors:
++    Yassine Lamgarchal (yassine.lamgarchal@enovance.com)
++
++
++Work Items
++----------
++
++* Add validation logic in live migration task.
++* Add validation logic in nova scheduler for scheduler hints/filters.
++* Add logic to make validation optional for both V2/V3 API.
++
++
++Dependencies
++============
++
++For a complete use-case the following bp will be required
++https://blueprints.launchpad.net/nova/+spec/persist-scheduler-hints,
++since we can retrieve the original scheduler hints from that a particular
++instance and let the scheduler validate the scheduler hints for live
++migration with target host.
++
++
++Testing
++=======
++
++* Add unit test for validation logic related to live migration task.
++* Add unit test for validation logic related to nova scheduler.
++* Add unit test for validation logic related to V2/V3 API.
++
++
++Documentation Impact
++====================
++
++* Api Docs to reflect the new scheduler_validation option for live migration.
++  If not present in the body the new feature will be ignored.
++* Client docs ( due to the new added live migration option).
++* Admin User Guide on live migration topic.
++
++
++References
++==========
++None
+-- 
+1.9.1
+

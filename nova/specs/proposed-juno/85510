@@ -1,0 +1,235 @@
+From 77628a42492b9e45d2fc2a4e8eacee469c78ddd1 Mon Sep 17 00:00:00 2001
+From: Eric Brown <browne@vmware.com>
+Date: Fri, 4 Apr 2014 18:45:08 -0400
+Subject: [PATCH] VMware: Store vCenter passwords in keystone credential store
+
+This blueprint proposes an alternative way of storing vCenter user names and
+passwords for OpenStack administrators that are leery of keeping them within
+nova.conf as plain text.
+
+blueprint vmware-encrypt-vcenter-passwords
+
+Change-Id: If8b56491e3eae13b619bb795e3f7ce2f3864f96e
+---
+ specs/juno/vmware-encrypt-vcenter-passwords.rst | 209 ++++++++++++++++++++++++
+ 1 file changed, 209 insertions(+)
+ create mode 100755 specs/juno/vmware-encrypt-vcenter-passwords.rst
+
+diff --git a/specs/juno/vmware-encrypt-vcenter-passwords.rst b/specs/juno/vmware-encrypt-vcenter-passwords.rst
+new file mode 100755
+index 0000000..da578ed
+--- /dev/null
++++ b/specs/juno/vmware-encrypt-vcenter-passwords.rst
+@@ -0,0 +1,209 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++=======================================================
++VMware: avoid vCenter plain text passwords in nova.conf
++=======================================================
++
++https://blueprints.launchpad.net/nova/+spec/vmware-encrypt-vcenter-passwords
++
++This blueprint proposes an alternative way of storing vCenter user names and
++passwords for OpenStack administrators that are leery of keeping them within
++nova.conf as plain text.
++
++
++Problem description
++===================
++
++One of the primary concerns to customers using OpenStack is the use of plain
++text passwords in conf files. This blueprint's goal is scoped only to the
++concern of the VMware vCenter/ESX passwords found in nova.conf. When using the
++vCenter driver, usernames and passwords are stored in plain text inside the
++nova.conf file in order to establish a connection to the remote hypervisor.
++
++The goal is to protect access to such passwords. This can be done in a number
++of ways, but the below solution outlines a technique using existing OpenStack
++infrastructure.
++
++
++Proposed change
++===============
++
++The proposed solution is to give a user the capability to put the vCenter user
++and password in the keystone credential store instead of nova.conf. As of
++version 3, keystone includes a credential store.  The credential store database
++access is secured through use of the nova user and password.
++
++The vmware driver would first check the 'vmware' section of the nova.conf for
++the host_ip, host_username, and host_password. Only in the case where
++host_username and/or host_password are not found in nova.conf, does the driver
++contact keystone to search for an appropriate credential.
++
++The credential store in keystone does not have a strict schema. The most common
++type of credential used there is 'ec2'. This blueprint introduces a new type of
++string 'nova'. The credential blob is encoded with three fields host_ip,
++host_username, and host_password, matching those found in nova.conf. The
++host_ip is required in order to match the specific host being used by a
++particular nova compute instance.
++
++Here is an example of the metadata for this credential type::
++
++    Id: 3cb25d0da8084f7d889548f8dd77df3b
++    User: nova (e29969d944314e15a5d02556b2298745)
++    Type: nova.127.0.0.1
++    Blob: {"vmware": {"host_ip": "10.0.0.5",
++                      "host_username": "root",
++                      "host_password": "password"}}
++
++Or a future use for XenServer might be as follows::
++
++    Id: 3cb25d0da8084f7d889548f8dd77df3b
++    User: nova (e29969d944314e15a5d02556b2298745)
++    Type: nova.127.0.0.1
++    Blob: {"xenserver": {"connection_url": "10.0.0.5",
++                         "connection_username": "root",
++                         "connection_password": "password"}}
++
++where the 'type' could be either 'nova' in cases where someone would wish to
++share the credential accross all nodes, or 'nova.<host>' which would be a
++specific credential for a given nova host.
++
++This scheme might be applicable to other services such as cinder which also
++has options to specify the host/ip, user, password.
++
++As of today, the only way to get a credential not of type 'ec2' into the
++keystone store is to write a script or use a REST client to insert it.  As
++part of this work item, the hope is to also get a change to the
++openstack-client to support non 'ec2' credential creation.
++
++Alternatives
++------------
++
++One alternative to this blueprint is to encrypt the password string contained
++within nova.conf.  When reviewing this proposal with others within the
++community, the consensus was that this was no more secure than plain text.
++That's because any user who is able to get access to the nova.conf, also would
++have the ability to brute force decrypt the password stored within it.
++
++Another alternative suggested is to use Cloudkeep (a.k.a Barbican).  Cloudkeep
++would be a more general solution that could apply to any private credential
++storage.  But the drawback to a customer might be the introduction of another
++service that needs to be maintained.
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++None
++
++Security impact
++---------------
++
++This solution does not introduce a security impact.  Instead it's meant to
++alleviate the perception of one to a customer.
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++None
++
++Performance Impact
++------------------
++
++A potential performance impact is present since the proposed solution would
++involve issuing requests to the keystone service.  Therefore it's important
++to utilize caching of the credentials that are returned so as to minimize
++network traffic.
++
++Other deployer impact
++---------------------
++
++In order to take advantage of this feature, the credential must be prepopulated
++in the keystone credential store prior to starting the nova compute instance.
++In order to do this, a user would need to use curl, REST client, or some other
++script to create the credential in keystone. The keystone-client does not
++support creation of credentials (mostly because of the lack of v3 support).
++The future openstack-client does allow creation of credentials, but only of
++type 'ec2' and 'cert'. In the future, hopefully the openstack-client could be
++extended to allow an type as the API does.
++
++Usage
++
++* Create credential in keystone with type='vmware', host_ip matching that in
++  nova.conf, and user_id of the nova user.
++* Edit /etc/nova/nova.conf and remove host_username and host_password from the
++  vmware section.
++* Restart that nova compute instance. Check for errors.
++
++
++Developer impact
++----------------
++
++None
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  ericwb
++
++Other contributors:
++  None
++
++Work Items
++----------
++
++* Create a set of convenience functions for looking up a vCenter credential
++  based on a given host name or IP address.
++* Modify VMware driver to use convenience functions.
++* Modify openstack-client to allow creation of vmware type credentials (only
++  ec2 supported today).
++
++
++Dependencies
++============
++
++* Currently Nova is already dependent on the use of the keystone-client for
++  middleware.  This proposal would also add a dependency on the use of keystone
++  v3 in order to access its credential store.  To date, Nova has not yet had
++  any keystone v3 dependency.
++
++
++Testing
++=======
++
++Addition of tempest tests is probably not necessary.  Tempest is currently
++driver agnostic and this change is VMware specific.  The VMware CI could
++utilize this configuration, if preferred.
++
++
++Documentation Impact
++====================
++
++The documentation of the use of the Nova VMware driver would need to be updated
++to state that use of the host_username and host_password could be optional
++instead of required in nova.conf.  The docs would need to describe how someone
++can populate the keystone credential store with this user and password to take
++advantage of this feature.
++
++
++References
++==========
++
++http://api.openstack.org/api-ref-identity.html#Credential_Calls
+-- 
+1.9.1
+

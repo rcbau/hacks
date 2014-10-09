@@ -1,0 +1,237 @@
+From d8b3c49decb7cffa67b359e59bf508ca0c71debf Mon Sep 17 00:00:00 2001
+From: JingYuan <yj.yuan@huawei.com>
+Date: Wed, 9 Apr 2014 10:50:12 -0700
+Subject: [PATCH] Support passthrough of USB device and USB controller
+
+Add function to specify usb device when creating VM, or attach usb device to exist VM.
+
+Change-Id: Idf238057f3490fa92f6e9f8a625d45a595d33cfe
+---
+ specs/juno/usb-passthrough.rst | 215 +++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 215 insertions(+)
+ create mode 100644 specs/juno/usb-passthrough.rst
+
+diff --git a/specs/juno/usb-passthrough.rst b/specs/juno/usb-passthrough.rst
+new file mode 100644
+index 0000000..b3733ae
+--- /dev/null
++++ b/specs/juno/usb-passthrough.rst
+@@ -0,0 +1,215 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++====================================================
++Support passthrough of USB device and USB controller
++====================================================
++
++Include the URL of your launchpad blueprint:
++
++https://blueprints.launchpad.net/nova/+spec/usb-passthrough
++
++Some telecom and enterprise customers have requirement of usb-passthrough
++especially in private cloud. So I think maybe it's a good choice to provide this
++feature in openstack.
++
++
++Problem description
++===================
++
++Use cases:
++
++* There are some ERP software deployed in VM that need usb-key for
++  authentication, the end user proposes the request to administrator,
++  the administrator helps the end user to insert a usb device to a host,
++  and makes some configuration so that system can discovery the device.
++
++* The end user creates a VM with specified usb device.
++
++* The end user attaches a usb device to a specified VM.
++
++* The end user specifies a usb controller for usb device.
++
++Proposed change
++===============
++
++Most of the implementation can reference to the idea of pci-passthrough.
++
++The function is only considered for libvirt/qemu-kvm environment.
++
++For usb controller, I suggest the following implementations:
++
++* Nova supports creating a default piix3-usb-uhci controller and a default
++  ehci controller when creating VM. xhci controller is not supported well by
++  now.
++  The piix3-usb-uhci controller has no usb device number restriction because
++  libvirt/qemu will create more usb hub if usb ports are not enough. The ehci
++  controller has a maximum of 6 usb ports limitation so that only supports a
++  maximum of 6 usb device which we think are enough for business uses.
++
++For usb device, I suggest the following implementations:
++
++* Nova supports auto-discovering usb devices and saving them to DB.
++
++* Nova supports creating a flavor containing usb device information.
++
++* Nova supports creating VM with a flavor which contains usb device
++  information. System schedulers the request to appropriate host which contains
++  the specified usb device and attaches usb device to VM.
++
++* Nova supports hot-plug/cold-plug usb devices to an exist VM.
++
++* Nova supports optionally specifying usb controller type(piix3-usb-uhci or
++  ehci) when using usb device. If not specify then use the default
++  piix3-usb-uhci.System not record which usb device to which usb controller,
++  only randomly and dynamically specify the relationship.
++
++Alternatives
++------------
++
++For usb controller, there are other two options:
++
++Option 2:
++
++* Nova supports new API for usb controller, the end user can create usb
++  controller when creating VM or call API to create new usb controller if usb
++  ports are not enough. The key parameters of usb controller are number and
++  type.
++
++Shortcoming:
++
++* It may make the operation of end user too complex.
++
++* It is complex to implement this function, system should make decision
++  about which device to which controller and record the relationships.
++  In other words, there are no business use case that too many usb devices
++  with one VM.
++
++Option 3:
++
++* Nova not creates default usb controllers when creating VM,
++  only creates ones when attaching usb device to VM.
++
++Shortcoming:
++
++* It is also complex to implement this function like Option 2.
++
++Option 4:
++
++* Don't specify usb-controller for usb device, so libvirt/qemu-kvm will attach
++  usb device to default piix3-usb-uhci controller.
++
++Shortcoming:
++
++* The speed of usb device may mismatch with usb controller.
++
++Data model impact
++-----------------
++
++
++
++For usb controller:
++
++* The libvirt driver should add usb controller data object.
++
++For usb device:
++
++* In hypervisor layer, add function to discover usb devices, and add a
++  white-list function to filter invalid information like physical usb
++  controller.
++
++* In DB layer, add a new data table usb_devices to record usb devices
++  information.
++
++* In DB layer, add a key-value pair to instance_system_metadata table to
++  record usb device information which have been attached to a VM.
++
++* In scheduler layer, add a filter to filter appropriate host which
++  contains the usb devices.
++  
++* In API layer, add a key-value to extra_specs property of flavor API to
++  specify usb devices. The schema may like:{"usb_devices":[{"id": 5,
++  "usbcontroller_type":"ehci"}]}
++
++* In API layer, add hot-plugin/cold-plugin API for attaching/detaching usb
++  devices to/from a running/stopped VM.
++
++* Some function like suspend/resume a VM, make snapshot of a VM
++  may be affected by this new function. For example it may be necessary to
++  detach usb devices before suspend a VM.
++
++
++REST API impact
++---------------
++
++NULL
++
++Security impact
++---------------
++
++NULL
++
++Notifications impact
++--------------------
++
++NULL
++
++Other end user impact
++---------------------
++
++NULL
++
++Performance Impact
++------------------
++
++NULL
++
++Other deployer impact
++---------------------
++
++NULL
++
++Developer impact
++----------------
++
++NULL
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  <Jing Yuan>
++
++
++Work Items
++----------
++NULL
++
++Dependencies
++============
++
++NULL
++
++
++Testing
++=======
++
++NULL
++
++Documentation Impact
++====================
++
++NULL
++
++
++References
++==========
++
++NULL
+-- 
+1.9.1
+

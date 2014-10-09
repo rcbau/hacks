@@ -1,0 +1,190 @@
+From c654aa1abe06432f7b97ea081cb7efd39263f246 Mon Sep 17 00:00:00 2001
+From: Vincent Hou <sbhou@cn.ibm.com>
+Date: Tue, 1 Apr 2014 23:52:03 -0400
+Subject: [PATCH] Propose: VMware enabling resource pool for VCenter
+
+Take advantage of the resource pool in VCenter as the target, where
+a VM can be deployed.
+
+Related to blueprint vmware-resource-pool-enablement
+
+Change-Id: I10143f2c65e198885bb824368cac8d50dfb38d16
+---
+ specs/juno/vmware-resource-pool-enablement.rst | 165 +++++++++++++++++++++++++
+ 1 file changed, 165 insertions(+)
+ create mode 100644 specs/juno/vmware-resource-pool-enablement.rst
+
+diff --git a/specs/juno/vmware-resource-pool-enablement.rst b/specs/juno/vmware-resource-pool-enablement.rst
+new file mode 100644
+index 0000000..d377d00
+--- /dev/null
++++ b/specs/juno/vmware-resource-pool-enablement.rst
+@@ -0,0 +1,165 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++============================================
++VMware resource pool enablement for VCenter
++============================================
++
++https://blueprints.launchpad.net/nova/+spec/vmware-resource-pool-enablement
++
++To enable the resource pool in VCenter as a target, where the VM can
++be deployed.
++
++
++Problem description
++===================
++
++Right now the nova compute node can deploy the VM on a specified cluster in
++VCenter. Resource pool, as another important concept to group the compute
++resource, has not been implemented as a target for a VM to deploy on.
++This proposal will bring this resource pool into VCenter driver, so that
++the nova compute node can deploy the VM to a specified resource pool under a
++cluster or under a host.
++In this proposal, the cluster is directly under the data center of the VCenter,
++so is the host.
++
++Proposed change
++===============
++
++The idea will introduce the following changes:
++
++ * Add a new flag resource_pool in nova.conf for VMware. This flag is used
++   together with cluster_name as a combination to specify the resource
++   pool, because the resource pool can be either under a cluster or a host.
++
++1) For the resource pool under a cluster: the cluster_name is used to set the
++cluster name and the resource_pool is used to set the cluster and the resource
++pool name with a colon to split them For example, a resource pool named "pool"
++is under a cluster named "cluster1". We will set cluster_name=cluster1 and
++resource_pool=cluster1:pool. If the name before the colon(:) exists in
++cluster_name as well, we know this name is a cluster name and this resource pool
++is under a cluster. Besides the resource pool, the other clusters specified by
++cluster_name will be taken as the available node as well for the VMs to deploy.
++
++2)For the resource pool directly under a host directly in the VCenter data
++center: use resource_pool to specify the host and the resource pool name.
++For example, a resource pool named "pool" is under a host named "host1".
++We can set resource_pool=host1:pool, and DO NOT set "host1" in cluster_name,
++so we know the name before the colon(:) is the host name. This is the mechanism
++to determine whether the resource pool is under a cluster or under a host.
++Besides the resource pool, the other clusters specified by cluster_name will be
++taken as the available node as well for the VMs to deploy.
++
++ * In the method of spawning a VM, the resource pool specified in nova.conf
++   will be returned as the place to launch the VM.
++
++Examples of configurations:
++1. cluster_name=cluster1,cluster_name=cluster2,resource_pool=cluster1:rp1,
++resource_pool=cluster1:rp2
++With this configuration, we specify rp1 under cluster1, rp2 under cluster1 and
++cluster2 as the targets to deploy the VMs. Since cluster1 is used together
++with a resource pool name in resource_pool, this cluster will not be taken
++as the target for VMs to deploy, but the resource pools will be.
++
++2. cluster_name=cluster1,cluster_name=cluster2,resource_pool=host1:rp1
++With this configuration, we specify rp1 under host1, cluster1 and cluster2 as
++the targets to deploy the VMs. Neither cluster1 nor cluster2 is used in
++resource_pool, so the resource pool will be a pool under a host. The resource
++pool and two of the specified clusters will be the target for VMs to deploy.
++
++Alternatives
++------------
++Use the current cluster_name in nova.conf to specify the cluster or the resource
++pool. However, it makes cluster_name complicated to parse, since a lot of
++cases need to be taken into account. For example, we to differentiate the
++resource pool under a cluster from the resource pool under a host, because it is
++different for each of them to retrieve the resource pool. This alternative makes
++it hard to do so.
++
++Data model impact
++-----------------
++None
++
++REST API impact
++---------------
++None
++
++Security impact
++---------------
++None
++
++Notifications impact
++--------------------
++None
++
++Other end user impact
++---------------------
++None
++
++Performance Impact
++------------------
++None
++
++Other deployer impact
++---------------------
++
++In nova.conf, the deployer can configure the resource pool(s) as the target,
++where the VMs are going to deploy.
++
++Developer impact
++----------------
++
++In VMware VCenter driver, a general method of returning the MOR of an
++resource pool by giving the name will be added. Other developers can use
++it to retrieve a resource pool reference.
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  Vincent Hou
++
++Work Items
++----------
++
++ * Add a new flag resource_pool for VMware in nova.conf.
++
++ * Implement the deployment a VM into a resource pool under a cluster.
++
++ * Implement the deployment a VM into a resource pool under a host directly in
++   the data center of VCenter.
++
++ * Extend the flag resource_pool into Multi-string option, so that multiple
++   resource pools can be set as the targets for one nova compute node.
++
++
++Dependencies
++============
++https://blueprints.launchpad.net/nova/+spec/vmware-spawn-refactor
++This proposal will be based on the vmware-spawn-refactor work.
++
++
++Testing
++=======
++New test cases need to be added for deploying the VM into a resource pool.
++
++Documentation Impact
++====================
++The resource pool configurations need to be added for the VMwareVCDriver.
++
++References
++==========
++https://blueprints.launchpad.net/nova/+spec/vmware-resource-pool-enablement
++
++https://blueprints.launchpad.net/nova/+spec/vmware-resource-pool-refactor
++
++https://blueprints.launchpad.net/nova/+spec/esx-resource-pools-as-compute-nodes
++
++Currently there are three blueprints related to this vmware resource pool issue.
++We can combine them together.
+-- 
+1.9.1
+

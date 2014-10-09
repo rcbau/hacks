@@ -1,0 +1,163 @@
+From b43d62e93496738f67bf8296ed26a3be77d04ce0 Mon Sep 17 00:00:00 2001
+From: Yunhong Jiang <yunhong.jiang@intel.com>
+Date: Tue, 15 Apr 2014 15:51:07 -0700
+Subject: [PATCH] Separate stats update out of the periodic task
+
+This spec plan to separate the stats update out of the resource update
+periodic task in resource tracker.
+
+Change-Id: I86fd301687cb87146318a05b398a5b1c9850beb3
+---
+ specs/juno/separate-stats-from-periodic-task.rst | 140 +++++++++++++++++++++++
+ 1 file changed, 140 insertions(+)
+ create mode 100644 specs/juno/separate-stats-from-periodic-task.rst
+
+diff --git a/specs/juno/separate-stats-from-periodic-task.rst b/specs/juno/separate-stats-from-periodic-task.rst
+new file mode 100644
+index 0000000..a87df56
+--- /dev/null
++++ b/specs/juno/separate-stats-from-periodic-task.rst
+@@ -0,0 +1,140 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++==============================================
++Separate the stats update with resource update
++==============================================
++
++https://blueprints.launchpad.net/nova/+spec/stats-out-update-resource
++
++Separate stats information update out of the update_available_resource()
++periodic task in compute resource tracker.
++
++Problem description
++===================
++
++Currently the update_available_resource() periodic task in compute resource
++tracker updates both the stats information and resource usage
++information, and persistent this information to DB.
++
++However, the resource usage changes and stats information is different. The
++resource usage may changes more frequently, while the stats information should
++be more static, especially if nova track everything correctly.
++
++So it will be better to have the stats update and resource update to happen
++with two different periodic intervals. Especially we can eliminate the
++instance/migration DB access for resource update using persistent claims.
++This will be great help for big scale cloud because the DB access will happen
++only in stats update, which is low frequent.
++
++Proposed change
++===============
++
++Resource tracker:
++
++* Separate the _update_usage_from_instance() to two function, one is for
++  resource availability/usage update, and one is for stats update.
++
++* Add a new function, update_stats() to update the stats information.
++
++Compute manager:
++
++* A new periodic task in compute manager to invoke resource tracker's
++  update_stats().
++
++* A new config option to decide the stats update frequency.
++
++Alternatives
++------------
++
++One alternative is to have the conductor to maintain the stats information
++since the conductor will know everything. However, how to keep the
++synchronization between multiple conductor instances will be tricky.
++
++Another alternative is don't keep the stats information at all, but calculated
++dynamically. But it will have bad performance.
++
++Data model impact
++-----------------
++
++No
++
++REST API impact
++---------------
++
++No
++
++Security impact
++---------------
++
++No
++
++Notifications impact
++--------------------
++
++No
++
++Other end user impact
++---------------------
++
++A new config option is added for the interval of the resource update and
++the stats update.
++
++Performance Impact
++------------------
++
++When combined with the persistent resource claim, it will reduce two DB
++access in the periodic task. Considering the DB accesses are per
++compute node, the performance benifit is big.
++
++Also this change reduce the periodic task a bit. Considering that task holds
++a lock, it will reduce the lock held time and help the performance.
++
++Other deployer impact
++---------------------
++
++Noe
++
++Developer impact
++----------------
++
++No
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  yunhong-jiang
++
++Work Items
++----------
++
++* Change the resource tracker code.
++* Change the compute manager code.
++
++
++Dependencies
++============
++
++This is related to the presistent resource claim at
++https://review.openstack.org/#/c/84906/
++
++Testing
++=======
++
++We need add some integration test to make sure the stats infomrmation is always
++up to date.
++
++Documentation Impact
++====================
++No
++
++References
++==========
++No
+-- 
+1.9.1
+

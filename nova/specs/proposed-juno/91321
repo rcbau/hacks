@@ -1,0 +1,162 @@
+From 703c51d23a7a186244e7d0849251a04082d8974d Mon Sep 17 00:00:00 2001
+From: eedten <tobias.engelbert@ericsson.com>
+Date: Wed, 30 Apr 2014 12:19:35 +0200
+Subject: [PATCH] Nova using ephemeral storage with cinder.
+
+As a cloud provider I would like to be able to serve nova's
+ephemeral storage by cinder.
+
+Implements: blueprint nova-ephemeral-cinder
+
+Change-Id: I49dd09e60c855bb8813d30ca2c51cc28e22408bf
+---
+ specs/juno/nova-ephemeral-cinder.rst | 137 +++++++++++++++++++++++++++++++++++
+ 1 file changed, 137 insertions(+)
+ create mode 100644 specs/juno/nova-ephemeral-cinder.rst
+
+diff --git a/specs/juno/nova-ephemeral-cinder.rst b/specs/juno/nova-ephemeral-cinder.rst
+new file mode 100644
+index 0000000..9d97ad1
+--- /dev/null
++++ b/specs/juno/nova-ephemeral-cinder.rst
+@@ -0,0 +1,137 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++===========================================
++Nova using ephemeral storage with cinder
++===========================================
++
++https://blueprints.launchpad.net/nova/+spec/nova-ephemeral-cinder
++
++As a cloud provider I would like to be able to serve nova's ephemeral storage
++by cinder. For certain deployment scenarios this would ease management and 
++maintenance effort when one entity manages all storage related items.
++
++Problem description
++===================
++
++As a cloud provider I would like to manage all the storage related activities
++through one entity: cinder.
++A lot of people want to ease management and maintenance of their virtual 
++machines and their storage.
++With cinder serving the needs for nova's ephemeral storage, glance image 
++storage and cinder block storage there would be one entity to manage all 
++the storage related items (also for blade systems without local storage). 
++Things like live-migration could be made easier.
++As there is development ongoing in glance to use cinder as image backend,
++we have to address the usage in nova to use ephemeral storage with cinder
++as backend in this blueprint.
++When talking about ephemeral, it has to be noted that the rootfs is also
++ephemeral.
++
++
++Proposed change
++===============
++
++Proposal
++- VM boot requested by the tenant
++- Nova tries to find an "ephemeral" volume for the VM
++- Today nova will use the local disk.
++This blueprint suggests to change nova to be able to use
++a cinder volume as ephemeral storage instead of local disk.
++
++See Implementation for more details.
++
++Alternatives
++------------
++
++The current block device mapping implementation can be used which is
++not that easy to use than the proposed solution here.
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++None.
++
++Security impact
++---------------
++
++None.
++
++Notifications impact
++--------------------
++
++None
++
++
++Other end user impact
++---------------------
++
++None.
++
++Performance Impact
++------------------
++
++None.
++
++Other deployer impact
++---------------------
++
++None
++
++Developer impact
++----------------
++
++None
++
++Implementation
++==============
++Introduce a new configuration parameter force_ephemeral_on_cinder
++in nova.conf.
++When force_ephemeral_on_cinder=True, no ephemeral storage should be used.
++This is checked by nova before creating ephemeral storage, instead
++nova sends request to cinder to create a bootable volume in the size of the
++root disk size of the flavor. When the flavor defines a secondary ephemeral
++data disk, a second volume in the size of the second ephemral data disk shall
++be created by nova sending this request to cinder and shall be attached to 
++the virtual machine after it has booted.
++
++Assignee(s)
++-----------
++
++Primary assignee:
++ <eedten>
++ 
++
++Work Items
++----------
++TODO
++
++Dependencies
++============
++
++Related Topic:
++https://blueprints.launchpad.net/nova/+spec/nova-ephemeral-storage-with-cinder
++
++Testing
++=======
++
++Unit test code has to be added.
++
++Documentation Impact
++====================
++
++Configuration option has to be described.
++
++References
++==========
++
++Related Topic:
++https://blueprints.launchpad.net/nova/+spec/nova-ephemeral-storage-with-cinder
+-- 
+1.9.1
+

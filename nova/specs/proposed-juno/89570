@@ -1,0 +1,201 @@
+From 2c2ef0c948df5e57ae7f9a0d96b287add5daddc0 Mon Sep 17 00:00:00 2001
+From: abhishek-kekane <abhishek.kekane@nttdata.com>
+Date: Mon, 21 Apr 2014 08:00:01 +0000
+Subject: [PATCH] Restrict live migration when consoles are open
+
+Users shouldn't be affected due to live migration especially when
+they are using consoles. If users are connected to the console then instance
+migration shouldn't be allowed, instead it should return 409 error to the
+administrator.
+
+Change-Id: I270cd8ee95248397dcd018c21437c1417165e48d
+---
+ specs/juno/restrict-instance-migration.rst | 176 +++++++++++++++++++++++++++++
+ 1 file changed, 176 insertions(+)
+ create mode 100644 specs/juno/restrict-instance-migration.rst
+
+diff --git a/specs/juno/restrict-instance-migration.rst b/specs/juno/restrict-instance-migration.rst
+new file mode 100644
+index 0000000..813bc5a
+--- /dev/null
++++ b/specs/juno/restrict-instance-migration.rst
+@@ -0,0 +1,176 @@
++=====================================================
++Restrict instance migration when vm consoles are open
++=====================================================
++
++https://blueprints.launchpad.net/nova/+spec/restrict-instance-migration
++
++Administrators don't want to bother users by performing live migration
++specially when they are connected to the vm console. When vm will be live
++migrated from source to the destination compute node, the vnc server running
++on the source compute node will abruptly terminate all of the opened tcp
++connections on the graphics port of the vm without intimating to the users.
++
++
++Problem description
++===================
++
++When vm is live migrated to another compute node, users connected to the vm
++consoles (vnc/spice) will be terminated without prior intimation. This might
++sound annoying to the users.
++
++
++Proposed change
++===============
++We are thinking of introducing a new 'force' parameter to the live migration
++api. If force parameter is set to false, then it will check whether users are
++connected to the vm console using vnc/spice before actually performing live
++migration. If users are connected to the vm console, then it will return 409
++error to the administrator.
++Then the administrator (operations team) will inform to the owner of the vm
++that they want to perform live migration within a specified time frame and
++refrain them from connecting to the vm consoles otherwise their connections
++will be terminated automatically. This way users will be informed when the vm
++consoles will be terminated after the live migration is finished.
++
++Administrator will run live migration api with force parameter set as 'true'
++within the given time frame communicated to the user earlier. when force
++parameter is set to True, then it won't check whether users are connected to
++the vm consoles or not and straight way perform live migration.
++
++force parameter default value will be set to 'True'.
++
++Libvirt didn't expose any api to check whether the vm console is open or not.
++So in order to detect that, first we need to get all of the opened tcp
++connections on the compute node where the vm is running using command
++
++sudo netstat -nt
++
++Then using output of netstat command we can filter out all of the tcp
++connections opened for a given vm's graphics port
++<vncserver_listen:graphics port of a vm>.
++
++Alternatives
++------------
++
++None
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++* Live-migrate server
++
++  * Description: Live-migrates a server to a new host without rebooting
++  * Method: POST
++  * Normal response code(s): 202
++  * Expected error http response code(s): 409
++
++    * When instance migration is prformed and consoles are open
++      for given instance then 409 error will be returned to administrator.
++
++  * URL for the resource: /v2/{tenant_id}/servers/{server_id}/action
++  * Parameters which can be passed via the url
++    {tenant_id}, String, The ID for the tenant in a multi-tenancy cloud.
++    {server_id}, UUID, The UUID for the server.
++
++
++Security impact
++---------------
++
++None
++
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++None
++
++Performance Impact
++------------------
++
++One additional compute rpc call will be made if --force parameter is set
++to 'false'.
++
++Deployer impact
++---------------
++
++Added netstat command in compute.filters file
++
++Format for netstat command in compute.filters:
++
++netstat: CommandFilter, netstat, root
++
++
++Developer impact
++----------------
++
++We intend to add this check for the KVM but making provision so that other
++hypervisors can benefit too.
++A new abstract method "check_console_ports" will be added to the
++virt/driver.py
++This method will be implemented in the libvirt driver. Other hypervisors can
++implement this method based on their requirement, otherwise
++NotImplementedError will be raised with error message
++"Hypervisor driver doesn't support checking of opened consoles ports" which
++will be caught in the compute manager and no action would be taken. In short,
++force parameter will  be ignored if check_console_ports method is not
++implemented in the hypervisor.
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  abhishek-kekane
++
++Other contributors:
++  None
++
++Work Items
++----------
++
++- Add a new method 'check_console_ports' in libvirt driver to check console
++  ports are opened for a given instance.
++- Add a new 'check_console_ports' compute rpc api which will be called
++  (called synchronously using call method) from the compute/api.py to check
++  users are connected to the vm console when force parameter is set to
++  'false'.
++- Add a new force parameter to live migration API.
++
++
++Dependencies
++============
++
++None
++
++
++Testing
++=======
++
++- Add tempest tests to verify the newly added force parameter is working
++  properly.
++- Add unit tests to verify the newly added force parameter is working
++  properly.
++
++
++Documentation Impact
++====================
++
++Refer Deployer impact
++
++
++References
++==========
++
++https://bugs.launchpad.net/nova/+bug/1240584
+-- 
+1.9.1
+

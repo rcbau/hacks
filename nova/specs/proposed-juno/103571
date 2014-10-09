@@ -1,0 +1,273 @@
+From 5bceb5421c603052ae360397a6cec95128bea40c Mon Sep 17 00:00:00 2001
+From: Chris Alfonso <calfonso@redhat.com>
+Date: Mon, 30 Jun 2014 09:25:09 -0600
+Subject: [PATCH] Add the docker hypervisor plugin to Nova
+
+As of the Icehouse release, the nova-docker hypervisor plugin was removed since
+so many of the Tempest tests were failing. Many of the tests were failing due
+to missing APIs in docker and subsequently missing functionality in the plugin.
+There has been significant progress implementing those missing features and
+fixing various bugs associated with the already existing features. By adding
+this plugin back to the Nova source tree, we will enable operators to more
+easily manage docker containers via Nova APIs.
+
+The main features, which were missing and are now implemented, causing many of
+the Tempest test failures were as follows:
+
+* Pause and Unpause - The API for pausing and unpausing a container was missing
+in Docker as well as the hypervisor plugin. The API has now been added to
+Docker and is now implemented in the plugin.
+
+* Snapshot - This was primarily broken due to image date not staying
+synchronized between Glance and the Docker registry. This has been addressed
+in a bug fix to Docker; however, we continue to refactor the the Docker
+hypervisor plugin and we'll start pushing Docker images directly into Glance
+rather than pushing just image meta-data into Glance.
+
+* Volume Attach and Detach - The API for adding and removing a device to Docker
+is missing. There is currently a patch set posted for review, which adds the
+capability to attach and detach a host device to a running docker container.
+Additionally, the implementation in the hypervisor plugin has been added to
+call the Docker API to add/remove a device to/from a container. This will be
+merged once the Docker API has been merged.
+
+Change-Id: I80164ccb30a7c876fe3ac1a7109f0c725476db07
+---
+ specs/juno/docker-hypervisor-plugin.rst | 225 ++++++++++++++++++++++++++++++++
+ 1 file changed, 225 insertions(+)
+ create mode 100644 specs/juno/docker-hypervisor-plugin.rst
+
+diff --git a/specs/juno/docker-hypervisor-plugin.rst b/specs/juno/docker-hypervisor-plugin.rst
+new file mode 100644
+index 0000000..e6b6c8a
+--- /dev/null
++++ b/specs/juno/docker-hypervisor-plugin.rst
+@@ -0,0 +1,225 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++==========================================
++Add the docker hypervisor plugin to Nova
++==========================================
++
++https://blueprints.launchpad.net/nova/+spec/docker-hypervisor-plugin
++
++As of the Icehouse release, the nova-docker hypervisor plugin was removed since
++so many of the Tempest tests were failing. Many of the tests were failing due
++to missing APIs in docker and subsequently missing functionality in the plugin.
++There has been significant progress implementing those missing features and
++fixing various bugs associated with the already existing features. By adding
++this plugin back to the Nova source tree, we will enable operators to more
++easily manage docker containers via Nova APIs.
++
++The main features, which were missing and are now implemented, causing many of
++the Tempest test failures were as follows:
++
++* Pause and Unpause - The API for pausing and unpausing a container was missing
++  in Docker as well as the hypervisor plugin. The API has now been added to
++  Docker and is now implemented in the plugin.
++
++* Snapshots - This was primarily broken due to image data not staying
++  synchronized between Glance and the Docker registry. This has been addressed
++  in a bug fix to Docker; however, we continue to refactor the Docker
++  hypervisor plugin and we'll start pushing Docker images directly into Glance
++  rather than pushing only image meta-data into Glance.
++
++* Volume Attach and Detach - The API for adding and removing a device to Docker
++  is missing. There is currently a patch set posted[2] for review, which adds
++  the capability to attach and detach a host device to a running docker
++  container.  Additionally, the implementation in the hypervisor plugin[3] has
++  been added to call the Docker API to add/remove a device to/from a container.
++  This will be merged once the Docker API has been merged.
++
++Problem description
++===================
++
++A detailed description of the problem:
++
++Nova is currently missing the capability of managing Docker containers. The
++Docker hypervisor plugin is useful to OpenStack operators in that it plugs into
++the compute design quite nicely. Implementing container management as a
++hypervisor plugin allows the use of container placement via the scheduler. It
++also allows the implementation of many Nova APIs without having a separate set
++of command line tools to invoke the Nova APIs.
++
++* In order for OpenStack Operators to manage docker containers with the
++  nova-docker hypervisor plugin, it requires that they pull in the source from
++  stackforge and manually configure Nova to use it. By adding it to the
++  directory of hypervisor plugins in Nova, Operators can configure the plugin
++  with ease.
++
++* Adding the driver to the Nova source tree has several benefits. 1) It will
++  expose the driver to continual integration testing. 2) Configuring the plugin
++  to work with Nova becomes trivial. 3) Developers and maintainers of the
++  plugin are continuously aware of Nova changes rather than having to chase
++  after the changes made. 4) The Docker hypervisor plugin becomes part of the
++  integration Nova release.
++
++Proposed change
++===============
++
++The proposal is that we move the stackforge/nova-docker directory, which
++contains all the code for the docker hypervisor plugin into the
++openstack/nova/nova/virt source directory along side the rest of the hypervisor
++plugins shipped with Nova.
++
++Alternatives
++------------
++
++Several alternatives exist to work around not having native Docker container
++management in OpenStack. They are as follows:
++
++* Get the nova-docker hypervisor plugin from stackforge and configure Nova to
++  use it.
++
++* Introduce a new container service in OpenStack that is completely independent
++  of Nova APIs and is soley focused on container capabilities.
++
++* Disregard the capabilities granted to a hypervisor plugin and just evolve
++  Docker container management as a Heat project plugin. This would add
++  the capability to create and destroy containers; however, the approach would
++  now allow the the use of granular Nova APIs, nor would it take advantage of
++  using the compute related services such as the scheduler.
++
++* Not include Docker container management in OpenStack at all.
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++None
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++* The user (Operator) will be able to use the standard Nova APIs and command
++  line tools to manage docker containers.
++
++Performance Impact
++------------------
++
++* Containers allow lightweight instances to be started very fast.  They also
++  consume fewer resources on the host machine.
++
++Other deployer impact
++---------------------
++
++* The Docker hypervisor plugin will become easier to configure. The
++  configuration settings already exist in nova.conf to use the Docker
++  hypervisor plugin, the only change here is that the plugin code would be
++  installed with the rest of the hypervisor plugins.
++
++Developer impact
++----------------
++
++* There would be added consideration in future development to support
++  containers.
++
++Implementation
++==============
++
++* The Tempest integration failures need to be resolved, which we are making
++  good progress on
++
++* The stackforge code needs to be placed in the Nova source tree
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  <ewindisch>
++
++Other contributors:
++  <calfonso>
++  <imain>
++
++Work Items
++----------
++
++* Copy the stackforge/nova-docker source code into nova/nova/virt.
++
++* Ensure all tests that logically apply to containers pass.
++
++Dependencies
++============
++
++* The features of the driver are still being worked on and require that several
++  new docker APIs that have been posted as pull requests[2] end up being
++  merged.  This will continue to be that case leading up to the Juno release.
++
++* Although Snapshots are working via synchronizing image meta-data between
++  Glance and the Docker registry, we are actively integrating a change that
++  pushes Docker images directly into Glance. This should help stabilize the
++  Snapshot feature as well as other image operations (creation/removal).
++
++Testing
++=======
++
++* The existing Tempest integration tests cover the APIs that need to work for
++  the Docker driver to be fully compliant.  Some tests may not apply to
++  containers and as such may need to be disabled.  Most of these are simply
++  logical and can be identified easily.
++
++* The Tempest configuration has a number of tests that don't apply to
++  containers that need to be turned off. We are still experimenting with the
++  configuration to make sure we have the right coverage. The settings we are
++  currently turning off are: api_v3, suspend, resize.
++
++Documentation Impact
++====================
++
++The docs team would need to add the Docker hypervisor plugin details back to
++the docs, listing the availability of the driver and the module name to set as
++the compute_driver value to have Nova load the driver.
++
++References
++==========
++
++[1]Docker hypervisor plugin source:
++https://github.com/stackforge/nova-docker
++
++[2]Docker pull requests:
++https://github.com/dotcloud/docker/pull/6369
++
++[3]Nova-docker volume patchset:
++https://review.openstack.org/#/c/101243
++
++Status of Tempest CI before making our improvements:
++http://lists.openstack.org/pipermail/openstack-dev/2014-February/028471.html
++
++Information on bringing Docker hypervisor plugin support into the Nova tree:
++http://openstack.etherpad.corp.redhat.com/NovaDockerUpstream
++
++Containers Service Thread:
++http://lists.openstack.org/pipermail/openstack-dev/2013-November/thread.html#19637
++
++Design session in Hong Kong on to support this work:
++https://etherpad.openstack.org/p/docker-nova-hkg
++
++Discussion regarding block storage support in containers:
++https://etherpad.openstack.org/p/container-block-storage
++
++Openstack container meetings:
++https://wiki.openstack.org/wiki/Meetings/Containers
+-- 
+1.9.1
+

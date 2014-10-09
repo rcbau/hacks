@@ -1,0 +1,197 @@
+From 3038adcd1aaa10c878adfd201c5090f5a20585f3 Mon Sep 17 00:00:00 2001
+From: Anil Degwekar <anil.degwekar@emc.com>
+Date: Thu, 12 Jun 2014 15:12:20 +0530
+Subject: [PATCH] EMC: ScaleIO Data Client (SDC) Libvirt Driver
+
+This blueprint proposes to add a libvirt driver for the support of SDC
+(ScaleIO Data Client) connected volumes. The addition of SDC support to
+libvirt will be leveraged by Nova to attach/detach volumes provided by
+products such as EMC ScaleIO and ECS (Elastic Cloud Storage).
+
+blueprint emc-sdc-libvirt-driver
+
+CCLA SCHEDULE B SUBMISSION
+
+Change-Id: I5b866be6ba3103e8c2603d1ab6d5fe8a5f2f03e8
+---
+ specs/juno/emc-sdc-libvirt-driver.rst | 168 ++++++++++++++++++++++++++++++++++
+ 1 file changed, 168 insertions(+)
+ create mode 100644 specs/juno/emc-sdc-libvirt-driver.rst
+
+diff --git a/specs/juno/emc-sdc-libvirt-driver.rst b/specs/juno/emc-sdc-libvirt-driver.rst
+new file mode 100644
+index 0000000..fd06197
+--- /dev/null
++++ b/specs/juno/emc-sdc-libvirt-driver.rst
+@@ -0,0 +1,168 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++=============================================
++EMC: ScaleIO Data Client (SDC) Libvirt Driver
++=============================================
++
++https://blueprints.launchpad.net/nova/+spec/emc-sdc-libvirt-driver
++
++This blueprint proposes to add a libvirt driver for the support of SDC
++(ScaleIO Data Client) connected volumes. The addition of SDC support to
++libvirt will be leveraged by Nova to attach/detach volumes provided by
++products such as EMC ScaleIO and ECS (Elastic Cloud Storage).
++
++
++Problem description
++===================
++
++This blueprint is being submitted for the EMC ECS (Elastic Cloud Storage)
++hyper scale storage infrastructure system. ECS is an appliance that provides
++block, object, and HDFS capabilities natively and combines commodity
++infrastructure with resilient data services. The EMC ECS appliance will
++support block volume services through the ScaleIO block API.
++
++In order to support mounting such block volumes to Nova instances, a
++libvirt driver for ScaleIO block protocol is needed. This blueprint
++proposes to add such a driver to nova.
++
++
++Proposed change
++===============
++
++A libvirt driver for the ScaleIO protocol used by EMC ECS will be added
++to the nova/virt/libvirt directory.
++
++A section will be added to the list of libvirt volume drivers in the file
++nova/virt/libvirt/volume.py. This will direct volumes of 'volume_driver'
++type 'scaleio' to the correct driver.
++
++A new module called 'scaleio.py' will be introduced. This module will
++contain all the code related to scaleio. There will be minimal changes
++to volume.py.
++
++Refer to the description of ScaleIO technology at:
++http://www.emc.com/storage/scaleio/index.htm
++
++ScaleIO is software-only server based SAN technology. It allows the use
++of commodity disks to deliver affordable and scalable block storage.
++
++To use this driver, the user has to install additional components:
++
++* The SDC Linux driver
++
++* The CLI for ScaleIO
++
++This software can be downloaded from (requires registration):
++https://support.emc.com/products/33925_ScaleIO
++
++Once these dependencies are met, and this driver is installed, nova nodes
++can mount block volumes from the EMC ECS storage system and use them just
++like any other block storage. The SDC Linux driver will direct storage
++traffic over TCP/IP to the right server.
++
++Alternatives
++------------
++
++None.
++
++Data model impact
++-----------------
++
++None.
++
++
++REST API impact
++---------------
++
++None.
++
++Security impact
++---------------
++
++None.
++
++Notifications impact
++--------------------
++
++None.
++
++Other end user impact
++---------------------
++
++End users will be able to create block volumes from EMC ECS and use them in
++OpenStack.
++
++This change is accompanied by a cinder driver for EMC ECS (a separate
++cinder blueprint).
++
++Performance Impact
++------------------
++
++This technology takes advantage of massively parallel I/O processing, with
++all servers participating and sharing I/O loads. By adding servers, you can
++increase capacity and processing power linearly, leveraging fast parallel
++rebuild and rebalance without interruption to I/O.
++
++Other deployer impact
++---------------------
++
++The ScaleIO SDC component must be installed on the OpenStack compute node.
++
++Developer impact
++----------------
++
++None.
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  anil-degwekar
++
++Other contributors:
++  None
++
++Work Items
++----------
++
++* ScaleIO Libvirt driver -- this is already developed
++
++* An entry in the volume.py file
++
++* a filter for scaleio in nova/rootwrap
++
++Dependencies
++============
++
++Cinder blueprint for EMC ECS driver
++https://blueprints.launchpad.net/cinder/+spec/emc-ecs-driver
++
++Testing
++=======
++
++The cinder driver will be tested using the cinder acceptance tests. Those
++tests will cover this driver as well. A 3rd party CI testing system
++will be used and its results submitted.
++
++Documentation Impact
++====================
++
++This needs to be documented as a new feature.
++
++References
++==========
++
++Product Links:
++EMC ECS:
++http://www.emc.com/storage/ecs-appliance/index.htm
++
++EMC ScaleIO:
++http://www.emc.com/storage/scaleio/index.htm
++
+-- 
+1.9.1
+

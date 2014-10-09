@@ -1,0 +1,181 @@
+From c102f962b48815dacc760baacd4e3760368da243 Mon Sep 17 00:00:00 2001
+From: Vincent Hou <sbhou@cn.ibm.com>
+Date: Mon, 14 Apr 2014 00:19:17 -0400
+Subject: [PATCH] Propose: add a data transfer plug-in
+
+There are two use cases for data transfer in general:
+1. The machines are located in one network, e.g. one domain, one cluster,
+etc. The characteristic is the machines can access each other directly via
+the IP addresses(VPN is beyond consideration).
+2. The machines are located in different networks, e.g. two data centers,
+two firewalls, etc. The characteristic is the machines can not access each
+other directly via the IP addresses(VPN is beyond consideration).
+
+With this plug-in, data can be transferred between two machines,
+no matter they are in the same network or in different networks.
+
+Related blueprint: data-transfer-service-plugin
+
+Change-Id: Ic1396215c8b909f16a8ce8aa51ffc5f9b1c75108
+---
+ specs/juno/data-transfer-plugin.rst | 148 ++++++++++++++++++++++++++++++++++++
+ 1 file changed, 148 insertions(+)
+ create mode 100644 specs/juno/data-transfer-plugin.rst
+
+diff --git a/specs/juno/data-transfer-plugin.rst b/specs/juno/data-transfer-plugin.rst
+new file mode 100644
+index 0000000..2c1def5
+--- /dev/null
++++ b/specs/juno/data-transfer-plugin.rst
+@@ -0,0 +1,148 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++========================================================
++Add a service plug-in for data transfer among nova nodes
++========================================================
++
++https://blueprints.launchpad.net/nova/+spec/data-transfer-service-plugin
++
++
++Nova needs an abstract plug-in module to provide the data transfer service
++for the data communication between machines. There are two general use
++cases for this data transfer:
++
++1. The machines are located in one network, e.g. one domain, one cluster,
++etc. The characteristic is the machines can access each other directly via
++the IP addresses(VPN is beyond consideration).
++2. The machines are located in different networks, e.g. two data centers,
++two firewalls, etc. The characteristic is the machines can not access each
++other directly via the IP addresses(VPN is beyond consideration).
++
++
++
++Problem description
++===================
++
++Nova has implemented the native functions for some hypervisors to do live
++migration, e.g. libvirt, VMware VCenter, etc. Shared storage(NFS) and
++block(iSCSI) migration have been implemented as well. To meet the need of
++migrating data(like VMs) between the machines within one network as the
++first use cases mentioned above, this is fairly enough. To transfer large data
++(e.g. 50G) from one machine to another in a different network or outside the
++firewall, in which case we are unable to establish the NFS or iSCSI
++connection, other transfer protocols, like FTP, need to be taken into account.
++
++This proposal will abstract a data transfer plug-in for the transfer protocols
++to implement. Implementations for any protocols, like NFS, iSCSI, ftp,
++bitTorrent, etc, can be put in this module for nova to use.
++
++Furthermore, FTP will be taken to transfer data between two machines in
++different networks fill up the second use case. BitTorrent, which has been
++implemented for image download in Xen, can be implemented as well for
++transferring the same data among many machines simultaneously.
++
++
++Proposed change
++===============
++
++* A new data transfer module is created to modulize all the transfer protocols,
++  providing some basic interfaces to implement, including creating a connection,
++  closing a connection, transferring data out, and transferring data in, etc.
++
++* Nova has already implemented an image download module and another image upload
++  module has been proposed(https://review.openstack.org/#/c/84671/). The
++  implementation for this proposal can be built based on two of these modules.
++
++Alternatives
++------------
++
++It is possible to implement different transfer protocols in different ways, but
++putting all of them in one module seems to be a neat way to manage them.
++
++Abstracting this module as a separate library is also a good idea, but at the
++beginning, this proposal needs another one upload plug-in to be finished first.
++This one can reuse the code of the download and upload plug-in.
++
++Data model impact
++-----------------
++
++A new module for the data transfer will be introduced.
++
++REST API impact
++---------------
++
++None
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++None
++
++Performance Impact
++------------------
++
++Different protocols may be applied for different use cases. General speaking, using
++a proper protocol for a proper use case will improve the data transfer performance.
++
++Other deployer impact
++---------------------
++
++The deployer will configure differently for different transfer protocols.
++
++Developer impact
++----------------
++
++None
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  houshengbo(Vincent Hou)
++
++
++Work Items
++----------
++
++* TBD
++
++
++Dependencies
++============
++
++* The image upload module plug-in: https://review.openstack.org/#/c/84671/
++
++Testing
++=======
++
++None
++
++Documentation Impact
++====================
++
++None
++
++References
++==========
++
++* Protocol performance may vary in different conditions:
++  http://amigotechnotes.wordpress.com/2013/12/23/file-transmission-with-diffe
++  rent-sharing-solution-on-nas/
+-- 
+1.9.1
+

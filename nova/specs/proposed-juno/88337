@@ -1,0 +1,173 @@
+From 86582401360b00388391474f0682fc95ef38ac75 Mon Sep 17 00:00:00 2001
+From: JingYuan <yj.yuan@huawei.com>
+Date: Sun, 4 May 2014 23:23:36 +0800
+Subject: [PATCH] Support specify USB controller for USB-passthrough
+
+Support to specify USB controller for USB device  when create VM with USB device
+
+blueprint usb-passthrough-with-usb-controller
+
+Change-Id: I26c81c61754af883b8de4c1ffe58384b87b22a77
+---
+ specs/juno/usb-passthrough-with-usb-controller.rst | 149 +++++++++++++++++++++
+ 1 file changed, 149 insertions(+)
+ create mode 100644 specs/juno/usb-passthrough-with-usb-controller.rst
+
+diff --git a/specs/juno/usb-passthrough-with-usb-controller.rst b/specs/juno/usb-passthrough-with-usb-controller.rst
+new file mode 100644
+index 0000000..7607a70
+--- /dev/null
++++ b/specs/juno/usb-passthrough-with-usb-controller.rst
+@@ -0,0 +1,149 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++==================================================
++Support specify USB controller for USB-passthrough
++==================================================
++
++Include the URL of your launchpad blueprint:
++
++https://blueprints.launchpad.net/nova/+spec/usb-passthrough-with-usb-controller
++
++Users have requirement of using USB devices, the detailed information can
++reference the bp of
++https://blueprints.launchpad.net/nova/+spec/usb-passthrough.
++
++If not specify appropriate type of USB controller for USB device, USB device
++will use the default piix3-usb-uhci, the default USB device's speed may
++mismatch with USB device. This result in the following problems.
++
++1. The low speed of USB device.
++
++2. If use spice client to redirect USB device to VM, the mismatched speed may
++prevent the connection.
++
++As described above, I think specify USB controller for USB-passthrough is
++valuable in Openstack.
++
++
++Problem description
++===================
++
++Use cases:
++
++1. The administrator creates a VM with flavor which contains USB device
++information and USB controller information.
++
++2. The system creates VM with USB controller specified in flavor above, it
++also attach USB device to the created USB controller but not the default
++piix3-usb-uhci.
++
++Proposed change
++===============
++
++We should add the following functions to nova:
++
++1. When create flavor with USB device, specify the USB controller type for USB
++device.
++
++2. Nova should support to attach USB device to specified USB controller when
++create VM.
++
++
++Alternatives
++------------
++
++None
++
++Data model impact
++-----------------
++
++1. The schema of flavor which contains USB device information and USB
++controller information may like this:
++{"usb_devices":[{"id": 5, "usb_controller_type": "ehci"}]}
++
++2. In libvirt driver layer, add function to specify USB controller for
++USB device. System should select distinguish port for USB device to attach.
++
++3. In DB layer, add USB controller type parameter to USB device information
++which have been assigned to the VM.
++
++
++REST API impact
++---------------
++
++None
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++None
++
++Performance Impact
++------------------
++
++None
++
++Other deployer impact
++---------------------
++
++None
++
++Developer impact
++----------------
++
++None
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  <Jing Yuan>
++
++
++Work Items
++----------
++
++Step 1: Add USB controller type to USB device data model in libvirt driver.
++
++Step 2: Implement function of choose USB controller port for USB device.
++
++Dependencies
++============
++
++None
++
++
++Testing
++=======
++
++It is necessary to add tempest for this new function.
++
++Documentation Impact
++====================
++
++None
++
++
++References
++==========
++
++https://blueprints.launchpad.net/nova/+spec/usb-passthrough
++
++https://blueprints.launchpad.net/nova/+spec/add-usb-controller
+-- 
+1.9.1
+

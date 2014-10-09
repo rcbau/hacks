@@ -1,0 +1,136 @@
+From f284c850e7c4eb13910182357df732737504f0ab Mon Sep 17 00:00:00 2001
+From: Dafna Ron <dron@redhat.com>
+Date: Tue, 8 Jul 2014 16:04:06 +0100
+Subject: [PATCH] allow no migration resize of instance Change-Id:
+ I490092686166e606f3a19a228903e5b97373dbe7
+
+---
+ specs/juno/no-migration-resize.rst | 56 ++++++++++++++++++++++----------------
+ 1 file changed, 33 insertions(+), 23 deletions(-)
+
+diff --git a/specs/juno/no-migration-resize.rst b/specs/juno/no-migration-resize.rst
+index b5ddcea..728dc8f 100644
+--- a/specs/juno/no-migration-resize.rst
++++ b/specs/juno/no-migration-resize.rst
+@@ -1,85 +1,95 @@
+-allow instance resize without migration
+-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
++====================================================
++no-disk-resize - allow resize without host migration
++====================================================
+ 
+ https://blueprints.launchpad.net/nova/+spec/no-migration-resize
+ 
+-Allow resize of instance disk without instance host migration
++Allow a user who does not want to configure server migration to resize on local host only.
+ 
+ Problem Description
+-^^^^^^^^^^^^^^^^^^^^^
++====================
+ 
+-following bug https://bugs.launchpad.net/nova/+bug/1323578, the current allow_resize_to_same_host=True only adds the localhost to the pool of computes used to migrate during resize. 
++following bug https://bugs.launchpad.net/nova/+bug/1323578, the current option -  allow_resize_to_same_host=True only adds the localhost to the pool of computes used to migrate during resize. 
+ 
+ Proposed change
+-^^^^^^^^^^^^^^^^^^^^^
++===============
+ 
+-I am not sure the current allow_resize_to_same_host usage is clear to the user 
++I am not sure the current allow_resize_to_same_host usage is clear to the user and I think we should change allow_resize_to_same_host behavior to resize on localhost only. 
+ 
+-**Alternative**
++Alternative
++-----------
+ 
+ 1. if we do not change allow_resize_to_same_host to only allow resize to the localhost I think we should create a new option to configure resize without migration. 
+ 2. if we see a need in adding localhost to the hosts pool on resize, than I would also suggest that we add optional argument of manual host selection for resize. 
+ 
+ (--host or --target)
+ 
+-**Data model Impact**
++Data model Impact
++------------------
+ 
+ None
+ 
+-**REST API impact**
++REST API impact
++----------------
+ 
+ depends on the solution selected 
+ 
+-**Security Impact**
++Security Impact
++---------------
+ 
+ None
+ 
+-**Notification impact**
++Notification impact
++--------------------
+ 
+ depending on solution selected
+ 
+-**Other end user impact**
++Other end user impact
++----------------------
+ 
+ depending on solution selected
+ 
+-**Other deployer impact**
++Other deployer impact
++----------------------
+ 
+ depending on solution selected
+ 
+-** Developer impact**
++Developer impact
++-----------------
+ 
+ depending on solution selected
+ 
+ 
+ Implementation
+-^^^^^^^^^^^^^^^
++===============
+ 
+-**Assignee(s)**
++Assignee(s)
++-----------
+ 
+ None
+ 
+-**Work Items**
++Work Items
++----------
+ 
+ depending on solution selected
+ 
+ 
+ Dependencies
+-^^^^^^^^^^^^^^^
+-
++============
+ None
+ 
+ Testing
+-^^^^^^^^
++=======
+ 
+ depending on solution selected
+ 
+ Documentation Impact
+-^^^^^^^^^^^^^^^^^^^^^
++=====================
+ 
+ depending on solution selected
+ 
+ References
+-^^^^^^^^^^^^
++==========
+ 
+ https://bugs.launchpad.net/nova/+bug/1323578
+ 
+-- 
+1.9.1
+

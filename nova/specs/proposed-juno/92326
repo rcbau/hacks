@@ -1,0 +1,185 @@
+From a9292d34de111262cecb62b391b7480fc04b1cd2 Mon Sep 17 00:00:00 2001
+From: He Jie Xu <xuhj@linux.vnet.ibm.com>
+Date: Tue, 6 May 2014 17:26:49 +0800
+Subject: [PATCH] Add separated policy rule for each v3 api
+
+This bp is propose to add separated policy rule for each v3 api.
+That will provide finer granularity to permission control and
+consistent way to configure policy rule
+
+Part of blueprint separated-policy-rule-v3-api
+
+Change-Id: I7a8abc3803b780b5fad759e1dfd23482a004f61d
+---
+ specs/juno/separated-policy-rule-v3-api.rst | 159 ++++++++++++++++++++++++++++
+ 1 file changed, 159 insertions(+)
+ create mode 100644 specs/juno/separated-policy-rule-v3-api.rst
+
+diff --git a/specs/juno/separated-policy-rule-v3-api.rst b/specs/juno/separated-policy-rule-v3-api.rst
+new file mode 100644
+index 0000000..bf662a9
+--- /dev/null
++++ b/specs/juno/separated-policy-rule-v3-api.rst
+@@ -0,0 +1,159 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++==========================================
++Add separated policy rule for each v3 api
++==========================================
++
++https://blueprints.launchpad.net/nova/+spec/separated-policy-rule-v3-api
++
++There are different ways to add policy rule for an API in the v3 extension.
++In some extensions, there is only one policy rule for all the APIs in that
++extension. In other extensions, there is a policy rule for each API in that
++extension.
++
++So this BP want to add policy rule for each v3 API, then we can get finer
++granularity to permission control and consistent way to configure policy
++rule for API.
++
++Problem description
++===================
++
++1. It didn't have finer granularity permission control in v3 API, This
++problem is same with this bp https://blueprints.launchpad.net/nova/+spec/aggregate-api-policy
++that want to resolve.
++
++2. Hard to configure a policy rule for cloud operator. There isn't any
++document to mention that how to write an policy rule for each API. But
++there are some extensions only have one rule for all the API, and some
++extension is not. Cloud operator need check the source code to know How
++to write poliry rule for a specific API.
++
++Proposed change
++===============
++
++Add policy rule for each API in v3 API. Then it get finer granularity
++permission control. And Cloud Operator is easy to know how to write a
++policy rule. Because all the policy rule follow the pattern:
++compute_extension:v3:[extension_name]:[action_name]
++
++Alternatives
++------------
++
++None
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++None
++
++Security impact
++---------------
++
++It will make compute more secure since the one who is granted on one action
++may not be authorized to execute other actions in same extension.
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++None
++
++Performance Impact
++------------------
++
++None
++
++Other deployer impact
++---------------------
++
++Deployer get finer granularity permission control of API and consistent
++way to write policy rule.
++
++If the deployer have changed default rules for extensions that added
++separated in this BP, deployer need update their rules into those new
++separated rules.
++
++Developer impact
++----------------
++
++When developer add new extension, developer should provide policy rule
++for each API, not share an policy rule for the API in that extension.
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  Alex Xu <xuhj@linux.vnet.ibm.com>
++
++Other contributors:
++  Ji Chen <jcjichen@cn.ibm.com>
++
++Work Items
++----------
++
++admin_password
++agents
++attach_interface
++cells
++console_auth_token
++console_output
++consoles
++create_backup
++deferred_delete
++evacuate
++flavor_access
++flavor_manage
++hosts
++hypervisors
++ips
++multinic
++remote_consoles
++rescue
++server_actions
++server_diagnostics
++server_metadata
++server_password
++services
++
++Working list:
++https://etherpad.openstack.org/p/separated_policy_rule
++
++
++Dependencies
++============
++
++None
++
++Testing
++=======
++
++For unittest, it will add to ensure the policy rule existed and works.
++For tempest, because of the difficulty of configuring policy in tempest, so it
++won't test in tempest.
++
++Documentation Impact
++====================
++
++For deployer, they can set policy rule for each API.
++
++References
++==========
++
++None
++
+-- 
+1.9.1
+

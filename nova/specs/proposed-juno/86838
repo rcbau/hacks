@@ -1,0 +1,215 @@
+From a92014a11b0a9ae10d2d82f1fa3a3dc56c2234e8 Mon Sep 17 00:00:00 2001
+From: vinodkumarboppanna <vinod.kumar.boppanna@cern.ch>
+Date: Fri, 11 Apr 2014 11:41:55 +0200
+Subject: [PATCH] Nova Commands for Domain Quota Management
+
+Change-Id: I86180b2fde665893e622c24bc83dd548e9ed511a
+---
+ specs/juno/domain-quota-manage-commands.rst | 195 ++++++++++++++++++++++++++++
+ 1 file changed, 195 insertions(+)
+ create mode 100644 specs/juno/domain-quota-manage-commands.rst
+
+diff --git a/specs/juno/domain-quota-manage-commands.rst b/specs/juno/domain-quota-manage-commands.rst
+new file mode 100644
+index 0000000..8bced6b
+--- /dev/null
++++ b/specs/juno/domain-quota-manage-commands.rst
+@@ -0,0 +1,195 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++============================
++domain-quota-manage-commands
++============================
++
++https://blueprints.launchpad.net/nova/+spec/domain-quota-manage-commands
++
++Nova Commands for Domain Quota Management will enable OpenStack projects
++to enforce quotas in Nova at Domain/Tenant/User levels.
++
++
++Problem description
++===================
++
++This feature is an extension to feature specified in the blueprint
++https://blueprints.launchpad.net/nova/+spec/domain-quota-driver-api
++
++The difference is that, the above blueprint provides a specification to
++V2 APIs and this blueprint provides Nova command line tools and it
++internally uses the V2 APIs.
++
++
++Proposed change
++===============
++
++The Nova V2 Commands uses the V2 APIs of Quota Management for
++Domain/Tenant/User and available under nova commands
++
++Alternatives
++------------
++
++None
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++None
++
++Security impact
++---------------
++
++This change uses the Keystone V3 token to get the domain_id from the scope.
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++Following commands have been added to nova for Domain Quota Management
++
++$> nova domain-quota-show
++
++List the quotas for a domain/tenant/user.
++
++Positional arguments:
++  <domain-id> ID of domain to list the quotas for.
++
++Optional arguments:
++  --tenant <tenant-id> ID of tenant to list the quotas for.
++  --user <user-id> ID of user to list the quotas for.
++
++$> nova domain-quota-defaults
++
++List the default quotas for a domain.
++
++Positional arguments:
++  <domain-id> ID of domain to list the default quotas for.
++
++$> nova domain-quota-delete
++
++Delete quota for a domain/tenant/user so their quota will Revert back to
++default.
++
++Positional arguments:
++  <domain-id> ID of domain to delete quota for.
++
++Optional arguments:
++  --tenant <tenant-id> ID of tenant to delete quota for.
++  --user <user-id> ID of user to delete quota for.
++
++$> nova domain-quota-update
++
++Update the quotas for a domain/tenant/user.
++
++Positional arguments:
++  <domain-id> ID of domain to set the quotas for.
++
++Optional arguments:
++  --tenant <tenant-id> ID of tenant to set the quotas for.
++
++  --user <user-id> ID of user to set the quotas for.
++
++  --instances <instances> New value for the "instances" quota.
++
++  --cores <cores> New value for the "cores" quota.
++
++  --ram <ram> New value for the "ram" quota.
++
++  --floating-ips <floating-ips> New value for the "floating-ips" quota.
++
++  --fixed-ips <fixed-ips> New value for the "fixed-ips" quota.
++
++  --metadata-items <metadata-items> New value for the "metadata-items" quota.
++
++  --injected-files <injected-files> New value for the "injected-files" quota.
++
++  --injected-file-content-bytes <injected-file-content-bytes>
++
++    New value for the "injected-file-content-bytes" quota.
++
++  --injected-file-path-bytes <injected-file-path-bytes>
++
++    New value for the "injected-file-path-bytes" quota.
++
++  --key-pairs <key-pairs> New value for the "key-pairs" quota.
++
++  --security-groups <security-groups> New value for the "security-groups" quota
++
++  --security-group-rules <security-group-rules>
++
++    New value for the "security-group-rules" quota.
++
++Performance Impact
++------------------
++
++None
++
++Other deployer impact
++---------------------
++
++    - This feature comes into immediate effect after it is merged
++
++Developer impact
++----------------
++
++    None
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++     Primary assignee:
++         vinod-kumar-boppanna
++
++Work Items
++----------
++
++    Nova V2 Commands: DONE
++
++    The following is up for review:
++          Addressed by: https://review.openstack.org/#/c/76347/
++
++
++Dependencies
++============
++
++  - This depends on Keystone V3 Context. Also, the Keystone V3 client should
++    use V3 API and should not fall back to V2 API. Code has been already
++    merged to solve this and addressed by
++    https://review.openstack.org/#/c/75731/
++
++
++Testing
++=======
++
++None
++
++
++Documentation Impact
++====================
++
++    The APIs documentation needs to be updated to include the new commands as
++    explained in section "Other End user impact".
++
++
++References
++==========
++
++None
+-- 
+1.9.1
+

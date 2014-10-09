@@ -1,0 +1,286 @@
+From 008e2babe683d84f8e0c58549dba68f7a5f3bd8c Mon Sep 17 00:00:00 2001
+From: Alexis Lee <alexisl@hp.com>
+Date: Tue, 3 Jun 2014 15:37:48 +0100
+Subject: [PATCH] Address slow queries
+
+Analysis of the MySQL slow query log has revealed some queries which are not
+using indexes. This causes a scalability issue when combined with soft
+delete.
+
+Advances blueprint: nova-juno-slow-queries
+
+Change-Id: If4ed37d81b74d4ab41cc05d89d12fe3578005dbc
+---
+ specs/juno/slow-queries.rst | 260 ++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 260 insertions(+)
+ create mode 100644 specs/juno/slow-queries.rst
+
+diff --git a/specs/juno/slow-queries.rst b/specs/juno/slow-queries.rst
+new file mode 100644
+index 0000000..4245d7d
+--- /dev/null
++++ b/specs/juno/slow-queries.rst
+@@ -0,0 +1,260 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++=====================
++Optimise slow queries
++=====================
++
++https://blueprints.launchpad.net/nova/+spec/nova-juno-slow-queries
++
++Problem description
++===================
++
++Analysis of the MySQL slow query log has revealed some queries which are not
++using indexes. This causes a scalability issue when combined with soft delete.
++
++Proposed change
++===============
++
++This specification proposes a number of changes to table indexes to alleviate
++these symptoms.
++
++The volume_usage_cache table is missing an index on (volume_id)::
++
++    Count: 9848  Time=3.71s (36526s)
++      SELECT ...
++      FROM volume_usage_cache
++      WHERE volume_usage_cache.volume_id = 'S'
++      LIMIT N
++
++The reservations table is missing an index on (deleted, expire)::
++
++    Count: 612  Time=7.51s (4596s)
++      UPDATE reservations SET updated_at=updated_at, deleted_at='S', deleted=id
++      WHERE reservations.deleted = N AND reservations.expire < 'S'
++
++    Count: 612  Time=7.22s (4420s)
++      SELECT ...
++      FROM reservations INNER JOIN quota_usages
++        ON quota_usages.id = reservations.usage_id
++      WHERE reservations.deleted = N AND reservations.expire < 'S'
++
++Table instances has several indexes which include 'deleted'::
++
++    host, deleted
++    uuid, deleted
++    host, node, deleted
++    host, deleted, cleaned
++
++As 'deleted' is often a very powerful way to reduce the result, it should go
++first. Further, the (host, deleted) index is unnecessary, as the more-specific
++indexes can provide that::
++
++    deleted, uuid
++    deleted, host, node
++    deleted, host, cleaned
++
++An additional index should be added to cover (deleted, project_id, user_id)::
++
++    Count: 1236  Time=2.70s (3342s)
++      SELECT count(i.id), sum(instances.vcpus), sum(i.memory_mb)
++      FROM instances i
++      WHERE i.deleted = N
++      AND i.project_id = 'S'
++      AND i.user_id = 'S'
++      LIMIT N
++
++Finally, an index should be added to cover (deleted, vm_state, created_at,
++project_id). These queries are somewhat complex but very similar, the
++interesting part of each is the subselect::
++
++    Count: 2417  Time=2.96s (7160s)
++      SELECT ...
++      FROM (SELECT ...
++            FROM instances
++            WHERE i.deleted = N
++            AND i.vm_state != 'S'
++            AND i.project_id = 'S'
++            ORDER BY i.created_at DESC, i.created_at DESC,
++                     i.created_at DESC, i.id DESC
++            LIMIT N) AS a
++      LEFT OUTER JOIN security_group_instance_association AS sgia
++        ON sgia.instance_uuid = a.instances_uuid
++        AND a.instances_deleted = N
++      LEFT OUTER JOIN security_groups AS sg
++        ON sg.id = sgia.security_group_id
++        AND sgia.deleted = N
++        AND sg.deleted = N
++      LEFT OUTER JOIN instance_info_caches AS iic
++        ON iic.instance_uuid = a.instances_uuid
++      ORDER BY a.instances_created_at DESC, a.instances_created_at DESC,
++               a.instances_created_at DESC, a.instances_id DESC
++
++    Count: 399  Time=3.02s (1206s)
++      SELECT ...
++      FROM (SELECT ...
++            FROM instances
++            WHERE i.deleted = N
++            AND i.vm_state != 'S'
++            AND i.project_id = 'S'
++            ORDER BY i.created_at DESC, i.created_at DESC,
++                     i.created_at DESC, i.id DESC
++            LIMIT N) AS a
++      LEFT OUTER JOIN instance_info_caches AS iic
++        ON iic.instance_uuid = a.instances_uuid
++      LEFT OUTER JOIN security_group_instance_association AS sgia
++        ON sgia.instance_uuid = a.instances_uuid
++        AND a.instances_deleted = N
++      LEFT OUTER JOIN security_groups AS sg
++        ON sg.id = sgia.security_group_id
++        AND sgia.deleted = N
++        AND sg.deleted = N
++      ORDER BY a.instances_created_at DESC, a.instances_created_at DESC,
++               a.instances_created_at DESC, a.instances_id DESC
++
++    Count: 52  Time=5.38s (279s)
++      SELECT ...
++      FROM (SELECT ...
++            FROM instances
++            WHERE i.deleted = N
++            AND i.vm_state != 'S'
++            AND (i.created_at < 'S' OR i.created_at = 'S'
++            AND i.created_at < 'S' OR i.created_at = 'S'
++            AND i.created_at = 'S'
++            AND i.id < N)
++            ORDER BY i.created_at DESC, i.created_at DESC,
++                     i.created_at DESC, i.id DESC LIMIT N) AS a
++      LEFT OUTER JOIN security_group_instance_association AS sgia
++        ON sgia.instance_uuid = a.instances_uuid
++        AND a.instances_deleted = N
++      LEFT OUTER JOIN security_groups AS sg
++        ON sg.id = sgia.security_group_id
++        AND sgia.deleted = N
++        AND sg.deleted = N
++      LEFT OUTER JOIN instance_info_caches AS iic
++        ON iic.instance_uuid = a.instances_uuid
++      ORDER BY a.instances_created_at DESC, a.instances_created_at DESC,
++               a.instances_created_at DESC, a.instances_id DESC
++
++    Count: 15  Time=3.05s (45s)
++      SELECT ...
++      FROM (SELECT ...
++            FROM instances
++            WHERE i.deleted = N
++            AND i.vm_state != 'S'
++            ORDER BY i.created_at DESC, i.created_at DESC,
++                     i.created_at DESC, i.id DESC
++            LIMIT N) AS a
++      LEFT OUTER JOIN security_group_instance_association AS sgia
++        ON sgia.instance_uuid = a.instances_uuid
++        AND a.instances_deleted = N
++      LEFT OUTER JOIN security_groups AS sg
++        ON sg.id = sgia.security_group_id
++        AND sgia.deleted = N
++        AND sg.deleted = N
++      LEFT OUTER JOIN instance_info_caches AS iic
++        ON iic.instance_uuid = a.instances_uuid
++      ORDER BY a.instances_created_at DESC, a.instances_created_at DESC,
++               a.instances_created_at DESC, a.instances_id DESC
++
++Alternatives
++------------
++
++The scalability issue can be mitigated through automatically clearing down
++soft-deleted rows. However performance will always be improved through correct
++use of indexes.
++
++Data model impact
++-----------------
++
++At least one migration is proposed by this change. It is open for discussion
++how many migrations the proposed changes are split over.
++
++REST API impact
++---------------
++
++None.
++
++Security impact
++---------------
++
++None.
++
++Notifications impact
++--------------------
++
++None.
++
++Other end user impact
++---------------------
++
++None.
++
++Performance Impact
++------------------
++
++Database performance should be improved. A modest amount of additional storage
++will be required to hold the additional indexes.
++
++Other deployer impact
++---------------------
++
++None.
++
++Developer impact
++----------------
++
++None.
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  alexisl
++
++Other contributors:
++  None
++
++Work Items
++----------
++
++ * Add volume_usage_cache (volume_id)
++ * Add reservations (deleted, expire)
++ * Delete instances indexes::
++    host, deleted
++    uuid, deleted
++    host, node, deleted
++    host, deleted, cleaned
++ * Add instances indexes::
++    deleted, uuid
++    deleted, host, node
++    deleted, host, cleaned
++    deleted, project_id, user_id
++    deleted, vm_state, created_at, project_id
++
++Dependencies
++============
++
++None.
++
++Testing
++=======
++
++I'd expect this to be adequately tested by whatever performance testing is
++already in place.
++
++Documentation Impact
++====================
++
++None.
++
++References
++==========
++
++None.
+-- 
+1.9.1
+

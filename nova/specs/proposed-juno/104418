@@ -1,0 +1,162 @@
+From eae1e82744c751f602513022750a13a4672ed708 Mon Sep 17 00:00:00 2001
+From: Ken'ichi Ohmichi <oomichi@mxs.nes.nec.co.jp>
+Date: Thu, 3 Jul 2014 11:20:12 +0900
+Subject: [PATCH] WIP: Change api-microversions-alt
+
+This changes api-microversions-alt spec based on the discussions.
+
+Change-Id: I71b79446ba9c052b7fd66eeb88944757728c79d0
+---
+ specs/juno/api-microversions-alt.rst | 96 ++++++++++++++++++++++++++----------
+ 1 file changed, 71 insertions(+), 25 deletions(-)
+
+diff --git a/specs/juno/api-microversions-alt.rst b/specs/juno/api-microversions-alt.rst
+index 5a68ef0..93227d3 100644
+--- a/specs/juno/api-microversions-alt.rst
++++ b/specs/juno/api-microversions-alt.rst
+@@ -70,8 +70,23 @@ dragons, also giant sloths, equally dangerous, but slower to emerge.
+ and optional extensions in the upstream Nova tree.)
+ 
+ Versioning of the API should be 1 monotonic counter. It should be in
+-the form X.Y.Z though X.Y is acceptable, and assumes Z is 0. Z is
+-reserved for critical bug fixes on stable branches.
++the form X.Y.Z:
++
++- X: any backwards incompatible change (that includes removal of parameters)
++  This X will bump by each incompatible change.
++  However if the biggest X is experimental at the time we don't need to bump X.
++- Y: backs compatible changes
++  This Y will bump by each compatible change.
++- Z: critical bug fixes on stable branches
++  This Z will bump by each bug fix. Z might be always 0 and just reserved.
++
++So the versioning does not depend on the release boundary(Juno, etc.).
++Each X version grows on its own versioning and each X has its own Y.Z.
++For example, there are three X versions like:
++
++- 2.100.0: backwards compatible changes have happened 100 times.
++- 3.14.0: backwards compatible changes have happened 14 times.
++- 4.0.0: backwards compatible changes have not happened yet.
+ 
+ A version response would look as follows
+ 
+@@ -79,28 +94,41 @@ A version response would look as follows
+ 
+     GET /
+     {
+-         "versions": [
++        "versions": [
+             {
+                 "id": "v2.0",
+                 "links": [
+                       {
+-                        "href": "http://localhost:8774/v2/",
++                        "href": "http://localhost:8774/",
+                         "rel": "self"
+                     }
+                 ],
+                 "status": "CURRENT",
+                 "updated": "2011-01-21T11:33:21Z"
+-                "version": "2.115"
+-                "min_version": "2.0"
++                "version": "2.100"
++                "min_version": "2.88"
+             },
+-       ]
++            {
++                "id": "v3.0",
++                "links": [
++                      {
++                        "href": "http://localhost:8774/",
++                        "rel": "self"
++                    }
++                ],
++                "status": "EXPERIMENTAL",
++                "updated": "2011-01-21T11:33:21Z"
++                "version": "3.14"
++                "min_version": "3.0"
++            }
++        ]
+     }
+ 
+ This specifies the min and max version that the server can
+ understand. min_version will start at 2.0 representing the current 2.0
+ API. It may eventually be uplifted if there are support burdens we
+-don't feel are addequate to support. For instance if version 2.001 was
+-the drop of the XML API, at some point in the future 2.001 would be
++don't feel are adequate to support. For instance if version 2.1 was
++the drop of the XML API, at some point in the future 2.1 would be
+ the minimum version provided.
+ 
+ Client Interaction
+@@ -141,33 +169,51 @@ these things back in tree.
+ Nova Tree
+ ---------
+ 
+-In the nova tree a decorator would be introduced to label routing
+-functions version specification
++In the nova tree, there are two ways to implement different microversion
++functions.
++
++- The way 1: A decorator would be introduced to absorb the differences
++  between microversions. (This way is already described on v2-on-v3-api)
+ 
+ ::
+ 
+    servers.py:
+ 
+-   @api.version(introduced="2.0", deprecated="2.115", removed="2.300")
+-   def index(...):
++   @translate_body(version="2", diff_v2)
++   def show(...):
++       """this method is for v3 and there are differences of response body.
++          diff_v2 represents the differences"""
+        ....
+ 
+-   @api.version(introduced="2.300")
+-   def index_2(...)
+-       """A bigger badder index listing"""
+-       ....
++- The way 2: A decorator would be introduced to label routing functions
++  version specification like the following sample code.
++  @api.version also supports experimental=True/False (default
++  False). And vnd="". It's a fatal error to combine either of those
++  flags with the version flag.
++  This will provide an in tree way of signaling when new methods come
++  into play, as well as a selection for routing requests to different
++  paths based on versions allowed.
++  (Note: yes this is a *ton* of new work, but for long term tree sanity
++  I think we need it).
+ 
++::
+ 
+-@api.version also supports experimental=True/False (default
+-False). And vnd="". It's a fatal error to combine either of those
+-flags with the version flag.
++   servers.py:
+ 
+-This will provide an in tree way of signaling when new methods come
+-into play, as well as a selection for routing requests to different
+-paths based on versions allowed.
++   @api.version(introduced="2.0")
++   def show(...):
++       ....
++
++   @api.version(introduced="3.0")
++   def show_v3(...)
++       """A bigger badder index listing"""
++       ....
+ 
+-(Note: yes this is a *ton* of new work, but for long term tree sanity
+-I think we need it).
++Basically, we need to implement microversion functions with the way 1
++as possible to avoid copy&paste code and reduce meintenance cost.
++However sometimes we need the way 2 for avoiding spaghetti code if there
++are big differences between microversions. So we can choose either way
++by considering the balance for each API.
+ 
+ Alternatives
+ ------------
+-- 
+1.9.1
+

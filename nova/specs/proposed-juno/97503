@@ -1,0 +1,298 @@
+From 6ad05e35ada7ae8f0570e5c11adb9d12426a9750 Mon Sep 17 00:00:00 2001
+From: Khanh-Toan TRAN <khanh-toan.tran@cloudwatt.com>
+Date: Tue, 3 Jun 2014 13:46:56 +0000
+Subject: [PATCH] Create a scheduler that functions based on policies defined
+ by admin.
+
+This blueprint proposes a new scheduler that allows admin to apply different
+policies to different part of the infrastructures or different projects while
+performing scheduling. Admin can define scheduling rules for each client,
+each aggreggate, each availabiloity-zone or the whole infrastructure
+separatedly. Admin can also modify these rules in real time without restarting
+the scheduler.
+
+Change-Id: I34dec5ae73514389dd439cf20b9124ea0e4a875e
+Implements: blueprint policy-based-scheduler
+---
+ specs/juno/policy-based-scheduing-engine.rst | 269 +++++++++++++++++++++++++++
+ 1 file changed, 269 insertions(+)
+ create mode 100644 specs/juno/policy-based-scheduing-engine.rst
+
+diff --git a/specs/juno/policy-based-scheduing-engine.rst b/specs/juno/policy-based-scheduing-engine.rst
+new file mode 100644
+index 0000000..8d4663d
+--- /dev/null
++++ b/specs/juno/policy-based-scheduing-engine.rst
+@@ -0,0 +1,269 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++==========================================
++PBSM - A Scheduling engine using policy
++==========================================
++
++https://blueprints.launchpad.net/nova/+spec/policy-based-scheduler
++
++This blueprint proposes a new scheduler that allows admin to apply different
++policies to different parts of the infrastructures or different clients while
++performing scheduling. Admin can define scheduling rules for each client,
++each aggreggate, each availabiloity-zone or the whole infrastructure
++separatedly. Admin can also modify these rules in real time without restarting
++the scheduler.
++
++
++Problem description
++===================
++
++Current Filter_Scheduler uses Filters and Weighers to help choose the best
++suited host for any requested VM. However, FilterScheduler has several limits
++that make it unable to make the best use of its Filter and Weigher catalog and
++provide business-level services to clients. Among others:
++
++* Static policy: admin cannot change the placement policy in runtime without
++  restarting nova-scheduler. Most of Filters and Weighers use parameters from
++  configuration and thus also require restarting nova-scheduler. Thus adapting
++  scheduling policy to the runtime context is impossible.
++
++* Lack of client context: the same filters and weighers are applied with the
++  same parameters regardless of clients. In this situation, it is difficult to
++  provide different qualities of services to clients who sign different
++  contracts.
++
++* Global setup only: the same filters and weighers are applied to all hosts.
++  Even though Openstack defines aggregates for regrouping a set of hosts with
++  similar characteristics, it still does not allow admin to define different
++  policies for these aggregates (eventhough some Filters allow per-aggregate
++  parameters). For instance, admin cannot call different Filters/Weighers on
++  different aggregates).
++
++The following usecases are unfeasible with FilterScheduler:
++
++* Transparency to clients: A company signs a contract with gold service class.
++  With this contract its VMs will be hosted in the aggregate where all
++  high-quality hosts are regrouped, regardless of flavors its users choose.
++
++* Runtime modification: Admin can select any set of filters and weighers from
++  the catalog available in Openstack to execute without restarting nova-
++  scheduler.
++
++* Local policy vs Global policy: Admin wants to define a Consolidation policy
++  in one aggregate to regroup all VMs into a minimal number of hosts, and a
++  global Load Balancing policy to share the workload in the remaining
++  aggregates.
++
++
++Proposed change
++===============
++
++Our idea is to separate the scheduling logic ("how do you want to provision the
++VMs?") from the application target ("on which part of the resources that you
++want to apply the scheduling logic?"). This separation allows admin to specify
++how he wants to provision the resources in each and any context: per client,
++per aggregate, or per situation.
++
++Let's take the first scenario as example. With FilterScheduler, admin has to
++set up a dedicated flavor associated with this aggregate (via metadata) and let
++the client select this flavor. However, the client has to know about this
++flavor, and if he changes the contract, he has to modify all his applications
++to select the new flavor. The Policy-Based Scheduler will provide clients with
++transparency: the client just selects any flavor, and the system will
++automatically put his VMs into suitable aggregates as defined by the rules.
++Thus no special flavor is needed, and client does not need to modify his
++appplication at all.
++
++Another client will have another set of rules corresponding his context. He may
++process the same step as the previous one (selecting the same image, the same
++flavor, etc) but the deployment of his VMs will depend on his context alone.
++
++With the transparency provided by Policy-Based Scheduler, admin can use an
++analytic system to monitor and analyse the client's usage and behaviour and
++apply suitable rules for the client to better suit his need without reactions
++from the client's part.
++
++The architecture of this scheduler is illustrated as follows:
++::
++
++  +--------------------------------+
++  |                                |
++  |        Nova-scheduler          |
++  |                                |
++  |   +-----------------------+    |
++  |   |                       |    |
++  |   | Policy-Based Scheduler|    |
++  |   |                       |    |
++  |   +----------+------------+    |
++  |              |                 |
++  +--------------+-----------------+
++                 |
++                 |
++                 v
++      +-----------------------+        +----------------+
++      |                       |        |                |
++      |     Policy-Based      |        |     Policy     |
++      |   Scheduling Module   +------->|   Repository   |
++      |                       |        |                |
++      +----------+------------+        +----------------+
++                 |
++                 |
++                 |
++                 v
++         +----------------+
++         |                |
++         | Policy plugins |
++         |                |
++         +----------------+
++
++
++* All the policy rules will be stored in the Policy Repository. The Repository
++  can be a file, a database or a policy system. The format of the Rule is as
++  follows:
++  Target - Effect - Condition
++  ("Under this Condition, apply this Effect to this Target").
++  Condition can be time, overload situation, etcc.
++  Effect can be Load Balancing, Oversubsription, Service_class, etc.
++  Target can be a tenant, an aggregate, an availability-zone, the entire infra,
++  etc.
++
++* The Policy-Based Scheduling Module (PBSM) is the main engine of this
++  architecture. It gets the rules from the Policy Repository and applies the
++  rules via Policy plugins - the implementation of the rule effect. Plugins can
++  apply Filters or Weighers to the hosts.
++
++* Policy-Based Scheduler (PBS) is located inside Nova-scheduler and relays the
++  call from Nova-scheduler to PBSM.
++
++
++PBS will inherit from FilterScheduler with little modification to reduce the
++impact to the system and benefit from all the development in Nova (especially
++the work from Instance-group [2]). It also covers all the functionalities of
++FilterScheduler. If admin does not put any rule into Policy Repository, PBS
++will function exactly the same way as FilterScheduler. Admin can configure
++the filters and weighers as if with current FilterScheduler. Thus migration
++from FilterScheduler to PBS will be seamless and does not require any
++re-configuration from admin.
++
++A prototype of this architecture was presented in Demo Session in OpenStack
++Juno Summit [1].
++
++Alternatives
++------------
++
++An alternative is to build PBS from scratch. However, with the works in
++progress in nova (especially instance-group [2]), it is more convenient to keep
++it inherit from FilterScheduler.
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++The PBS and its modules will not make changes to REST API. In the future, if
++a policy management system such as Congress [3] is used as Policy Repository's
++backend, we can use its REST API to add/modify/delete rules.
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++None
++
++Performance Impact
++------------------
++
++The execution time (making scheduling decision) depends on number of compute
++nodes and number of policy rules. If admin does not make any rule, it will
++function exactly the same as FilterScheduler, thus having the same performance.
++
++Other deployer impact
++---------------------
++
++To fully exploit PBS, some configuration is needed:
++
++* Make Policy-Based Scheduler the scheduling engine in nova.conf
++
++* Precify the Policy Repository backend. The default is a file in /etc/nova/.
++
++* (Optional) Put rules in Policy Repository. If a policy management system such
++  as Congress is used as the Repository's backend, this can be done via the
++  system's REST API.
++
++At the very least, PBS does not require any other configuration than what admin
++does with FilterScheduler, except making it the scheduling engine in nova.conf.
++In this case (no rule is set), PBS will function exactly the same as
++FilterScheduler.
++
++
++Developer impact
++----------------
++
++None
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  toan-tran
++
++
++Work Items
++----------
++
++The main part of the architecture will be implemented first:
++
++* Policy-based Scheduler
++* Polci-based Scheduling Module
++* Policy Repository: file backend
++
++The first version of the architecture will use simple file as a Policy
++Repository's backend. Others will be proposed in separated blueprints.
++
++The Policy plugins will be implemented in separated patches of the same
++blueprint.
++
++
++Dependencies
++============
++
++None
++
++Testing
++=======
++
++None other than unittests.
++
++Documentation Impact
++====================
++
++Documents will be provided on how to write policy rules.
++
++References
++==========
++
++[1] http://openstacksummitmay2014atlanta.sched.org/event/
++    b4313b37de4645079e3d5506b1d725df
++
++[2] https://blueprints.launchpad.net/nova/+spec/instance-group-api-extension
++
++[3] https://wiki.openstack.org/wiki/Congress
+-- 
+1.9.1
+

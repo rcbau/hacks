@@ -1,0 +1,218 @@
+From 39e75dcef0fd17c6939c67592d197b92436a82bf Mon Sep 17 00:00:00 2001
+From: liu-sheng <liusheng@huawei.com>
+Date: Thu, 3 Jul 2014 18:24:15 +0800
+Subject: [PATCH] Add log translation hints for Nova
+
+Current oslo libraries support translating log messages using different
+translation domains and oslo would like to see hints in all of our code
+by the end of juno. So cinder should handle the changes out over the
+release.
+
+blueprint log-translation-hints
+Change-Id: Ib5280f560fec4e53ee591d3e17b48b64c4d96314
+---
+ specs/juno/log-translation-hints.rst | 192 +++++++++++++++++++++++++++++++++++
+ 1 file changed, 192 insertions(+)
+ create mode 100644 specs/juno/log-translation-hints.rst
+
+diff --git a/specs/juno/log-translation-hints.rst b/specs/juno/log-translation-hints.rst
+new file mode 100644
+index 0000000..40cdd2b
+--- /dev/null
++++ b/specs/juno/log-translation-hints.rst
+@@ -0,0 +1,192 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++==================================
++Add log translation hints for Nova
++==================================
++
++https://blueprints.launchpad.net/Nova/+spec/log-translation-hints
++
++To update Nova log messages to take advantage of oslo's new feature of
++supporting translating log messages using different translation domains.
++
++Problem description
++===================
++
++Current oslo libraries support translating log messages using different
++translation domains and oslo would like to see hints in all of our code
++by the end of juno. So Nova should handle the changes out over the release.
++
++Proposed change
++===============
++
++Since there are too many files need to change, so divide this bp into dozens of
++patche according to Nova directories(which need applying this change).
++
++For each directory's files, we change all the log messages as follows.
++
++1. Change "LOG.exception(_(" to "LOG.exception(_LE".
++
++2. Change "LOG.warning(_(" to "LOG.warning(_LW(".
++
++3. Change "LOG.info(_(" to "LOG.info(_LI(".
++
++4. Change "LOG.critical(_(" to "LOG.info(_LC(".
++
++Note that this spec and associated blueprint are not to address the problem of
++removing translation of debug msgs.
++
++Alternatives
++------------
++
++None
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++None
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++None
++
++Performance Impact
++------------------
++
++None
++
++Other deployer impact
++---------------------
++
++None
++
++Developer impact
++----------------
++
++None
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  liusheng<liusheng@huawei.com>
++
++Other contributors:
++  shihanzhang<shihanzhang@huawei.com>
++
++Work Items
++----------
++
++For each directory's files, we change all the log messages as follows.
++
++1. Change "LOG.exception(_(" to "LOG.exception(_LE".
++
++2. Change "LOG.warning(_(" to "LOG.warning(_LW(".
++
++3. Change "LOG.info(_(" to "LOG.info(_LI(".
++
++4. Change "LOG.critical(_(" to "LOG.info(_LC(".
++
++We handle these changes in the following order::
++
++    ├── nova                  #TODO1
++    │   ├── api              #TODO2
++    │   ├── CA
++    │   ├── cells            #TODO3
++    │   ├── cert
++    │   ├── cloudpipe
++    │   ├── cmd              #TODO4
++    │   ├── compute          #TODO5
++    │   ├── conductor        #TODO6
++    │   ├── console
++    │   ├── consoleauth
++    │   ├── db               #TODO7
++    │   ├── hacking
++    │   ├── image            #TODO8
++    │   ├── ipv6
++    │   ├── keymgr
++    │   ├── locale
++    │   ├── network          #TODO9
++    │   ├── objects          #TODO10
++    │   ├── objectstore
++    │   ├── openstack
++    │   ├── pci
++    │   ├── rdp
++    │   ├── scheduler        #TODO11
++    │   ├── servicegroup
++    │   ├── spice
++    │   ├── storage
++    │   ├── tests
++    │   ├── virt
++    │   │   ├── baremetal   #TODO12
++    │   │   ├── disk        #TODO13
++    │   │   ├── hyperv      #TODO14
++    │   │   ├── libvirt     #TODO15
++    │   │   ├── vmwareapi   #TODO16
++    │   │   ├── xenapi      #TODO17
++    │   │.........             #TODO18
++    │   ├── vnc
++    │   ├── volume
++    │......(others1)            #TODO19
++    │......(others2)            #TODO20
++
++Add a HACKING check rule to ensure that log messages to relative domain.
++Using regular expression to check whether log messages with relative _L*
++function.
++
++::
++
++    log_translation_domain_error = re.compile(
++        r"(.)*LOG\.error\(\s*\_LE('|\")")
++    log_translation_domain_warning = re.compile(
++        r"(.)*LOG\.(warning|warn)\(\s*\_LW('|\")")
++    log_translation_domain_info = re.compile(
++        r"(.)*LOG\.(info)\(\s*\_LI('|\")")
++    log_translation_domain_critical = re.compile(
++        r"(.)*LOG\.(critical)\(\s*\_LC('|\")")
++
++Dependencies
++============
++
++None
++
++Testing
++=======
++
++None
++
++Documentation Impact
++====================
++
++None
++
++
++References
++==========
++
++[1]https://blueprints.launchpad.net/oslo/+spec/log-messages-translation-domain-rollout
++
++[3]https://wiki.openstack.org/wiki/LoggingStandards
+-- 
+1.9.1
+

@@ -1,0 +1,244 @@
+From 7685cd0099e26c5707f576c6c1a408ae11b85e25 Mon Sep 17 00:00:00 2001
+From: Sergio Cazzolato <sergio.j.cazzolato@intel.com>
+Date: Tue, 1 Apr 2014 15:39:51 -0300
+Subject: [PATCH] Default project quota flavor
+
+This blueprint is to define a default quota flavor for a specific
+project.
+
+The main use for this is to set up a quota flavor used to configure by
+default the project user quotas when the user is created.
+
+Related to blueprint default-quota-flavor.
+
+Change-Id: I2529a97abcccc5fe07c9158c1f96c2c1883bf863
+---
+ specs/juno/default-quota-flavor.rst | 216 ++++++++++++++++++++++++++++++++++++
+ 1 file changed, 216 insertions(+)
+ create mode 100644 specs/juno/default-quota-flavor.rst
+
+diff --git a/specs/juno/default-quota-flavor.rst b/specs/juno/default-quota-flavor.rst
+new file mode 100644
+index 0000000..b3227c2
+--- /dev/null
++++ b/specs/juno/default-quota-flavor.rst
+@@ -0,0 +1,216 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++============================
++Default project quota flavor
++============================
++
++https://blueprints.launchpad.net/nova/+spec/default-quota-flavor
++
++This blueprint is to define a default quota flavor for a specific project.
++
++The main use for this is to set up a quota flavor used to configure by default
++the project user quotas when the user is created.
++
++
++Problem description
++===================
++
++Currently when an operator creates a new user, the quotas have to be configured
++manually one by one based on the user requirements.
++
++This blueprint comes from the operators feedback:
++https://etherpad.openstack.org/p/operators-feedback-mar14 -> line 448
++
++
++Proposed change
++===============
++
++To add a relation between a quota flavor and a project. This will be used
++during the user creation process to define the user quotas.
++
++Alternatives
++------------
++
++None
++
++
++Data model impact
++-----------------
++
++Add this table to the db:
++
++Model DefaultProjectQuotaFlavor
++    """Represents the relation between a project and a quota flavor"""
++
+++------------------+------------+----------+-------+
++| Name             | Type       | Nullable |   PK  |
+++==================+============+==========+=======+
++| id               | Integer    | False    | True  |
+++------------------+------------+----------+-------+
++| tenant_id        | String(255)| False    | False |
+++------------------+------------+----------+-------+
++| quota_flavor_id  | String(255)| False    | False |
+++------------------+------------+----------+-------+
++
++
++REST API impact
++---------------
++
++Get Default Quota Flavor
++************************
++
++* Method: GET
++* Path: /os-quota-flavors/default/{tenant_id}
++* Desc: Shows the default quota flavors for a tenant
++* Resp: Normal Response Codes 200
++
+++------------+-------+--------+-----------------------------------------------+
++| Parameter  | Style | Type   | Desc                                          |
+++============+=======+========+===============================================+
++| tenant_id  | URI   | string | The ID for the tenant for which you want to   |
++|            |       |        | list the default quota flavor                 |
+++------------+-------+--------+-----------------------------------------------+
++
++Set Quota Flavor
++*******************
++
++* Method: PUT
++* Path: os-quota-flavors/default/{tenant_id}
++* Desc: Set a quota flavor as default for a specific tenant
++* Resp: Normal Response Codes 200
++
+++------------+-------+--------+-----------------------------------------------+
++| Parameter  | Style | Type   | Desc                                          |
+++============+=======+========+===============================================+
++| tenant_id  | URI   | string | The ID for the tenant for which you want to   |
++|            |       |        | associate the quota flavor                    |
+++------------+-------+--------+-----------------------------------------------+
++| flavor_name| plain | string | The name for the flavor to be set as default  |
+++------------+-------+--------+-----------------------------------------------+
++
++Update Quota Flavor
++*******************
++
++* Method: POST
++* Path: os-quota-flavors/default/{tenant_id}
++* Desc: Updates a quota flavor as default for a specific tenant
++* Resp: Normal Response Codes 200
++
+++------------+-------+--------+-----------------------------------------------+
++| Parameter  | Style | Type   | Desc                                          |
+++============+=======+========+===============================================+
++| tenant_id  | URI   | string | The ID for the tenant for which you want to   |
++|            |       |        | associate the quota flavor                    |
+++------------+-------+--------+-----------------------------------------------+
++| flavor_name| plain | string | The name for the flavor to be set as default  |
+++------------+-------+--------+-----------------------------------------------+
++
++Delete Quota Flavor
++*******************
++
++* Method: DELETE
++* Path: os-quota-flavors/default/{tenant_id}
++* Desc: Deletes a default quota flavor for a tenant
++* Resp: Normal Response Codes 200
++
+++------------+-------+--------+-----------------------------------------------+
++| Parameter  | Style | Type   | Desc                                          |
+++============+=======+========+===============================================+
++| tenant_id  | URI   | string | The ID for the tenant for which you want to   |
++|            |       |        | delete the default quota flavor               |
+++------------+-------+--------+-----------------------------------------------+
++
++
++Security impact
++---------------
++
++None
++
++
++Notifications impact
++--------------------
++
++None
++
++
++Other end user impact
++---------------------
++
++This change affects the client user interface. The following commands are
++added:
++
++quota-flavor-default
++    --tenant-id <tenant_id>
++
++quota-flavor-default-update
++	--tenant-id <tenant_id>
++	--flavor-name <flavor_name>
++
++quota-flavor-default-delete
++	--tenant-id <tenant_id>
++
++Performance Impact
++------------------
++
++None
++
++
++Other deployer impact
++---------------------
++
++None
++
++
++Developer impact
++----------------
++
++None
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee: sergio-j-cazzolato
++Other contributors: gseverina
++
++
++Work Items
++----------
++
++None
++
++
++Dependencies
++============
++
++Depends on blueprint quota-flavors:
++https://blueprints.launchpad.net/nova/+spec/quota-flavors
++
++
++Testing
++=======
++
++None
++
++
++Documentation Impact
++====================
++
++Documentation needed for:
++
++* Rest API
++* Client Interface
++
++
++References
++==========
++
++Link to notes from a summit session:
++https://etherpad.openstack.org/p/operators-feedback-mar14 -> line 448
+-- 
+1.9.1
+

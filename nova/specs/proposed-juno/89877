@@ -1,0 +1,168 @@
+From cbf48f011c33c5555c04399882046d51d4754184 Mon Sep 17 00:00:00 2001
+From: "trump.zhang" <zhangleiqiang@huawei.com>
+Date: Wed, 23 Apr 2014 23:27:01 +0800
+Subject: [PATCH] Enhancement virtio-scsi bus support for volume
+
+Add support to use virtio-scsi controller when booting from
+a cinder volume which has specific "hw_scsi_model" metadata
+
+blueprint enchancement-virtio-scsi-support-for-volume
+
+Change-Id: Idfb4abd7c65dc179a33eda40cd7b5f6793adf953
+---
+ ...enchancement-virtio-scsi-support-for-volume.rst | 143 +++++++++++++++++++++
+ 1 file changed, 143 insertions(+)
+ create mode 100644 specs/juno/enchancement-virtio-scsi-support-for-volume.rst
+
+diff --git a/specs/juno/enchancement-virtio-scsi-support-for-volume.rst b/specs/juno/enchancement-virtio-scsi-support-for-volume.rst
+new file mode 100644
+index 0000000..7bedba2
+--- /dev/null
++++ b/specs/juno/enchancement-virtio-scsi-support-for-volume.rst
+@@ -0,0 +1,143 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++=====================================================
++Enhancement virtio-scsi bus support for volume
++=====================================================
++
++https://blueprints.launchpad.net/nova/+spec/enchancement-virtio-scsi-support-for-volume
++
++
++VirtIO SCSI is a new para-virtualized SCSI controller device for KVM instances.
++It has been designed to replace virtio-blk, increase it's performance and
++improve scalability. Currently, under some scenario, using virtio-scsi bus is
++not supported when booting from volume.
++
++
++
++Problem description
++===================
++
++VirtIO SCSI is a new para-virtualized SCSI controller device for KVM instances.
++It has been designed to replace virtio-blk, increase it's performance and
++improve scalability. The interface is capable of handling multiple block
++devices per virtual SCSI adapter, keeps the standard scsi device naming
++in the guests (e.x /dev/sda) and support SCSI devices passthrough.
++
++Currently, virtio-scsi bus has been supported when booting from glance image
++with property "hw_scsi_mode=virtio-scsi" or cinder volume created by this type
++of image, which is implemented by BP ([1]) in Icehouse.
++
++However, for volumes which were not created from image, we have no method to
++specify using virtio-scsi controller for it.
++
++The aim of this BP as follows:
++
++For bootable volumes which including virito-scsi driver, user can set specific
++metadata for them. When booting from these volumes with "scsi" bus type, use
++virtio-scsi controller instead of the default lsi controller.
++
++The main use case is to improve performance in I/O-intensive applications.
++
++The prior BP [2] proposed by me has already been merged. However, I had a
++misunderstanding about the virito-scsi and volume. In fact, in icehouse, When
++booting from a volume created by glance image with hw_scsi_mode property, the
++volume will also use virito-scsi controller, really sorry for my misleading.
++
++
++Proposed change
++===============
++
++* Nova retrieve volume's metadata when booting from cinder volume
++
++* Libvirt driver will create the "virtio-scsi" controller if volume has
++  specific metadata, eg. "hw_scsi_model=virtio-scsi"
++
++Alternatives
++------------
++
++None
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++None
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++None
++
++Performance Impact
++------------------
++
++Will improve guest's performance.
++
++Other deployer impact
++---------------------
++
++None
++
++Developer impact
++----------------
++
++None
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  <zhangleiqiang@huawei.com>
++
++
++Work Items
++----------
++
++* Nova retrieve volume's metadata when booting from cinder volume
++
++* Libvirt driver will create the "virtio-scsi" controller if volume has
++  specific metadata, eg. "hw_scsi_model=virtio-scsi"
++
++
++Dependencies
++============
++
++None
++
++Testing
++=======
++
++None
++
++Documentation Impact
++====================
++
++None
++
++References
++==========
++
++* [1] https://blueprints.launchpad.net/nova/+spec/libvirt-virtio-scsi-driver
++* [2] https://blueprints.launchpad.net/nova/+spec/add-virtio-scsi-bus-for-bdm
+-- 
+1.9.1
+

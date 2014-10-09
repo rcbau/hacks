@@ -1,0 +1,165 @@
+From c72513590cf04f7b20012904b3aceaf7d8c711e0 Mon Sep 17 00:00:00 2001
+From: Loganathan Parthipan <parthipan@hp.com>
+Date: Thu, 3 Apr 2014 10:54:12 +0000
+Subject: [PATCH] Blueprint for migrating non-active instances
+
+Currently only instances in ACTIVE state can be live-migrated. This blueprint
+proposes a scheme to live-migrate VMs in other stable states in a libvirt setup.
+
+Implements: blueprint migrate-non-active-instances
+
+Change-Id: I61bc883bb04b978d870877c36705001e80268751
+---
+ specs/juno/migrate-non-active-instances.rst | 140 ++++++++++++++++++++++++++++
+ 1 file changed, 140 insertions(+)
+ create mode 100644 specs/juno/migrate-non-active-instances.rst
+
+diff --git a/specs/juno/migrate-non-active-instances.rst b/specs/juno/migrate-non-active-instances.rst
+new file mode 100644
+index 0000000..37f470d
+--- /dev/null
++++ b/specs/juno/migrate-non-active-instances.rst
+@@ -0,0 +1,140 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++===========================================
++Live Migrate instances in non-active states
++===========================================
++
++https://blueprints.launchpad.net/nova/+spec/migrate-non-active-instances
++
++Currently only instances in active states can be live-migrated. In this
++blueprint we propose a method to migrate instances in stable non-active states
++such as SHUTOFF or SUSPENDED.
++
++
++Problem description
++===================
++
++For an admin, being able to live-migrate an instance with a single command
++without depending on the instance state can be convenient:
++
++* The driving scripts do not need to check instance state and call different
++  commands.
++* Reading of instance state and issuing a live-migration command do not need to
++  be atomic. No need to invoke any instance locking mechanism. Without this, a
++  user can change the state of an instance just before a live-migration call and
++  the command can become invalidated.
++* Limit the number of secure channels required. For instance, libvirt TLS setup
++  configured for live-migration of active instances can be used for all
++  instances.
++
++
++Proposed change
++===============
++
++We propose a libvirt specific solution and provide configurability to turn it
++off in the case of other hypervisors. The main changes are:
++
++* Start non-active instance in SUSPENDED or SHUTOFF in PAUSED state in the
++  libvirt driver. (dom.createWithFlags(libvirt.VIR_DOMAIN_START_PAUSED))
++* Configure libvirt to VIR_MIGRATE_PAUSED. This will ensure that the instance
++  will migrate and stay in PAUSED state in the destination.
++* In post-migration use the vm_state as a hint to the intended state and make
++  the relevant power_state changes to the instance.
++* Change compute API to accept SUSPENDED and SHUTOFF vm_states as valid initial
++  states for a migration.
++* Introduce a flag live-migrate-non-active-states to turn on this feature.
++
++Alternatives
++------------
++
++* Offline migration framework exists
++
++Data model impact
++-----------------
++None
++
++REST API impact
++---------------
++There won't be any changes to the API schema.
++
++However, the response will now differ in that less states will result in an
++ERROR to live-migrate. We will document this changes.
++
++Security impact
++---------------
++None
++
++Notifications impact
++--------------------
++None
++
++Other end user impact
++---------------------
++None
++
++Performance Impact
++------------------
++
++Currently the duration an active VM is paused for a very short period of time
++during which the final dirty pages are moved and the source VM stopped. Our work
++will add another small duration of time that would take for nova to do the
++following.
++
++1. Source compute thread detects VM moved
++2. Post live-migration on source
++3. Post live-migration on destination
++4. PAUSED->intended power state
++
++From our implementation we didn't see any significant degradation in the
++duration the VM went offline, but this is an area we will need to test more.
++
++Other deployer impact
++---------------------
++None
++
++Developer impact
++----------------
++None
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  parthipan
++
++Work Items
++----------
++
++* Compute API changes to allow non-active states enabled by a flag
++* Require VIR_MIGRATE_PAUSED if this flag is set for a libvirt setup
++* Changes to make VM paused and revert power_state to match vm_state in the
++  post-migration
++
++Dependencies
++============
++None
++
++Testing
++=======
++
++Tempest tests to cover the following:
++
++* Migrating shutoff and suspended instances expecting success
++* <TODO> need more work to come up with failure cases
++
++Documentation Impact
++====================
++* The behaviour changes
++* The proposed flag live-migrate-non-active-states to turn on the feature
++
++References
++==========
++None
++
+-- 
+1.9.1
+

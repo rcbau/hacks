@@ -1,0 +1,237 @@
+From 03cd63a2810c4207a8d406cf5d01e1587d2e14db Mon Sep 17 00:00:00 2001
+From: wanghao <wanghao749@huawei.com>
+Date: Mon, 31 Mar 2014 11:51:58 +0800
+Subject: [PATCH] nova-specs for "add force detach volume to nova"
+
+Implements: blueprint add-force-detach-to-nova
+Change-Id: Ic4f9a0b3e2443db7852e8c5c18ce37584dff6943
+---
+ specs/juno/add-force-detach-to-nova.rst | 216 ++++++++++++++++++++++++++++++++
+ 1 file changed, 216 insertions(+)
+ create mode 100644 specs/juno/add-force-detach-to-nova.rst
+
+diff --git a/specs/juno/add-force-detach-to-nova.rst b/specs/juno/add-force-detach-to-nova.rst
+new file mode 100644
+index 0000000..a3106ad
+--- /dev/null
++++ b/specs/juno/add-force-detach-to-nova.rst
+@@ -0,0 +1,216 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++=================================================================
++Add force detach volume to nova
++=================================================================
++
++https://blueprints.launchpad.net/nova/+spec/add-force-detach-to-nova
++
++Add a mechanism to forcibly detach a volume from an instance in Nova.
++This is more graceful than performing the same operation only in cinder
++because Nova can clean up its own records about the attachment.
++
++Problem description
++===================
++
++We have two separate copies of the Nova service(call them nova A and nova B)
++and one cinder service. Attach a volume to an instance in nova A and then
++services of nova A become abnormal. Because the volume also want to be used
++in nova B, and can't detach this volume by using nova A. So using cinder api
++"force detach volume" to free this volume. But when nova A has recovered,
++nova can't detach this volume from instance by using nova api "detach volume",
++as nova checks the volume state must be "attached".
++
++So after using "force detach volume" in cinder, we can't detach this volume
++from nova, can't clean up attachment records in nova and libvirt xml.
++
++Proposed change
++===============
++
++1. Add optional "force_detach" parameter which is boolean variable
++   (default value is false) in nova detach api
++
++2. When force_detach is true, nova will detach the volume for cleaning
++   the attach information whether volume status is attached or detached
++
++3. Then call force detach api in cinder to make consistent state between
++   nova and cinder
++
++4. It will not affect the volume if it has been attached to other VM and
++   just clean up the attachment information of the VM which the volume was
++   attached to from nova side.
++   Meanwhile "force_detach" will just affect the "general volume",
++   not detach the root disk.
++
++
++Alternatives
++------------
++
++Add a new extension api "reset volume attach state" which defaults to admin
++only. It will clean up the records about the attachment and reset the
++attachment state of the volume in nova A. Then call force detach api in cinder
++to make consistent state between nova and cinder.
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++The rest api look like this in v2::
++
++ {nova-api}/v2/{project_id}/servers/{server_id}/os-volume_attachments/
++ {volume_id}
++
++    {
++        "volumeDetachment": {
++            "force_detach":"true"
++        }
++    }
++
++the json validition scheme in v2::
++
++    volumeDetachment = {
++    'type': 'object',
++    'properties': {
++        'volumeDetachment': {
++            'type': 'object',
++            'properties': {
++                'force_detach': {
++                    'type': 'boolean'
++                },
++            },
++            'required': [],
++            'additionalProperties': False,
++        },
++    },
++    'required': [],
++    'additionalProperties': False,
++    }
++
++and in v3 it is::
++
++ {nova-api}/v3/servers/{server_id}/action
++
++    {
++        "detach": {
++            "volume_id": "54445bc5-7332-4215-a289-6036c1be79e7"
++            "force_detach": "true"
++        }
++    }
++
++the json validition scheme in v3::
++
++    detach = {
++    'type': 'object',
++    'properties': {
++        'detach': {
++            'type': 'object',
++            'properties': {
++                'volume_id': {
++                    'type': 'string', 'format': 'uuid'
++                },
++                'force_detach': {
++                    'type': 'boolean'
++                },
++            },
++            'required': ['volume_id'],
++            'additionalProperties': False,
++        },
++    },
++    'required': ['detach'],
++    'additionalProperties': False,
++    }
++
++If the request fails, volume status and attachment information will roll back.
++The json validation will be checking the value of "force_detach" should be
++"true" or "false"(also supporting 1 or 0) and case insensitive.
++
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++1. add force_detach.begin to notification
++
++2. add force_detach.end to notification
++
++Other end user impact
++---------------------
++
++This function will be added into python-novaclient when this work finish.
++
++Performance Impact
++------------------
++
++None
++
++Other deployer impact
++---------------------
++
++The admin only policy for this api will be added into policy.json.
++
++
++Developer impact
++----------------
++
++None
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Assignee: wanghao749 <wanghao749@huawei.com>
++
++
++Work Items
++----------
++
++1. Code this function in v2
++
++2. Code this function in v3
++
++3. Finish tempest tests
++
++
++
++Dependencies
++============
++
++None
++
++
++Testing
++=======
++
++Unit tests and tempest tests will check "force detach" function.
++In tempest, it will test force detach volume from the cinder side
++and make sure that nova can still force detach, as well as making
++sure that a force detach in nova calls the cinder force detach API.
++Further, test force detach in nova will not affect the volume which
++has been attached to other instance.
++
++Documentation Impact
++====================
++
++A description of this function will be added into Compute API V2
++and V3 Reference.
++
++
++References
++==========
++
++None
+-- 
+1.9.1
+

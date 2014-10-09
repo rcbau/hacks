@@ -1,0 +1,189 @@
+From bca83ae08d4e08cc789c441170d2df89e2ad22de Mon Sep 17 00:00:00 2001
+From: Shane Wang <shane.wang@intel.com>
+Date: Mon, 5 May 2014 13:55:58 +0800
+Subject: [PATCH] Dynamically pin vCPUs to some pCPUs per VM
+
+This feature is to allow admins to pin vCPUs of an instance to some pCPUs
+dynamically.
+
+blueprint: vm-cpu-pinning-support
+
+Change-Id: I0ba309703c5a3cb7fc3f102549573d5044776f85
+---
+ specs/juno/vm-cpu-pinning-support.rst | 164 ++++++++++++++++++++++++++++++++++
+ 1 file changed, 164 insertions(+)
+ create mode 100644 specs/juno/vm-cpu-pinning-support.rst
+
+diff --git a/specs/juno/vm-cpu-pinning-support.rst b/specs/juno/vm-cpu-pinning-support.rst
+new file mode 100644
+index 0000000..b0a6f46
+--- /dev/null
++++ b/specs/juno/vm-cpu-pinning-support.rst
+@@ -0,0 +1,164 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++==============================================
++Dynamically pin vCPUs to some pCPUs per VM
++==============================================
++
++https://blueprints.launchpad.net/nova/+spec/vm-cpu-pinning-support
++
++Sometimes for some critical instances, guaranteeing their quality of service
++(QoS) is required. When they are running on a host, there might exist noisy
++neighbors. When we detect that occurs by monitoring, we hope to adopt some
++policies to make sure those critical instances still can run well without or
++with impact as little as possible. One of the options is to dynamically pin
++vCPUs of those critical instances to those pCPUs on the same host which are
++reserved at the beginning.
++
++Therefore, we hope to add the capability of CPU pinning support per VM.
++
++Problem description
++===================
++
++For critical instances which critical missions are running on and more money
++is paid for, the quality of service (QoS) becomes important. It is required
++that cloud providers should treat them differently and guarantee their
++quality.
++
++However, when they are running on a host, there might exist noisy neighbors
++from time to time. As long as the noisy neighbors are detected by monitoring,
++it is expected to adopt some policies to make sure those critical instances
++still can run very well without or with impact as little as possible, such as
++resizing to add more vCPUs to the instances (i.e. vcpu hotplug), migrating the
++instances to some other hosts with more resources, or migrating the noisy
++neighbors to some other hosts, and so on.
++
++However, there is also another alternative to reserve some of the resources
++on the host (say pCPUs) into the resource pool in advance and allow to pin
++vCPUs of the instances to those pCPUs.
++
++Later on, if things get better, the feature also allows to release those
++pCPUs into the resource pool by pinning vCPUs of the instances back to those
++which are specified in CONF.vcpu_pin_set.
++
++Proposed change
++===============
++
++The resource reservation is beyond the scope of the blueprint. We suppose some
++pCPUs have been reserved in other ways, for example, to specify vcpu_pin_set
++in the config so those pCPUs which are not in vcpu_pin_set are reserved, or
++to reserve resource by Climate.
++
++A function pin_guest_vcpu() is going to be implemented to change the runtime
++configuration of an active domain in nova/virt/libvirt/driver.py.
++Its parameters include domain, and cpuset to indicate that all vCPUs on the
++domain need to be pinned to pCPUs specified by the new cpuset. In most cases,
++the new cpuset is the cpu set reserved.
++
++If cpuset is None, the function will pin the vCPUs of the guest back to those
++pCPUs specified in CONF.vcpu_pin_set.
++
++Again, we will add a Nova API to expose the capability and change novaclient.
++
++Alternatives
++------------
++
++None
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++A new API for server admin action is expected to add:
++POST /v3/servers/{server_id}/action/{server_id}/action
++
++The JSON request looks like::
++
++    {
++        "pin_guest_vcpu": "0,1",
++    }
++
++where pCPU #0 and #1 have been reserved already.
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++python-novaclient will also implement a sub command to allow clients to pin
++vCPUs on a domain to those reserved pCPUs.
++
++Performance Impact
++------------------
++
++None
++
++Other deployer impact
++---------------------
++
++For deployers, they can take advantage of CONF.vcpu_pin_set to reserve pCPUs
++if they want. And this change proposed in this blueprint won't take immediate
++effect after it's merged.
++
++Developer impact
++----------------
++
++The proposed change is to modify libvirt driver, for other drivers, they need
++to call corresponding APIs to ask hypervisors to pin vCPUs. By default, the
++drivers would keep it as an abstract function until it is implemented,
++in order not to cause any exception in upper level Nova API and novaclient.
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  yongli-he
++
++Other contributors:
++  shane-wang
++
++Work Items
++----------
++
++The virtual driver can be broken into:
++1) virt driver change
++2) Nova API change
++3) novaclient change
++
++Dependencies
++============
++
++None
++
++Testing
++=======
++
++No specific tests except unit tests
++
++Documentation Impact
++====================
++
++None
++
++References
++==========
++
++None
+-- 
+1.9.1
+

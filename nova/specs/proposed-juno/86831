@@ -1,0 +1,362 @@
+From b4a2824df7fc5804db3c05c4b3ae02f2980705ae Mon Sep 17 00:00:00 2001
+From: vinodkumarboppanna <vinod.kumar.boppanna@cern.ch>
+Date: Fri, 11 Apr 2014 11:06:31 +0200
+Subject: [PATCH] A blue print describing the new Domain Quota feature
+ implementation with V3 APIs for Nova
+
+Change-Id: Icbaf3edc3192e5934822b073c7095151825c28d1
+---
+ specs/juno/domain-quota-driver-v3-api.rst | 341 ++++++++++++++++++++++++++++++
+ 1 file changed, 341 insertions(+)
+ create mode 100644 specs/juno/domain-quota-driver-v3-api.rst
+
+diff --git a/specs/juno/domain-quota-driver-v3-api.rst b/specs/juno/domain-quota-driver-v3-api.rst
+new file mode 100644
+index 0000000..b964a35
+--- /dev/null
++++ b/specs/juno/domain-quota-driver-v3-api.rst
+@@ -0,0 +1,341 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++==========================
++domain-quota-driver-v3-api
++==========================
++
++https://blueprints.launchpad.net/nova/+spec/domain-quota-driver-v3-api
++
++Nova V3 APIs for Domain Quota Management will enable OpenStack projects to
++enforce domain quotas in Nova
++
++
++Problem description
++===================
++
++This feature is an extension to feature specified in the blueprint
++https://blueprints.launchpad.net/nova/+spec/domain-quota-driver-api
++
++The difference is that, the above blueprint provides a specification to V2
++APIs and this blueprint provides specification for V3 APIs.
++
++
++Proposed change
++===============
++
++A new driver called "Domain Quota Driver" will be made available as specified
++in the blueprint
++(https://blueprints.launchpad.net/nova/+spec/domain-quota-driver-api)
++
++The V3 APIs uses the same driver to implement the CRUD operations for
++Quota Management for Domain/Tenant/User and available under extension
++"os-domain-quota-sets".
++
++Alternatives
++------------
++
++None
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++A new openstack extension will be added and called "os-domain-quota-sets".
++The following APIs will be provided to enforce domain quotas by using
++"Domain Quota Driver"
++
++    * Show Quotas
++        * Show quotas for a domain/tenant/user
++        * GET Method
++        * 202 - OK
++        * 403 - FORBIDDEN
++        * v3/os-domain-quota-sets/{domain_id}
++        * project_id, user_id
++        * JSON request - None
++        * JSON response -
++                'quota_set': {
++                        'type': 'object','properties': {
++                            'instances': {
++                                'type': 'int', 'pattern': '^[0-9]+$'
++                            },'cores': {
++                                'type': 'int', 'pattern': '^[0-9]+$'
++                            },'ram': {
++                                'type': 'int', 'pattern': '^[0-9]+$'
++                            },'floating_ips': {
++                                'type': 'int', 'pattern': '^[0-9]+$'
++                            },'fixed_ips': {
++                                'type': 'int', 'pattern': '^[0-9]+$'
++                            },'metadata_items': {
++                                'type': 'int', 'pattern': '^[0-9]+$'
++                            },'injected_files': {
++                                'type': 'int', 'pattern': '^[0-9]+$'
++                            },'injected_file_content_bytes': {
++                                'type': 'int', 'pattern': '^[0-9]+$'
++                            },injected_file_path_bytes': {
++                                'type': 'int', 'pattern': '^[0-9]+$'
++                            },'key_pairs': {
++                                'type': 'int', 'pattern': '^[0-9]+$'
++                            },'security_groups': {
++                                'type': 'int', 'pattern': '^[0-9]+$'
++                            },'security_group_rules': {
++                                'type': 'int', 'pattern': '^[0-9]+$'
++                            },'id':{
++                                'type': 'string', 'minLength': 0,
++                                'maxLength': 255, 'pattern': '^[a-fA-F0-9]*$'
++
++                            }
++
++                        },'required': ['instances', 'cores', 'ram',
++                                       'floating_ips', 'fixed_ips',
++                                       'metadata_items', 'injected_files',
++                                       'injected_file_content_bytes',
++                                       'injected_file_path_bytes', 'key_pairs',
++                                       'security_groups',
++                                       'security_group_rules'],
++
++                        'additionalProperties': False
++
++                    }
++
++    * Show Default Quotas
++        * Show default quotas for a domain
++        * GET
++        * 200 - OK
++        * 403 - FORBIDDEN
++        * v3/os-domain-quota-sets/{domain_id}/defaults
++        * None
++        * JSON request - None
++                        'quota_set': {
++                            'type': 'object','properties': {
++                                'instances': {
++                                    'type': 'int', 'pattern': '^[0-9]+$'
++                                },'cores': {
++                                    'type': 'int', 'pattern': '^[0-9]+$'
++                                },'ram': {
++                                    'type': 'int', 'pattern': '^[0-9]+$'
++                                },'floating_ips': {
++                                    'type': 'int', 'pattern': '^[0-9]+$'
++                                },'fixed_ips': {
++                                    'type': 'int', 'pattern': '^[0-9]+$'
++                                },'metadata_items': {
++                                    'type': 'int', 'pattern': '^[-9]+$'
++                                },'injected_files': {
++                                    'type': 'int', 'pattern': '^[0-9]+$'
++                                },'injected_file_content_bytes': {
++                                    'type': 'int', 'pattern': '^[0-9]+$'
++                                },'injected_file_path_bytes': {
++                                    'type': 'int', 'pattern': '^[0-9]+$'
++                                },'key_pairs': {
++                                    'type': 'int', 'pattern': '^[0-9]+$'
++                                },'security_groups': {
++                                    'type': 'int', 'pattern': '^[0-9]+$'
++                                },'security_group_rules': {
++                                    'type': 'int', 'pattern': '^[0-9]+$'
++                                },'id':{
++                                    'type': 'string', 'minLength': 0,
++                                    'maxLength': 255, 'pattern': '^[a-fA-F0-9]*$'
++
++                                }
++
++                            },'required': ['instances', 'cores', 'ram',
++                                       'floating_ips', 'fixed_ips',
++                                       'metadata_items', 'injected_files',
++                                       'injected_file_content_bytes',
++                                       'injected_file_path_bytes', 'key_pairs',
++                                       'security_groups',
++                                       'security_group_rules'],
++
++                              'additionalProperties': False
++
++                    }
++
++    * Update Quotas
++        * Update quotas for a domain/tenant/user
++        * PUT
++        * 200 - ACCEPTED
++        * 403 - FORBIDDEN
++        * v3/os-domain-quota-sets/{domain_id}
++        * project_id, user_id
++        * JSON request -
++                        'quota_set': {
++                            'type': 'object','properties': {
++                                'instances': {
++                                    'type': 'int', 'pattern': '^[0-9]+$'
++                                },'cores': {
++                                    'type': 'int', 'pattern': '^[0-9]+$'
++                                },'ram': {
++                                    'type': 'int', 'pattern': '^[0-9]+$'
++                                },'floating_ips': {
++                                    'type': 'int', 'pattern': '^[0-9]+$'
++                                },'fixed_ips': {
++                                    'type': 'int', 'pattern': '^[0-9]+$'
++                                },'metadata_items': {
++                                    'type': 'int', 'pattern': '^[0-9]+$'
++                                },'injected_files': {
++                                    'type': 'int', 'pattern': '^[0-9]+$'
++                                },'injected_file_content_bytes': {
++                                    'type': 'int', 'pattern': '^[0-9]+$'
++                                },'injected_file_path_bytes': {
++                                    'type': 'int', 'pattern': '^[0-9]+$'
++                                },'key_pairs': {
++                                    'type': 'int', 'pattern': '^[0-9]+$'
++                                },'security_groups': {
++                                    'type': 'int', 'pattern': '^[0-9]+$'
++                                },'security_group_rules': {
++                                    'type': 'int', 'pattern': '^[0-9]+$'
++
++                                }
++
++                           },'required': ['instances', 'cores', 'ram',
++                                       'floating_ips', 'fixed_ips',
++                                       'metadata_items', 'injected_files',
++                                       'injected_file_content_bytes',
++                                       'injected_file_path_bytes', 'key_pairs',
++                                       'security_groups',
++                                       'security_group_rules'],
++
++                            'additionalProperties': False
++
++                    }
++
++         * JSON response -
++                    'quota_set': {
++                        'type': 'object','properties': {
++                            'instances': {
++                                'type': 'int', 'pattern': '^[0-9]+$'
++                            },'cores': {
++                                'type': 'int', 'pattern': '^[0-9]+$'
++                            },'ram': {
++                                'type': 'int', 'pattern': '^[0-9]+$'
++                            },'floating_ips': {
++                                'type': 'int', 'pattern': '^[0-9]+$'
++                            },'fixed_ips': {
++                                'type': 'int', 'pattern': '^[0-9]+$'
++                            },'metadata_items': {
++                                'type': 'int', 'pattern': '^[0-9]+$'
++                            },'injected_files': {
++                                'type': 'int', 'pattern': '^[0-9]+$'
++                            },'injected_file_content_bytes': {
++                                'type': 'int', 'pattern': '^[0-9]+$'
++                            },'injected_file_path_bytes': {
++                                'type': 'int', 'pattern': '^[0-9]+$'
++                            },'key_pairs': {
++                                'type': 'int', 'pattern': '^[0-9]+$'
++                            },'security_groups': {
++                                'type': 'int', 'pattern': '^[0-9]+$'
++                            },'security_group_rules': {
++                                'type': 'int', 'pattern': '^[0-9]+$'
++
++                            },
++
++                        },'required': ['instances', 'cores', 'ram',
++                                       'floating_ips', 'fixed_ips',
++                                       'metadata_items', 'injected_files',
++                                       'injected_file_content_bytes',
++                                       'injected_file_path_bytes', 'key_pairs',
++                                       'security_groups',
++                                       'security_group_rules'],
++
++                        'additionalProperties': False
++
++                    }
++
++    * Delete Quotas
++        * Delete quotas for a domain/tenant/user
++        * DELETE
++        * 200 - ACCEPTED
++        * 403 - FORBIDDEN
++        * v3/os-domain-quota-sets/{domain_id}
++        * project_id, user_id
++        * JSON request - None
++        * JSON response - None
++
++Security impact
++---------------
++
++This change uses the Keystone V3 token to get the domain_id from the scope.
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++None
++
++Performance Impact
++------------------
++
++None
++
++Other deployer impact
++---------------------
++
++    - This feature comes into immediate effect after it is merged
++
++Developer impact
++----------------
++
++None
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++     Primary assignee:
++         vinod-kumar-boppanna
++
++Work Items
++----------
++
++    Nova REST V3 API: DONE
++
++    Nova Quota Driver DB Methods: DONE
++
++    Nova REST API unit tests: DONE
++
++    The following is up for review:
++          Addressed by: https://review.openstack.org/#/c/78630/
++
++
++Dependencies
++============
++
++  - This depends on Keystone V3 Context. Also, the Keystone V3 client should
++    use V3 API and should not fall back to V2 API. Code has been already merged
++    to solve this and addressed by  https://review.openstack.org/#/c/75731/
++
++
++Testing
++=======
++
++    The Integration and Unit tests are added and they can be tested by running
++    'test_domain_quotas'. Before running this, add a environment variable
++    "NOVA_TEST_CONF" and point this to nova.conf file
++
++
++Documentation Impact
++====================
++
++    The APIs documentation needs to be updated to include the new extension
++    API. For more information, look at
++    https://wiki.openstack.org/wiki/APIs_for_Domain_Quota_Driver
++
++
++References
++==========
++
++None
+-- 
+1.9.1
+

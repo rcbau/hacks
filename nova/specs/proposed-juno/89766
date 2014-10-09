@@ -1,0 +1,225 @@
+From ad1080df4dca7de85e73245adde1ff92d32fdd3c Mon Sep 17 00:00:00 2001
+From: Shane Wang <shane.wang@intel.com>
+Date: Wed, 23 Apr 2014 15:54:35 +0800
+Subject: [PATCH] Add useful metrics into utilization based scheduling
+
+This feature is to add more useful metrics to monitor under the infrastructure
+of Utilization Based Scheduling.
+
+blueprint add-useful-metrics
+
+Change-Id: I81c3be3e99e96abb7dbf75ca3ff057bbede3e5fd
+---
+ specs/juno/add-useful-metrics.rst | 200 ++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 200 insertions(+)
+ create mode 100644 specs/juno/add-useful-metrics.rst
+
+diff --git a/specs/juno/add-useful-metrics.rst b/specs/juno/add-useful-metrics.rst
+new file mode 100644
+index 0000000..cfa8431
+--- /dev/null
++++ b/specs/juno/add-useful-metrics.rst
+@@ -0,0 +1,200 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++====================================================
++Add useful metrics into Utilization Based Scheduling
++====================================================
++
++https://blueprints.launchpad.net/nova/+spec/add-useful-metrics
++
++Add some useful metrics into Utilization Based Scheduling (UBS), such as
++network monitor and power consumption monitor.With them, UBS has more options
++to do scheduling based on those metrics by setting the ratio of each metric
++in weigher.
++
++Problem description
++===================
++
++The framework for Utilization Based Scheduling has already been
++implemented in Icehouse:
++https://blueprints.launchpad.net/nova/+spec/utilization-aware-scheduling
++
++And some of the monitors like CPU monitor were implemented under the
++above blueprint. That is users can specify the VMs to be launched on
++those hosts whose CPU utilization is relatively idle.
++
++For other useful monitors -
++Network monitor: network environment e.g. network traffic of a host is
++also another aspect the scheduler should be aware of by network bandwidth.
++If the VMs on a host are all running network sensitive applications now
++such as Web servers and FTP servers, it makes sense that a new user raises a
++request to avoid running a new network-sensitive VM on that busy host.
++
++Power monitor: suppose the scheduler needs to choose a host to
++launch a new VM and the power of the hosts are collected as 100Watts,
++120Watts and 150Watts. A filter can be made to filter out all the hosts with
++higher power consumption to balance the power consumption of all hosts, or
++filter out all the hosts with lower power consumption to save power -
++consolidate to run VMs on a host and avoid additional power-on of the others.
++
++Another example is power capping. Users can use filters to set a power
++threshold for all hosts in the data center, 300Watts for instance for server
++protection. In that case, all hosts whose power consumption is higher than
++300Watts are filtered out when the scheduler chooses the available hosts.
++
++Later on, weigher can be made to choose the hosts with lower power consumption
++to balance the power consumption of all hosts, or choose the hosts with higher
++power consumption to save power.
++
++The plan is to add network/power monitor or other metrics into
++the UBS framework to enable the capability for useful use cases.
++
++Proposed change
++===============
++
++Implement those monitors to monitor those useful metrics under
++nova/compute/monitors.
++
++So far, we hope to add network monitor, and power monitor.
++
++Network monitor: the network monitor collects data about network, for instance,
++network bandwidth, the rates of packets sent or received, etc., in case that a
++VM cares more on network environment of the host.
++
++Power monitor:
++Some background is:
++Intel node manager is a server management technology that allows management
++software to accurately monitor and control the platform's power and thermal
++behaviors through industry defined standards: Intelligent Platform Management
++Interface (IPMI) and Data Center Manageability Interface (DCMI).
++
++It allows the IT admin to monitor the power and thermal behaviors of servers
++and make reasonable operations or policies according to the real-time
++power/thermal status of data center. Using Intel Node Manager, the power and
++thermal information of those servers can be used to improve overall data
++center efficiency and maximize overall data center usage. Data center
++managers can maximize the rack density with the confidence that rack power
++budget won't be exceeded.
++
++The monitor could read the power consumption from Intel node manager via IPMI.
++It facilitates power management, energy saving and others when scheduling VMs.
++
++Alternatives
++------------
++
++None
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++None
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++A user will be able to set ratios of those useful metrics to specify how the
++metrics are going to be weighed, including the existing CPU utilization,
++ongoing power consumption of the host, to pick up a host where an instance
++could be created.
++
++Performance Impact
++------------------
++
++The monitors which were added in Icehouse and are going to be added are not
++enabled by default. When users are interested in that utilization data, the
++config file needs to be changed to enable the monitor. So by default, there
++is no performance impact.
++
++In Icehouse, there is an additional column which was added in table
++ComputeNode as a JSON blob to save utilization data after a hot discussion
++in the community. In this blueprint in Juno, we have no plan to change any
++database schema, and we are taking advantage of existing update mechanism
++in resource tracking to load the monitors and poll in Icehouse.
++
++Other deployer impact
++---------------------
++
++There already exists a configuration option "compute_monitors" under the
++[DEFAULT] section. By default, it is commented out. And its default value
++is []. If the monitor is expected to be used, we should add it into that.
++That is, "compute_monitors=monitor1,monitor2".
++
++Developer impact
++----------------
++
++None
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  edwin-zhai
++
++Other contributors:
++  lianhao-lu
++  shane-wang
++
++Work Items
++----------
++
++1) Implement the base class of Node Manager
++2) Power consumption monitor
++3) Network monitor
++
++Dependencies
++============
++
++None
++
++Testing
++=======
++
++Network monitor is workable on each host. No specific test needed for
++network monitor, except unit tests.
++
++For power consumption monitor, they require to work with IMPI, and run
++on Intel platforms so far with Intel node manager.
++We plan to run them and test whether schedulers can use that data to do
++scheduling with weighers, before submitting the patches.
++
++Later on, we hope to set up a third party CI testing to make sure each further
++commit doesn't break the monitors, which means the monitors still can collect
++data any time.
++
++Documentation Impact
++====================
++
++The description of the new monitor options need to be added into the
++description of the existing "compute_monitors" configuration option
++as new possible values.
++
++References
++==========
++
++http://www.intel.com/content/www/us/en/servers/ipmi/ipmi-home.html
++http://www.intel.com/content/www/us/en/data-center/dcmi/data-center-manageability-interface.html
++http://wiki.openstack.org/wiki/User_talk:Fengqian#Why_and_how_to_use_Intel_Node_Manager_in_OpenStack
++http://review.openstack.org/#/c/65631/
++http://review.openstack.org/#/c/64403/
++http://review.openstack.org/#/c/64404/
+-- 
+1.9.1
+

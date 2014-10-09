@@ -1,0 +1,201 @@
+From d47238d42f6b689349e464edb2be8ddfd414644d Mon Sep 17 00:00:00 2001
+From: Gabriel Luong <gabriel.luong@gmail.com>
+Date: Fri, 11 Apr 2014 13:11:06 -0400
+Subject: [PATCH] Propose Shelf Snapshot Selection
+
+Part of blueprint shelf-snapshot-selection
+
+Change-Id: I3beb5a0f47e340ba1c624ac94ab84c433177570b
+---
+ specs/juno/shelf-snapshot-selection.rst | 179 ++++++++++++++++++++++++++++++++
+ 1 file changed, 179 insertions(+)
+ create mode 100644 specs/juno/shelf-snapshot-selection.rst
+
+diff --git a/specs/juno/shelf-snapshot-selection.rst b/specs/juno/shelf-snapshot-selection.rst
+new file mode 100644
+index 0000000..9b64cb8
+--- /dev/null
++++ b/specs/juno/shelf-snapshot-selection.rst
+@@ -0,0 +1,179 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++==========================================
++Shelf Snapshot Selection
++==========================================
++
++Nova BP:
++https://blueprints.launchpad.net/nova/+spec/shelf-snapshot-selection
++Novaclient BP:
++https://blueprints.launchpad.net/python-novaclient/+spec/shelf-snapshot-selection
++
++Add an option to the existing Shelving API to allow for specifying an existing
++snapshot when shelving a VM.
++
++
++Problem description
++===================
++
++The current implementation of the shelving API allows for instances to be
++offloaded while retaining its UUID and networking info. Each time an instance
++is shelved a snapshot of the running instance is created. Some instances such
++as web server pools contain local data that doesn’t change much from day to
++day, and are often created based on the same image. Users should be able shelve
++offload these types of instances without creating additional new snapshots
++provided a snapshot of these instances already exist. This would allow users to
++take an instance offline immediately without waiting for a new snapshot to be
++created. This will also save snapshot storage space.
++
++The following is an example of how this feature might work in the wild: Let's
++say there are 5 instances currently running that are built from the same image.
++After shelving 1 of the instances, a snapshot of the instance would be created.
++If an user wants to shelve the remaining instances, they should be able to
++select an snapshot to associate with the instance when booting up the shelved
++instance, and thus allow the instance to shelve offloaded without creating
++additional snapshots.
++
++Instances taking advantage of this feature would be assumed to be based off the
++same image. To enforce this, we will make use of the instance's image_ref when
++comparing the instance being shelved to the instance of the snapshot that was
++selected.
++
++
++Proposed change
++===============
++
++Allow operators to specify the name of the snapshot that would be created when
++shelving an instance. This is different from shelve snapshot selection.
++Currently, a default name is assigned to the snapshot that is created when an
++instance is shelved and uses the following naming convention "<instance display
++name>-shelved". The purpose of this is to override the default name of the
++snapshot created and help clarify snapshots that are associated with multiple
++shelved instances, where using the default naming convention would be
++undesirable.
++Example nova command CLI call: nova shelve --name <snapshot name> <instance>
++
++Allow operators to specify an existing snapshot's UUID when shelving an
++instance and then associates the instance's shelved image id with the specified
++snapshot. If the snapshot selected does not exist, shelving will fail and an
++appropriate error message will be provided. To minimize the risk that an
++operator uncarefully selects a wrong snapshot, the instance will be soft
++deleted and allow a reasonable interval to reclaim the instance.s
++Example nova command CLI call: nova shelve --image <image UUID> <instance>
++
++
++Alternatives
++------------
++
++None.
++
++
++Data model impact
++-----------------
++
++Currently, the instance metadata contains a field shelved_image_id that keeps
++track of the shelved image id for the given instance. No additional field will
++be needed in instance object.
++
++
++REST API impact
++---------------
++
++None. The blueprint perserves the existing behaviour of the current POST REST
++API for shelving, and no additional image ref will need to be added.
++Currently, the POST method takes in the following:
++
++* server:
++
++    * name
++    * imageRef
++    * flavorRef
++    * metadata
++    * personality
++
++This sample REST api is found in:
++nova/doc/api_samples/os-shelve/server-post-req.json
++
++The original shelve API creates the image prior to the POST request to shelve
++the instance.
++
++
++Security impact
++---------------
++
++None
++
++
++Notifications impact
++--------------------
++
++None
++
++
++Other end user impact
++---------------------
++
++None
++
++
++Performance Impact
++------------------
++
++None
++
++
++Other deployer impact
++---------------------
++
++None
++
++
++Developer impact
++----------------
++
++None
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  Gabriel Luong<gabriel.luong@gmail.com>
++
++
++Work Items
++----------
++
++* nova: Add shelve snapshot selection
++
++* novaclient: Add --image argument to the shelve command
++
++
++Dependencies
++============
++
++
++Testing
++=======
++
++Add unit tests for the shelve snapshot selection in the shelving and unshelving
++test files.
++
++
++Documentation Impact
++====================
++
++Add documentation regarding the new options available for the shelving API.
++
++
++References
++==========
++
++https://blueprints.launchpad.net/nova/+spec/shelve-instance
+-- 
+1.9.1
+

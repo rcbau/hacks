@@ -1,0 +1,153 @@
+From a6142f0fb555c7af241deee1193c13a87d822fa6 Mon Sep 17 00:00:00 2001
+From: Shlomi Sasson <shlomis@mellanox.com>
+Date: Thu, 10 Apr 2014 18:43:08 +0300
+Subject: [PATCH] Add transport support to iscsi
+
+blueprint add-transport-support-to-iscsi
+
+Change-Id: Id8f85219343b32306a7ee8e12e58d5994f72dbff
+---
+ specs/juno/add-transport-support-to-iscsi.rst | 131 ++++++++++++++++++++++++++
+ 1 file changed, 131 insertions(+)
+ create mode 100644 specs/juno/add-transport-support-to-iscsi.rst
+
+diff --git a/specs/juno/add-transport-support-to-iscsi.rst b/specs/juno/add-transport-support-to-iscsi.rst
+new file mode 100644
+index 0000000..83e051c
+--- /dev/null
++++ b/specs/juno/add-transport-support-to-iscsi.rst
+@@ -0,0 +1,131 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++==========================================
++Add transport support to iscsi
++==========================================
++
++https://blueprints.launchpad.net/nova/+spec/add-transport-support-to-iscsi
++
++Refactor ISCSIDriver to support other iSCSI transports besides TCP
++which will allow minimal changes to support iSER.
++
++Problem description
++===================
++
++Currently, Vendors who have their iSCSI driver, and want to add RDMA transport
++cannot leverage their existing plug-in driver which inherit from iSCSI
++And must modify their driver or create an additional plug-in driver which
++inherit from iSER, and copy the exact same code.
++
++Proposed change
++===============
++
++On the initiator side the only difference between TCP and RDMA is in the
++interface flag (--interface=[iface])
++
++e.g. "iscsiadm -m discoverydb -t st -p ip:port -I iser --discover"
++
++The required changes are:
++
++* Add a parameter called "enable_rdma_by_default=False" to enable rdma.
++  The operation would mean try RDMA and if it fails fall back to TCP.
++* Integrate current iser methods (_get_host_device, etc') to return both
++  iscsi and iser device paths lists.
++* The existing ISER code will be removed.
++
++Alternatives
++------------
++
++Currently, there's an ISER subclass in iscsi for Cinder (starting Havana)
++I think that the right/better approach is as suggested by this blueprint.
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++None
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++None
++
++Performance Impact
++------------------
++
++iSER (iSCSI over RDMA) allow 5x faster bandwidth compared to using iSCSI TCP.
++
++Other deployer impact
++---------------------
++
++If we just removed LibvirtISERVolumeDriver it would break existing deployment.
++Instead, this will be deprecated in Juno, and we will keep Juno compatible
++with Icehouse configurations by having One cycle where Nova prints a
++deprecation warning upon use of this class, before it can be deleted.
++
++At the beginning of the class add a log print, e.g.:
++LOG.warning(_('The LibvirtISERVolumeDriver is now deprecated and will be
++removed in the Juno release.'))
++
++Developer impact
++----------------
++
++None
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Assignee: shlomis <shlomis@mellanox.com>
++
++Work Items
++----------
++
++* Remove iser from 'libvirt_volume_drivers' here:
++  ./nova/virt/libvirt/driver.py
++* Remove iser code and opts.
++  Add 'enable_rdma_by_default' and implementation here:
++  ./nova/virt/libvirt/volume.py
++
++Dependencies
++============
++
++Cinder blueprint:
++https://blueprints.launchpad.net/cinder/+spec/add-transport-support-to-iscsi
++
++Testing
++=======
++
++The same as for iSCSI TCP
++
++Documentation Impact
++====================
++
++The new configuration parameter (enable_rdma_by_default) and the deprecation
++of the iser volume driver should be documented
++
++References
++==========
++
++None
++
+-- 
+1.9.1
+

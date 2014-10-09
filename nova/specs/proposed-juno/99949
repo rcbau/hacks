@@ -1,0 +1,240 @@
+From ab4054410c5bdded8a5318344a44dd0ddf0b4eeb Mon Sep 17 00:00:00 2001
+From: Telles Nobrega <tellesmvn@lsd.ufcg.edu.br>
+Date: Fri, 13 Jun 2014 11:44:15 -0300
+Subject: [PATCH] Nova v2 API should be able to return detailed quotas
+
+Compute V2 API does not return detailed information about quotas.
+There is no direct call to retrieve this information and there is no other
+way to get this information.
+
+Basically this is a documented part of the os-quota-sets API extension
+in V2 but isn't implemented in the V2 API. It's implemented in the V3
+API.
+This change is adding the detail support for the V2 API so
+this works:
+/v2/?{tenant_id}?/os-quota-sets/?{tenant_id}?/detail/?{user_id}?
+
+implements: blueprint v2-api-detailed-quotas
+Change-Id: I7572e8f8feb8a5a8ca0fd66b76dace57459878e5
+---
+ specs/juno/v2-api-detailed-quotas.rst | 208 ++++++++++++++++++++++++++++++++++
+ 1 file changed, 208 insertions(+)
+ create mode 100644 specs/juno/v2-api-detailed-quotas.rst
+
+diff --git a/specs/juno/v2-api-detailed-quotas.rst b/specs/juno/v2-api-detailed-quotas.rst
+new file mode 100644
+index 0000000..787762c
+--- /dev/null
++++ b/specs/juno/v2-api-detailed-quotas.rst
+@@ -0,0 +1,208 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++=====================================================
++ Nova v2 API should be able to return detailed quotas
++=====================================================
++
++https://blueprints.launchpad.net/nova/+spec/v2-api-detailed-quotas
++
++Compute V2 API does not return detailed information about quotas.
++There is no direct call to retrieve this information and there is no other
++way to get this information.
++
++Basically this is a documented part of the os-quota-sets API extension
++in V2 but isn't implemented in the V2 API. It's implemented in the V3
++API.
++This change is adding the detail support for the V2 API so
++this works:
++/v2/?{tenant_id}?/os-quota-sets/?{tenant_id}?/detail/?{user_id}?
++
++Problem description
++===================
++
++Right now v2 API documentation shows that it is able to return detailed
++quota information. This feature is only implemented in v3 API and there
++is a need to keep consistency with the documentation.
++
++Proposed change
++===============
++
++The idea is to implement this feature as described by the API
++
++Alternatives
++------------
++None
++
++Data model impact
++-----------------
++None
++
++REST API impact
++---------------
++* There will be created a new extension os-quota-sets-detail that will
++  allow the call of the detail method in os-quota-sets. When loaded, this
++  extension will allow the detail method to be called and when not loaded
++  detail will not be allowed to be called.
++
++* Specification for the method in os-quota-sets
++
++  * The method returns detailed quota information
++
++  * GET method
++
++  * Normal http response code(s)
++
++    * 200
++
++  * Expected error http response code(s)
++
++    * 404 is the expected error code. This can be due to wrong url.
++
++  * /v2/?{tenant_id}?/os-quota-sets/?{tenant_id}?/detail/?{user_id}?
++
++  * Parameters which can be passed via the url
++
++    * user_id={user_id}
++
++  * Expected reponse json::
++
++        {
++          "quota_set": {
++            "cores": {
++              "in_use": 0,
++              "limit": 20,
++              "reserved": 0
++            },
++            "fixed_ips": {
++              "in_use": 0,
++              "limit": -1,
++              "reserved": 0
++            },
++            "floating_ips": {
++              "in_use": 0,
++              "limit": 10,
++              "reserved": 0
++            },
++            "injected_files": {
++              "in_use": 0,
++              "limit": 5,
++              "reserved": 0
++            },
++            "instances": {
++              "in_use": 0,
++              "limit": 10,
++              "reserved": 0
++            },
++            "key_pairs": {
++              "in_use": 0,
++              "limit": 100,
++              "reserved": 0
++            },
++            "metadata_items": {
++              "in_use": 0,
++              "limit": 128,
++              "reserved": 0
++            },
++            "ram": {
++              "in_use": 0,
++              "limit": 51200,
++              "reserved": 0
++            },
++            "security_groups": {
++              "in_use": 0,
++              "limit": 10,
++              "reserved": 0
++            },
++            "injected_file_content_bytes": {
++              "in_use": 0,
++              "limit": 10240,
++              "reserved": 0
++            },
++            "injected_file_path_bytes": {
++              "in_use": 0,
++              "limit": 255,
++              "reserved": 0
++            },
++            "security_group_rules": {
++              "in_use": 0,
++              "limit": 20,
++              "reserved": 0
++            }
++          }
++        }
++
++* The policy change needed is to include the call
++  "compute_extension:quotas:detail": "rule:admin_api" to the policy.json
++
++Security impact
++---------------
++None
++
++Notifications impact
++--------------------
++None
++
++Other end user impact
++---------------------
++None
++
++Performance Impact
++------------------
++None
++
++Other deployer impact
++---------------------
++None
++
++Developer impact
++----------------
++None
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  tellesmvn
++
++Work Items
++----------
++
++* Implement the detail method that works just like show
++  but returns detailed quota.
++
++Dependencies
++============
++None
++
++Testing
++=======
++
++* Unit tests will be implemented under
++  nova/tests/api/openstack/compute/contrib/test_quotas.py based on the show
++  method.
++
++* Integration tests will be implemented under
++  nova/tests/integrated/test_api_samples.py based on the show method.
++
++* Integration tests will be added using the tempest test for show method
++  as a basis for this one under tempest/api/compute/test_quotas.py.
++
++Documentation Impact
++====================
++None since it's already documented, just not implemented.
++
++References
++==========
++
++Documentation:
++http://docs.openstack.org/api/openstack-compute/2/content/GET_os-quota-sets-v2_showQuotaDetailUser__v2__tenant_id__os-quota-sets__tenant_id__detail__user_id__ext-os-quota-sets.html
++
++Existing change:
++https://review.openstack.org/#/c/99443/
+-- 
+1.9.1
+

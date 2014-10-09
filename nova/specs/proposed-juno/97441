@@ -1,0 +1,139 @@
+From 32f18117de87e334b4b1eeb2265bedfc4ba4fa6a Mon Sep 17 00:00:00 2001
+From: Marc Koderer <m.koderer@telekom.de>
+Date: Tue, 3 Jun 2014 11:55:17 +0200
+Subject: [PATCH] Add nova spec for bp/isnot-operator
+
+Change-Id: Id8009b458ee139b34c84522333f3f116f173b3f1
+Partially-implements: bp isnot-operator
+---
+ specs/juno/isnot-operator.rst | 118 ++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 118 insertions(+)
+ create mode 100644 specs/juno/isnot-operator.rst
+
+diff --git a/specs/juno/isnot-operator.rst b/specs/juno/isnot-operator.rst
+new file mode 100644
+index 0000000..b8b8821
+--- /dev/null
++++ b/specs/juno/isnot-operator.rst
+@@ -0,0 +1,118 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++================================
++IsNot operator for boolean specs
++================================
++
++https://blueprints.launchpad.net/nova/+spec/isnot-operator
++
++This blueprint introduces an new operator in the extra specs filter to have
++an easy way to define a "default" behavior.
++
++Problem description
++===================
++
++Defining a group of hosts in a host aggregate group with a boolean extra spec
++set:
++
++  nova aggregate-create fast-io nova
++  nova aggregate-set-metadata fast-io ssd=true
++  nova aggregate-add-host fast-io node1
++
++Defining a flavor that matches ssd=true will filter (using the extra-spec
++filter) only node1. In order to have a list of all other nodes (without
++ssd=true) it's needed to have a a second group that defined ssh=false.
++
++
++Proposed change
++===============
++
++Add a "isNot" operator to extra_spec filter with that it is possible to check
++if the a certain extra_spec is not set.
++
++
++Alternatives
++------------
++
++Have a "default" value field for specs.
++
++Data model impact
++-----------------
++
++None.
++
++REST API impact
++---------------
++
++None.
++
++Security impact
++---------------
++
++None.
++
++Notifications impact
++--------------------
++
++None.
++
++Other end user impact
++---------------------
++
++None. The user can specify the new operator within the nova-manage command.
++
++Performance Impact
++------------------
++
++None.
++
++Other deployer impact
++---------------------
++
++None.
++
++Developer impact
++----------------
++
++None.
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++
++Primary assignee:
++  Marc Koderer <m-koderer>
++
++
++Work Items
++----------
++
++TBD
++
++Dependencies
++============
++
++None.
++
++Testing
++=======
++
++Should be tested with unit test and inside Tempest.
++
++Documentation Impact
++====================
++
++New operator need to get documented.
++
++References
++==========
++
++None.
+-- 
+1.9.1
+

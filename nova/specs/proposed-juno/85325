@@ -1,0 +1,246 @@
+From 0d90049c65c48b1874fbbe352734a71a2fd766ba Mon Sep 17 00:00:00 2001
+From: Julia Varlamova <jvarlamova@mirantis.com>
+Date: Fri, 4 Apr 2014 15:59:10 +0400
+Subject: [PATCH] Sync models with migrations.
+
+We are using declarative_base in nova.db.models just for reflection,
+not for db creation. For creation we are using migrations. Actual state
+of models is not the same as the database state.
+
+The goal of proposed bp is to sync models with migrations, fix mistakes
+and add testing of migrations and db models on real backends.
+
+bp db-sync-models-with-migrations
+
+Change-Id: I2545f93618e315547e7bbc346f7ac4aee8134ff9
+---
+ specs/juno/db-sync-models-with-migrations.rst | 217 ++++++++++++++++++++++++++
+ 1 file changed, 217 insertions(+)
+ create mode 100644 specs/juno/db-sync-models-with-migrations.rst
+
+diff --git a/specs/juno/db-sync-models-with-migrations.rst b/specs/juno/db-sync-models-with-migrations.rst
+new file mode 100644
+index 0000000..804f196
+--- /dev/null
++++ b/specs/juno/db-sync-models-with-migrations.rst
+@@ -0,0 +1,217 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++======================================================================
++Sync db models with migrations
++======================================================================
++
++https://blueprints.launchpad.net/nova/+spec/db-sync-models-with-migrations
++
++We use declarative_base in nova.db.models just for reflection,
++not for db creation. For creation we use migrations. The actual state of
++the models is not the same as the state of a database.
++
++
++Problem description
++===================
++
++Db models don't reflect actual state of database correctly. For example, some
++indexes are in db, but were skipped in models, and value of nullable parameter
++for some columns is not as in models.
++
++Also we need to add tests to compare the schema to models. We need to perform
++this check for mysql and postgresql as there are cases when different engines
++handle things differently.
++
++Proposed change
++===============
++
++1. Add missed indexes and unique constraints to __table_args__.
++2. Correct nullable values for columns.
++3. Fix indexes which are not the same as described in model.
++4. Add opportunistic tests on mysql and postgresql to compare models to final
++   schema versions after all migrations have been applied. For comparing schema
++   to models we are going to use alembic tools, so we won't need to handle
++   cases when different engines apply migrations differently - (for example,
++   when creating fk).
++
++This will probably allow us to find some mistakes or missing indexes and make
++work with db more transparent.
++
++
++Alternatives
++------------
++
++* do nothing. This is an undesirable alternative, because without comparing
++  schema and models we can't be sure that our migrations are correct, i.e.
++  result of migration complies with db models and migration does what we want.
++  Actually the lack of consistense is the reason why there are some mistakes
++  in migrations now.
++
++* generate schemas from models, move to different migration engines.
++
++  For generating schemas from models we need to be sure that our models haven't
++  got mistakes (for example, now there are some indexes which are being
++  skipped). We need to add testing of schema and migrations at this point to
++  find mistakes.
++
++  Moving nova to alembic was discussed some time ago and some work was done in
++  this direction (https://review.openstack.org/#/c/15196/2), but it have not
++  been merged by now. The suggested approach required converting Nova database
++  migration scripts from sqlalchemy-migrate to alembic by the autoconversion
++  script. So, in this case, checking schema and migrations would be useful
++  to be sure that our migrations are correct. This also applies to the
++  case if we choose manual convertion of migration scripts to alembic.
++
++
++Data model impact
++-----------------
++
++It is possible that some changes which affect the data model will be required
++if we find some discrepancies.
++
++As we want db state to comply with models, we have to:
++
++* fix mistakes with nullable parameters for columns (we need a migration for
++  this). For some tables and columns the value of a nullable parameter defined
++  in migration is not as described in models.
++
++    * 'pci_devices'
++        * 'deleted'
++        * 'dev_type'
++        * 'product_id'
++        * 'vendor_id'
++    * 'quota_usages'
++        * 'resource'
++
++  *Compatibility with Icehouse:*
++
++  1. We want to make column 'deleted' of table 'pci_devices' nullable. This
++     change will be compatible with Icehouse.
++  2. Making other columns listed above not nullable. Problems can arise if
++     users already have NULL values there. When upgrading we can check if
++     there are NULL values in these columns and convert them to some string
++     constant (as all this columns have string type) before altering these
++     columns. This migration doesn't require changes to database api or
++     nova.objects.
++
++* add missing indexes to __table_args__ :
++
++    * 'quota_usages'
++        * 'ix_quota_usages_user_id'
++    * 'reservations'
++        * 'ix_reservations_user_id'
++
++  *Compatibility with Icehouce:* adding missing indexes won't affect
++  compatibility.
++
++
++REST API impact
++---------------
++
++None
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++Some impact is possible if we change the value of a nullable parameter for
++columns in some tables.
++
++We need to do this for the following tables and columns:
++
++    * 'pci_devices'
++        * 'deleted'
++        * 'dev_type'
++        * 'product_id'
++        * 'vendor_id'
++    * 'quota_usages'
++        * 'resource'
++
++Performance Impact
++------------------
++
++None
++
++Other deployer impact
++---------------------
++
++This blueprint requires some database schema migrations. We will need
++migrations to:
++
++* fix nullable parameters for some columns in 'quota_usages' and 'reservations'
++  tables.
++
++* fix indexes in following tables:
++    * 'migrations'
++        * 'migrations_instance_uuid_and_status_idx'
++    * 'quota_usages'
++        * 'ix_quota_usages_user_id_deleted'
++    * 'reservations'
++        * 'ix_reservations_user_id_deleted'
++
++Developer impact
++----------------
++
++None
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++
++Primary assignee:
++  jvarlamova
++
++
++Work Items
++----------
++
++1. Add missed indexes and unique constraints to __table_args__.
++2. Correct nullable values for columns.
++3. Correct indexes.
++4. Add tests to compare models to final schema versions after migrations are
++   applied.
++
++
++Dependencies
++============
++
++None
++
++
++Testing
++=======
++
++We will add opportunistic testing for mysql and postgresql to ensure that now
++models and migrations are in sync. We will perform migrations on mysql and
++postgresql and compare schema to models (using OpportunisticTestCase from
++oslo). For comparing schema to models we are going to use alembic tools.
++
++Documentation Impact
++====================
++
++None
++
++
++References
++==========
++
++Similar blueprints in other OpenStack projects:
++
++https://blueprints.launchpad.net/openstack/?searchtext=db-sync-models-with-migrations
+-- 
+1.9.1
+

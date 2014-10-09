@@ -1,0 +1,274 @@
+From d2bc870a108bf4c2e9dde221d55edd1cc5f78fde Mon Sep 17 00:00:00 2001
+From: Rohit Karajgi <rohit.karajgi@ril.com>
+Date: Tue, 10 Jun 2014 16:42:55 +0530
+Subject: [PATCH] Make instance scheduling horizontally scalable
+
+Add a massively scalable scheduler to Nova, that can scale to hundreds of
+thousands of compute nodes, and scheduling a new instance should not take
+more than a second
+
+Part of blueprint horizontally-scalable-scheduling
+
+Change-Id: I7ba1016a89af4a3bdb77119f835217633d5020d1
+---
+ specs/juno/horizontally-scalable-scheduling.rst | 248 ++++++++++++++++++++++++
+ 1 file changed, 248 insertions(+)
+ create mode 100644 specs/juno/horizontally-scalable-scheduling.rst
+
+diff --git a/specs/juno/horizontally-scalable-scheduling.rst b/specs/juno/horizontally-scalable-scheduling.rst
+new file mode 100644
+index 0000000..5c71e7d
+--- /dev/null
++++ b/specs/juno/horizontally-scalable-scheduling.rst
+@@ -0,0 +1,248 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++==========================================
++Horizontally Scalable Scheduling
++==========================================
++
++https://blueprints.launchpad.net/nova/+spec/horizontally-scalable-scheduling
++
++The blueprint introduces an implementation of Nova scheduling that gives
++operators a massively scalable alternative to the existing Nova scheduler,
++and provide constant time performance for very large scale deployments of
++over a hundred thousand nodes.
++
++Problem description
++===================
++
++The existing scheduler implementations allocate resources on what is currently
++considered the optimal location for the given resource. Not only is this a
++costly process, since the data set to be evaluated is potentially very,
++very large, but since the workloads across the cloud is highly variable and
++entirely non-deterministic, the designated optimal location may soon be a
++below average location for the resource.
++
++The scheduler needs to have an updated list of all the active hosts to make
++a decision, whether random, or a filtered set of hosts. Obtaining this list
++on a massive (thousands of) compute deployment can take an unacceptable amount
++of time.
++
++This spec outlines an alternative approach that simply puts resources
++where ever they'll fit with no attempt to make a centralised decision about
++anything at all. The end result is an O(1) scheduler, with less flexibility
++than other approaches, since a richer flavour concept doesn't map well to a
++small set of work queues. It possible that we just don't need this flexibility
++in mega scale deployments.
++
++
++Proposed change
++===============
++
++The proposed solution makes use of the messaging layer for scheduling.
++The desired outcome would be to decentralize scheduling of compute resources
++to individual compute nodes, such that this decision making step is scaled out
++horizontally by the compute infrastructure, and overall complexity is reduced.
++
++The incoming resource request is validated as usual, per the current
++approach by the API. After this they're sent to a scheduler, that simply puts
++it on a queue. Compute nodes poll this queue for work items if they have
++spare capacity.
++
++
++The implementation could be iterated as follows:
++
++* Add a new scheduler class that will send out the scheduling request on the
++  message queue using cast. This keeps Nova scheduler even though it's of very
++  little use.
++  Any compute node that has the capacity to spare will listen on this topic.
++  The messaging layer will "at random" distribute the request to a listening
++  compute node. The compute node will ensure that it can actually accommodate
++  he instance (based on the instance type) and raise an exception if it does
++  not have sufficient capacity after all. This will cause the message to be
++  re-queued (if using the kombu messaging driver) and another node can attempt
++  to fulfill the request. If it does have capacity, it will go ahead with the
++  allocation as usual.
++
++* The next iteration will add per-instance-type topics.
++  Nodes only subscribe to topics for instance types that they can actually
++  accommodate.
++
++* The next iteration will remove the scheduler entirely and make nova-api put
++  resource requests directly on the work queue.
++
++* The final iteration (which depends on Marconi being ready for production)
++  will use Marconi as the queueing back-end.
++  (This may or may not come for free depending on whether a Marconi
++  RPC backend gets added to the RPC layer).
++
++Alternatives
++------------
++
++A number of alternative proposals were discussed:
++
++**1. Broadcast "scheduling"**
++
++Description:
++  While in the proposed solution, the messaging layer picks a single random node
++  for sending the request on a specific topic based on instance type,
++  a mailing list discussion [1]_ suggested that requests could be broadcast to
++  (a subset of) the compute nodes and have them decide if they can accommodate
++  the request. Of the positive responses, pick a winner (at random or based on
++  a suitability score given in the response). First broadcast to idle nodes,
++  then to nodes with 0-10% utilisation, then to nodes with 10%-20% utilisation,
++  etc.
++
++Short Analysis:
++  Offers a constant upper bound on scheduling time (based on time between
++  each broadcast + number brackets that infrastructure is split into
++  (e.g. 0%, 10%, 20%. etc. vs. 0%, 25%, 50%, etc.)).
++  Fewer brackets => faster guaranteed response times.
++  Fewer brackets => more nodes in each bracket = potentially overwhelming for
++  scheduler to deal with responses from nodes.
++
++**2. Split workloads across multiple schedulers**
++
++Description:
++  N schedulers [2]_ could (automatically amongst themselves) split the
++  infrastructure in N equal chunks each of which would be assigned to one
++  scheduler. Leave everything else pretty much as is (use same algorithm for
++  placing VM's, volumes, etc. as the current scheduler does).
++
++Short analysis:
++  The added scalability comes from the fact that schedulers can be added
++  dynamically and each one only has to deal with 1/N of the entire
++  infrastructure. It may prove a difficult to strike a good balance between
++  number (and hence the size) of the chunks vs. the chance that each of them
++  will be able to fulfill a given request.
++  More chunks -> smaller chunks -> less likely to be able to fulfill
++  incoming requests -> more retries.
++
++**3. Move scheduler data to memcache**
++
++Description:
++  Have nodes broadcast their resource stats to all schedulers. Each scheduler
++  has its own (local) memcache [3]_ where this data is stored. Leave everything
++  else pretty much as is (use same algorithm for placing VM's, volumes, etc.
++  as the current scheduler does). The added scalability comes from faster and
++  more local storage.
++
++Short Analysis:
++  This angle of attack makes sense if the biggest problem with the scheduler
++  is collection and retrieval of data. However, if the biggest problem is the
++  scheduling algorithm itself, it's of no use. I personally believe that the
++  problem at scale is the scheduling algorithm itself.
++
++Data model impact
++-----------------
++
++None. The compute nodes would continue to update the compute_node
++tables with their state information, and all updates will be retrieved via
++the conductor.
++
++REST API impact
++---------------
++
++The Compute API v2 extension OS-SCH-HINT cannot be used with this scheduling
++option since the scheduler hints passed in the dictionary are only required
++by the scheduler service.
++this scheduling option enabled.
++
++Security impact
++---------------
++
++None.
++
++Notifications impact
++--------------------
++
++Though this change does not remove any existing notifications, notifications
++previously sent by the scheduler service will not longer be sent.
++
++
++Other end user impact
++---------------------
++
++Besides setting a configuration option in nova.conf, an operator does not
++interact with this feature in any other way.
++
++Performance Impact
++------------------
++
++**New Server Creation:**
++A significant performance *improvement* in spawning of new servers would be
++noticed.
++The latency introduced by the scheduler to decide a host
++from a large data set will be eliminated, since the compute host picks up the
++request placed by Nova API directly from the message queue.
++
++**Compute Service startup:**
++Since each compute node will listen to additional instance type based topics
++at start-up, there may be a slight lag in the startup time of Nova Compute.
++
++Other deployer impact
++---------------------
++
++This change is optional and the deployer would need to set a configuration
++parameter in nova.conf before the Compute service starts.
++Nova Compute, as a part of post hook, will check if this option is set and
++subscribe to additional topics.
++
++Developer impact
++----------------
++
++None.
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  rohitk
++
++Other contributors:
++  None
++
++Work Items
++----------
++
++The iterations mentioned in the Proposed Solution section would be used
++as high level work items.
++
++
++Dependencies
++============
++
++None.
++
++
++Testing
++=======
++
++The existing Tempest functional tests for Nova compute should continue to pass
++with improved execution performance on a multi node environment. Hence we don't
++need to add more tests to Tempest.
++
++
++Documentation Impact
++====================
++
++Any information that elaborates this approach to scheduling server creation
++for massive scale infrastructure needs to be documented. The relevant
++configuration option that a deployer should use to enable it and it's impact
++should also be documented.
++
++
++References
++==========
++
++.. [1] http://bit.ly/1nvnit8
++
++.. [2] http://lists.openstack.org/pipermail/openstack-dev/2013-July/012428.html
++
++.. [3] https://blueprints.launchpad.net/nova/+spec/no-db-scheduler
+-- 
+1.9.1
+

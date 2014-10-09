@@ -1,0 +1,215 @@
+From 18bab3ebf3479006582c453eea6f851cec5728a0 Mon Sep 17 00:00:00 2001
+From: LiangChen <hs.chen@huawei.com>
+Date: Sat, 19 Apr 2014 11:42:56 -0400
+Subject: [PATCH] Add dynamic adjust disk qos support
+
+Now we has supported setting the disk's QOS when creating instance or attaching
+volume to instance. There is no way to adjust QOS without taking some action
+which may makes the instance's status change or volume's status change.
+
+blueprint dynamic-adjust-disk-qos
+
+Change-Id: I9942639d5514b201a4f87a4ab61ead9b4d7d17f2
+---
+ specs/juno/dynamic-adjust-disk-qos.rst | 189 +++++++++++++++++++++++++++++++++
+ 1 file changed, 189 insertions(+)
+ create mode 100644 specs/juno/dynamic-adjust-disk-qos.rst
+
+diff --git a/specs/juno/dynamic-adjust-disk-qos.rst b/specs/juno/dynamic-adjust-disk-qos.rst
+new file mode 100644
+index 0000000..1819905
+--- /dev/null
++++ b/specs/juno/dynamic-adjust-disk-qos.rst
+@@ -0,0 +1,189 @@
++
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++===============================================
++Add dynamic adjust disk QOS support for libvirt
++===============================================
++
++https://blueprints.launchpad.net/nova/+spec/dynamic-adjust-disk-qos
++
++Currently the disk's QOS contain the following ability:
++total_bytes_sec, read_bytes_sec, write_bytes_sec, total_iops_sec,
++read_iops_sec, write_iops_sec.
++
++There are two ways to set the disk's QOS.
++1. Set extra in flavor and boot from the flavor.
++nova flavor-key m1.small set quota:disk_read_bytes_sec=10240000
++2. Create volume with QoS spec and attach volume to instance.
++cinder qos-create high_read_low_write consumer=”front-end” \
++read_iops_sec=1000 write_iops_sec=10
++
++cinder type-create type1
++cinder qos-associate [qos-spec-id] [type-id]
++cinder create –display-name high-read-low-write-volume –volume-type type1 \
++100 nova volume-attach vm-1 high-read-low-write-volume /dev/vdb
++
++The above is the initialization. There is no way to adjust QOS without
++taking some action which may makes the instance's status change or volume's
++status change.
++
++The user boots the VM which has setted disk's QOS and has important business
++such as web service. After a period of days, the initial setting can't meet
++the requirement of the business, the user wants to get more I/O flow and
++keeps the VM running. The user can ask for more QOS by the admin dynamic
++adjust of the disk's QOS.
++
++This proposal is just to set the disk's QOS for libvirt at the running time,
++and it is no any business effect to the user who use the instance.
++The QOS ability is dependent on the hypervisor driver and backend storage of
++the cinder.
++
++
++Problem description
++===================
++
++We have no method to dynamic adjust the disk's QOS during the instance is
++running or without detaching the volume.
++
++The admin who want to adjust the disk's QOS must shut down the instance or
++detach the disk which wants to set QOS form the instance first, it make
++business interrupt.
++
++
++Proposed change
++===============
++
++The basic points to note about this change are:
++
++* Add a new extension API "set_disk_qos" which the admin can use it.
++* Add the set method in base virt driver.
++* The disk's QOS which admin set will be saved in database.
++
++
++Alternatives
++------------
++
++None
++
++
++Data model impact
++-----------------
++
++The disk's QOS will be saved in database.
++
++REST API impact
++---------------
++
++The rest API look like this in v2:
++ /v2/{project_id}/servers/{server_id}/action
++
++    {
++        "set_disk_qos":{
++        "read_bytes_sec":10240000,
++        "write_bytes_sec":10240000,
++        "total_bytes_sec":40960000,
++        "read_iops_sec":2000,
++        "write_iops_sec":1000,
++        "total_iops_sec":5000
++        }
++
++    }
++and look like this in v3:
++ /v3/servers/{server_id}/action
++
++    {
++        "set_disk_qos":{
++        "read_bytes_sec":10240000,
++        "write_bytes_sec":10240000,
++        "total_bytes_sec":40960000,
++        "read_iops_sec":2000,
++        "write_iops_sec":1000,
++        "total_iops_sec":5000
++        }
++
++    }
++
++The key from above which is appear will be set.
++
++
++Security impact
++---------------
++None
++
++Notifications impact
++--------------------
++None
++
++Other end user impact
++---------------------
++
++None
++
++Performance Impact
++------------------
++None
++
++Other deployer impact
++---------------------
++None
++
++Developer impact
++----------------
++None
++
++Implementation
++==============
++I plan to add "set_disk_qos" API which will be added in the path
++"/api/openstack/compute/contrib/", and add set method in virt libvirt.
++Once it success, the disk QOS information save in disk_qos table which will
++be added in nova database.
++The disk_qos table has the following fields:
++instance-uuid, volume-id, read_bytes_sec, write_bytes_sec, total_bytes_sec,
++read_iops_sec, write_iops_sec, total_iops_sec.
++The disk QOS information will be cleared when the disk is detached.
++
++
++Assignee(s)
++-----------
++
++Primary assignee:
++   <hs.chen@huawei.com>
++
++
++
++Work Items
++----------
++
++* Add "set_disk_qos" API.
++* Add set method in libvirt.
++* Save disk's QOS.
++* Add testcase of the API.
++
++
++Dependencies
++============
++
++None
++
++
++Testing
++=======
++
++Unit tests and tempest tests will check function.
++
++Documentation Impact
++====================
++
++A description of this function will be added into Compute API V2 and V3
++Reference.
++
++
++References
++==========
++
++https://wiki.openstack.org/wiki/InstanceResourceQuota
++https://blueprints.launchpad.net/cinder/+spec/pass-ratelimit-info-to-nova
+-- 
+1.9.1
+

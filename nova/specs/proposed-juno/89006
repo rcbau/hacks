@@ -1,0 +1,140 @@
+From 4e12be67d2040ac7b0b37e2405f88bcca9d3a51d Mon Sep 17 00:00:00 2001
+From: Vincent Hou <sbhou@cn.ibm.com>
+Date: Sat, 19 Apr 2014 08:36:12 -0400
+Subject: [PATCH] Propose: add scheduling for choosing an available node
+
+Related blueprint: smart-available-node-return
+
+Change-Id: I032c5832a1770b434057086c62b7f913b2f735ea
+---
+ specs/juno/schedule-available-node-return.rst | 118 ++++++++++++++++++++++++++
+ 1 file changed, 118 insertions(+)
+ create mode 100644 specs/juno/schedule-available-node-return.rst
+
+diff --git a/specs/juno/schedule-available-node-return.rst b/specs/juno/schedule-available-node-return.rst
+new file mode 100644
+index 0000000..edfeb32
+--- /dev/null
++++ b/specs/juno/schedule-available-node-return.rst
+@@ -0,0 +1,118 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++=====================================================
++Schedule the available nodes for nova-compute service
++=====================================================
++
++https://blueprints.launchpad.net/nova/+spec/smart-available-node-return
++
++
++If nova compute service connects to multiple available nodes, the hypervisor
++driver needs to implement internal scheduling rules to return the most
++appropriate available node instead of always picking up the first one.
++
++
++Problem description
++===================
++
++In nova, nova-compute service can support multiple available nodes. When we
++build an instance, prep-resize for an instance, unshelve an instance, etc,
++the first(0th) available node is always returned in the manager. I suggest we
++should make the nova-compute able to select one available node in a certain
++rule.
++
++
++Proposed change
++===============
++
++* Each hypervisor driver can implement the internal rules to select one
++  available node. The rules can be different for different drivers.
++
++Alternatives
++------------
++
++Hypervisor drivers can expose multiple available nodes to nova-scheduler, but
++this will bring complexities to nova-scheduler.
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++None
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++None
++
++Performance Impact
++------------------
++
++None
++
++Other deployer impact
++---------------------
++
++None
++
++Developer impact
++----------------
++
++None
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  TBD
++
++
++Work Items
++----------
++
++* Internal scheduling rules should be implemented for each driver, which
++  supports multiple available nodes.
++
++
++Dependencies
++============
++
++Each hypervisor driver has to taken the internal scheduling rules into
++account.
++
++Testing
++=======
++
++None
++
++Documentation Impact
++====================
++
++None
++
++References
++==========
++
++TBD.
+-- 
+1.9.1
+

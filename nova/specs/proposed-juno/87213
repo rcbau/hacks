@@ -1,0 +1,253 @@
+From 67ab8eae35c68cad9b27532c69186213e74f00c3 Mon Sep 17 00:00:00 2001
+From: Sahid Orentino Ferdjaoui <sahid.ferdjaoui@cloudwatt.com>
+Date: Sun, 13 Apr 2014 12:11:36 +0200
+Subject: [PATCH] Set cpu allocation ratio per-flavor
+
+Operator wants to set a different cpu allocation
+ratio based on flavor.
+
+blueprint cpu-allocation-per-flavor
+Change-Id: I612de39a5a619b7fcea7b04af8df2685601ad4d4
+---
+ specs/juno/cpu-allocation-per-flavor.rst | 229 +++++++++++++++++++++++++++++++
+ 1 file changed, 229 insertions(+)
+ create mode 100644 specs/juno/cpu-allocation-per-flavor.rst
+
+diff --git a/specs/juno/cpu-allocation-per-flavor.rst b/specs/juno/cpu-allocation-per-flavor.rst
+new file mode 100644
+index 0000000..1423daf
+--- /dev/null
++++ b/specs/juno/cpu-allocation-per-flavor.rst
+@@ -0,0 +1,229 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++=======================================
++Filter, cpu allocation ratio per-flavor
++=======================================
++
++https://blueprints.launchpad.net/nova/+spec/cpu-allocation-per-flavor
++
++The aim of this blueprint is to provide an option to schedule for a specific
++flavor a vCPU overcommitment.
++
++The general use case is to offer to Operator the possibility to create flavors
++which consume less than 1 core of the host, also he wants to keep the
++possibility to mix different flavors.
++A resource management needs to be used by Operator to cap the timeslice used by
++all of the flavors running on Host. Nova provides this feature by
++configuring `Instance Resource Quota` [1]_, basically using a ratio between
++period and quota which matches the cpu allocation ratio will enforce the
++timeslice consumed by the flavors.
++
++Notes:
++- On system based on Linux, cgroups [2]_ can be used to isolate resource usage.
++- On Windows WSRM [3]_ provides resource management.
++
++
++Problem description
++===================
++
++Currently `CoreFilter` and `CoreFilterAggregate` provide the ability to
++schedule on a host more vCPUs that the host can handles. This feature is
++provided by configuring the option "cpu_allocation_ratio" in nova.conf or in
++aggregates metadata for a group of hosts.
++
++Operator wants the possibility to configure the vCPU over-commitment for
++specific flavors.
++
++Over-commitment based on host
++-----------------------------
++
++:HostA: 2 cores, cpu_allocation_ratio=2
++:FlavorA: 1 vCPU
++:FlavorB: 2 vCPU
++
++For a requested flavor the scheduler will interprets:
++ - FlavorA: 1 vCPU / 2 = 0.5 core
++ - FlavorB: 2 vCPU / 2 = 1 core
++
++Over-commitment based on flavor
++-------------------------------
++
++:HostA: 2 cores
++:FlavorA: 1 vCPU, cpu_allocation_ratio=2
++:FlavorB: 2 vCPU
++
++For a requested flavor the scheduler will interprets:
++ - FlavorA: 1 vCPU / 2 = 0.5 core
++ - FlavorB: 2 vCPU / 1 = 2 cores
++
++Over-commitment based on flavor + host
++--------------------------------------
++
++:HostA: 2 cores, cpu_allocation_ratio=2
++:FlavorA: 1 vCPU, cpu_allocation_ratio=4
++:FlavorB: 2 vCPU
++
++For a requested flavor the scheduler will interprets:
++ - FlavorA: 1 vCPU / 4 = 0.25 core
++ - FlavorB: 2 vCPU / 2 = 1 core
++
++Proposed change
++===============
++
++The purpose of this blueprint is to extend CoreFilterAggregate to create
++a new filter called CoreFilterFlavor which could be able to read in the flavor
++extra-specs the option `cpu_allocation_ratio` - If no value is found, the
++filter fallback to the per-aggregate logic then to the global configuration in
++nova.conf to schedule the requested flavor.
++
++1. Consider Host of 2 cores hosting 2 VMs, those 2 VMs created with flavors
++   ratio as 1.5 and 3.0
++
++It means:
++::
++
++    1 vCPU / 1.5 = 0.6
++  + 1 vCPU / 3.0 = 0.3
++  = 0.9
++
++Host is using 0.9 of his 2 cores. OK 0.9 <= 2
++
++2. Now consider launching a new guest with the ratio 3.0
++
++It means:
++::
++
++    1 vCPU / 1.5 = 0.6
++  + 1 vCPU / 3.0 = 0.3
++  + 1 vCPU / 1.5 = 0.6
++  = 1.5
++
++Host is using 1.5 of his 2 cores. OK 1.5 <= 2
++
++3. Now consider launching a new guest with the ratio 1.5
++
++It means:
++::
++
++    1 vCPU / 1.5 = 0.6
++  + 1 vCPU / 3.0 = 0.3
++  + 1 vCPU / 1.5 = 0.6
++  + 1 vCPU / 1.5 = 0.6
++  = 2.1
++
++Host is using 1.5 of his 2 cores. KO 2.1 <= 2
++
++Alternatives
++------------
++
++A work based on a new metric has been started on the wiki [4]_
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++None
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++Performance Impact
++------------------
++
++The scheduler needs to retrieve flavors running on Host to compute the ratio
++used by each guests.
++
++Other deployer impact
++---------------------
++
++* Operator needs to update the scheduler's `nova.conf` to activate the
++  filter. *Important: CoreFilterFlavor cannot be used with CoreFilter or
++  CoreFilterAggregate*. For more information about filters please refer to
++  the doc [5]_.
++
++::
++  scheduler_default_filters=CoreFilterFlavor
++
++* To configure the ratio for a flavor Operator needs to set the option
++  `cpu_allocation_ratio` into the extra-specs of the flavor.
++
++::
++  nova flavor-key m1.small set cpu_allocation_ratio=2
++  or
++  nova-manage flavor set_key --name m1.small
++  --key cpu_allocation_ratio --value 2
++
++* Complete example to configure a flavor that uses 1/4 of a core Host
++
++::
++  nova flavor-key m1.small set cpu_allocation_ratio=4
++  nova flavor-key m1.small set quota:cpu_period=1000000
++  nova flavor-key m1.small set quota:cpu_quota=250000
++
++
++Developer impact
++----------------
++
++None
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  sahid-ferdjaoui
++
++
++Work Items
++----------
++
++None
++
++
++Dependencies
++============
++
++None
++
++
++Testing
++=======
++
++Unit tests can cover all of the feature.
++
++
++Documentation Impact
++====================
++
++* 'doc/source/devref/filter_scheduler.rst' needs to be updated.
++
++
++References
++==========
++
++.. [#] https://wiki.openstack.org/wiki/InstanceResourceQuota
++.. [#] https://www.kernel.org/doc/Documentation/cgroups/cgroups.txt
++.. [#] http://en.wikipedia.org/wiki/Windows_System_Resource_Manager
++.. [#] https://wiki.openstack.org/wiki/Nova/SchedulingBasedOnInstanceResourceQuota
++.. [#] http://docs.openstack.org/developer/nova/devref/filter_scheduler.html
+-- 
+1.9.1
+

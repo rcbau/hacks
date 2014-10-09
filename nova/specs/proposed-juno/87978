@@ -1,0 +1,205 @@
+From 1a8b095f5b79304a195b7625765e76d317a51079 Mon Sep 17 00:00:00 2001
+From: Balazs Gibizer <balazs.gibizer@ericsson.com>
+Date: Fri, 11 Apr 2014 09:44:00 +0200
+Subject: [PATCH] Add nic state aware scheduling
+
+bp nic-state-aware-scheduling
+
+Change-Id: I5089a204549433dbbb1b4e47972580bc46b8dcc1
+---
+ specs/juno/nic-state-aware-scheduling.rst | 183 ++++++++++++++++++++++++++++++
+ 1 file changed, 183 insertions(+)
+ create mode 100644 specs/juno/nic-state-aware-scheduling.rst
+
+diff --git a/specs/juno/nic-state-aware-scheduling.rst b/specs/juno/nic-state-aware-scheduling.rst
+new file mode 100644
+index 0000000..5497814
+--- /dev/null
++++ b/specs/juno/nic-state-aware-scheduling.rst
+@@ -0,0 +1,183 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++==========================================
++NIC state aware scheduling
++==========================================
++
++https://blueprints.launchpad.net/nova/+spec/nic-state-aware-scheduling
++
++As an End User I want that my instance are placed on a compute host where the
++network connectivity of my instances are ensured.
++As a Deployer I want to configure my deployment to check the state of the
++network adapters used by the instances periodically and do not schedule
++instances on compute host where the network connectivity is not ensured.
++
++
++Problem description
++===================
++
++In various OpenStack deployments the control network used by the OpenStack
++services are different than the data network used by the instances therefore
++having a connectivity between nova-compute and nova-scheduler is not enough to
++validate that there is network connetivity available for the instance.
++Therefore nova-scheduler needs information about the link state of the network
++adapters on the compute hosts and nova-scheduler needs to use this information
++to select the proper host for an instance.
++
++The servicegroup API is currently used to maintain service statuses like
++the status of nova-compute service. The status information is limited to the
++last hearthbeat timestamp of the service so the scheduler does not have
++detailed information about the fine grained state of the service
++nova-compute provides.
++
++
++Proposed change
++===============
++
++The servicegroup drivers will be extened to handle more fine grained status of
++the services than the last hearthbeat timestamp.
++
++An internal interface will be added to the Service class that will allow
++services to provide more fine grained information in the status report
++towards the servicegroup.
++
++The nova-compute service will be extended to periodically collect the state of
++the NICs according to the configuration and include the collected information
++into the status report sent to the servicegroup.
++The deployer will be able to define which NIC needs to be monitored via a
++new configuration option.
++
++The servicegroup API will be extended to allow querying the fine grained
++status of the services.
++
++A new NetworkConnectivityFilter will be implemented for the FilterScheduler
++that can be used to filter compute hosts that does not have proper
++network connectivity. The filter will make decision based on the state of
++the NICs on the given host if the fine grained state is present in the
++servicegroup. The deployer will be able to configure the list of NICs
++that needs to be in connected state via configuration options.
++
++In the future the fine grained state can be extended to provide other
++informations like link speed to the scheduler.
++
++
++Alternatives
++------------
++
++Alternatively administrator can set up a thrid party montoring tool in its
++deployment and configure it in a way that the monitoring tool disables the
++nova-compute service on the compute hosts where certain network adatpers are
++in a wrong state. However this solution is not flexible enough in the future
++because it cannot be extended to provide fine grain data for example link
++speed to the scheduler.
++
++Another alternative would be to extend the resource tracker to collect
++the inforamtion and report it as part of the host_state. This alternative
++is rejected as the NIC state is not considered as a resource.
++
++Data model impact
++-----------------
++
++For the db driver of the servicegroup feature the services table needs to be
++extended with a new field to store the fine grained status information of the
++services in a json blob.
++
++
++REST API impact
++---------------
++
++None
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++None
++
++Performance Impact
++------------------
++
++None
++
++Other deployer impact
++---------------------
++
++A new config option compute_service_network_adapters will be added to make it
++possible for the deployer to specify the device name of those network
++adapters which will be monitored by the nova-compute service and which state
++will be avalible for the NetworkConnectivityFilter.
++The NetworkConnectivityFilter will use the same configuration option to decide
++which NICs needs to be in connected stated.
++The compute_service_network_adapters option will be defaulted to [].
++
++
++Developer impact
++----------------
++
++None
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  balazs-gibizer
++
++Other contributors:
++  adrian-hoban
++  alan-kavanag
++  liyi-meng
++
++Work Items
++----------
++
++* Extend the services table with a new field and create the necessary
++  migration scripts and extend db driver for the servicegroup to use
++  the new field to store the fine grained state
++* Extend memcached driver to handle fine grained state
++* Extend zookeeper driver to handle fine grained state
++* Extend the servicegroup implementation to allow providing fine grained
++  status information
++* Extend the nova-compute service to include the NIC states into the
++  status reporting towards the servicegroups
++* Implement a new NetworkConnectivityFilter that filters out host where the
++  configured network adapters are not in connected state
++
++
++Dependencies
++============
++
++None
++
++Testing
++=======
++
++Today there is no separate test for different scheduler filters in tempest so
++I am not considering adding filter specific tests
++
++Documentation Impact
++====================
++
++None
++
++
++References
++==========
++
++None
++
+-- 
+1.9.1
+

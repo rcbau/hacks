@@ -1,0 +1,161 @@
+From 6a2a7ad1e15e282d74d054492a0e711c5023ab50 Mon Sep 17 00:00:00 2001
+From: Vladik Romanovsky <vladik.romanovsky@enovance.com>
+Date: Wed, 30 Apr 2014 16:37:42 -0400
+Subject: [PATCH] libvirt: Separate classes for each hypervisor type
+
+Currently libvirt driver supports several hypervisor types.
+However, variuos hypervisor type specific changes may harm
+the functionality of other types.
+It also seems to be more practical to implement hypervisor
+specific changes in it's own class.
+
+Would like to separate each hypervisor type functionality to it's
+own class and refactor the base class to support inheritance.
+
+Implements blueprint libvirt-separate-virt-types-to-classes
+Change-Id: I908b4edc27e2888448dbe946aabcec739c54b851
+---
+ .../libvirt-separate-virt-types-to-classes.rst     | 131 +++++++++++++++++++++
+ 1 file changed, 131 insertions(+)
+ create mode 100644 specs/juno/libvirt-separate-virt-types-to-classes.rst
+
+diff --git a/specs/juno/libvirt-separate-virt-types-to-classes.rst b/specs/juno/libvirt-separate-virt-types-to-classes.rst
+new file mode 100644
+index 0000000..3de04ba
+--- /dev/null
++++ b/specs/juno/libvirt-separate-virt-types-to-classes.rst
+@@ -0,0 +1,131 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++=================================================
++Libvirt - Separate class for each hypervisor type
++=================================================
++
++https://blueprints.launchpad.net/nova/+spec/
++                                 libvirt-separate-virt-types-to-classes
++
++Separate each hypervisor type functionality to it's own class and refactor
++the base class to support inheritance.
++
++
++Problem description
++===================
++
++Libvirt driver handles several hypervisor types.
++It's code base has grown to the point where it is difficult to see
++how a single change will affect the rest of the hypervisors, without
++introduction side-effects. Recently, such issues rose quite often.
++
++
++Proposed change
++===============
++
++Separating the hypervisor specific functionality to their own classes.
++Introduce a factory class that will deal with the initialization
++of the relevant hypervisor instance, according to the provided
++libvirt.virt_type configuration option. Create a base class that will hold
++the common implementation of each functionality. Introduce hypervisor specific
++tests against each of the classes. This work would also improve the test
++coverage with the tests already in place.
++
++Alternatives
++------------
++
++Continue developing according to the existing model, introducing much more
++tests that would cover all of the supported virt types.
++
++Data model impact
++-----------------
++
++No impact.
++
++REST API impact
++---------------
++
++No impact.
++
++Security impact
++---------------
++
++No impact.
++
++Notifications impact
++--------------------
++
++No impact.
++
++Other end user impact
++---------------------
++
++No impact.
++
++Performance Impact
++------------------
++
++No impact.
++
++Other deployer impact
++---------------------
++None
++
++Developer impact
++----------------
++Developers introducing changes or adding new functionality,
++would have to add it to the relevant virt type class or to a base class
++if it common.
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++
++      Vladik Romanovsky
++           <vladik.romanovsky@enovance.com>
++
++
++Work Items
++----------
++
++* Separate virt type specific functionality into helper methods
++  for it to be overridden in the hypervisor specific classes.
++
++* Introduce hypervisor specific classes and consolidate common
++  functionality in the base class. The classes would be:
++  LibvirtDriverBase(driver.ComputeDriver)
++  LibvirtDriverUml(LibvirtDriverBase)
++  LibvirtDriverLxc(LibvirtDriverBase)
++  LibvirtDriverXen(LibvirtDriverBase)
++  LibvirtDriverQemu(LibvirtDriverBase)
++  LibvirtDriverKvm(LibvirtDriverQemu)
++
++* Introduce a factory class that would initialize the relevant
++  hypervisor instance.
++
++Dependencies
++============
++None
++
++Testing
++=======
++Adjust the existing tests to cover the new hypervisor classes.
++Introduce more hypervisor specific tests.
++
++Documentation Impact
++====================
++None
++
++
++References
++==========
++None
+-- 
+1.9.1
+

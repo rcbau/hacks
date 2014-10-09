@@ -1,0 +1,148 @@
+From d77c68da0d6582eb568ebdd52d8033108545d5b8 Mon Sep 17 00:00:00 2001
+From: Antony Messerli <amesserl@rackspace.com>
+Date: Tue, 6 May 2014 22:05:11 -0500
+Subject: [PATCH] Restrict Image Types
+
+Add the ability to restrict certain image types from being built on a flavor.
+
+Change-Id: If50e91308cbc04d638f977091f4e3093525d11b1
+---
+ specs/juno/restrict-image-types.rst | 126 ++++++++++++++++++++++++++++++++++++
+ 1 file changed, 126 insertions(+)
+ create mode 100644 specs/juno/restrict-image-types.rst
+
+diff --git a/specs/juno/restrict-image-types.rst b/specs/juno/restrict-image-types.rst
+new file mode 100644
+index 0000000..efc638d
+--- /dev/null
++++ b/specs/juno/restrict-image-types.rst
+@@ -0,0 +1,126 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++====================
++Restrict Image Types
++====================
++
++https://blueprints.launchpad.net/nova/+spec/restrict-image-types
++
++Add the ability to restrict certain image types from being built on a flavor.
++
++Problem description
++===================
++
++Today all image types are allowed to boot if an image of that type is present
++for a flavor in Glance.  In some cases, the operator may want to restrict a
++flavor from being able to boot a certain image type.
++
++Examples of this are:
++
++A diskless flavor offering might have limited space on the hypervisor.  In this
++case, you would want to avoid using space on the disk by either booting from
++volume or utilizing use a small iPXE boot ISO to boot the operating system over
++the network.  In this case, we'd restrict all image_types except for ISO.
++
++In another case, you might want to restrict QCOW images from being built on a
++XenServer environment.  You'd want to ensure that QCOW and any other types of
++images are restricted, while allowing VHDs.
++
++Proposed change
++===============
++
++A restrict_image_types configuration would be set as a property in
++instance_types_extra_specs that would restrict the specified image types.  If
++the option wasn't set, all image types would be allowed.  This way you could
++limit what types of images could be provisioned on a flavor.
++
++The current image types listed here would be the ones that could be specified
++as restricted:
++
++http://docs.openstack.org/developer/glance/formats.html
++
++
++Alternatives
++------------
++
++None
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++None
++
++Security impact
++---------------
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++None
++
++Performance Impact
++------------------
++
++None
++
++Other deployer impact
++---------------------
++
++None
++
++Developer impact
++----------------
++
++None
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  antonym
++
++Work Items
++----------
++
++Add a restrict_image_types option to instance_types_extra_specs that would
++restrict certain image types from being provisioned on an instance.  This
++would include glance image types as well as boot from volume.
++
++Dependencies
++============
++
++None
++
++Testing
++=======
++
++Create appropriate tests to validate that the restrictions work properly.
++
++Documentation Impact
++====================
++
++Documentation would need to be written to detail how to set the image type
++restrictions.
++
++References
++==========
++
++* Image types: http://docs.openstack.org/developer/glance/formats.html
+-- 
+1.9.1
+

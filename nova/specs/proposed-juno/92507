@@ -1,0 +1,256 @@
+From 1da640c35917be3025bc4b7666f83594bb5e6707 Mon Sep 17 00:00:00 2001
+From: Thang Pham <thang.g.pham@gmail.com>
+Date: Tue, 6 May 2014 23:02:16 -0400
+Subject: [PATCH] Validate tenant and user with Keystone
+
+Today there is no functionality to validate the tenant or user
+that is consumed by nova.  One reason for the lack of such
+functionality is performance, where validating to external
+services can cause poor performance.  However, such functionality
+is needed in cases where the user passes in the tenant/user ID
+or name (e.g. quota management), so that the correct quota is set.
+Such functionality is also needed where the user wants to grant a
+tenant access to a flavor.
+
+This blueprint proposes a way to validate a specified tenant and
+user with Keystone.  This blueprint is only intented for cases
+where the API calls are done on a very infrequent basis.  More
+specifically, it is only meant to be used for validating
+tenant/user ID in quota management (i.e. quota-defaults,
+quota-delete, quota-show, quota-update) and in flavor management
+(i.e. flavor-access-add, flavor-access-list,
+flavor-access-remove).  A separate blueprint is required for any
+functionality that is outside of quota and flavor management.
+
+bp validate-tenant-user-with-keystone
+
+Change-Id: I70eac05145b3fadfb388484cf14cb07586651c61
+---
+ specs/juno/validate-tenant-user-with-keystone.rst | 215 ++++++++++++++++++++++
+ 1 file changed, 215 insertions(+)
+ create mode 100644 specs/juno/validate-tenant-user-with-keystone.rst
+
+diff --git a/specs/juno/validate-tenant-user-with-keystone.rst b/specs/juno/validate-tenant-user-with-keystone.rst
+new file mode 100644
+index 0000000..35a7312
+--- /dev/null
++++ b/specs/juno/validate-tenant-user-with-keystone.rst
+@@ -0,0 +1,215 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++==========================================
++Validate tenant and user with Keystone
++==========================================
++
++https://blueprints.launchpad.net/nova/+spec/validate-tenant-user-with-keystone
++
++Today there is no functionality to validate the tenant or user that is
++consumed by nova.  One reason for the lack of such functionality is
++performance, where validating to external services can cause poor performance.
++However, such functionality is needed in cases where the user passes in the
++tenant/user ID or name (i.e. quota management), so that the correct quota is
++set.  Such functionality is also needed where the user wants to grant a
++tenant access to a flavor.
++
++This blueprint is only intended for cases where the API calls are done on a
++very infrequent basis.  More specifically, it is only meant to be used for
++validating tenant/user ID in quota management (i.e. quota-defaults,
++quota-delete, quota-show, quota-update) and in flavor management (i.e.
++flavor-access-add, flavor-access-list, flavor-access-remove).  A separate
++blueprint is required for any functionality that is outside of quota and
++flavor management.
++
++
++Problem description
++===================
++
++The quota management feature of nova requires a tenant and user ID to be
++specified as part of the CLI.  This affects nova quota-show, quota-update, and
++quota-delete.  When a tenant or user is specified in one of the quota actions
++above, they are not checked against keystone to validate their IDs.  A user
++could specify a tenant or user name instead of the tenant or user ID,
++e.g. nova quota-update --instances 9 demo.  Since no checks are done, an entry
++is created in nova's project_user_quotas table where the project_id or
++user_id is set to the tenant or user name.  This causes invalid quotas to be
++set and returned if the tenant or user ID does not match what is in the
++project_user_quotas table.  It also affects flavor management.  More
++specifically, nova flavor-access-add, flavor-access-list, and
++flavor-access-remove.  When a tenant is specified in one of the flavor actions
++above, they are not checked against keystone to validate their IDs.
++
++
++Proposed change
++===============
++
++The proposed solution is to expose a keystone client in nova, similar to the
++cinder client that exists today in nova/volume/cinder.py.  Methods to get the
++tenant or user by their ID would be implemented.  When a tenant/user ID is
++be specified, it would be queried against the keystone client and validated.
++
++Alternatives
++------------
++
++The existing behavior, where the tenant/user ID is not validated, could be
++left as-is.  It would be up to the user to figure out the appropriate
++tenant/user ID or name from "keystone tenant-list" or "keystone user-list".
++However, this alternative presents user errors, where the user could
++mistakenly specify the tenant/user name instead of the tenant/user ID for
++nova quota-show, quota-update, or quota-delete.  If this occurs, the quota
++would not be set correctly.
++
++Data model impact
++-----------------
++It may be possible that there are entries in nova's project_user_quotas table,
++where the project_id or user_id is set to an invalid ID.  However, these
++entries do not hold any significant value, since no actual tenant is tied to
++them.  In such case, a --force option will be introduced to the quota-delete
++command.  This will allow invalid entries to be deleted by skipping over the
++keystone validation of the specified tenant/user ID.
++
++
++REST API impact
++---------------
++Previously, a POST and GET request using an invalid tenant or user ID would
++create an entry in nova's project_user_quotas table or return the quota
++value (if any) for the tenant or user.  With this proposal, if a keystone
++service account exists to validate the tenant/user ID, appropriate error
++messages will be returned from the POST and GET requests for an invalid tenant
++or user.  If a keystone service account does not exist, the functionality
++would continue to function as before and only a warning message would be logged
++(not returned via the POST or GET request).
++
++In the case where an invalid entry may exist in the database and the user wants
++to delete it, a new force option will be introduced to the DELETE request.
++By default, the tenant/user ID will be validated, unless the force option is
++specified.
++
++Security impact
++---------------
++To properly validate a tenant/user ID, a keystone service account with enough
++privileges to list users and projects needs to be created.  The account
++should have limited access to keystone and not any other services.  This can
++be done by creating the appropriate role-based rules in
++/etc/keystone/policy.json and granting the ability to list projects and
++users to a role.
++
++For example, an admin can create a user (e.g. validator) and add a role to it
++(e.g. validation).  Under /etc/keystone/policy.json, the admin would add these
++rules::
++
++  "identity:list_projects": "rule:admin_required or role:validation",
++  "identity:list_users": "rule:admin_required or role:validation",
++
++Under /etc/nova/nova.conf, the admin would add these credentials::
++
++  keystone_service_tenant_name = service
++  keystone_service_user = validator
++  keystone_service_password = keystone
++
++A keystone client would be instantiated using the credentials above, if they
++exists.  If a keystone service account does not exist, the operation should
++not be blocked.  Instead, a warning message should be logged stating that the
++keystone service account does not exist.
++
++Notifications impact
++--------------------
++None
++
++Other end user impact
++---------------------
++If a keystone service account exists to validate the tenant/user ID,
++appropriate error messages will be returned from the POST and GET requests for
++an invalid tenant or user.  These messages would be:
++
++* The specified tenant ID is not valid.
++
++* The specified user ID is not valid.
++
++Performance Impact
++------------------
++
++There will be minor impact to performance.  A connection to keystone is
++required to validate the tenant/user ID.  However, it would be a
++low-frequency operation because quotas/flavor access are not often changed.
++
++Other deployer impact
++---------------------
++None
++
++Developer impact
++----------------
++To properly validate a tenant/user ID, a keystone service account needs to be
++created.  If a keystone service account does not exist, the quota and flavor
++operation should not be blocked.  Instead, a warning message should be
++logged stating that the keystone service account does not exist.  This will
++allow existing deployments to continue to work.
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  thang-pham
++
++Work Items
++----------
++
++* Create a method to instantiate the keystone client.
++
++* Implement methods to get the tenant and user by a given ID.
++
++* Modify QuotaTemplate class in nova/api/openstack/compute/contrib/quotas.py
++  to validate the tenant and user ID, if any.
++
++* Modify FlavorActionController class in
++  nova/api/openstack/compute/contrib/flavor_access.py to validate the tenant
++  ID, if any.
++
++* Modify devstack to create the keystone service account, saving its
++  credentials in /etc/nova/nova.conf, and limiting its access in
++  /etc/keystone/policy.json.
++
++* Create tempest test cases and nova unit test cases to verify functionality.
++
++Dependencies
++============
++None
++
++
++Testing
++=======
++
++Tempest test cases, as well as nova unit test cases, will be created to verify
++this feature.  The following commands should be tested: nova quota-show,
++quota-update, and quota-delete.  More specifically, the --tenant and --user
++options need to be specified with the proper ID for positive test cases, and
++invalid IDs for negative test cases.  The following commands should also be
++tested: flavor-access-add, flavor-access-list, and flavor-access-remove.  The
++tenant_id needs to be specified with the proper ID for positive
++test cases, and invalid IDs for negative test cases.
++
++
++Documentation Impact
++====================
++None
++
++
++References
++==========
++
++* Proposed code change: https://review.openstack.org/#/c/91866/
++* Reported bugs:
++  https://bugs.launchpad.net/nova/+bug/1313935
++  https://bugs.launchpad.net/nova/+bug/1317515
++  https://bugs.launchpad.net/nova/+bug/1118066
++* Customizing authorization:
++  http://docs.openstack.org/trunk/openstack-ops/content/projects_users.html
+-- 
+1.9.1
+

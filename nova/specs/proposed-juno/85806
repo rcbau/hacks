@@ -1,0 +1,370 @@
+From 5a263ae6ca0576312556426ef0f32600a632987e Mon Sep 17 00:00:00 2001
+From: Andre <afaranha@lsd.ufcg.edu.br>
+Date: Mon, 7 Apr 2014 17:30:55 -0300
+Subject: [PATCH] Change Instances Owernship - Project and User
+
+Instances in Nova should have its ownership (User Owner and
+Project Owner field) transferable.
+
+bp https://blueprints.launchpad.net/nova/+spec/change-instance-ownership
+Change-Id: I1890156fc23c05d59131d107b6f093af82b1b189
+---
+ change-instances-ownership.rst            | 169 ++++++++++++++++++++++++++++++
+ specs/juno/change-instances-ownership.rst | 169 ++++++++++++++++++++++++++++++
+ 2 files changed, 338 insertions(+)
+ create mode 100644 change-instances-ownership.rst
+ create mode 100644 specs/juno/change-instances-ownership.rst
+
+diff --git a/change-instances-ownership.rst b/change-instances-ownership.rst
+new file mode 100644
+index 0000000..97042f6
+--- /dev/null
++++ b/change-instances-ownership.rst
+@@ -0,0 +1,169 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++..
++  This template should be in ReSTructured text. The filename in the git
++  repository should match the launchpad URL, for example a URL of
++  https://blueprints.launchpad.net/nova/+spec/awesome-thing should be named
++  awesome-thing.rst .  Please do not delete any of the sections in this
++  template.  If you have nothing to say for a whole section, just write: None
++  For help with syntax, see http://sphinx-doc.org/rest.html
++  To test out your formatting, see http://rst.ninjs.org/
++  Please wrap text at 80 columns.
++
++==========================================
++Change Instances Owernship - Project and User
++==========================================
++
++https://blueprints.launchpad.net/nova/+spec/change-instance-ownership
++
++Instances in Nova should have its ownership (User Owner and
++Project Owner field) transferable.
++
++Problem description
++===================
++
++In Nova the instances have the information of which user and which project
++owns it. Although we can change information like the instance name, we can't
++change it's user and/or project owner.
++
++Currently, when an user is removed from a project its instance(s) persists in
++the project with the old ownership. The instance may be inaccessible by other
++users.
++
++Use Case 1: In a project an user is replaced by a new one, the new user should
++be able to access the instance owned by the old user.
++
++Use Case 2: An user is transferable to a new project and wants to continue
++using the old instance. The instance should be transfered to the new project.
++
++Proposed change
++===============
++
++In order to implement this we are going to implement a new extension in Nova
++API called change_instance_ownership, where it will be identified the current
++project and instance, and the new instance user and/or project.
++
++The extension will update the instance fields project_id and/or user_id.
++
++Alternatives
++------------
++
++None
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++V2 API specification:
++PUT: v2/{tenant_id}/os-change-instance-ownership/{server_id}/action
++
++Request parameters:
++* tenant_id: The ID for the tenant or account in a multi-tenancy cloud.
++* server_id: The UUID for the server of interest to you.
++* user_id: Specify the rescue action in the request body.
++* adminPass(Optional): Use this password for the rescued instance.
++Generate a new password if none is provided.
++* rescue_image_ref(Optional): Use this image_ref for rescue.
++
++JSON request:
++{"user_id": "1ff5aca21382468085df62c12d74b280",
++"project_id": "3560124f13754b1da30b52ed3593ba69"}
++
++JSON response:
++
++
++Sample v2 request:
++PUT: /v2/9d67101f/os-change-instance-ownership/4e12-90b4-4aa8-8f08-c1e3/action
++ -d '{"user_id":"1ff5aca21382468085df62c12d74b280"}'
++
++HTTP response codes:
++v2:
++Normal HTTP Response Code: 200 on success
++
++Security Impact
++---------------
++
++None
++
++
++Notifications impact
++--------------------
++
++None
++
++Other End user impact
++---------------------
++
++None
++
++Performance Impact
++------------------
++
++None
++
++Deployer impact
++---------------
++
++None
++
++Developer impact
++----------------
++
++None
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Who is leading the writing of the code? Or is this a blueprint where you're
++throwing it out there to see who picks it up?
++
++If more than one person is working on the implementation, please designate the
++primary author and contact.
++
++Primary assignee:
++  <tellesmvn>
++
++Other contributors:
++  <afaranha>
++
++Work Items
++----------
++
++* Implement change ownership
++* Create tests to change ownership
++
++
++Dependencies
++============
++
++None
++
++Testing
++=======
++
++Test checking several use cases.
++
++
++Documentation Impact
++====================
++
++Changes in Nova Extension API to include the new functionality.
++
++
++References
++==========
++
++https://review.openstack.org/#/c/81079/
++New One: https://review.openstack.org/#/c/85480/
+diff --git a/specs/juno/change-instances-ownership.rst b/specs/juno/change-instances-ownership.rst
+new file mode 100644
+index 0000000..97042f6
+--- /dev/null
++++ b/specs/juno/change-instances-ownership.rst
+@@ -0,0 +1,169 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++..
++  This template should be in ReSTructured text. The filename in the git
++  repository should match the launchpad URL, for example a URL of
++  https://blueprints.launchpad.net/nova/+spec/awesome-thing should be named
++  awesome-thing.rst .  Please do not delete any of the sections in this
++  template.  If you have nothing to say for a whole section, just write: None
++  For help with syntax, see http://sphinx-doc.org/rest.html
++  To test out your formatting, see http://rst.ninjs.org/
++  Please wrap text at 80 columns.
++
++==========================================
++Change Instances Owernship - Project and User
++==========================================
++
++https://blueprints.launchpad.net/nova/+spec/change-instance-ownership
++
++Instances in Nova should have its ownership (User Owner and
++Project Owner field) transferable.
++
++Problem description
++===================
++
++In Nova the instances have the information of which user and which project
++owns it. Although we can change information like the instance name, we can't
++change it's user and/or project owner.
++
++Currently, when an user is removed from a project its instance(s) persists in
++the project with the old ownership. The instance may be inaccessible by other
++users.
++
++Use Case 1: In a project an user is replaced by a new one, the new user should
++be able to access the instance owned by the old user.
++
++Use Case 2: An user is transferable to a new project and wants to continue
++using the old instance. The instance should be transfered to the new project.
++
++Proposed change
++===============
++
++In order to implement this we are going to implement a new extension in Nova
++API called change_instance_ownership, where it will be identified the current
++project and instance, and the new instance user and/or project.
++
++The extension will update the instance fields project_id and/or user_id.
++
++Alternatives
++------------
++
++None
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++V2 API specification:
++PUT: v2/{tenant_id}/os-change-instance-ownership/{server_id}/action
++
++Request parameters:
++* tenant_id: The ID for the tenant or account in a multi-tenancy cloud.
++* server_id: The UUID for the server of interest to you.
++* user_id: Specify the rescue action in the request body.
++* adminPass(Optional): Use this password for the rescued instance.
++Generate a new password if none is provided.
++* rescue_image_ref(Optional): Use this image_ref for rescue.
++
++JSON request:
++{"user_id": "1ff5aca21382468085df62c12d74b280",
++"project_id": "3560124f13754b1da30b52ed3593ba69"}
++
++JSON response:
++
++
++Sample v2 request:
++PUT: /v2/9d67101f/os-change-instance-ownership/4e12-90b4-4aa8-8f08-c1e3/action
++ -d '{"user_id":"1ff5aca21382468085df62c12d74b280"}'
++
++HTTP response codes:
++v2:
++Normal HTTP Response Code: 200 on success
++
++Security Impact
++---------------
++
++None
++
++
++Notifications impact
++--------------------
++
++None
++
++Other End user impact
++---------------------
++
++None
++
++Performance Impact
++------------------
++
++None
++
++Deployer impact
++---------------
++
++None
++
++Developer impact
++----------------
++
++None
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Who is leading the writing of the code? Or is this a blueprint where you're
++throwing it out there to see who picks it up?
++
++If more than one person is working on the implementation, please designate the
++primary author and contact.
++
++Primary assignee:
++  <tellesmvn>
++
++Other contributors:
++  <afaranha>
++
++Work Items
++----------
++
++* Implement change ownership
++* Create tests to change ownership
++
++
++Dependencies
++============
++
++None
++
++Testing
++=======
++
++Test checking several use cases.
++
++
++Documentation Impact
++====================
++
++Changes in Nova Extension API to include the new functionality.
++
++
++References
++==========
++
++https://review.openstack.org/#/c/81079/
++New One: https://review.openstack.org/#/c/85480/
+-- 
+1.9.1
+

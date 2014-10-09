@@ -1,0 +1,267 @@
+From 4a1a97ecfec86a0a6e1926644bdc0af90a82fb7e Mon Sep 17 00:00:00 2001
+From: Yathiraj Udupi <yudupi@cisco.com>
+Date: Thu, 29 May 2014 11:03:48 -0700
+Subject: [PATCH] Smart Scheduler (Solver Scheduler) - Constraint based
+ resource placement
+
+OpenStack scheduler currently supports nice options via pluggable filters that
+does resource selection based on simple constraints e.g. Don't put instances
+on a given host.  However for complex constraints, building a filter would be
+as complex as building a real constraint solver with complex constraints e.g.
+place VMs while minimizing average (VM-storage-bandwidth).  On the other hand,
+complex solvers are available in open source (PULP, CVXOPT, COIN_OR).  Hence a
+natural solution to the above problem is to design a pluggable scheduler that
+leverages existing solvers.  We believe that this will open new avenues for
+complex constraint (and objectives) based resource placement in large
+OpenStack deployments.
+
+Provides spec for: blueprint solver-scheduler
+
+Change-Id: Id19c61a89f05a6b5c02e78dbfe48236060a27245
+---
+ specs/juno/solver-scheduler.rst | 233 ++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 233 insertions(+)
+ create mode 100644 specs/juno/solver-scheduler.rst
+
+diff --git a/specs/juno/solver-scheduler.rst b/specs/juno/solver-scheduler.rst
+new file mode 100644
+index 0000000..d593cf1
+--- /dev/null
++++ b/specs/juno/solver-scheduler.rst
+@@ -0,0 +1,233 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++========================================================================
++Smart Scheduler (Solver Scheduler) - Constraint based resource placement
++========================================================================
++
++https://blueprints.launchpad.net/nova/+spec/solver-scheduler
++
++OpenStack scheduler currently supports nice options via pluggable filters that
++does resource selection based on simple constraints e.g. Don't put instances
++on a given host.  However for complex constraints, building a filter would be
++as complex as building a real constraint solver with complex constraints e.g.
++place VMs while minimizing average (VM-storage-bandwidth).  On the other hand,
++complex solvers are available in open source (PULP, CVXOPT, COIN_OR).  Hence a
++natural solution to the above problem is to design a pluggable scheduler that
++leverages existing solvers.  We believe that this will open new avenues for
++complex constraint (and objectives) based resource placement in large
++OpenStack deployments.
++
++
++Problem description
++===================
++The Smart Scheduler (Solver Scheduler) provides an extensible mechanism
++for making smarter, complex constraints optimization based resource
++scheduling in Nova.  The Nova compute resource placement can be described as a
++problem of placing a set of VMs on a set of physical hosts, where each VM has
++a set of resource requirements that have to be satisfied by a host with
++available resource capacity.  In addition to the constraints, we optimize the
++solution for some cost metrics, so that the net cost of placing all VMs to
++certain hosts is minimized.
++
++This driver supports pluggable Solvers, that can leverage
++existing complex constraint solving frameworks, available in open source
++such as PULP, CVXOPT, Google OR-TOOLS, etc. This Scheduler is currently
++supported to work with Compute Nodes in Nova.
++
++* See https://projects.coin-or.org/PuLP, http://cvxopt.org/
++  https://code.google.com/p/or-tools/
++
++This is an alternative to the existing Filter Scheduler in Nova and can be
++plugged in to address complex constraint scenarios.  Some of the use cases
++relevant to this new scheduling mechanism:
++
++* Placing a group of VMs with a policy that requires them to be very close to
++  storage blobs within a network distance of x
++
++* Placing a VM closest to a group of VMs but avoid a bunch of storage nodes
++  (because they are redhot nodes)
++
++* Placing a VM in a network that supports x bandwidth
++
++* Placing a bunch of VMs and a bunch of volumes that are close to each other.
++  (Each vm_i is close to its local volume vol_i)
++
++and so on.
++
++More often we need to be able to support a combination of constraints and
++optimize for a combination of cost metrics.  Enabling these complex scenarios
++and a combination of them using the existing Filter Scheduler with filters and
++weights support makes it as complex as building a complex constraint solver.
++Also the current design of the Filter Scheduler makes the filter code be run
++against each host iteratively to figure out the final placement. In terms of
++performance, this may not scale well.  In constrast the Solver Scheduler
++runs the optimization problem all at once using external fast solver
++implementations such as COIN-OR, CLP, CBC, GLPK, and so on.
++
++The Nova compute resource placement optimization problem when subject to a set
++of linear constraints, can be formulated and solved as a linear programming
++(LP) problem. A LP problem involves maximizing or minimizing a linear function
++subject to linear constraints.
++
++* See: http://en.wikipedia.org/wiki/COIN-OR
++  http://en.wikipedia.org/wiki/COIN-OR#CLP
++  http://en.wikipedia.org/wiki/COIN-OR#CBC
++  http://en.wikipedia.org/wiki/GNU_Linear_Programming_Kit
++  http://en.wikipedia.org/wiki/Linear_programming
++
++
++Proposed change
++===============
++A Solver Scheduler Driver will be implemented as a Scheduler Driver that
++extends the existing Filter Scheduler Driver to most extent, but provides
++the new logic for making placement decisions using a pluggable Solver.
++The pluggable Solver used by the Solver Scheduler driver models the Nova
++compute placement request as a constraint optimization problem using a set of
++constraints derived from the placement request specification and a net cost
++value to optimize.  This Solver should model the constraints and costs and
++feed it to a constraint problem specification, which is eventually solved by
++using an external solver.
++
++The list of changes we have planned:
++
++* Base Solver Scheduler driver implementation.  This provides the basic driver
++  code that enables plugging in Solvers to do the placements
++
++* A reference solver implementation that is provided to show how a resource
++  placement problem can be specified
++
++* A Solver implementation that supports using pluggable Constraints and Costs
++
++* Constraint and Cost implementations covering the various scenarios, first
++  to get feature parity with the Filters, and then new ones addressing the
++  cross-service and more complex scenarios
++
++This feature will easily integrate with Nova or the split-scheduler Gantt
++project, and it will be non-disruptive as it is a pluggable scheduler driver.
++
++
++Alternatives
++------------
++When we had shown working code and demos in the Icehouse time frame in HKG,
++we were asked why not implement this as a Filter.  But the idea behind this
++Solver Scheduler is different compared to the functionality of a
++FilterScheduler, and it cannot be implemented as a Filter.  We perform the
++entire placement decision calculation as part of one constraint optimization
++problem, rather than iterating the Filters over each of the Hosts.
++
++
++Data model impact
++-----------------
++
++None.
++
++
++REST API impact
++---------------
++
++None.
++
++
++Security impact
++---------------
++
++None.
++
++
++Notifications impact
++--------------------
++
++None.
++
++
++Other end user impact
++---------------------
++
++The end user will need to provide certain additional configuration options
++and provide additional hints for the various constraint scenarios.
++
++
++Performance Impact
++------------------
++
++We believe this new scheduler framework will remove the burden associated
++with FilterScheduler where a Filter is called multiple times for each Host.
++Also using external fast implementation of Solvers, and solving for the entire
++placement decision problem all at once, we believe this framework should
++perform well in scale.
++
++
++Other deployer impact
++---------------------
++
++Config options: Additional config options will be needed to specify what
++constraints and costs are currently being used.
++Please see the project github for additional configurations:
++https://github.com/CiscoSystems/nova-solver-scheduler#configurations
++
++
++Developer impact
++----------------
++
++None.
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++Yathiraj Udupi <yudupi>
++Email: yudupi AT cisco DOT com
++
++Other contributors:
++Xinyuan Huang <xyhuang>
++Debo Dutta <debo>
++
++Work Items
++----------
++
++This blueprint was approved as part of the Icehouse release cycle,
++and several patches were already submitted as part of it. However, it missed
++the deadline to get all the reviews. Hence being submitted now as a Juno
++nova-spec document.
++Please see the blueprint:
++https://blueprints.launchpad.net/nova/+spec/solver-schedule
++for all the associated work items.
++
++
++Dependencies
++============
++
++This requires a new library called coin-or.pulp for the constraints modeling
++and solvers.  This was included in the requirements project as part of the
++Icehouse time frame.
++
++
++Testing
++=======
++
++Tests are added similar to the tests being conducted for Filter Scheduler.
++
++
++Documentation Impact
++====================
++
++Additional configurations needed will need documentation updates.
++
++
++References
++==========
++
++
++* Detailed Specification document: http://goo.gl/p7FCC9
++
++* Working project code: https://github.com/CiscoSystems/nova-solver-scheduler
++
++* A reference solver implementation documentation: http://goo.gl/vuHcz2
+-- 
+1.9.1
+

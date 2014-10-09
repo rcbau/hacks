@@ -1,0 +1,208 @@
+From e2c8693d6718d6d3c4e77a064fe02afa59202a73 Mon Sep 17 00:00:00 2001
+From: Belmiro Moreira <moreira.belmiro.email.lists@gmail.com>
+Date: Wed, 11 Jun 2014 22:43:19 +0200
+Subject: [PATCH] Dedicate aggregates for specific tenants
+
+Extend the "AggregateMultiTenancyIsolation" scheduler filter
+in order to optionally exclude instances from being schedule
+for deployment in hosts that don't belong to the defined
+aggregate(s).
+
+blueprint multi-tenancy-isolation-only-aggregates
+
+Change-Id: I1c0d650e16904790a964c5626612c576ce1de213
+---
+ specs/juno/tenant-aggregate-exclusive-filter.rst | 181 +++++++++++++++++++++++
+ 1 file changed, 181 insertions(+)
+ create mode 100644 specs/juno/tenant-aggregate-exclusive-filter.rst
+
+diff --git a/specs/juno/tenant-aggregate-exclusive-filter.rst b/specs/juno/tenant-aggregate-exclusive-filter.rst
+new file mode 100644
+index 0000000..30c7ba5
+--- /dev/null
++++ b/specs/juno/tenant-aggregate-exclusive-filter.rst
+@@ -0,0 +1,181 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++============================
++Tenants to Aggregate Filter
++============================
++
++https://blueprints.launchpad.net/nova/+spec/multi-tenancy-isolation-only\
++-aggregates
++
++Extend the "AggregateMultiTenancyIsolation" scheduler filter in order to
++optionally exclude instances from being schedule for deployment in hosts that
++don't belong to the defined aggregate(s).
++
++Problem description
++===================
++
++The "AggregateMultiTenancyIsolation" scheduler filter allows the creation of
++instances from defined tenants in specific aggregates.
++If an aggregate has the metadata key "filter_tenant_id" defined with tenant
++ids, (ex: filter_tenant_id=tenant_id1,tenant_id2) only instances from those
++tenants will be scheduled for deployment in the aggregate.
++
++However, it doesn't exclude those instances from being scheduled for
++deployment in other hosts that don't belong to the aggregate. Is not possible
++to exclusively dedicate an aggregate to a set of tenants.
++
++
++Proposed change
++===============
++
++We propose the introduction of the
++"aggregate_multitenancy_isolation_tenant_exclusive" configuration option for
++the "AggregateMultiTenancyIsolation" scheduler filter. The default value of
++this new configuration option is "false" which preserves the current filter
++behavior. If it's "true" instances from the tenant defined in the aggregate
++metadata "filter_tenant_id" will only be scheduled for deployment to the
++aggregate.
++This will allow the exclusive dedication of an aggregate to a tenant.
++
++Example:
++Aggregate_A => filter_tenant_id = project_a
++Aggregate_B => filter_tenant_id = project_b
++Aggregate_C => filter_tenant_id = project_a
++Aggregate_D
++
++If aggregate_multitenancy_isolation_tenant_exclusive=false (current behavior)
++
++ * Instance_1 from project_a can run in:
++   Aggregate_A, Aggregate_C, Aggregate_D
++ * Instance_2 from project_b can run in:
++   Aggregate_B, Aggregate_D
++ * Instance_3 from project_x can run in:
++   Aggregate_D
++
++If aggregate_multitenancy_isolation_tenant_exclusive=true
++
++ * Instance_1 from project_a can run in:
++   Aggregate_A, Aggregate_C
++ * Instance_2 from project_b can run in:
++   Aggregate_B
++ * Instance_3 from project_x can run in:
++   Aggregate_D
++
++
++Alternatives
++------------
++
++Implement a new filter with this functionality.
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++None
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++Current filter behavior is preserved and remains the default.
++New functionality needs to be explicitly enabled by adding the configuration
++option "aggregate_multitenancy_isolation_tenant_exclusive=true".
++
++Performance Impact
++------------------
++
++The filter will use the existing DB query
++"aggregate_host_get_by_metadata_key()" if the configuration option
++"aggregate_multitenancy_isolation_tenant_exclusive=true" in order to evalute
++if "filter_tenant_id" is defined in other hosts.
++
++Depending in the deployment size it could have a performance impact.
++Documentation will reflect this.
++
++Other deployer impact
++---------------------
++
++None
++
++Developer impact
++----------------
++
++None
++
++Implementation
++==============
++
++Work Items
++----------
++
++ * Modify "AggregateMultiTenancyIsolation" to dedicate an aggregate to a
++   tenant if the configuration option
++   "aggregate_multitenancy_isolation_tenant_exclusive" is defined and is
++   "true".
++ * Change the scheduler filter documentation reflecting the new functionality.
++
++Assignee(s)
++-----------
++
++Primary assignee:
++moreira-belmiro-email-lists
++
++Other contributors:
++jesse-pretorius
++
++
++Dependencies
++============
++
++None
++
++Testing
++=======
++
++Additional unit tests:
++ * Set configuration option
++   aggregate_multitenancy_isolation_tenant_exclusive=true.
++   Validate that if the tenant is not in the filter_tenant_id list then the
++   host fails.
++ * Set configuration option
++   aggregate_multitenancy_isolation_tenant_exclusive=true.
++   Validate that if the tenant is in the filter_tenant_id list then the host
++   passes.
++ * Set configuration option
++   aggregate_multitenancy_isolation_tenant_exclusive=true.
++   Validate that if the tenant is in the filter_tenant_id list then all hosts
++   that are not in the aggregate fail.
++ * Set configuration option
++   aggregate_multitenancy_isolation_tenant_exclusive=false.
++   Validate that the host passes for any tenant if it doesn't belong to an
++   aggregate with filter_tenant_id defined.
++
++Documentation Impact
++====================
++
++"AggregateMultiTenancyIsolation" documentation will be updated with the new
++feature.
++
++References
++==========
++
++None
++
++
+-- 
+1.9.1
+

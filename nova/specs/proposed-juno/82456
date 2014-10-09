@@ -1,0 +1,218 @@
+From c7fe3a033489854887931e2bdae2c76f0962217e Mon Sep 17 00:00:00 2001
+From: Alvaro Lopez Garcia <aloga@ifca.unican.es>
+Date: Mon, 24 Mar 2014 10:46:38 +0100
+Subject: [PATCH] Propose: Normalize Weights (adapt weighers)
+
+Continuation of the bp normalize-scheduler-weights. This blueprint is
+targeted on the adaptation (mainly configuration options) of the
+existing weighers to fully profit from the new normalization mechanism
+that is in place.
+
+Implements: normalize-scheduler-weights-2
+
+Change-Id: I379a60bf31dd6c9a4543ed33de8507ba620871e1
+---
+ specs/juno/normalize-scheduler-weights-2.rst | 191 +++++++++++++++++++++++++++
+ 1 file changed, 191 insertions(+)
+ create mode 100644 specs/juno/normalize-scheduler-weights-2.rst
+
+diff --git a/specs/juno/normalize-scheduler-weights-2.rst b/specs/juno/normalize-scheduler-weights-2.rst
+new file mode 100644
+index 0000000..a2f0b9f
+--- /dev/null
++++ b/specs/juno/normalize-scheduler-weights-2.rst
+@@ -0,0 +1,191 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++====================================
++ Normalize Weights (adapt weighers)
++====================================
++
++https://blueprints.launchpad.net/nova/+spec/normalize-scheduler-weights-2
++
++This blueprint is just a continuation of a blueprint already approved for
++Havana that missed feature freeze:
++https://blueprints.launchpad.net/nova/+spec/normalize-scheduler-weights
++
++Nova's scheduler used the raw values returned by each of the weighers to
++compute the final weight of a compute host or cell. This made difficult for
++operators to setup and use multipliers to stablish the relative importance
++between weighers since they weren't able to know the maximim weight for an
++object in advance, as it was a variable value. Moreover, in order to make a
++weigher prevail among others in some cases it was needed to artificially
++inflate either the weigher's returned value or the weigher's multiplier.
++
++The blueprint that was already implemented introduced weight normalization.
++This mechanism maps all the values returned from a weigher between 0 and 1,
++thus they have an even relative influence in the final weight for a host.
++Therefore, an operator knows a-priori that a host with a weight of 1 is the
++winner of that weighing process, and a host with 0 is the loser, making easier
++to setup multipliers in order to stablish the relative importance between
++weighers.
++
++This new blueprint is targeted into an homogenization, cleanup and improvement
++of existing weighers to profit from that normalization process.
++
++
++Problem description
++===================
++
++With weight normalization in place there are weigher options that are not
++needed anymore. These are focused on artificially inflating the values of the
++weigher so that it could prevail against any other weigher. This is not needed
++anymore, since the final maximum weight of the host will be '1' and is
++confusing since setting them has no effect at all.
++
++Lastly, some weighers can be improved and they can support the usage of
++relative values instead of the absolute ones. This is useful in weighers
++that take into account the usage of resources, such as the usage of RAM.
++
++
++Proposed change
++===============
++
++This change will review the existing weighers and adapt them to profit from the
++changes introduced by weight normalization in commit e5ba8494. In that commit
++the values returned by the weighers are normalized between 1.0 and 0.0. Before
++the raw values where used, therefore there were some weighers that used flags
++to artificiually inflate their values to make them prevail agaist another
++weigher that could return a large value. This is no longer true, so this kind
++of flags are misleading. Moreover, normalization opens the door to the usage
++of relative weights for some weighers (for example the RAM weigher).
++
++Namely, the weighers that will be adapted and the proposed changes are the
++following
++
++nova.cells.weights.mute_child
++-----------------------------
++
++Deprecate the usage of 'mute_weight_value' configuration option. Currently
++this option has no effect at all and thus it is misleading: The option can be
++set, but has no effect because the value is being normalized, so a muted child
++will get a final weight of 1.0, regardless of its value. This option must be
++deprecated for Juno, and removed for the K release.
++
++nova.scheduler.weights.ram
++--------------------------
++
++This weigher will be adapted to use relative values (i.e. percentage based).
++A new flag will be introduced to select this behaviour, thus it will remain
++compatible with its current status.
++
++Alternatives
++------------
++
++None.
++
++Data model impact
++-----------------
++
++None.
++
++REST API impact
++---------------
++
++None.
++
++Security impact
++---------------
++
++None.
++
++Notifications impact
++--------------------
++
++None.
++
++Other end user impact
++---------------------
++
++None.
++
++Performance Impact
++------------------
++
++None.
++
++Other deployer impact
++---------------------
++
++A new configuration option will be included for the 'RAMWeigher':
++'ram_weight_percentage=False' so as to use the percentage of free RAM available
++instead of the usage of the absolute values.
++
++A configuration option will be set as deprecated, namely 'mute_weight_value'
++for the 'MuteChildWeigher' weigher. This configuration option was used to
++artificially inflate the returned weight for a cell that was unavailable, but
++it is not needed anymore and a multiplier should be used instead. Since the
++normalization process is already in place, this variable has no effect at all
++and a muted child will get a weight of 1.0 instead of the applied value.
++
++Developer impact
++----------------
++
++None.
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  aloga
++
++Other contributors:
++  None
++
++Work Items
++----------
++
++- Mark as deprecated 'mute_weight_value' from nova.cells.weights.mute_child
++- Modify RamWeigher so that percentages can be used instead of absolute values
++  (new flag 'ram_weight_percentage').
++- Update both the developer documentation and the Cloud Admin Guide with
++  clarifications about the scheduling and weighing process, and with
++  information about the behaviour of each of the individual weighers with the
++  updated options.
++
++Dependencies
++============
++
++This blueprint is a continuation of the following (already implemented):
++https://blueprints.launchpad.net/nova/+spec/normalize-scheduler-weights
++
++
++Testing
++=======
++
++There is no need for new tempest tests.
++
++
++Documentation Impact
++====================
++
++A new configuration option 'ram_weight_percentage' will be introduced, so
++that the RAM weighing will take into account the percentage of free ram
++instead of the absolute values.
++
++The 'mute_weight_value' option will be marked as deprecated so the
++operators need to adjust the 'mute_weight_multiplier' to a proper
++value if they weren't using the defaults.
++
++These configuration changes will be noted in the Release Notes and the Cloud
++Admin Guide will be updated along with this blueprint.
++
++
++References
++==========
++
++None.
+-- 
+1.9.1
+

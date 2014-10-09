@@ -1,0 +1,313 @@
+From 3141fe30434c4470797ec6a1c34acc594fafd7bc Mon Sep 17 00:00:00 2001
+From: CristianFiorentino <cristian.fiorentino@intel.com>
+Date: Thu, 26 Jun 2014 17:50:49 -0300
+Subject: [PATCH] Force Encrypted Live Migration thru Nova API
+
+The goal of this Blueprint is to allow admins to force "encrypted" Live
+Migration (LM) thru Nova API. This will leverage and allow admins to use
+encryption in Live Migrations everywhere; especially for cases where no
+encryption has been set in configuration files and without the need to
+manually update and restart nodes/services.
+
+The proposal is to modify Nova API once for exposing this option for the
+different virtualization drivers, and initially to implement this option for
+libvirt driver making use of libvirt tunneling.
+
+Related to blueprint: encrypted-live-migration-nova
+
+Change-Id: I505404ffd973277948e538e3bc5ea5d7f297133e
+---
+ specs/juno/encrypted-live-migration-nova.rst | 281 +++++++++++++++++++++++++++
+ 1 file changed, 281 insertions(+)
+ create mode 100644 specs/juno/encrypted-live-migration-nova.rst
+
+diff --git a/specs/juno/encrypted-live-migration-nova.rst b/specs/juno/encrypted-live-migration-nova.rst
+new file mode 100644
+index 0000000..aa4872f
+--- /dev/null
++++ b/specs/juno/encrypted-live-migration-nova.rst
+@@ -0,0 +1,281 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++============================================
++Force encrypted Live Migration thru Nova API
++============================================
++
++https://blueprints.launchpad.net/nova/+spec/encrypted-live-migration-nova
++
++The goal of this Blueprint is to allow admins to force "encrypted" Live
++Migration (LM) thru Nova API. This will leverage and allow admins to use
++encryption in Live Migrations everywhere; especially for cases where no
++encryption has been set in configuration files and without the need to
++manually update and restart nodes/services.
++
++The proposal is to modify Nova API once for exposing this option for the
++different virtualization drivers, and initially to implement this option for
++libvirt driver making use of libvirt tunneling.
++
++
++Problem description
++===================
++
++As described in OpenStack Security Guide, associated Risks of plain text Live
++migration include (see references Section for details):
++
++* Data Exposure. Memory or disk transfers must be handled securely.
++
++* Data Manipulation. If memory or disk transfers are not handled securely then
++  an attacker could manipulate user data during the migration.
++
++* Code Injection. If memory or disk transfers are not handled securely, then
++  an attacker could manipulate executables, either on disk or in memory,
++  during the migration.
++
++Currently Live Migration encryption can only be configured in nova.conf for
++libvirt tunneling. For cases where the admin does not know/missed/forgot
++configuring encryption in configuration files and encryption desired to be
++used afterwards nodes services are required to be manually modified/restarted.
++Considering a deployment with high number of nodes this may lead to not using
++encryption at all (given possible availability/performance considerations).
++So this new option leverages, facilitates and offers more flexibility in the
++setup and usage of encryption during Live Migration.
++
++
++Proposed change
++===============
++
++For exposing this force encryption option in Live Migration it is required to
++expose this in Nova APIs, by adding a new "force_migration_encryption"
++parameter:
++
++* Add this new parameter in the different method signatures for Nova Compute,
++  Nova Conductor and Nova Client (see API impact section for details). This
++  parameter will be passed all along these components until reaching a
++  specific virt driver where this parameter will be used.
++
++* Add the same "force_migration_encryption" in virt/driver.py abstract
++  live_migration method, setting its default to None.
++
++* libvirt/driver.py _live_migrate method to be modified for setting tunneled
++  option if the "force_migration_encryption" flag is set: "flags" parameter in
++  call to migrateToURI to contain: VIR_MIGRATE_TUNNELLED and
++  VIR_MIGRATE_PEER2PEER.
++
++* If VIR_MIGRATE_TUNNELLED and VIR_MIGRATE_PEER2PEER were set in nova.conf
++  then the encryption flags will be set in the migrateToURI as of today,
++  independently if "force_migration_encryption" parameter is set or not.
++
++* Force encryption option is to be applied where available by the different
++  virt driver and if compatible with other configurations (i.e. libvirt
++  tunneled live migration is only possible if block_migration is not used).
++
++Alternatives
++------------
++
++Currently, such functionality can only be accessed through manual
++configuration of libvirt, as described in OpenStack Security Guide:
++http://docs.openstack.org/security-guide/content/ch055_security-services-for-instances.html#ch055_security-services-for-instances-idp191072
++
++with additional comments in the following OSSN:
++https://wiki.openstack.org/wiki/OSSN/OSSN-0007
++
++Tunneling of migration traffic does not apply to live block migration.
++
++Allowing to force Live Migration Encryption would facilitate and leverage the
++usage of Live Migration thru encrypted communication.
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++There are not changes in the URI for live_migration:
++
++/v2/{tenant_id}/servers/{server_id}/action
++/v3/servers/​{server_id}​/action/​{server_id}​/action
++
++In the JSON request a new additional property "force_migration_encryption" is
++added::
++
++    {
++        "os-migrateLive": {
++            "host": "0443e9a1254044d8b99f35eace132080",
++            "block_migration": false,
++            "disk_over_commit": false,
++            "force_migration_encryption": false
++        }
++    }
++
++Initially there have been identified the following API/methods in Nova
++Compute, Conductor, Nova Client and virt/libvirt where the new
++"force_migration_encryption" parameter needs to be added:
++
++Nova Compute:
++
++* nova/compute/api.py: live_migrate()
++
++* nova/compute/rpcapi.py: live_migration()
++
++* nova/compute/manaper.py: live_migration()
++
++Nova Conductor:
++
++* nova/conductor/api.py: live_migrate_instance()
++
++* nova/conductor/manager.py: migrate_server()
++
++* nova.conductor.manager.py: _live_migrate()
++
++* nova/conductor/tasks/live_migrate.py: execute()
++
++virt/libvirt:
++
++* nova/virt/driver.py: live_migration()
++
++* nova/virt/libvirt/driver.py: live_migration()
++
++* nova/virt/libvirt/driver.py: _live_migration()
++
++Nova Client:
++
++* pyhton-novaclient/novaclient/version/server.py: live_migrate()
++
++Parameter "force_migration_encryption" is initially to be added by default as
++None for not broking compatibility with other modules not using it.
++
++At this point there has not been identified a need to modify
++check_can_live_migrate_destination methods to add this new parameter.
++
++Initially no new error codes identified to be added.
++
++
++Security impact
++---------------
++
++This is an enhancement in the Security configuration for Live Migration.
++Nova API is modified for allowing to force encrypted Live Migration in
++case this has not been set in configuration file for the nodes used during
++the Live Migration process.
++
++Encryption thru libvirt tunneling is only enabled initially, but the involved
++abstract driver methods are modified for this being implemented later also for
++other drivers apart from libvirt.
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++There is a pair of related Blueprints for allowing admins to force encrypted
++Live Migration thru python-novaclient and Horizon. Both user interfaces would
++make use of this functionality thru the explained changes in Nova API:
++
++*  https://blueprints.launchpad.net/horizon/+spec/encrypted-live-migration-horizon
++
++*  https://blueprints.launchpad.net/python-novaclient/+spec/encrypted-live-migration-novaclient
++
++Performance Impact
++------------------
++
++As explained here: http://libvirt.org/migration.html#transporttunnel a
++tunneled transport involves extra data copies between source and destination
++implying then a degradation in live migration performance (with the benefit of
++Security of course).
++
++Other deployer impact
++---------------------
++
++No specific deployment configuration would be required, but this functionality
++would initially be available only if libvirt is being used and block migration
++is not selected.
++
++Developer impact
++----------------
++
++Initially the proposal is to provide this functionality only for libvirt
++deployments; but to modify the Nova API for being ready for other
++virtualization drivers encryption implementations.
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  cristian-fiorentino
++
++Work Items
++----------
++
++* Modification in Nova Compute to include a new optional parameter.
++
++* Modification in Nova Conductor to include a new optional parameter.
++
++* Modification in abstract virt driver to include a new optional parameter.
++
++* Modification in libvirt driver to include a new optional parameter.
++
++* Modification in libvirt driver to interpret this new parameter and
++  to make the respective calls to libvirt API.
++
++* Modification in Nova Client for enaling this new option.
++
++
++Dependencies
++============
++
++None
++
++
++Testing
++=======
++
++New tests need to be added on Live Migration for this new option.
++
++
++Documentation Impact
++====================
++
++Document the optional inclusion of the new "force_migration_encryption"
++parameter in respective APIs for Nova Compute, Conductor, virt/libvirt and
++Nova Client.
++
++Comment that this option is currently only available for libvirt and if
++block migration is not used.
++
++Additionally to document the performance considerations of using libvirt
++tunneling as explained in performance section.
++
++
++References
++==========
++
++* Launchpad Blueprint:
++  https://blueprints.launchpad.net/nova/+spec/encrypted-live-migration-nova
++
++* Related Blueprints:
++  https://blueprints.launchpad.net/horizon/+spec/encrypted-live-migration-horizon
++  https://blueprints.launchpad.net/python-novaclient/+spec/encrypted-live-migration-novaclient
++
++* Libvirt tunneling performance considerations:
++  http://libvirt.org/migration.html#transporttunnel
++
++* OpenStack Security Guide - Encrypted Live Migration recommendation:
++  http://docs.openstack.org/security-guide/content/ch055_security-services-for-instances.html#ch055_security-services-for-instances-idp191072
++
++* Encrypted Live Migration comments in related OSSN:
++  https://wiki.openstack.org/wiki/OSSN/OSSN-0007
++
+-- 
+1.9.1
+

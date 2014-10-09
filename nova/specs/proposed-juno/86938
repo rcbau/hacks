@@ -1,0 +1,303 @@
+From d78dcddab9bbc654c61e681bac30316d2d3b2b26 Mon Sep 17 00:00:00 2001
+From: Andrew Laski <andrew.laski@rackspace.com>
+Date: Fri, 11 Apr 2014 11:24:32 -0400
+Subject: [PATCH] Add tasks to the v3 API
+
+This blueprint covers the creation of a task model and object and it's
+exposure in the v3 REST API.
+
+Part of blueprint instance-tasks-api
+
+Change-Id: I4f94bef52df55a57b7a78230cc64c5389d4ca860
+---
+ specs/juno/instance-tasks-api.rst | 278 ++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 278 insertions(+)
+ create mode 100644 specs/juno/instance-tasks-api.rst
+
+diff --git a/specs/juno/instance-tasks-api.rst b/specs/juno/instance-tasks-api.rst
+new file mode 100644
+index 0000000..3f97f42
+--- /dev/null
++++ b/specs/juno/instance-tasks-api.rst
+@@ -0,0 +1,278 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++====================
++Add tasks to the API
++====================
++
++https://blueprints.launchpad.net/nova/+spec/instance-tasks-api
++
++In order to be more clear and explicit about what is happening to an instance a
++task resource is being introduced into the API.  This will allow better
++reporting on what is happening during an instance boot or when an action is
++requested on an instance like reboot, rescue, rebuild, etc...
++
++
++Problem description
++===================
++
++One of the challenges in the API up to this point has been signalling a failure
++of an action without affecting the instance itself. For example, if a reboot
++fails, it may leave the instance untouched and usable so it's not appropriate
++to set the vm_state to ERROR.  But without doing so there's no way to indicate
++that the reboot failed.
++
++Another challenge is accounting for what has happened to an instance.  The
++details of who has performed which action on an instance is stored and
++presented by the instance-actions extension but few users know of its
++existence.  This is useful information and should be clearly visible in the
++API.
++
++
++Proposed change
++===============
++
++A POST to ``/v3/servers/`` to create an instance or POSTs to
++``/v3/servers/<uuid>/action`` to perform actions like reboot/rescue/rebuild/etc
++would return a task object as the response body.  In the case of creating > 1
++server with a single request mutiple task objects will be returned, one for
++each server being built.  The API impact will be described more fully in the
++REST API impact section below.
++
++The task model will initially be made up of the following components:
++
++ * uuid:
++ * name: The name of the task i.e. rebooting, rescue, rebuild, pause, etc...
++         These will re-use the currently defined task states.
++ * state: 'active', 'error', 'complete', 'timeout', 'aborted' is a
++          non-exhaustive list of examples.
++ * resource_uuid: uuid of the instance in motion.
++ * request_id: context.request_id
++ * user_id: context.user_id
++ * project_id: context.project_id
++ * created_at: initialized by the database on creation
++ * last_updated: Can be used to periodically update a long running task to show
++                 that it has not stalled.
++
++Task objects will be created in the API method that handles the request, and
++will be sent to the appropriate compute.api methods along with the instance
++that is currently passed there.  They will also be passed via RPC to compute
++nodes so that they can be updated there without needing to pull them from the
++database.  Basically any method that along a code path that updates tasks will
++be passed a task object along with the instance object.
++
++There are some things that are out of scope for this change but should be
++mentioned as they may affect some design decisions or answer questions that may
++come up later.
++
++ * task_state isn't being modified in any way.  This will ensure the v2 API and
++   the current task_state state machine won't be affected.
++
++ * Two desirable use cases are the ability to abort tasks when a delete is
++   initiated and the ability to resume tasks after a service restart.  Future
++   work should allow this so decisions will be made with this idea in mind.
++
++ * Tasks could eventually spawn sub-tasks in order to more granularly represent
++   what is happening withing Nova.  For example the boot process involves
++   downloading an image or connecting a volume, setting up networking, and many
++   other steps.  Some of these may end up being their own task.
++
++Alternatives
++------------
++
++The instance-actions extension was an alternative approach to solving some of
++these problems.  But it is not extensible enough to fully deprecate the
++instance task_state.  It is constrained by only being able to have one
++instance-action per request_id.  And for multiple server create, or future
++sub-tasks that is too limiting.  Tasks is an attempt to achieve what it could
++not.
++
++Since instance-actions are an alternative approach to solving the problems that
++tasks are addressing, they should be deprecated in favor of tasks.  Tasks
++provide the same capabilities that instance-actions do, or can be expanded to
++do so.  Initially the deprecation could be accomplished by not including them
++in API V3.  Further work to remove instance-actions will be somewhat reliant on
++how API V2 is handled once V3 is available.
++
++Data model impact
++-----------------
++
++A new table will be added to store tasks.  The schema will be created such that
++it can store the tasks as described above.  This table will initially be empty
++so a schema migration will be necessary but not a data migration.
++
++The sqlalchemy definition of the table may look like:
++
++    columns = [Column('created_at', DateTime(timezone=False)),
++               Column('updated_at', DateTime(timezone=False)),
++               Column('deleted_at', DateTime(timezone=False)),
++               Column('id', Integer, primary_key=True),
++               Column('uuid', String(36), nullable=False),
++               Column('name', String(255), nullable=False),
++               Column('state', String(255), nullable=False),
++               Column('resource_uuid', String(36), nullable=False),
++               Column('request_id', String(length=255), nullable=False),
++               Column('user_id', String(length=255), nullable=False),
++               Column('project_id', String(length=255), nullable=False),
++               Column('last_updated', DateTime(timezone=False)),
++               Column('deleted', Integer, default=0)]
++
++
++REST API impact
++---------------
++
++The requests for creating an instance or acting on an instance will not change
++but the responses will.  The success response code of 202 will not change and
++error codes will not change, though the messages may change for task related
++failures.
++
++The reponse object returned for requests which return a task will have the
++following structure (jsonschema)::
++
++    task = {
++        'type': 'object',
++        'properties': {
++            'id': { 'type': 'string', 'format': 'uuid' },
++            'name': { 'type': 'string' },
++            'state': { 'type': 'string' },
++            'resource_uuid': {'type': 'string' },
++            'request_id': { 'type': 'string' },
++            'user_id': { 'type': 'string' },
++            'project_id': { 'type': 'string' },
++            'created_at': { 'type': 'string' },
++            'last_updated': { 'type': 'string', 'format': 'date-time' }
++        }
++        'additionalProperties': True
++    }
++
++additionalProperties is True because there may be times that it makes sense to
++return a copy of the server as well and there may be other additions over time.
++
++It's worth mentioning the multiple server create case specifically.  When a
++user requests multiple servers to be created with a single request a separate
++task will track each server.  The response for this case will be a list of
++tasks with the server, or just server_id, within each one.  There is another
++proposal[1] open that gets into more specifics on the response format for
++multiple server create.
++
++
++Additionally there will be two new URLs for requesting task data.  The details
++of the v3 API are slightly unclear at this point, but building on what's in
++place at this moment the new URLs would be
++``http://<host>/v3/servers/<server-uuid>/tasks`` and
++``http://<host>/v3/tasks``.
++
++The tasks URL under servers will allow listing tasks for a server with a GET on
++that URL, or getting details of a particular task with a GET on
++``/servers/<server-uuid>/tasks/<task-uuid>``.
++
++The ``http://<host>/v3/tasks`` URL will allow listing all tasks within a
++project_id, or all tasks as an admin, and then filtering by various criteria.
++The initial plan is to include filtering by task, state, request_id, and
++project_id(admin only).
++
++And it should be noted that the lifetime of a task is expected to match the
++server that it's connected with.  So tasks should be visible until the server
++is deleted at which point the associated tasks will be deleted.  And any db
++pruning should handle tasks the same as other data, like metadata, attached to
++a server.
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++python-novaclient will need to adapt to work with tasks that are returned as
++API responses.  This includes displaying tasks in the CLI and returning tasks
++to scripts using python-novaclient as a library.
++
++Performance Impact
++------------------
++
++This change will involve more writes to the database.  The number of writes
++should end up being approximately equal to the number of task_state updates
++that currently occur.
++
++Other deployer impact
++---------------------
++
++Nova supports compute nodes running at a version behind the rest of the
++infrastructure which poses some challenges for this work.  Computes have some
++responsibility for updating tasks but Icehouse computes will not have any code
++to accomplish that.  This means that the full capabilities of tasks will not
++be present until computes are upgraded to Juno.  They will be present in the
++API but will not provide accurate representations of work done on an instance.
++
++Developer impact
++----------------
++
++If a new action is added to the API it will need to create and return a task
++object.  Otherwise there should be no impact.
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  alaski
++
++Other contributors:
++  harlowja
++
++Work Items
++----------
++
++ * Create db model and migration for tasks.
++
++ * Create task object.
++
++ * Add task API resources for querying.
++
++ * Create and return tasks with instance POST requests.
++
++ * Identify remaining task_state modifications that could be a server task.
++
++
++Dependencies
++============
++
++None
++
++
++Testing
++=======
++
++Tempest tests should ensure that tasks are being returned in the proper places
++and that they're ending up in a proper complete or fail state.
++
++
++Documentation Impact
++====================
++
++The REST API additions, as represented by the jsonschema definition above, will
++need to be documented.  The additions are limited to the response from a server
++create or the response to a request to take an action on a server.  Definitive
++examples of the API additions will be available as API samples generated from
++testing.
++
++
++References
++==========
++
++[1] https://review.openstack.org/#/c/91907/
++
++https://etherpad.openstack.org/p/midcycle-instance-tasks
+-- 
+1.9.1
+

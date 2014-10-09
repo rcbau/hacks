@@ -1,0 +1,186 @@
+From 2980cc0862bb91e03c2831b582be0469140b5674 Mon Sep 17 00:00:00 2001
+From: Balazs Gibizer <balazs.gibizer@ericsson.com>
+Date: Fri, 11 Apr 2014 09:47:02 +0200
+Subject: [PATCH] Add soft policies for server-group feature
+
+This spec describes the need and a possible implementation
+of soft-affinty and soft-anti-affinty policies
+
+Change-Id: I66f7f5f089d7bd9d00478adf542a1f7bc0116602
+---
+ specs/juno/soft-affinity-for-server-group.rst | 163 ++++++++++++++++++++++++++
+ 1 file changed, 163 insertions(+)
+ create mode 100644 specs/juno/soft-affinity-for-server-group.rst
+
+diff --git a/specs/juno/soft-affinity-for-server-group.rst b/specs/juno/soft-affinity-for-server-group.rst
+new file mode 100644
+index 0000000..13a2454
+--- /dev/null
++++ b/specs/juno/soft-affinity-for-server-group.rst
+@@ -0,0 +1,163 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++=============================================
++Add soft affinity support for server group
++=============================================
++
++https://blueprints.launchpad.net/nova/+spec/soft-affinity-for-server-group
++
++As a tenant I would like to schedule instances on the same host if possible,
++so that I can achieve colocation. However if it is not possible to schedule
++some instance to the same host then I still want that the subsequent
++instances are scheduled together on another host. In this way I can express
++a good-to-have relationship between a group of instances.
++
++As a tenant I would like to schedule instances on different hosts if possible.
++However if it is not possible I still want my instances to be scheduled even
++if it means that some of them are placed on a host where another instances
++are running from the same group.
++
++
++Problem description
++===================
++
++End User might want to have a less strict affinity and anti-affinity
++rule than what is today available in server-group API extension.
++With the proposed good-to-have affinity rule the End User can request nova
++to schedule the instance to the same host if possible. However if it is not
++possible (e.g. due to resource limitations) then End User still wants to keep
++the instances on a small amount of different host.
++With the proposed good-to-have anti-affinity rule the End User can request
++nova to spread the instances in the same group as much as possible.
++
++
++Proposed change
++===============
++
++This change would extend the existing server-group API extension with two new
++policies soft-affinity and soft-anti-affinity.
++When a instance is booted into a group with soft-affinity policy the scheduler
++will use a new weight AffinityWeight to sort the available hosts according to
++the number of instances running on them from the same server-group in a
++descending order.
++When an instance is booted into a group with soft-anti-affinity policy the
++scheduler will use a new weight AntiAffinityWeight to sort the available hosts
++according to the number of instances running on them from the same
++server-group in a ascending order.
++
++The two new weights will get the necessary information about the number of
++instances per host through the weight_properties (filter_properties) in
++a similar way as the GroupAntiAffinityFilter gets the list of hosts used by
++a group via the filter_properties.
++
++These new soft-affinity and soft-anti-affinity policies are mutually exclusive
++with each other and with the other existing server-group policies.
++
++Alternatives
++------------
++
++Alternatively End User can use the server-group with affinity policy and if
++the instance cannot be scheduled because the host associated to the group is
++full then End User can create a new server-group for the subsequent instances.
++However with large amount of instances that occupy many hosts this manual
++process can become quite cumbersome.
++
++Data model impact
++-----------------
++
++No schema change is needed.
++
++There will be two new possible values soft-affinity and soft-anti-affinity for
++he policy column of the instance_group_policy table.
++
++REST API impact
++---------------
++
++POST: v2/{tenant-id}/os-server-groups
++  The value of the policy request parameter can be soft-affinity and
++  soft-anti-affinity as well.
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++None
++
++Performance Impact
++------------------
++
++None
++
++Other deployer impact
++---------------------
++
++None
++
++Developer impact
++----------------
++
++None
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  balazs-gibizer
++
++
++Work Items
++----------
++
++* Add two new weights to the filter scheduler. These weights will
++  sort the available hosts by the number of instances from the same
++  server-group.
++* Update FilterScheduler to use the proper weight for the instance scheduling
++  if soft-affinity or soft-anti-affinity is used as a policy of the
++  server-group the instance booted into.
++* Update the server-group API extension to allow soft-affinity and
++  soft-anti-affinty as the policy of a group.
++
++
++Dependencies
++============
++
++* This BP depends on the instance-group-api-extension
++
++
++Testing
++=======
++
++It is not testable in the gate with tempest as we would need at least two
++compute hosts to be able to write meaningful tests.
++
++Unit test coverage will be provided.
++
++Documentation Impact
++====================
++
++New weights need to be described in filter_scheduler.rst
++
++
++References
++==========
++
++* instance-group-api-extension BP
++  https://blueprints.launchpad.net/nova/+spec/instance-group-api-extension
++* Group API wiki
++  https://wiki.openstack.org/wiki/GroupApiExtension
+-- 
+1.9.1
+

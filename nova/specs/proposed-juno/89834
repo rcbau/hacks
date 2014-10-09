@@ -1,0 +1,234 @@
+From 0120a57f37a303933e6c71ec2a46cc8384908c22 Mon Sep 17 00:00:00 2001
+From: JingYuan <yj.yuan@huawei.com>
+Date: Tue, 17 Jun 2014 22:44:01 +0800
+Subject: [PATCH] Support function of USB-redirection
+
+There are requirements for USB-redirection function like redirect a USB printer from TC(Think client) to cloud by some kind of protocols like spice,
+then user can use printer device in cloud environment
+
+blueprint usb-redirection
+
+Change-Id: I20f9e3e127b3a2f5d98ad69fd278ef657c3bd47d
+---
+ specs/juno/usb-redirection.rst | 209 +++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 209 insertions(+)
+ create mode 100644 specs/juno/usb-redirection.rst
+
+diff --git a/specs/juno/usb-redirection.rst b/specs/juno/usb-redirection.rst
+new file mode 100644
+index 0000000..4dbda19
+--- /dev/null
++++ b/specs/juno/usb-redirection.rst
+@@ -0,0 +1,209 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++===================================
++Support function of USB-redirection
++===================================
++
++Include the URL of your launchpad blueprint:
++
++https://blueprints.launchpad.net/nova/+spec/usb-redirection
++
++We provide VDI(Virtual Desktop)solution for customers, our customers have
++strong requirements for using USB devices.
++
++The typical use cases and our solutions are described as below:
++
++Customers want to use local USB printers or USB scanners with
++TC(Thin-Client), because remote desktop protocol like ICA have already
++supported USB-redirection, so customers only need to attach USB device to TC,
++the protocol can map USB device to VM.
++
++
++Problem description
++===================
++
++Use cases 1:
++
++A end user wants to print some documents in cloud environments, him perform
++the following steps:
++
++1. Create a VM with virtual USB-redirection devices.
++
++2. Use TC with spice client to connect to VM, insert USB printer to TC,
++select printer to redirect to VM in GUI of spice client.
++
++3. User can see printer in VM and use printer to print documents.
++
++Use cases 2:
++
++A end user wants to take a video chat with friends in cloud environments,
++him perform the following steps:
++
++1. Create a VM with virtual USB-redirection devices.
++
++2. Use TC with spice client to connect to VM, insert USB camera to TC,
++select camera to redirect to VM in GUI of spice client.
++
++3. User can see camera in VM and take video chat with friends.
++
++Use cases 3:
++
++A end user wants a on-line shopping, which needs a USB-key for more secure
++payment.
++
++1. Create a VM with virtual USB-redirection devices.
++
++2. Use TC with spice client to connect to VM, insert USB-key to TC, select
++USB-key to redirect to VM in GUI of spice client.
++
++3. User can see USB-key in VM, the security check and payment plugin in
++Browser like IE can use USB-key for authentication.
++
++
++Proposed change
++===============
++
++1. Add USB-redirection device class in libvirt driver.
++
++Details:
++
++Add 'LibvirtConfigGuestDeviceRedirector' class to libvirt driver. The
++related xml may like:
++
++<redirdev bus='usb' type='spicevmc'>
++
++<address type='usb' bus='1' port='2'/>
++
++</redirdev>
++
++The values of 'bus' and 'type' should be specified by user. The values of
++'address' use constants which user not need to specify.
++
++BTW: BP about echi controller can refer to
++https://review.openstack.org/#/c/88334/
++
++2. If a user wants to use this function, him should firstly set property
++of 'usb_redirector' to image which him uses to create VM, the command
++may like:
++
++glance image-update img1 --property usb_redirector="{'bus': 'usb',
++'type': 'spicevmc'}"
++
++Once libvirt driver finds this property, it creates a
++'LibvirtConfigGuestDeviceRedirector' object, then to_xml function will use
++this object to construct xml of VM, so the xml of VM wil include 'redirdev'.
++
++Alternatives
++------------
++
++Option2 : Libvirt driver creates a default USB redirdev object for every VM.
++
++Option3 : Compared to option2, uses a nova configuration to control if create
++a default USB redirdev for every VM.
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++None
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++None
++
++Performance Impact
++------------------
++
++None
++
++Other deployer impact
++---------------------
++
++None
++
++Developer impact
++----------------
++
++None
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  <Jing Yuan>
++
++
++Work Items
++----------
++
++Step 1: Add object of USB-redirection device in libvirt driver.
++
++Step 2: Create VM with USB-redirection device.
++
++
++Dependencies
++============
++
++None
++
++
++Testing
++=======
++
++None
++
++Documentation Impact
++====================
++
++About how to create USB redirdev:
++
++1. If choose option 1 as proposed in 'Proposed change', user should set
++property usb_redirector into image and choose this image to create VM.
++
++2. If choose option 2, user needs to do nothing.
++
++3. If choose option 3, user should change nova configuration to control if
++create a default USB redirdev.
++
++About how to use spice client to do the USB redirection, I have tested in
++CentOS 6.4 with virt-viewer.
++
++1. The system should support x11 and run in x11 mode.
++
++2. Use 'remote-viewer spice://<host>:<port_number>' to connect to VM which
++has USB redirdev.
++
++3. In remote-viewer interface, choose 'File'->'USB device selection' to open
++'Select USB device for redirection' interface, then tick off USB device which
++you want to use. Finally the USB device will appears in your VM.
++
++User may want to install spice-vdagent in guest OS for other functions like
++copy text between spice client and VM. We not go into it here.
++
++References
++==========
++
++None
+-- 
+1.9.1
+

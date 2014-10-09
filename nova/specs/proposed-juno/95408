@@ -1,0 +1,225 @@
+From 9a2a6b4365959a4e5769017edbe46f4216e6130f Mon Sep 17 00:00:00 2001
+From: Aditi Raveesh <aditi.raveesh@gmail.com>
+Date: Mon, 26 May 2014 11:07:20 +0530
+Subject: [PATCH] Proposed blueprint to add extra specs to flavor calls.
+
+This blueprint would add extra specs information to the response
+of the flavor show and list calls.
+
+Change-Id: I880a4b5d7a8adf8b3b29e0b5bce7383871d79a45
+---
+ specs/juno/add-extra-specs-to-flavor-calls.rst | 202 +++++++++++++++++++++++++
+ 1 file changed, 202 insertions(+)
+ create mode 100644 specs/juno/add-extra-specs-to-flavor-calls.rst
+
+diff --git a/specs/juno/add-extra-specs-to-flavor-calls.rst b/specs/juno/add-extra-specs-to-flavor-calls.rst
+new file mode 100644
+index 0000000..0678758
+--- /dev/null
++++ b/specs/juno/add-extra-specs-to-flavor-calls.rst
+@@ -0,0 +1,202 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++==================================================
++Add extra specs info to flavor list and show calls
++==================================================
++
++https://blueprints.launchpad.net/nova/+spec/add-extra-specs-to-flavor-list
++
++In this blueprint we aim to add the extra specs information to the flavor list
++and show call responses.
++
++
++Problem description
++===================
++
++When we make a flavor show or flavor list call, currently the response does
++not include the extra specs information. We need to make an additional call to
++get the extra specs corresponding to that flavor.
++
++
++Proposed change
++===============
++
++In order to get both the flavor information as well as the extra specs
++associated with the flavor in one API call, I propose that we include the extra
++specs information in the response of the flavor list and show calls itself.
++This will avoid an extra call to get all the information about a flavor.
++
++The current db call to get flavor information already makes the call to get the
++extra specs associated with the flavor. So the only change that is required
++here is to add the extra specs to the response template. Hence, there will be
++no change in the db calls and performance or response time.
++
++Alternatives
++------------
++
++None
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++API requests for the flavor list and show call will not change.
++There will be a change in the API responses:
++
++Flavor show call - V3 API specification:
++
++Request:
++GET: v3/flavors/{flavor_id}
++Response::
++
++    {
++        "flavor": {
++            "id": "1",
++            "links": [
++                {
++                    "href": "http://openstack.example.com/v3/flavors/1",
++                    "rel": "self"
++                },
++                {
++                    "href": "http://openstack.example.com/flavors/1",
++                    "rel": "bookmark"
++                }
++            ],
++            "extra_specs": {"key1": "value1", "key2": "value2"},
++            "name": "small",
++            "ram": 512,
++            "disk": 10,
++            "swap": 0,
++            "vcpus": 1
++        }
++    }
++
++Flavor list call - V3 API specification:
++
++Request:
++GET: v3/flavors
++Response::
++
++    {
++        "flavors": [
++            {
++                "id": "1",
++                "name": "256 MB Server",
++                "ram": 256,
++                "disk": 10,
++                "vcpus": 1,
++                "links": [
++                    {
++                        "href": "http://openstack.example.com/v3/1",
++                        "rel": "self"
++                    },
++                    {
++                        "href": "http://openstack.example.com/flavors/1",
++                        "rel": "bookmark"
++                    }
++                ],
++                "extra_specs": {"key1": "value1", "key2": "value2"},
++            },
++            {
++                "id": "2",
++                "name": "512 MB Server",
++                "ram": 512,
++                "disk": 20,
++                "vcpus": 2,
++                "links": [
++                    {
++                        "href": "http://openstack.example.com/v3/flavors/2",
++                        "rel": "self"
++                    },
++                    {
++                        "href": "http://openstack.example.com/flavors/2",
++                        "rel": "bookmark"
++                    }
++                ],
++                "extra_specs": {"key1": "value1", "key2": "value2"},
++            }
++        ]
++    }
++
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++The response of the API needs to change in the documentation.
++
++Performance Impact
++------------------
++
++None
++
++Other deployer impact
++---------------------
++
++None
++
++Developer impact
++----------------
++
++None
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++    aditirav
++
++Work Items
++----------
++
++* Changes to be made to the API responses of the flavor list and show calls.
++* Changes to the python nova client to not make an additional call to get
++  extra specs associated with the flavor.
++
++
++Dependencies
++============
++
++None
++
++
++Testing
++=======
++
++Tempest tests to be added to check if the flavor list and show calls have the
++extra specs information included in the response.
++
++
++Documentation Impact
++====================
++
++Changes to be made to the flavor API documentation to include the extra specs
++information in the response of show and list calls.
++
++
++References
++==========
++
++None
++
+-- 
+1.9.1
+

@@ -1,0 +1,234 @@
+From c1d6decb77845a0d16a57773d23b1a467bf1e9f2 Mon Sep 17 00:00:00 2001
+From: Shane Wang <shane.wang@intel.com>
+Date: Mon, 28 Apr 2014 13:43:10 +0800
+Subject: [PATCH] Add utilization based weighers on top of MetricsWeigher
+
+This feature is to add some predefined weighers based on MetricsWeigher.
+The weighers will tell which metrics should be monitored and how much they
+should be considered, if an aspect is cared by some user, after experiments.
+
+Those weighers could be used by the users directly without or with less
+knowledge on monitors, metrics and their ratios. They are under the
+infrastructure of Utilization Based Scheduling.
+
+blueprint add-utilization-based-weighers
+
+Change-Id: I08b4172781eccfa28fee5fe30c29f1626f36ee59
+---
+ specs/juno/add-utilization-based-weighers.rst | 204 ++++++++++++++++++++++++++
+ 1 file changed, 204 insertions(+)
+ create mode 100644 specs/juno/add-utilization-based-weighers.rst
+
+diff --git a/specs/juno/add-utilization-based-weighers.rst b/specs/juno/add-utilization-based-weighers.rst
+new file mode 100644
+index 0000000..2089ac8
+--- /dev/null
++++ b/specs/juno/add-utilization-based-weighers.rst
+@@ -0,0 +1,204 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++==========================================
++Add utilization based weighers
++==========================================
++
++https://blueprints.launchpad.net/nova/+spec/add-utilization-based-weighers
++
++Utilization Based Scheduling (UBS) has implemented a MetricsWeigher to
++set the ratios for different metrics to specify how much they are considered
++when scheduling. Even though it is flexible, it is not easy for admins to
++use it because probably admins don't know how many metrics are available,
++what each metric exactly means, and how to treat them usually.
++The plan is to create a predefined weighers as samples from advanced
++scheduling algorithms based on the experimental results.
++For instance, MyCPUUtilWeigher inheriting from MetricsWeigher can consider CPU
++load, CPU utilization percentage, and CPU frequency if needed, and we set
++proper ratios on them.
++
++Problem description
++===================
++
++Utilization Based Scheduling (UBS) has implemented a MetricsWeigher to
++set the ratios for different metrics to specify how much they are considered
++when scheduling. For instance, at least admins need to set:
++
++- weight_setting, which means how the metrics are going to be weighed. This
++  should be in the form of "<name1>=<ratio1>, <name2>=<ratio2>, ...", where
++  <nameX> is one of the metrics to be weighed, and <ratioX> is the
++  corresponding ratio.
++
++Additionally, admins need to add <name1>, <name2>, ... into the nova.conf file
++in order that the resource tracker will load the corresponding monitors to
++support collecting different metrics.
++
++    [metrics]
++    weight_setting = name1=1.0, name2=-1.0
++
++However, for CPU, admins probably don't know which metrics are for CPU and how
++they are going to tream them by proper ratios.
++
++Proposed change
++===============
++
++In our plan, we hope to create a predefined weigher whose weight_setting
++and others are set based on some experimental results. Then users just need
++to set weight_multiplier, like they do for RAMWeigher in the current Nova.
++
++In the implementation, the weighers are going to be implemented as python
++classes inheriting from class MetricsWeigher.
++
++And we hope to generate a sample nova.conf being filled in proper monitors
++to get those metrics if possible, or explain that in a README file.
++
++For example, firstly, if an admin cares CPU utilization for a period of time
++and doesn't want to schedule its VM on an "always-busy" host. We could figure
++out that CPU load would be an important aspect to measure by experiments.
++Specifically, 5-minute CPU load is more important and expected to be used by
++users. The value of 5-min CPU load is between 0 and 1, which is collected by
++the CPU monitor. 0.00 means relatively idle, 1.00 means relatively busy in the
++last 5 minutes.
++
++Secondly, let's consider CPU frequency which is also got from the CPU monitor.
++Suppose that the admin divides all hosts into 3 types by CPU frequency simply:
++fast(>2GHz), medium(1-2GHz), and slow(<1GHz), and sets scores 1.0, 0.5, and 0
++respectively. That's,
++
++    Normalized CPU frequency = 1.0 if its frequency > 2GHz
++                               0.5 if its frequency is between 1-2GHz
++                               0 if its frequency < 1GHz.
++
++Or, we also can do normalization on CPU frequency to make its
++values to be between 0 and 1 if needed by
++
++    Normalized CPU frequency =
++    (max frequency of all hosts- its real frequency)
++    / (max frequency of all hosts - min frequency of all hosts)
++
++Thirdly, let's consider CPU utilization.
++For CPU utilization, suppose the user doesn't care a lot on it because it
++stands for CPU usage at a time instead of the history and the future.
++
++Those above are all the aspects which MyCPUUtilWeigher should consider.
++So we can set the following weight_setting for admins to use.
++
++<5-min CPU load>=<-0.6>
++
++Explanation: We care the 5-min CPU load the most and set to 0.6, but
++"-" means less is better because less means idle.
++
++<Normalized CPU frequency>=<0.3>
++
++Explanation: We also care the CPU frequency of the host hope to launch VMs on
++fast servers, there is no "-" means more is better because more is faster.
++
++<CPU utilization>=<-0.1>
++
++Explanation: We don't care a lot on the current CPU utilization because it
++doesn't stand for the history and the future but now. So set it to be 0.1.
++And "-" means less is better because higher CPU utilization means busier.
++
++With that, the cloud admin can set the weigher in the nova.conf file by
++ram_weight_multiplier = 0.0
++mycpuutil_weight_multiplier = 1.0
++
++All of the above for MyCPUUtilWeight is only an assumption as an example,
++but the final weigher should be based on the experiments by tuning the ratios
++and comparing with the expections on scheduling results. Certainly, with that,
++users are still able to use MetricsWeigher to customize their own weighers.
++
++Alternatives
++------------
++
++None
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++None
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++Users should have more meaningful weighers to use, which is more convenient.
++
++Performance Impact
++------------------
++
++None
++
++Other deployer impact
++---------------------
++
++None
++
++Developer impact
++----------------
++
++None
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  shane-wang
++
++Other contributors:
++  lianhao-lu
++
++Work Items
++----------
++
++We plan to implement CPUUtilWeigher first since CPU monitor has been merged.
++
++Dependencies
++============
++
++If we hope to implement more meaningful weighers based on MetricsWeigher.
++We have to depend on the approval and the implementation of
++blueprint add-useful-metrics whose nova spec proposal is at
++https://review.openstack.org/#/c/89766/.
++
++If not, no dependency.
++
++Testing
++=======
++
++Some specific weighers may need specific monitors which are supported on the
++3rd party hardware platforms, such as power consumption monitor.
++
++The 3rd party testing is to make sure each commit doesn't break the capability
++of each monitor to collect metric data.
++
++Documentation Impact
++====================
++
++None
++
++References
++==========
++
++None
+-- 
+1.9.1
+

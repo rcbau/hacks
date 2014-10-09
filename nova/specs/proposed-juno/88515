@@ -1,0 +1,222 @@
+From 51fa29d7b260e605f6c99ee3ac59e7bbe5fb7cb7 Mon Sep 17 00:00:00 2001
+From: jichenjc <jichenjc@cn.ibm.com>
+Date: Sun, 13 Apr 2014 06:38:15 +0800
+Subject: [PATCH] migrate disabled reason field work around
+
+migrate disabled reason field work around from 'AUTO:' to a separated field
+'auto_disabled'.
+
+blue print link:
+blueprint handle-auto-diabled-for-hypervisor
+
+Change-Id: Ib78e6e824d20e71ac98217ef9a711fea4561752f
+---
+ specs/juno/auto-disable-and-enable-hypervisor.rst | 196 ++++++++++++++++++++++
+ 1 file changed, 196 insertions(+)
+ create mode 100644 specs/juno/auto-disable-and-enable-hypervisor.rst
+
+diff --git a/specs/juno/auto-disable-and-enable-hypervisor.rst b/specs/juno/auto-disable-and-enable-hypervisor.rst
+new file mode 100644
+index 0000000..037a372
+--- /dev/null
++++ b/specs/juno/auto-disable-and-enable-hypervisor.rst
+@@ -0,0 +1,196 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++==========================================
++handle-auto-diabled-for-hypervisor
++==========================================
++
++https://blueprints.launchpad.net/nova/+spec/handle-auto-diabled-for-hypervisor
++
++migrate disabled reason field work around from 'AUTO:' to a separated field
++'auto_disabled'.
++
++
++Problem description
++===================
++
++There is a workaround in Icehouse when a compute service is automatically
++disbled when hypervisor is temporary not available. A 'AUTO:' is added to
++disabled_reason column to indicate that the service is automatically disabled.
++Operator who deliberatly add 'AUTO:' as prefix might lead to problem.
++
++Proposed change
++===============
++
++* Instance object and db update
++
++Add a column into service table named 'auto_disabled' with boolean.
++Add a column into service object, whenever we load a Service object,
++look for the AUTO:, set auto_disabled=True, and strip out the AUTO:
++Then, over time, the data will be migrated,
++but we won't have to do it during the migration.
++
++* Logic description
++
++Following are existing allowed transitions logic, the patch will NOT change
++the existing logic, only the disabled reason will be update to
++'Auto disabled by hypervisor' if it's auto disabled from Enabled.
++
++Enabled --> Manually disabled :
++disabled = True, auto_disabled = False, disable reason = user specified
++
++Enabled --> Auto disabled :
++disabled = True, auto_disabled = True,
++disabled reason = 'Auto disabled by hypervisor'
++
++Manually disabled --> Manually Enabled :
++disabled = False, auto_disabled = False, disabled reason = None
++
++Auto Disabled --> Auto Enabled :
++disabled = False, auto_disabled = False, disabled reason = None
++
++Auto Disabled --> Manullay Enabled :
++disabled = False, auto_disabled = False, disabled reason = None
++
++Manually disabled --> Auto Enabled :
++Not allowed under current logic
++
++Alternatives
++------------
++
++we might keep the service table as before, as problem section described,
++it might affect operator.
++
++Data model impact
++-----------------
++
++In service object, one column will be added:
++fields = {
++'id': fields.IntegerField(),
++.....
++'disabled_reason': fields.StringField(nullable=True),
++'availability_zone': fields.StringField(nullable=True),
++'compute_node': fields.ObjectField('ComputeNode'),
+++   'auto_disabled': fields.BooleanField(),
++}
++
++In service table schema, one column will be added:
++class Service(BASE, NovaBase):
++....
++report_count = Column(Integer, nullable=False, default=0)
++disabled = Column(Boolean, default=False)
++disabled_reason = Column(String(255))
+++   auto_disabled = Column(Boolean(create_constraint=False), default=False)
++
++The field with a prefix '+' is to indicate the proposed added return field
++
++As proposed change section indicates, no need to do off-line db migration
++since we are able to translate previous db record when we load them.
++
++REST API impact
++---------------
++
++Both v2 and V3 API will be updated to include auto_disabled field:
++
++In v2 API, extension os-services-auto-disabled will be added to
++advertise the extra information.
++alias: os-services-auto-disabled
++name: ServicesAutoDisabled
++namespace: http://docs.openstack.org/compute/ext/services-auto-disabled/api/v2
++
++GET /v2/a8dbeffef284447785f8fbc045acb889/os-services
++response:
++
++"services"
++{
++"binary": "nova-compute",
++"host": "host1",
+++"auto_disabled": "True",
++"disabled_reason": "test2",
++"state": "up",
++"status": "disabled",
++"updated_at": "%(timestamp)s",
++"zone": "nova"
++}
++
++The field with a prefix '+' is to indicate the proposed added return field
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++None
++
++Performance Impact
++------------------
++
++None
++
++Other deployer impact
++---------------------
++
++Admin will see 'auto_disabled' column to indicate the service is
++automatically disabled.
++
++Because the data model migrations happen when each service objects
++is loaded there will be a small period when both the old and
++new mechanisms co-exist.
++
++Deployers will need to change any tools they have now to detect auto
++disabled services from the reason string.
++
++There is no off-line db migration needed so whenever a service is loaded,
++if it see a 'AUTO:' in the db field, the object load function will handle that
++
++Developer impact
++----------------
++
++None
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  jichenjc
++
++Work Items
++----------
++
++1) Change mechanism of service object load/store
++2) Change libvirt autodisable judgement (from AUTO: -> auto_disabled)
++3) Change v2/v3 api layer code by adding the auto_disabled field
++
++Dependencies
++============
++
++None
++
++Testing
++=======
++
++Tempest cases will be updated to include new field test.
++
++Documentation Impact
++====================
++
++None
++
++References
++==========
++https://review.openstack.org/#/c/86869/
++https://review.openstack.org/#/c/79617/
+-- 
+1.9.1
+

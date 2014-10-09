@@ -1,0 +1,261 @@
+From ecedb513c4af442d69b3b0e1121b680ee91c1a87 Mon Sep 17 00:00:00 2001
+From: Sergio Cazzolato <sergio.j.cazzolato@intel.com>
+Date: Wed, 21 May 2014 00:25:41 -0300
+Subject: [PATCH] Manage the default quotas through the API
+
+This blueprint allows the operators to update and show the default
+quotas through the nova API.
+
+Currently an operator is not able neither to show nor to update the
+default quotas trough the nova API, it has to be done through
+configuration.
+
+This blueprint proposes to use the current quotas API to define the
+default quotas by sending 'defaults' instead of the tenant_id.
+
+Related to blueprint default-quotas
+
+Change-Id: I2bec4d9da93db2d85547bfa979f480f0ba0d5b13
+---
+ specs/juno/default-quotas.rst | 229 ++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 229 insertions(+)
+ create mode 100644 specs/juno/default-quotas.rst
+
+diff --git a/specs/juno/default-quotas.rst b/specs/juno/default-quotas.rst
+new file mode 100644
+index 0000000..560a117
+--- /dev/null
++++ b/specs/juno/default-quotas.rst
+@@ -0,0 +1,229 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++==============
++default-quotas
++==============
++
++https://blueprints.launchpad.net/nova/+spec/default-quotas
++
++This blueprint allows the operators to update and show the default quotas
++through the nova API.
++
++
++Problem description
++===================
++
++Currently an operator is not able to show or update the default quotas trough
++the nova API, it has to be done through configuration.
++
++Proposed change
++===============
++
++To address this I propose to use the current quotas API to define the default
++quotas by sending 'defaults' instead of the tenant_id.
++
++Those default values will be stored in the database as any other value.
++This mechanism will allow to set up default values for resources created in
++runtime such as quotas by flavors named flavor_<flavor_id>.
++
++In case default values are already stored in the nova.conf, those won't be
++ported to the db to keep backward compatibility.
++
++When a default value is changed through the API, it won't overwrite the
++nova.conf, Considering the scenario when there are many nova API running in
++parallel. When a default value is defined in both db and config, the used will
++be the db.
++
++By default, in case a default is not defined in the db neither in the config
++the value used for the missing resource will be -1.
++
++The default values in the config will be set as deprecated and a warning will
++be raise in the logs when nova API is started in case a default value is set.
++
++Alternatives
++------------
++
++An alternative is to add metadata to the resources with the default quota
++information. For instance, to add an extra-spec to the flavor indicating its
++default quota value and use the configuration for the current resources.
++
++
++Data model impact
++-----------------
++
++Tables are not impacted.
++
++The default quota values will be stored in the same table being empty the
++project_id column.
++
++A Migration script has to be created in order to update the default values
++based on the configuration values.
++
++
++REST API impact
++---------------
++
++Change in the request to get the default quotas.
++* Method: GET
++* Path: /os-quota-sets/defaults
++* Resp: Normal Response Codes 200
++
++JSON response
++
++{
++ "quota_set": {
++  "cores": 20,
++  "fixed_ips": -1,
++  "floating_ips": 10,
++  "injected_file_content_bytes": 10240,
++  "injected_file_path_bytes": 255,
++  "injected_files": 5,
++  "instances": 10,
++  "key_pairs": 100,
++  "metadata_items": 128,
++  "ram": 51200,
++  "security_group_rules": 20,
++  "security_groups": 10
++
++ }
++
++}
++
++Change in the request to update the default quotas.
++* Method: POST
++* Path: /os-quota-sets/defaults
++* Resp: Normal Response Codes 200
++
++JSON response:
++
++{
++ "quota_set": {
++  "force": "True",
++  "instances": 9,
++  "ram": 102400
++
++ }
++
++}
++
++There are not changes in the delete operation.
++
++There are not changes in the JSON Schema.
++
++
++Security impact
++---------------
++
++None
++
++
++Notifications impact
++--------------------
++
++None
++
++
++Other end user impact
++---------------------
++
++This change affects the CLI by adding a new optional values when default quotas
++are shown/updated:
++
++quota-show
++    --tenant-id <tenant_id>
++    --user <user-id>
++    --defaults
++
++quota-update
++    --tenant-id <tenant_id>
++    --user <user-id>
++    --defaults
++    --instances <instances>
++    --cores <cores>
++    --ram <ram>
++    --floating-ips
++    --fixed-ips <fixed-ips>
++    --metadata-items <metadata-items>
++    --injected-files <injected-files>
++    --injected-file-content-bytes <injected-file-content-bytes>
++    --injected-file-path-bytes <injected-file-path-bytes>
++    --key-pairs <key-pairs>
++    --security-groups <security-groups>
++    --security-group-rules <security-group-rules>
++    --force
++
++In both cases when the --defaults parameter is passed, if --tenant and/or
++--user are passed too, an error message will be displayed.
++
++Performance Impact
++------------------
++
++The main impact on performance is when some quota operations will require to go
++to the db to get default quotas instead of get them from the configuration.
++
++Other deployer impact
++---------------------
++
++A migration script has to be executed to update the db with the default values
++based on the config.
++
++For the operators who currently use the config as a way to manage the quota
++default values, after this patch is applied, the quotas have to be managed
++through the nova API.
++
++Developer impact
++----------------
++
++None
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee: sergio-j-cazzolato
++
++
++Work Items
++----------
++
++Tasks to do as part of this bp:
++
++* Changes the quotas API and logic layer to support the defaults value.
++* Create the DB script.
++* Update the client to support the defaults.
++
++
++Dependencies
++============
++
++None
++
++
++Testing
++=======
++
++Tempest tests are needed to validate:
++
++* The API changes
++* The db migration
++
++Documentation Impact
++====================
++
++Documentation needed for:
++
++* Rest API
++* Client Interface
++* Operators Guide
++
++References
++==========
++
++None
+-- 
+1.9.1
+

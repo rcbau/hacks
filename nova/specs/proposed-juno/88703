@@ -1,0 +1,221 @@
+From 752c358d0ca62e84bedc4a0cff1872ff56e8fc79 Mon Sep 17 00:00:00 2001
+From: Steve Baker <sbaker@redhat.com>
+Date: Sat, 19 Apr 2014 10:22:51 +1200
+Subject: [PATCH] Nova server HTTP proxy
+
+An HTTP proxy on 169.254.169.254 to allow OpenStack API calls from nova
+servers launched within private neutron networks.
+
+blueprint server-http-proxy
+
+Change-Id: I50e570dcb6cb429edc385ef20eeeea34156ef052
+---
+ specs/juno/server_http_proxy.rst | 196 +++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 196 insertions(+)
+ create mode 100644 specs/juno/server_http_proxy.rst
+
+diff --git a/specs/juno/server_http_proxy.rst b/specs/juno/server_http_proxy.rst
+new file mode 100644
+index 0000000..221b9f0
+--- /dev/null
++++ b/specs/juno/server_http_proxy.rst
+@@ -0,0 +1,196 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++======================
++Nova Server HTTP Proxy
++======================
++
++https://blueprints.launchpad.net/nova/+spec/server-http-proxy
++
++An HTTP proxy on 169.254.169.254 to allow OpenStack API calls from nova
++servers launched within private neutron networks.
++
++
++Problem description
++===================
++
++It is becoming increasingly necessary for heat-provisioned nova servers
++to be able to perform requests against OpenStack endpoints. However since
++access to OpenStack endpoints is determined by the neutron network resources
++which the server is attached to, a trade-off is currently required between
++a server which can make the required API calls and a server which is in the
++desired network architecture.
++
++Examples of API calls which a server could legitimately make include:
++
++* Polling for heat resource metadata so that configuration changes can be
++  triggered when the metadata changes
++
++* Signalling to heat the output values of a completed configuration task
++
++* Pushing custom metrics to ceilometer to provide data for alarming or scaling
++  policies (eg, request latency)
++
++* Reading or writing to a swift object, using the object as a webhook or a
++  place to store data too large to transfer via other API calls
++
++* Push and poll to Marconi queues
++
++* Using credentials to generate a keystone token to use for all of the above
++
++There are some aspects of this problem which have been solved already,
++including the following:
++
++* Credentials are created by heat which are scoped to only that server, and
++  can also be limited by roles policy to only be able to make a limited set
++  of API calls
++
++* The neutron-metadata-agent allows the nova metadata API on 169.254.169.254
++  to be accessed from servers even when in private neutron networks
++
++Proposed change
++===============
++
++* An HTTP proxy is implemented in the nova metadata API, accessible via
++  169.254.169.254
++
++* OpenStack clients on the server are invoked with HTTP_PROXY pointing
++  at 169.254.169.254 with the provided credentials
++
++* The nova-api proxy is configured to only proxy requests to a white-list
++  of OpenStack endpoints
++
++Points for further discussion, in this spec review, or in a Design Summit
++session include whether:
++
++* the http-proxy endpoint should be in a sub-path of 169.254.169.254:80
++  or on a different port on 169.254.169.254
++
++* the implementation should occur in nova-api or neutron-metadata-agent
++
++* using paste.proxy meets the needs for implementing the proxy, or if a new
++  dependency or an in-tree proxy implementation is required
++
++* whether the white-list endpoints should be explicitly configured in nova.conf,
++  or if the white-list config only lists service names and a keystone lookup is
++  performed to confirm if the endpoint is valid, or if the white-list should
++  just be derived from all endpoints in the keystone catalog.
++
++Alternatives
++------------
++
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++None, except for a new path which represents the proxy URL
++
++OpenStack client operations can be performed from nova provisioned servers
++if they are invoked with the following
++* HTTP_PROXY url
++* valid credentials
++* keystone endpoint
++
++Security impact
++---------------
++
++A private neutron network may have been chosen due to the sensitive workloads
++within it so the following security implications need to be considered:
++
++* Can a compromised server be used to get information out of the private network
++* Can a compromised user account perform actions on servers within the private
++  network which wouldn't otherwise be possible if the proxy was disabled
++
++The above 2 points needs to be considered for every API operation which is
++allowed to proxy via this mechanism. It could be that in the long term a user
++will want to be able to specify what proxying is allowed during nova boot.
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++None
++
++Performance Impact
++------------------
++
++* Increased load on nova-api
++
++* Increased load on keystone
++
++* Increased load on neutron-metadata-agent
++
++Other deployer impact
++---------------------
++
++A deployer needs to decide whether they will enable this feature, and possibly
++what API operations they will allow via this proxy method.
++
++The current intent would be for the default configuration to enable proxying
++of an agreed-upon list of API operations
++
++Developer impact
++----------------
++
++None
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  Steve Baker (steve-stevebaker)
++
++Work Items
++----------
++
++* Implement proxy in nova-api
++* Implement nova configuration for proxy policy
++* Implement neutron-metadata-agent forwarding to proxy if port is other than 80
++
++
++Dependencies
++============
++
++Will evaluate paste.proxy as being suitable for this feature. Otherwise will
++investigate options for an in-tree proxy implementation or a new library
++dependency.
++
++
++Testing
++=======
++
++This can be tested in tempest by modifying the existing heat tests to launch
++nova servers in private networks, the assert that the existing server operations
++still work via the proxy.
++
++There are no known infrastructure barriers to testing this in the current
++gate environment.
++
++
++Documentation Impact
++====================
++
++* Document the nova.conf policy configuration
++* Document what the proxy URL will be and how to configure an OpenStack client
++  to use it.
++
++Impact on the docs team should be minimal.
++
++References
++==========
+-- 
+1.9.1
+

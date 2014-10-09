@@ -1,0 +1,279 @@
+From c17a3afc07027fdd27bf8cc7892fd1aedcb5b9a0 Mon Sep 17 00:00:00 2001
+From: huangtianhua <huangtianhua@huawei.com>
+Date: Fri, 25 Apr 2014 10:25:51 +0800
+Subject: [PATCH] Add spec for "Add tags for OpenStack resources"
+
+Change-Id: Idb06f62fca56a049d5c151e1fe5a2f2e255c39bd
+Implements: blueprint add-tags-for-os-resources
+---
+ specs/juno/add-tags-for-os-resources.rst | 258 +++++++++++++++++++++++++++++++
+ 1 file changed, 258 insertions(+)
+ create mode 100644 specs/juno/add-tags-for-os-resources.rst
+
+diff --git a/specs/juno/add-tags-for-os-resources.rst b/specs/juno/add-tags-for-os-resources.rst
+new file mode 100644
+index 0000000..0f6914d
+--- /dev/null
++++ b/specs/juno/add-tags-for-os-resources.rst
+@@ -0,0 +1,258 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++================================
++Add tags for OpenStack resources
++================================
++
++https://blueprints.launchpad.net/nova/+spec/add-tags-for-os-resources
++
++In this blueprint we aim to implement functionality adding tags for OpenStack
++resources.
++
++
++Problem description
++===================
++Currently, just the EC2 API of OpenStack support to add tags for objects.
++And now just support to tag for instance using "metadata" which instead of
++lists of strings (tags). It's inappropriate in a way, because "metadata" is
++the attributes of objects, "tags" is user-facing annotation of objects.
++
++Tags enable you to categorize your resources in different ways, for example,
++by purpose, owner, or environment. Once you add a tag(such as for purpose)
++to some resources, you can get the resources by the tag, and it's intuitive
++to manage the resources.
++
++So We should support for tags added to any searchable object in OpenStack
++Compute REST APIs.
++
++
++Proposed change
++===============
++
++Add tags REST APIs operations about CreateTag/DescribeTag/DeleteTag/UpdateTag
++
++
++Alternatives
++------------
++
++None
++
++
++Data model impact
++-----------------
++
++* Add "Tags" data model::
++
++   class Tags(BASE, NovaBase):
++    """Represents tags in the datastore."""
++    __tablename__ = 'tags'
++    __table_args__ = ()
++
++    id = Column(Integer, primary_key=True, nullable=False)
++    resource_id = Column(String(36), nullable=False)
++    resource_type = Column(String(36), nullable=False)
++    tag_value = Column(String(255), nullable=False)
++    user_id = Column(String(255))
++    project_id = Column(String(255)
++
++
++REST API impact
++---------------
++
++* CreateTag
++     * POST
++     * Normal Response Code: 200
++     * Expected error http response code(s)
++           - 400: Invalid parameters
++           - 403: Not authorized
++           - 404: Resource not found
++           - 500: Not implement to tag for this resource type
++     * v2|v3/{project_id}/tags
++     * Sample request for v2|V3::
++
++        {"tags": {
++            "tag_value": ["tag1", "tag2"],
++            "resources": [{
++                              "type": "instance",
++                              "resource_ids": ["ins1", "ins2"]
++                          },
++                          {
++                              "type": "flavor",
++                              "resource_ids": ["fla1",]
++                          }
++            ]
++        }}
++     * Sample response for v2|V3::
++
++        {"tags": [{
++                      "id": "id1"
++                      "tag_value": "tag1",
++                      "type": "instance",
++                      "resource_id": "ins1"
++                  },
++                  {
++                      "id": "id2"
++                      "tag_value": "tag1",
++                      "type": "instance",
++                      "resource_id": "ins2"
++                  },
++                  {
++                      "id": "id3"
++                      "tag_value": "tag1",
++                      "type": "flavor",
++                      "resource_id": "fla1"
++                  },
++                  {
++                      "id": "id4"
++                      "tag_value": "tag2",
++                      "type": "instance",
++                      "resource_id": "ins1"
++                  },
++                  {
++                      "id": "id5"
++                      "tag_value": "tag2",
++                      "type": "instance",
++                      "resource_id": "ins2"
++                  },
++                  {
++                      "id": "id6"
++                      "tag_value": "tag2",
++                      "type": "flavor",
++                      "resource_id": "fla1"
++                  }]
++        }
++* DescribeTag
++     * GET
++     * Normal Response Code: 200
++     * Expected error http response code(s)
++           - 404: Tag not found
++     * Filter by tag_value/resource_type/resource_ids
++     * v2|v3/{project_id}/tags?tag_value='tag1'&resource_type='instance'
++     * Sample response for v2|V3::
++
++        {"tags": [{
++                      "id": "id1"
++                      "tag_value": "tag1",
++                      "type": "instance",
++                      "resource_id": "ins1"
++                  },
++                  {
++                      "id": "id2"
++                      "tag_value": "tag1",
++                      "type": "instance",
++                      "resource_id": "ins2"
++                  },
++                  {
++                      "id": "id3"
++                      "tag_value": "tag1",
++                      "type": "instance",
++                      "resource_id": "ins3"
++                  }]
++        }
++* UpdateTag
++     * PUT
++     * Normal Response Code: 200
++     * Expected error http response code(s)
++           - 404: Tag not found
++     * v2|v3/{project_id}/tags/{tagId}
++     * Sample request for v2|V3::
++
++        {"tag_value": "new_tag"}
++
++     * Sample response for v2|V3::
++
++        {"tags": {
++                      "id": "id1"
++                      "tag_value": "new_tag",
++                      "type": "instance",
++                      "resource_id": "ins1"
++                  }}
++
++* DeleteTag
++     * DELETE
++     * Normal Response Code: 202
++     * Expected error http response code(s)
++           - 403: Not authorized
++           - 404: Tag not found
++     * v2|v3/{project_id}/tags/{tagId}
++
++
++Security impact
++---------------
++
++None
++
++
++Notifications impact
++--------------------
++* Add tags.create to notification
++* Add tags.delete to notification
++
++
++Other end user impact
++---------------------
++
++Python-novaclient should support the functionality:
++  tag-create/tag-delete/tag-describe/tag-update
++
++
++Performance Impact
++------------------
++
++None
++
++Other deployer impact
++---------------------
++
++None
++
++
++Developer impact
++----------------
++
++None
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  huangtianhua <huangtianhua@huawei.com>
++
++
++Work Items
++----------
++
++* Add REST APIs for v3
++* Add tempest tests for the APIs
++
++
++Dependencies
++============
++
++None
++
++
++Testing
++=======
++
++Unit tests and tempest tests will check these functions.
++
++
++Documentation Impact
++====================
++
++A description of this function will be added into Compute API V3 Reference.
++
++
++References
++==========
++
++* http://osdir.com/ml/openstack-dev/2014-04/msg01900.html
+-- 
+1.9.1
+

@@ -1,0 +1,239 @@
+From 0a9a8cc533139c418352a74cd505359195bbecc3 Mon Sep 17 00:00:00 2001
+From: Nikola Dipanov <ndipanov@redhat.com>
+Date: Tue, 15 Apr 2014 13:12:29 +0200
+Subject: [PATCH] Move Nova-Cinder interactions to events
+
+Detailed specification for blueprint cinder-events
+
+Change-Id: I3dcdc226d5343cb350a88822212df488f61bd10b
+---
+ specs/juno/cinder-events.rst | 217 +++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 217 insertions(+)
+ create mode 100644 specs/juno/cinder-events.rst
+
+diff --git a/specs/juno/cinder-events.rst b/specs/juno/cinder-events.rst
+new file mode 100644
+index 0000000..2c46474
+--- /dev/null
++++ b/specs/juno/cinder-events.rst
+@@ -0,0 +1,217 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++==========================================================
++Move some Nova-Cinder interactions to the events framework
++==========================================================
++
++https://blueprints.launchpad.net/nova/+spec/cinder-events
++
++Nova allows other services to notify it about events it may be waiting using
++it's REST API (introduced in [1]_), and Neutron already uses it for certain
++interactions. This is a model that will work well with Cinder too.
++
++
++Problem description
++===================
++
++There are several requests Nova can make to Cinder, which will result in a
++long-running operation being started, however the only way for Nova to check
++on the status of the operation is through dumb polling. Some of the examples
++include creating a volume from a snapshot and downloading an image to a
++volume.
++
++There have been several bugs related to this (see [2]_ and [3]_), caused by
++the fact that the dumb-polling solution with a fixed timeout and interval does
++not suffice when faced with varying deployments, Cinder back-ends and data
++volumes.
++
++
++Proposed change
++===============
++
++* Cinder adds support for sending back events to Nova. This is covered by
++  [4]_. As part of this change, Cinder will also need to accept
++  'instance_uuid' and 'event_tag' field for any of the API calls that will
++  result in an event being sent back (see Work Items section for more info),
++  as it is needed for Nova to route the event to an appropriate
++  compute node.
++
++* Use the existing framework for waiting for instance events introduced in
++  [5]_ when 1) Snapshotting volumes, 2) Creating volumes from snapshots on
++  boot 3) Creating images from volumes on boot.
++
++* Ideally we would like to have Cinder send "heartbeat" events in
++  preconfigured intervals in addition to a "success" or "failure" event.
++  Heartbeats are meant to replace a fixed global timeout, and are basically
++  Cinder reporting back to Nova that the operation is still in progress.
++  Heartbeat events will have a pre-configured timeout on both Nova and Cinder
++  sides so that failures can be noticed, and reacted upon, resulting in a
++  smoother user experience.
++
++* In case Cinder sends only an event once the operation is done and does not
++  implement the "heartbeat" event (see [4]_) , we are still left with issues
++  described by [2]_ and [3]_, however we are still left with a more flexible
++  framework.
++
++
++Alternatives
++------------
++
++One of the approaches mentioned at one point was to make the Cinder statuses,
++more informative, so for example instead of returning "Downloading", Cinder
++could return "Downloading 37%", so that Nova could base it's polling intervals
++and possibly decisions to back out of the action on it. However, we already
++have the framework for proper callbacks in place [1]_, and the callback approach
++provides us with a more flexible and general architecture.
++
++
++Data model impact
++-----------------
++
++None
++
++
++REST API impact
++---------------
++
++None
++
++
++Security impact
++---------------
++
++* os-server-external-events API extension is admin only by default, so Cinder
++  will have to store admin credentials. It is possible to change this through
++  the policy file and make it based on roles.
++
++
++Notifications impact
++--------------------
++
++None
++
++
++Other end user impact
++---------------------
++
++None
++
++
++Performance Impact
++------------------
++
++There should be no immediate performance impact, however it is worth noting
++that every snapshot/boot operation that triggers Cinder interactions proposed
++by this BP will result in an increased number of API calls to Nova API.
++
++
++Other deployer impact
++---------------------
++
++* Deployers will need to update Cinder to the version that will send events
++  first. As Nova uses a simple GET on Cinder resources to poll for status
++  currently, Cinder versions that support events will still accept polling.
++  Newer Cinder will be able to work even with Nova deployments that don't (yet)
++  understand events or expose the API, since those Nova deployments will not
++  send the instance_uuid with parameter in the API call, which will let Cinder
++  know it needs not respond with events and will be polled instead.
++
++* Depending on whether Cinder introduces the "heartbeat" callback, we will be
++  introducing a cinder_heartbeat_event_timeout option.
++
++
++Developer impact
++----------------
++
++* None
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  <ndipanov@redhat.com>
++
++
++Work Items
++----------
++
++* Cinder is sending events when snapshot, create volume from snapshot and
++  download image to a volume operations.
++
++* Replace using _await_block_device_map_created compute manager method (that
++  implements Cinder polling for status) with usage of ComputeVirtAPI
++  wait_for_instance_event context manager. This usage can likely be completely
++  confined to the block device classes in virt.block_device module.
++
++* Change Cinder client to pass in the 'instance_uuid' and 'event_tag' field
++  to the create method. There will be places in the code
++  that will still be calling this method and not expect a callback (mainly
++  proxy API) so it will not be passed in all the places where this API is
++  used. The 'event_tag' field will be auto-generated UUID for each request to
++  Cinder, and is used to distinguish between different requests made for a
++  single instance.
++
++* In case Cinder implements heartbeat events (as discussed above), make the
++  code aware of these and introduce a configurable
++  cinder_heartbeat_event_timeout configuration option.
++
++Cinder will be supplying nova with a new type of event: 'volume-create'. Here
++is an example JSON representing the body of the API POST (see [1]_)::
++
++    {
++        "events": [
++            {
++                "name": "volume-create",
++                "server_uuid": "71b20737-7f90-4513-abde-4a2dfd8ae97e"
++                "status": "in-progress"
++                "tag": "0239e1f3-2603-4426-b1e4-786e0eaee2c3"
++            }
++        ]
++    }
++
++In the above example, the only thing that warrants more explanation over the
++standard events data model described in [1]_ is the tag field.
++Tag will be set to the 'event_tag' field that nova sent in the original
++request. This is needed so that nova can distinguish between different
++request sent on behalf of the same instance.
++
++
++Dependencies
++============
++
++* This BP depends on Cinder changes that are covered by [4]_
++
++
++Testing
++=======
++
++* No changes to Tempest are required since code paths affected are already
++  covered by several tests in Tempest.
++
++
++Documentation Impact
++====================
++
++* "Heartbeat" events will introduce a new configuration option that may be
++  tweaked depending on general load and we will want to document it.
++
++* "Other deployer impact" section outlines the update procedure that should be
++  documented.
++
++
++References
++==========
++
++.. [1] https://blueprints.launchpad.net/nova/+spec/admin-event-callback-api
++.. [2] https://bugs.launchpad.net/nova/+bug/1253612
++.. [3] https://review.openstack.org/#/c/42876/6/nova/compute/manager.py
++.. [4] https://blueprints.launchpad.net/cinder/+spec/send-volume-changed-notifications-to-nova
++.. [5] https://review.openstack.org/#/c/74576/
+-- 
+1.9.1
+

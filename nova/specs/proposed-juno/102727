@@ -1,0 +1,216 @@
+From 00836099bf025fad79fc5feb8f096eeaa645c7b9 Mon Sep 17 00:00:00 2001
+From: "Wei W. Du" <weidu@yahoo-inc.com>
+Date: Thu, 26 Jun 2014 05:38:23 +0000
+Subject: [PATCH] make nova host-describe to return available resources seen by
+ scheduler
+
+Currently, there is no easy way to check the current available
+resources on a given hypervisor. This work extends 'nova host-describe'
+to also return available resources, which is same as those seen
+by scheduler.
+
+Change-Id: Ie274f64f151dc9824cbe8e83a2737d660e4bacd6
+---
+ ...a-api-extension-to-list-available-resources.rst | 190 +++++++++++++++++++++
+ 1 file changed, 190 insertions(+)
+ create mode 100644 specs/juno/nova-api-extension-to-list-available-resources.rst
+
+diff --git a/specs/juno/nova-api-extension-to-list-available-resources.rst b/specs/juno/nova-api-extension-to-list-available-resources.rst
+new file mode 100644
+index 0000000..52c8a4f
+--- /dev/null
++++ b/specs/juno/nova-api-extension-to-list-available-resources.rst
+@@ -0,0 +1,190 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++==========================================
++Spec - nova-api extension to list available resources seen by scheduler
++==========================================
++
++Include the URL of your launchpad blueprint:
++
++https://blueprints.launchpad.net/nova/+spec/nova-api-extension-to-list-available-resources
++
++Currently, there is no easy way to check the current available resources on a
++given cluster. This work provides a nova client extension, and a corresponding
++nova api implementaion. Through this nova client command, admin users can
++easily get the current resource availability data, which is same as those
++seen by scheduler.
++
++Problem description
++===================
++
++Currently, there is no easy way to check the current available resources on a
++given cluster. If we only monitor the actual resource usage, there might be
++cases where real usage is < 75% but the scheduler sees no more capacity
++available to scheduling vm's. For example, we have a 10G RAM on a hypervisor.
++By running ‘proc’ on the compute node, we see the actual RAM usage is only 3G.
++With these data point, we cannot say the available RAM is 7G.
++ 
++By checking nova.compute_nodes table, the current free RAM is -3G. Assuming
++ram_allocation_ratio is 1.5, the correct available RAM seen by scheduler is 2G.
++The correct calculation is as follows:
++
++Physical RAM: 10G
++Free RAM: -3G
++Actual used RAM: 3G
++ram_allocation_ratio: 1.5
++Available RAM seen by scheduler: 10*1.5-(10-(-3)) = 2
++
++We need an easy way to get the current available resources on a given cluster
++for both alerting and planning purposes. We should capture the total cluster
++capacity as the scheduler would see it. This should take into consideration
++the overcommit ratios too.
++
++
++Proposed change
++===============
++
++We implement a nova api extension 'os-available-resources'. An admin user can invoke it
++through novaclient extension like 'nova available-resources'.
++
++All the available resources calculations are in the same way as scheduler.
++ram : https://github.com/openstack/nova/blob/master/nova/scheduler/filters/ram_filter.py
++core : https://github.com/openstack/nova/blob/master/nova/scheduler/filters/core_filter.py
++disk : https://github.com/openstack/nova/blob/master/nova/scheduler/filters/disk_filter.py
++
++
++Alternatives
++------------
++
++None
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++* New v2 API extension:
++
++   * Name: AvailableResources
++   * Alias: os-available-resources
++
++* Description : List current available resources for a cluster
++
++* Method type : GET
++
++* Normal http response code : 200
++
++* Expected error http response code(s)
++
++   * serviceUnavailable (503)
++   * forbidden (403)
++
++* URL for the resource : v2/{tenant_id}/os-available-resources
++
++* Parameters which can be passed via the url : None
++
++* JSON schema definition for the response data :
++
++   response := {'available_resources': nodes}
++   nodes := [node]
++   node := {key : value}
++   key := 'hypervisor_hostname' | 'vcpus' | 'vcpus_used' |
++          'cpu_allocation_ratio' | 'available_vcpus' |
++          'memory_mb' | 'free_ram_mb' |
++          'ram_allocation_ratio' | 'available_ram_mb' |
++          'local_gb' | 'free_disk_gb' |
++          'disk_allocation_ratio' | 'available_disk_gb 
++
++* Example :
++
++   request : GET /v2/{tenant_id}/os-available-resources
++   response : 
++       RESP: [200] {'date': 'Thu, 26 Jun 2014 00:04:47 GMT', 'content-length': 
++                    '371', 'content-type': 'application/json', 
++                    'x-compute-request-id': 
++                    'req-2daaca17-4008-48d5-b277-60c21659de01'}
++       RESP BODY: {"available_resources": 
++                   [{"available_disk_gb": 479.0, 
++                     "available_ram_mb": 30849.0, 
++                     "vcpus_used": 2, 
++                     "cpu_allocation_ratio": 16.0, 
++                     "available_vcpus": 254.0, 
++                     "hypervisor_hostname": "hostname.domain.com", 
++                     "memory_mb": 23638, 
++                     "vcpus": 16, 
++                     "disk_allocation_ratio": 1.0, 
++                     "free_disk_gb": 479, 
++                     "local_gb": 519, 
++                     "free_ram_mb": 19030, 
++                     "ram_allocation_ratio": 1.5}]}
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++There is also a novaclient extension to invoke this new api, which is
++'nova available-resource'.
++
++Performance Impact
++------------------
++None -- This new API is not introducing any new DB joins that would affect
++performance.
++
++Other deployer impact
++---------------------
++
++None
++
++----------------
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++weidu@yahoo-inc.com
++
++
++Work Items
++----------
++
++1. nova api extension implementation
++2. novaclient extension implementation
++
++Dependencies
++============
++
++None
++
++Testing
++=======
++
++Both unit and Tempest tests need to be created to ensure that the returned data
++is accurate for clusters.
++
++Documentation Impact
++====================
++
++Document the API extension (see "REST API impact" section for details).
++
++References
++==========
++
++None
+-- 
+1.9.1
+

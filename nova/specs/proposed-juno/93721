@@ -1,0 +1,177 @@
+From 8e5f80e83530b474e2640ebde3b0e91e872e1e98 Mon Sep 17 00:00:00 2001
+From: Rick Harris <rconradharris@gmail.com>
+Date: Thu, 15 May 2014 09:11:41 -0400
+Subject: [PATCH] Remove Fakelibvirt
+
+Using `fakelibvirt` can lead to situations where tests pass locally but fail
+on Jenkins. This spec proposes to remove `fakelibvirt` and instead skip
+Libvirt tests if real `libvirt` isn't present.
+
+Change-Id: Ic421bb0128e82fabe0df6434d536f4934a21a675
+---
+ specs/juno/remove-fakelibvirt.rst | 153 ++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 153 insertions(+)
+ create mode 100644 specs/juno/remove-fakelibvirt.rst
+
+diff --git a/specs/juno/remove-fakelibvirt.rst b/specs/juno/remove-fakelibvirt.rst
+new file mode 100644
+index 0000000..a054410
+--- /dev/null
++++ b/specs/juno/remove-fakelibvirt.rst
+@@ -0,0 +1,153 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++==================
++Remove Fakelibvirt
++==================
++
++https://blueprints.launchpad.net/nova/+spec/remove-fakelibvirt
++
++Using `fakelibvirt` can lead to situations where tests pass locally but fail on
++Jenkins. This spec proposes to remove `fakelibvirt` and instead skip Libvirt
++tests if real `libvirt` isn't present.
++
++Problem description
++===================
++
++The Libvirt tests use the real `libvirt` Python module if it's installed or
++`fakelibvirt` if it's not.
++
++Since `fakelibvirt` can fall out-of-sync with real `libvirt` this leads to a
++situation where tests can pass locally (using `fakelibvirt`) but fail on
++Jenkins (which uses some version of real `libvirt`).
++
++The current solution to the divergence problem is to continually update
++`fakelibvirt` as `libvirt` changes, sometimes even involving a wholesale copy
++of code from `libvirt` into the `nova` tree [1]_.
++
++Proposed change
++===============
++
++We should remove the `fakelibvirt` module entirely.
++
++If a developer does not have real `libvirt` installed, this would cause the
++tests to fail. So, using the database migration tests as a model, we should
++skip the Libvirt tests if we detect that `libvirt` is not importable.
++
++
++Alternatives
++------------
++
++* NO CHANGE: We could do nothing, but this means we may have to continue to
++  sync `fakelibvirt` which is overhead; but more importantly, since the tests
++  are really integration tests to a large degree, mocking this out means that
++  we're not testing much of anything.
++
++* REQUIRE LIBVIRT: We could remove `fakelibvirt` but not skip tests. This
++  would require *all* Nova developers to have `libvirt` installed in order for
++  tests to pass. This would prevent Mac developers from developing locally as
++  `libvirt` doesn't install cleanly.
++
++* ONLY FAKELIBVIRT: We could remove the import check and instead have both
++  Jenkins and local developers use `fakelibvirt` exclusively. The benefit is
++  that it's consistent across environments. The drawback is we're going to
++  need to keep `fakelibvirt` in sync with real `libvirt` and we're likely to
++  have bugs in `fakelibvirt` which cause tests to pass both locally and
++  Jenkins but result in production bugs.
++
++* REWRITE TESTS: The suggestion here is rewrite all of our libvirt tests so
++  that we don't actually ever talk to a `libvirt` client at all. This supposes
++  that the Tempest tests are sufficient for integration tests.
++
++  The pro is that we'd have consistency across environments, and as
++  unit-tests, they'd be blazingly fast.
++
++  The downside are that:
++
++    * We'd have to rewrite all of our tests, a considerable effort
++
++    * Tempest tests are probably not sufficient because we probably want more
++      fine-grained, in-tree integration tests for Nova. Tempest is great for
++      testing integration between Neutron and Nova, but not as ideal for
++      testing integration between `nova/virt/libvirt/driver.py:spawn` and
++      `libvirt:createDomain`.
++
++
++Data model impact
++-----------------
++
++None.
++
++REST API impact
++---------------
++
++None.
++
++Security impact
++---------------
++
++None.
++
++Notifications impact
++--------------------
++
++None.
++
++Other end user impact
++---------------------
++
++None.
++
++Performance Impact
++------------------
++
++None.
++
++Other deployer impact
++---------------------
++
++None.
++
++Developer impact
++----------------
++
++Developers will need to have `libvirt` installed to run the `libvirt` tests,
++otherwise they'll be skipped.
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++rconradharris
++
++Work Items
++----------
++
++* Remove `fakelibvirt`
++* Add skip-test-if-libvirt-not-installed checks to libvirt tests (if tests do
++  in fact require `libvirt`)
++
++Dependencies
++============
++
++None.
++
++Testing
++=======
++
++Too meta. This is fixing the tests themselves.
++
++Documentation Impact
++====================
++
++None.
++
++References
++==========
++
++.. [1] https://review.openstack.org/#/c/86396/
+-- 
+1.9.1
+

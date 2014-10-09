@@ -1,0 +1,192 @@
+From cdc9899128792d0b9f37cf57ae4cc605b71fb17e Mon Sep 17 00:00:00 2001
+From: Jon Bernard <jobernar@redhat.com>
+Date: Tue, 3 Jun 2014 16:18:29 -0400
+Subject: [PATCH] Initial step towards instance-level snapshots
+
+This feature aims to implement an initial step towards achieving
+per-instance transaction snapshots of all attached volumes.
+
+Change-Id: I3f574c194b1e4d6cb2eb7f99f84cdbc200f94c4b
+---
+ specs/juno/instance-level-snapshots.rst | 169 ++++++++++++++++++++++++++++++++
+ 1 file changed, 169 insertions(+)
+ create mode 100644 specs/juno/instance-level-snapshots.rst
+
+diff --git a/specs/juno/instance-level-snapshots.rst b/specs/juno/instance-level-snapshots.rst
+new file mode 100644
+index 0000000..e0aad0b
+--- /dev/null
++++ b/specs/juno/instance-level-snapshots.rst
+@@ -0,0 +1,169 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++==========================================
++Instance-Level Snapshots
++==========================================
++
++https://blueprints.launchpad.net/nova/+spec/instance-level-snapshots
++
++Moving towards the ability to take a transactional snapshot of all volumes
++attached to an instance.
++
++Problem description
++===================
++
++This blueprint covers adding support for taking a transactional snapshot of all
++volumes attached to an instance.  I/O on the guest is quiesced to achieve
++filesystem consistency for each snapshot in the set.  This gives the user the
++ability to capture the entire disk state of an instance with a single
++operation.  The result can be stored in Glance and used later as a starting
++point for instantiating a new instance or provide a known point for rolling
++back an existing instance.
++
++This will require recent changes in libvirt and the pending artifact
++implementation in Glance.  As these changes will likely not be available in
++Juno, this blueprint covers the initial changes that can be made without
++needing these requirements.
++
++There are currently four ways in Nova to create a snapshot of one, some, or all
++of the volumes attached to a particular instance.  But none of these options
++allow a user to create volume snapshots after I/O is quiesced as a single
++transaction.
++
++Existing Behaviour
++------------------
++
++These are four ways of creating a snapshot in Nova:
++
++1. `create_image` - takes a snapshot of the root volume and may take snapshots
++   of the attached volumes depending on the volume type of the root volume.
++   I/O is not quiesced.
++
++2. `create_backup` - takes a snapshot of the root volume with options to
++   specify how often to repeat and how many previous snapshots to keep around.
++   I/O is not quiesced.
++
++3. `volume_snapshot_create` - takes a snapshot of a single cinder volume.  I/O
++   is not quiesced.
++
++4. `os-assisted-snapshot` - takes a snapshot of a single cinder volume.  The
++   volume is first quiesced before the snapshot is initiated.
++
++Proposed change
++===============
++
++Although libvirt has recently acquired the ability to quiese an instance as
++a first-class operation, this version must be present in the gate in order to
++make use this feature in Nova.  Additionally, the artifact implementation for
++Glance is still under development.  So here I propose that we make as much
++progress towards the end goal as possible without relying on these dependencies
++for Juno.
++
++As a first step, I propose to modify `create_image` to behave consistently
++regardless of the type of root volume.  In its current state, this call will
++create volume snapshots only if the root volume is persistent.  I would like
++this behaviour to be applied to ephemeral root volumes as well.  So the result
++would be a snapshot of the root volume (either in glance or cinder) and volume
++snapshots of all attached cinder volumes.
++
++Alternatives
++------------
++
++In general, I think the `create_image` API call is perhaps being misused in
++this context.  Instead, we could remove the volume-iteration logic so that
++`create_image` becomes simply a function that creates a glance image from an
++instance's root volume.  The extended capability of a transactional snapshot of
++all volumes could be implemented in a new API call.
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++For this initial piece, no changes required.
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++Working with the resulting snapshots is not the most intuitive thing, and given
++the snapshot naming scheme, working with numerous snapshots of a single
++instance can be difficult to manage.  However, the proposed change here does
++not worsen that experience.  And hopefully in next iteratations this can be
++improved.
++
++Performance Impact
++------------------
++
++None
++
++Other deployer impact
++---------------------
++
++None
++
++Developer impact
++----------------
++
++None
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  jbernard
++
++Work Items
++----------
++
++The proposed change should be nicely contained in the api layer and only
++requires modifying the snapshot logic to not discriminate based on root volume
++type.
++
++Dependencies
++============
++
++None
++
++Testing
++=======
++
++Similar to the proposed change, the tests will be updated to expect the same
++behaviour from `create_image` regardless of root volume type.  So all attached
++cinder volumes will be snapshotted as a result of the call to `create_image`.
++Otherwise, the feature is not working as expected.
++
++Documentation Impact
++====================
++
++Update `create_image` behaviour when the root volume is ephemeral.
++
++References
++==========
++
++Mailing list discussion:
++
++* http://lists.openstack.org/pipermail/openstack-dev/2014-January/025382.html
++
++Summit discussion:
++
++* https://etherpad.openstack.org/p/juno-nova-multi-volume-snapshots
+-- 
+1.9.1
+

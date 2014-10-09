@@ -1,0 +1,137 @@
+From 21b82a8296bc078c1b10c43028e3970311fbfc3f Mon Sep 17 00:00:00 2001
+From: Gary Kotton <gkotton@vmware.com>
+Date: Mon, 4 Aug 2014 07:30:31 -0700
+Subject: [PATCH] Improve instance boot time
+
+An umbrella spec to improve the boot time of an instance.
+
+This is for blueprint improve-instance-boot-time
+
+Change-Id: I8334912def165b3f0ba35d6f3805bd7c5a6d1a63
+---
+ specs/juno/instance-boot.rst | 113 +++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 113 insertions(+)
+ create mode 100644 specs/juno/instance-boot.rst
+
+diff --git a/specs/juno/instance-boot.rst b/specs/juno/instance-boot.rst
+new file mode 100644
+index 0000000..9ba239f
+--- /dev/null
++++ b/specs/juno/instance-boot.rst
+@@ -0,0 +1,113 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++=================================
++Improve instance boot performance
++=================================
++
++https://blueprints.launchpad.net/nova/+spec/improve-instance-boot-time
++
++This is an umbrella spec that will include various performance enhancements
++for booting a instance.
++
++Problem description
++===================
++
++Current booting an instance has a large number of database accesses. These are
++costly and have a considerable price for large clouds.
++
++Proposed change
++===============
++
++Reduce the amount of database access when booting an instance. This will
++include the following:
++
++ * Pass the instance type to the spawn virt method. This will save reading it
++   from the database
++
++ * Pass config drive information
++
++Alternatives
++------------
++
++None really. Unless we want to bear the brunt of bad instance launch times.
++
++Data model impact
++-----------------
++
++In some cases we will change some virt method signatures, for example adding
++the instance type to the spawn method.
++
++REST API impact
++---------------
++
++None
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++None
++
++Performance Impact
++------------------
++
++This will improve performance. :)
++
++Other deployer impact
++---------------------
++
++None
++
++Developer impact
++----------------
++
++None
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  garyk
++
++Work Items
++----------
++
++* Pass instance type to the spawn method
++
++* Pass config drive information to the spwan method
++
++Dependencies
++============
++
++None
++
++Testing
++=======
++
++Consider using Rally to show the advantages.
++
++Documentation Impact
++====================
++
++None
++
++References
++==========
++
++None
+-- 
+1.9.1
+

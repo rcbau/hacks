@@ -1,0 +1,243 @@
+From bf10ce700190655ff3760baca5e236e001c0643d Mon Sep 17 00:00:00 2001
+From: Brant Knudson <bknudson@us.ibm.com>
+Date: Mon, 30 Jun 2014 13:30:47 -0500
+Subject: [PATCH] Support Identity V3 API
+
+This spec is for adding support to Nova to use the Identity V3
+API.
+
+bp support-keystone-v3-api
+
+Change-Id: Ifd08e305f6feee47713edcfb118ca25d58236bc8
+---
+ specs/juno/support-keystone-v3-api.rst | 218 +++++++++++++++++++++++++++++++++
+ 1 file changed, 218 insertions(+)
+ create mode 100644 specs/juno/support-keystone-v3-api.rst
+
+diff --git a/specs/juno/support-keystone-v3-api.rst b/specs/juno/support-keystone-v3-api.rst
+new file mode 100644
+index 0000000..193ab5a
+--- /dev/null
++++ b/specs/juno/support-keystone-v3-api.rst
+@@ -0,0 +1,218 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++=======================
++Support Identity v3 API
++=======================
++
++Launchpad blueprint:
++
++https://blueprints.launchpad.net/nova/+spec/support-keystone-v3-api
++
++The Keystone server has supported v3 of the Identity API for some time, and the
++goal is to eventually deprecate the v2 API. In order to do this Nova and other
++applications using the Identity API need to be able to be configured to use the
++v3 API rather than the v2 API.
++
++Note that there have been attempts at getting Nova to support the Identity V3
++API before, but those attempts were rejected with the reason that a
++comprehensive solution needed to be presented. As such, this document attempts
++to present a comprehensive solution. In some cases it describes work that
++doesn't need to be done, because someplace that somebody thinks might be
++affected isn't.
++
++If you're wondering about the novaclient library, that work was already done
++with https://review.openstack.org/#/c/85920/ .
++
++Problem description
++===================
++
++Nova can't be configured to use the Identity v3 API. Nova doesn't use the
++Identity v3 API directly, but the Neutron client library that Nova uses does.
++
++Identity v3 authentication requires the application to specify the user and
++project's domain ID or domain name if the user or project name is given (the
++user ID and project ID are unique, but the names are only unique within a
++domain). New configuration options are required to be able to specify the
++identity API version to use and the domain for the user or project when
++authentication is done.
++
++For Neutron access, Nova uses python-neutronclient. Once python-neutronclient
++supports Identity v3 authentication (typically provided by adding support for
++keystoneclient's session), then Nova can be changed to set up the client to use
++Identity v3 authentication.
++
++If you're wondering about changes to how Nova accesses Cinder and Glance, note
++that rather than Nova getting a new token using Identity v3 API, an existing
++token is passed to the respective client. Because a token is available those
++clients don't need to use the Identity API at all to get a token and therefore
++nothing will be changed in Nova for Cinder and Glance access for this
++blueprint.
++
++If you're wondering about the auth_token middleware, yes, Nova uses it, and it
++doesn't at this point support V3 authentication. Once the auth_token middleware
++supports V3 authentication then Nova will pick that up automatically, so
++there's no work to do in Nova for auth_token support.
++
++Proposed change
++===============
++
++Once python-neutronclient supports using v3 for authentication, Nova will be
++changed to use it. The support is provided via neutronclient's support for
++keystoneclient's "session". When using the session, rather than passing the
++username, password, etc. to neutronclient, you instead pass a Session object.
++The Session object is initialized with the authentication plugin to use, so in
++the case of authenticating for Neutron access, Nova will use the v3 password
++plugin. Here's some docs on using sessions:
++http://docs.openstack.org/developer/python-keystoneclient/using-sessions.html
++
++In order to do v3 authentication, more information is needed. The identity API
++version to use and the user and project domains are required. These will be new
++configuration options.
++
++Alternatives
++------------
++
++None.
++
++Data model impact
++-----------------
++
++None.
++
++REST API impact
++---------------
++
++None.
++
++Security impact
++---------------
++
++None.
++
++Notifications impact
++--------------------
++
++None.
++
++Other end user impact
++---------------------
++
++None.
++
++Performance Impact
++------------------
++
++None.
++
++Other deployer impact
++---------------------
++
++There will be new configuration options for Neutron access.
++
++Here are the current relevant options for Neutron authentication::
++
++  [neutron]
++
++  #admin_username=<None>
++  #admin_tenant_id=<None>
++  #admin_tenant_name=<None>
++  #admin_auth_url=http://localhost:5000/v2.0
++
++In order to use v3 auth, ``admin_auth_url`` will need to be set to a v3
++endpoint or an endpoint that can be converted to a v3 endpoint. This config
++option will support being set to an unversioned endpoint, like
++``http://localhost:5000/``. Nova will use keystoneclient's version discovery
++support to find if the identity server supports v3 or is v2 only. If the server
++reports that it supports v3 then v3 authentication will be used, otherwise Nova
++will fall back to v2 authentication. This will also support ``admin_auth_url``
++being set to a v2.0 endpoint or a v3 endpoint. The help text for
++``admin_auth_url`` will be updated.
++
++V3 authentication requires that a domain is provided for a user name or project
++name (otherwise it's not unique). So there will be new options
++``admin_user_domain_name`` and ``admin_project_domain_name``. Keystone creates
++a default domain named ``Default``, so that will be the default.
++
++The ``admin_tenant_name`` option will be renamed to ``admin_project_name`` and
++``admin_tenant_id`` to ``admin_project_id`` (the old names will still work but
++will be deprecated).
++
++
++Developer impact
++----------------
++
++None.
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  blk-u <Brant Knudson>
++
++Other contributors:
++  - mriedem <Matt Riedemann>
++
++Work Items
++----------
++
++* Rename ``admin_tenant_name`` option to ``admin_project_name`` and
++  ``admin_tenant_id`` to ``admin_project_id``, leaving the old option names a
++  deprecated names.
++
++* Once neutronclient supports keystoneclient's sessions
++  (`keystone-api-v3-support in Neutron`_)
++
++  * Update requirements.txt to the version of python-neutronclient that has
++    support for sessions.
++  * Change Nova to use a session for existing v2 auth for Neutron access.
++  * Change Nova to also support using v3 auth for Neutron access
++    * Add new config options for user and project domain.
++    * Use the V3 password plugin if configured for v3.
++  * Change Nova to default to v3 auth rather than v2 auth.
++  * Change Nova to also support using unversioned endpoint for Neutron access.
++  * Change Nova to default to unversioned endpoint and do discovery.
++  * Change devstack to allow configuring Nova for v2, v3, or to use discovery
++    for auth.
++  * Provide a Tempest daily configuration that sets nova to use v2 for Neutron
++    access.
++
++.. _`keystone-api-v3-support in Neutron`: https://blueprints.launchpad.net/python-neutronclient/+spec/keystone-api-v3-support
++
++Dependencies
++============
++
++* python-neutronclient needs to be updated to support v3 auth. Nova will depend
++  on the version of the python-neutronclient package that has support for
++  v3. This work is in progress: keystone-api-v3-support_
++
++.. _keystone-api-v3-support: https://blueprints.launchpad.net/python-neutronclient/+spec/keystone-api-v3-support
++
++Testing
++=======
++
++Nova will support using both v3 auth and v2 auth, with v3 being the
++default. Use of v3 auth will thus be tested on every commit using the normal
++Tempest testing. We should ensure that using v2 auth still works as long as
++it's supported, and that will be done by having a nightly job that configures
++Nova for v2 auth. (We'll need a way to configure the system for this using
++devstack, so support will be added to devstack to configure Nova for v2 auth.)
++
++
++Documentation Impact
++====================
++
++There's new config options as described above.
++
++References
++==========
++
++* `Identity v3 auth`_
++
++.. _`Identity v3 auth`: https://github.com/openstack/identity-api/blob/master/v3/src/markdown/identity-api-v3.md#authenticate-post-authtokens
+-- 
+1.9.1
+

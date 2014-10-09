@@ -1,0 +1,154 @@
+From afdbc269a1d6bebded423a462ad95fe95f02402f Mon Sep 17 00:00:00 2001
+From: "boh.ricky" <boh.ricky@gmail.com>
+Date: Sun, 6 Apr 2014 00:34:57 +0800
+Subject: [PATCH] libvirt support tpm device passthrough
+
+The aim of the blueprint is to provide a support for TPM devcie passthrough
+in libvirt.
+The Trusted Platform Module (TPM) is a crypto device that has been built
+into many modern servers, laptops and even handheld devices. Operating Systems
+have been extended with device driver support for the TPM.
+
+blueprint libvirt-support-tpm-passthrough
+
+Change-Id: Ieef96f6ca033165043a3931d5b57028e4d71e237
+---
+ specs/juno/libvirt-support-tpm-passthrough.rst | 126 +++++++++++++++++++++++++
+ 1 file changed, 126 insertions(+)
+ create mode 100644 specs/juno/libvirt-support-tpm-passthrough.rst
+
+diff --git a/specs/juno/libvirt-support-tpm-passthrough.rst b/specs/juno/libvirt-support-tpm-passthrough.rst
+new file mode 100644
+index 0000000..3c339d1
+--- /dev/null
++++ b/specs/juno/libvirt-support-tpm-passthrough.rst
+@@ -0,0 +1,126 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++==========================================
++libvirt-support-tpm-passthrough
++==========================================
++https://blueprints.launchpad.net/nova/+spec/libvirt-support-tpm-passthrough
++
++The aim of the blueprint is to provide a support for TPM devcie passthrough
++in libvirt.
++The Trusted Platform Module (TPM) is a crypto device that has been built
++into many modern servers, laptops and even handheld devices. Operating Systems
++have been extended with device driver support for the TPM. 
++
++
++Problem description
++===================
++* Host TPM device passthrough
++
++
++Proposed change
++===============
++* Filter the host with TPM device
++* DB table to record TPM device on the hosts and it's usage
++* Report TPM device info when nova-compute start(because TPM device
++  info is stable.)
++* TPM device whitelist in nova.conf(like the PCI passthrough implement)
++* flavor support specify TPM passthrough
++
++
++Alternatives
++------------
++Maybe we can provide a API for user to add available passthrough TPM device
++for a host.I feel it is more convenience and flexible.
++But current other passthrouth(for example PCI passthrough) use the implement
++as described in above "Proposed change".
++
++
++Data model impact
++-----------------
++A table to record TPM device and usage info.
+++-----------------+--------------+------+-----+---------+----------------+
++| Field           | Type         | Null | Key | Default | Extra          |
+++-----------------+--------------+------+-----+---------+----------------+
++| created_at      | datetime     | YES  |     | NULL    |                |
++| updated_at      | datetime     | YES  |     | NULL    |                |
++| deleted_at      | datetime     | YES  |     | NULL    |                |
++| deleted         | int(11)      | NO   |     | NULL    |                |
++| id              | int(11)      | NO   | PRI | NULL    | auto_increment |
++| compute_node_id | int(11)      | NO   | MUL | NULL    |                |
++| dev_address     | varchar(255) | NO   |     | NULL    |                |
++| instance_uuid   | varchar(36)  | YES  | MUL | NULL    |                |
+++-----------------+--------------+------+-----+---------+----------------+
++
++
++REST API impact
++---------------
++None
++
++Security impact
++---------------
++None
++
++Notifications impact
++--------------------
++None
++
++Other end user impact
++---------------------
++None
++
++Performance Impact
++------------------
++None
++
++Other deployer impact
++---------------------
++None
++
++Developer impact
++----------------
++None
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++Primary assignee:
++  boh.ricky
++
++Work Items
++----------
++* Filter the host with TPM device
++* DB table to record TPM device on the hosts and it's usage
++* Report TPM device info when nova-compute start(because TPM device
++  info is stable.)
++* TPM device whitelist in nova.conf(like the PCI passthrough implement)
++* flavor support specify TPM passthrough
++
++
++Dependencies
++============
++libvirt(since 1.0.5) Qemu(1.5)
++
++
++Testing
++=======
++Unit test is sufficient.
++
++Documentation Impact
++====================
++Need to add the usage description of TPM passthrough in the document.
++
++
++References
++==========
++TPM in libvirt:
++http://libvirt.org/formatdomain.html#elementsTpm
++
++TPM in qemu:
++http://wiki.qemu.org/Features/TPM
+-- 
+1.9.1
+

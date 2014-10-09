@@ -1,0 +1,198 @@
+From 00c3bf9e2267bec0248a409e5f830f9f27c9be2c Mon Sep 17 00:00:00 2001
+From: Joshua Harlow <harlowja@yahoo-inc.com>
+Date: Thu, 17 Apr 2014 12:55:16 -0700
+Subject: [PATCH] Expose user and project in metadata services
+
+Proposal to add new metadata fields to the existing nova metadata
+services that are related to the individual user who has requested
+creation of that compute resource (this could be a user or heat or
+other service acting on-behalf of some user).
+
+Part of blueprint user-project-metadata
+
+Change-Id: I211e439407055e0f9bd1e8d564b216ad003c85e7
+---
+ specs/juno/user-project-metadata.rst | 171 +++++++++++++++++++++++++++++++++++
+ 1 file changed, 171 insertions(+)
+ create mode 100644 specs/juno/user-project-metadata.rst
+
+diff --git a/specs/juno/user-project-metadata.rst b/specs/juno/user-project-metadata.rst
+new file mode 100644
+index 0000000..152320e
+--- /dev/null
++++ b/specs/juno/user-project-metadata.rst
+@@ -0,0 +1,171 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++===============================================================
++User,project,domain exposed via the openstack metadata services
++===============================================================
++
++**BP:** https://blueprints.launchpad.net/nova/+spec/user-project-metadata
++
++The proposal here is to add a few select fields to the metadata services that
++nova provides compute resource access to. These fields would be related to the
++individual who has created the compute resource; allowing for various on-boot
++operations to work on that users behalf (for example).
++
++Problem description
++===================
++
++It is useful to expose the following tuple (user uuid, user name, project name,
++project uuid) of information to the instance to allow for the instance upon
++being booted to configure itself for the user or project that created the
++instance.
++
++A few use-cases that require this:
++
++* Installing system tools on-boot that should only be on available for project
++  uuid X and not for another project uuid Y. Supplying these tuples in
++  metadata allows for cloud-init (or other metadata/userdata consuming scripts)
++  to perform different actions *automatically* on-behalf of the user or
++  project.
++* Connecting into a system registration and management system, like
++  `landscape`_. For example, every system launched in the *WebApps* project
++  gets automatically tagged (in such system) so that the *WebApps* sysadmins
++  can manage them.
++
++.. _landscape: https://landscape.canonical.com/
++
++Proposed change
++===============
++
++When populating the extra metadata that is provided to the config drive and
++to the openstack metadata service provide the user_id, project_id,
++user_name, project_name as extra data that will be provided for the instance
++to consume as instance metadata.
++
++New fields will be added to the openstack `metadata`_ and to
++the openstack `config drive`_ (a new metadata version should be created
++to match this new data fields)::
++
++    {
++        "uuid":"d8e02d56-2648-49a3-bf97-6be8f1204f38",
++        ...
++        "owner":{
++            "project_id": "4bdce62d-18b0-470e-9f10-f6d37d5b0714",
++            "project_name": "harlowja",
++            "user_id": "eb4b83cd-35f3-4896-b35d-88cc67d08c31",
++            "user_name": "harlowja",
++        },
++        ...
++    }
++
++.. _metadata: http://docs.openstack.org/admin-guide-cloud/content/section_metadata-service.html
++.. _config drive: http://docs.openstack.org/user-guide/content/config-drive.html
++
++Alternatives
++------------
++
++1. User has to submit same data manually by providing it as user-data (and
++   cloud-init then has to know to look at user-data locations for this
++   information).
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++* The existing openstack metadata version (which also appears on the config
++  drive as a folder representation) should be incremented and the new
++  data will be added to this API version, the current version being
++  ``2013-10-17.``
++
++Security impact
++---------------
++
++* Provides instance owner their own project uuid/user uuid/domain uuid and
++  associated names making it easier for an attacker to provision VMs from
++  inside an instance by calling out to nova. Of course the instance would not
++  have access to the users password or keystone credentials so the risk should
++  be minimial (although the risk is more than it was when this information was
++  not available in the first place).
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++None
++
++Performance Impact
++------------------
++
++None, existing query for data from nova-compute to populate config-drive or
++openstack metadata will be expanded to include new fields (which should
++exist in the available ``context`` anyway).
++
++Other deployer impact
++---------------------
++
++* No new config options
++* Will take effect on config-drive and metadata service/s immediately.
++* The change will be backwards compatible (since the change is additive) so
++  continuous deployments should see no negative affects.
++
++Developer impact
++----------------
++
++None
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  harlowja
++
++Work Items
++----------
++
++* Add extraction of needed data at location where metadata and config drive
++  extra metadata is initialized.
++* Provide new information & increment openstack metadata version.
++* Incorporate change in config-drive as new folder/version where this data is
++  provided and adjust openstack code so that ``latest`` points to this new
++  version (instead of the prior version).
++
++Dependencies
++============
++
++None
++
++Testing
++=======
++
++Seeing that there appears to be zero metadata tests (?) in tempest it would be
++great if this change could start adding at least a few tests to tempest that
++post-boot call into the metadata service (with tempest calling on behalf of
++the vm) and verifying that the metadata returned contains the newly added
++information. The unit tests inside nova related to the metadata service would
++need to be adjusted to ensure that this feature locally works (and it's a great
++addition to tempest to verify it externally).
++
++Documentation Impact
++====================
++
++* Adjustment of documentation about config-drive provided files.
++* Adjustment of documentation about openstack metadata provided apis.
++
++References
++==========
++
++* https://review.openstack.org/#/c/72018/
+-- 
+1.9.1
+

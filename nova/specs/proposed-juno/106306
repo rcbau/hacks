@@ -1,0 +1,243 @@
+From bd8965516f18de70d45766ac5d0ee10edbe36d43 Mon Sep 17 00:00:00 2001
+From: He Jie Xu <xuhj@linux.vnet.ibm.com>
+Date: Fri, 11 Jul 2014 16:34:41 +0800
+Subject: [PATCH] [WIP] Support incremental snapshot for instance
+
+This specs descrbe BP incremental-instance-snapshot
+
+Change-Id: I261dc674d8d98a45da5f95e4de1e707568ede398
+---
+ specs/juno/incremental-instance-snapshot.rst | 221 +++++++++++++++++++++++++++
+ 1 file changed, 221 insertions(+)
+ create mode 100644 specs/juno/incremental-instance-snapshot.rst
+
+diff --git a/specs/juno/incremental-instance-snapshot.rst b/specs/juno/incremental-instance-snapshot.rst
+new file mode 100644
+index 0000000..89447a1
+--- /dev/null
++++ b/specs/juno/incremental-instance-snapshot.rst
+@@ -0,0 +1,221 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++==========================================
++Support incremental snapshot
++==========================================
++
++https://blueprints.launchpad.net/nova/+spec/incremental-instance-snapshot
++
++Currently nova support create snapshot for instance. For each snapshot, nova
++will take a full-copy of instance's image. The full-copy will waste a lot of
++network bandwidth and storage. This BP propose to support incremental snapshot
++of instance's image.
++
++Problem description
++===================
++
++The full-copy snapshot isn't effcient. It waste more network bandwidth and
++storage. The user need waiting more time for snapshost instance.
++
++
++Proposed change
++===============
++
++Nova REST API
++-------------
++
++Add new paramenter 'incremental' for createImage API. 'incremental' is
++boolean. When 'incremental' is False, nova will take full-copy snapshot.
++When 'incremental' is True, nova will take incremental snapshot. Before
++doing incremental snapshot, the instance at least need a full-copy snapshot
++first.
++
++
++Incremental snapshot image
++--------------------------
++
++Nova will add system_metadata 'last_snapshot_image_ref' to instance that
++indicates the parent image for next incremental snapshot. When doing
++incremental snapshot, nova add property 'parent_image_ref' to snapshot image
++with the value of instance's system_metadata 'last_snapshot_image_ref'.
++
++When booting instance with image, nova can check the image's property
++'parent_image_ref', and then can find out all the parent image to combine them
++as a whole image.
++
++Libvirt incremental snapshot
++----------------------------
++
++This BP propose add incremental snapshot to libvirt driver. And only support
++'qcow2' image first. The instance need to be create with qcow2 image, the
++snapshot image uploaded as qcow2 format too.
++
++Before doing the first time incremental snapshot, the images store in local
++storage as:
++
++base_image->active_image
++
++Then doing external snapshot. Then images looks like as below:
++
++base_image->active_image->snap1
++
++Then the active_image is the incremental snapshot, nova will uploaded it into
++glance with property.
++
++For follow-up incremental snapshot, nova will doing external snapshot first.
++
++base_image->active_image->snap1->snap2
++
++The snap1 is the incremental snapshot image, then upload it into glance image.
++For performance, nova need reduce the image chain, nova will commit snap1
++into active_image, then images chain back to as below:
++
++base_image->active_image->snap2
++
++snap1 become useless, nova will remove it.
++
++Libvirt boot instance with incremental snapshot image
++-----------------------------------------------------
++
++When boot new instance, nova will check the 'parent_image_ref' property for
++image. If image has parent_image_ref, nova will try to download parent image.
++Nova will iterate the image chain, and rebase those images as order. Then
++commit then into one image.
++
++Alternatives
++------------
++
++* Incremental image
++
++Let glance support incremental image. From nova side, nova will only see one
++image, the image is combine by glance. With this way, glance need to implement
++combine image for different image type. This way is more complex.
++
++* Incremental snapshot with dirty map for qemu
++
++This way won't increase the image chain, that's pretty good for performance.
++But it didn't implement in qemu yet. After it implement, it also need waiting
++for libvirt support. So that will be long time.
++https://lists.gnu.org/archive/html/qemu-devel/2013-12/msg00152.html
++
++Data model impact
++-----------------
++
++There isn't any DB model change. This propose utilize system_metadata to
++store last time snapshot. And glance image property to store the parent
++image for incremental snapshot image.
++
++REST API impact
++---------------
++
++This propose add new paramenter 'incremental' to createImage action both for
++nova V2 and V3 REST API.
++
++For V2 API, the new extension 'os-incremental-snapshot'will be added for user
++can detection the new parameter enabled.
++
++For V3 API, the new parameter will be added directly.
++
++The json schema as below::
++
++    create_image = {
++        'type': 'object',
++        'properties': {
++            'create_image': {
++                type: 'object',
++                properties: {
++                    'name': parameter_types.name,
++                    'incremental': parameter_types.boolean,
++                    'metadata': {'type': 'object'}
++                },
++                'required': ['name'],
++                'additionalProperties': False,
++             }
++         }
++         'required': ['create_image'],
++         'additionalProperties': False,
++    }
++
++If 'incremental' didn't specific, then the default value is 'False'.
++
++If 'incremental' is True, but instance haven't 'last_snapshot_image_ref' in
++system_metadata, API will return 400 (BadRequest).
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++The incremental snapshot will speed up the snapshot of instance.
++
++Performance Impact
++------------------
++
++After doing incremental snapshot, there will be one more level in image chain.
++That will affect the instance performance. After qemu support incremental
++back-up with dirty-map, the performance will be resolve.
++
++Other deployer impact
++---------------------
++
++The incremental snapshot will reduce the network bandwidth and save more
++storage.
++
++Developer impact
++----------------
++
++The image chain changed after support incremental snapshot. Developer shouldn't
++suppose the image only have one level backing_file.
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  Alex Xu (xuhj@linux.vnet.ibm.com)
++
++Work Items
++----------
++
++* Add incremental snapshot for libvirt driver
++
++* Add new parameter for REST API
++
++[TODO...]
++
++Dependencies
++============
++
++None
++
++Testing
++=======
++
++[TODO]
++
++Documentation Impact
++====================
++
++The API paramenter will be document. And doc how to do incremental snapshot in
++admin doc.
++
++References
++==========
++
++None
++
+-- 
+1.9.1
+

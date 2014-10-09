@@ -1,0 +1,215 @@
+From d22b999aef13d56a03ac42eba670c6213ad230a0 Mon Sep 17 00:00:00 2001
+From: Aditi Raveesh <aditi.raveesh@gmail.com>
+Date: Thu, 3 Apr 2014 15:10:49 +0530
+Subject: [PATCH] Proposed blueprint to allow only root volume backup.
+
+This blueprint would allow an additional parameter
+'backup_only_root_volume' to be passed as part of the
+create_image API call.
+
+Part of blueprint exclude-cbs-in-snapshot
+
+Change-Id: I87dadb34788f1ab4747d3a40e92a5f95b12820aa
+---
+ specs/juno/exclude-cbs-in-snapshot.rst | 189 +++++++++++++++++++++++++++++++++
+ 1 file changed, 189 insertions(+)
+ create mode 100644 specs/juno/exclude-cbs-in-snapshot.rst
+
+diff --git a/specs/juno/exclude-cbs-in-snapshot.rst b/specs/juno/exclude-cbs-in-snapshot.rst
+new file mode 100644
+index 0000000..145bdde
+--- /dev/null
++++ b/specs/juno/exclude-cbs-in-snapshot.rst
+@@ -0,0 +1,189 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++==============================================================================
++Allow snapshot of only root volume during snapshot of a volume backed instance
++==============================================================================
++
++https://blueprints.launchpad.net/nova/+spec/exclude-cbs-in-snapshot
++
++This feature is to provide the user with an option to snapshot only the root
++volume during the snapshot instance action. This will not snapshot any
++other volume attached to the instance.
++This will be a feature for volume-backed instances only.
++
++
++Problem description
++===================
++
++Currently, creating a snapshot of an instance which is volume-backed will
++snapshot the root volume as well as all the other volumes attached to it.
++We see issues where the snapshot process fails, while backing up a very large
++volume attached to the instance. We have cases where the snapshot process
++times out.
++
++Also, this feature would help in the case where the customer wants to snapshot
++only the root volume and none of the others.
++
++This feature would provide an option to snapshot only the root volume of the
++instance if that's the only volume that the user is concerned about, while he
++takes the snapshot. This would enhance the flexibility of the feature
++rather than always following the default behavior of taking snapshots of all
++the volumes.
++
++
++Proposed change
++===============
++
++In order to implement this, I propose that we allow the user to specify whether
++only the root volume needs to be backed-up during the instance snapshot
++process. This can be specified as an additional optional parameter to the
++snapshot API call.
++
++Alternatives
++------------
++
++None
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++API to specify whether all the volumes or only the root volume needs to be
++backed up during the snapshot process:
++
++Workflow:
++* If the option 'snapshot_only_root_volume' is specified as 'true', snapshot
++only the root volume of the instance.
++* If the option 'snapshot_only_root_volume' is specified as 'false', or not
++specified at all, snapshot all the volumes. (Default behavior)
++
++v3 API specification:
++POST: /v3/servers/{server_id}/action
++
++Request attribute to be added:
++* snapshot_only_root_volume: true/false value to specify whether only the root
++volume needs to be backed up. (Optional)
++
++Example JSON request::
++
++    {
++        "createImage" : {
++            "name" : "new-image",
++            "metadata": {
++                "ImageType": "Gold",
++                "ImageVersion": "2.0"
++            }
++            "snapshot_only_root_volume": true,
++        }
++    }
++
++Response codes:
++HTTP 202 on success
++HTTPBadRequest exception if "snapshot_only_root_volume" is not a valid boolean
++value.
++
++Sample v3 request:
++POST: /v3/servers/7d14f8123/action -d '{"create_image":
++{"name": "image-name", "snapshot_only_root_volume": "true"}
++
++This would snapshot only the root volume of the instance, provided the instance
++is volume backed.
++
++Validation:
++'snapshot_only_root_volume' must be a boolean value, true/false.
++(Optional parameter)
++
++Not implementing the feature in v2, as the idea is to keep v2 changes minimal.
++
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++The create_image call in python-novaclient will have to include the additional
++optional parameter
++
++Optional argument:
++--snapshot_only_root_volume True or false value to specify whether only the root
++volume is to be backed up.
++
++Performance Impact
++------------------
++
++None
++
++Other deployer impact
++---------------------
++
++None
++
++Developer impact
++----------------
++
++The parameter will be optional, so no other code needs to be changed.
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++    aditirav
++
++Work Items
++----------
++
++* Changes to be made to the compute manager 'snapshot_volume_backed' method to
++  use the 'snapshot_only_root_volume' parameter passed in, to decide whether
++  all or only the root volume needs to be backed up.
++* Changes to the V3 API to take in the optional parameter
++  'snapshot_only_root_volume'.
++* Include tests in tempest to check the behavior of create_image of the
++  instance with snapshot only root volume option set.
++
++
++Dependencies
++============
++
++None
++
++
++Testing
++=======
++
++Tempest tests to be added to check if only the root volume is backed up when
++the parameter 'snapshot_only_root_volume' is set to true in the API call.
++
++
++Documentation Impact
++====================
++
++Changes to be made to the create_image API documentation to include the
++additional parameter 'snapshot_only_root_volume' that can be passed in, and its
++usage information.
++
++
++References
++==========
++
++None
++
+-- 
+1.9.1
+

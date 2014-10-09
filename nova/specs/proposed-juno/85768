@@ -1,0 +1,183 @@
+From f49dbafce7b2631628af38b09c61c2cee27164d9 Mon Sep 17 00:00:00 2001
+From: Brian Elliott <bdelliott@gmail.com>
+Date: Mon, 7 Apr 2014 12:22:51 -0500
+Subject: [PATCH] Spec for bp/image-precacher
+
+blueprint: image-precacher
+
+Change-Id: Ief519e3710fa0e46ee7f56093b804ab0b9a31a7f
+---
+ specs/juno/image-precacher.rst | 161 +++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 161 insertions(+)
+ create mode 100644 specs/juno/image-precacher.rst
+
+diff --git a/specs/juno/image-precacher.rst b/specs/juno/image-precacher.rst
+new file mode 100644
+index 0000000..b9ff0a6
+--- /dev/null
++++ b/specs/juno/image-precacher.rst
+@@ -0,0 +1,161 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++====================================================
++Add a new image preloading service
++====================================================
++
++https://blueprints.launchpad.net/nova/+spec/image-precacher
++
++Introduce a new, optional nova service to pre-cache high priority images on
++compute hosts prior to the image being requested during the normal instance
++creation process.
++
++Problem description
++===================
++
++One of the most common operations in OpenStack is to build servers.  As part
++of builds, hosts need to download images.  These images can be reasonably
++small (under 200MB) to very large (160GB).  The size of the image can
++directly affect how long it takes to build a server.  To improve the
++experience, prepopulating or caching images will allow servers to become
++active more quickly in the common cases.
++
++Also solving the problem where a captive customer has a special image which
++needs quick build times for scaling is desired.  This document looks at
++building the necessary component infrastructure in the compute nodes to help
++solve these types of problems.
++
++In short:
++
++- The first build of a server can be very slow with long image download times.
++- Building many servers at once can potentially throttle the network with many
++  image downlods.
++
++Proposed change
++===============
++
++To rectify the current limitations, we can add a simple nova service to aid in
++efficient distribution of high priority images to compute hosts out of the
++control path of the instance creation process.
++
++The service would consist of a periodic task performing the following tasks:
++
++List
++  Determine a list of images to pre-cache.
++Fetch
++  Obtain a copy of each image's data.
++Serve
++  Setup each image's data for distribution to hosts.
++Distribute
++  Trigger downloads of each image by the hosts.
++
++Alternatives
++------------
++
++- Change nothing - Let image be downloaded and cached on-demand.  The initial
++  build on a host may be slow depedning on image size.  Network throughput may
++  also suffer if many instances are built together.
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++None
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++None
++
++Performance Impact
++------------------
++
++Could significantly speed up the problem of distributing images to many hosts.
++
++Using the new service combined with BitTorrent could also network bandwidth
++saturation.
++
++Some rate-limiting controls should be provided to work in concert with the
++type of distribution mechanism selected.
++
++Other deployer impact
++---------------------
++
++An extra (optional) nova service to deploy and manage.
++
++Developer impact
++----------------
++
++None
++
++Implementation
++==============
++
++For each of the tasks, there would be a pluggable strategy for performing the
++given task.
++
++- Lister - A module for determining a list of image to pre-populate on compute
++  hosts.  A sensible default might be to query Glance for base images and
++  pre-load those.
++- Fetcher - A module for fetching the selected images from their backing storage.
++  A sensible default might be to fetch image data via Glance.
++- Server - A module for the setup and serving of image data for distribution
++  to hosts.  If BitTorrent is used, this would mean seeding the image data.
++- Distributor - A module to trigger download by the compute hosts.  A sensible
++  default may be to drop a message on the compute RPC topic indicating that an
++  image should be pre-loaded.
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  belliott
++
++Work Items
++----------
++
++- Create new service
++- Create default implementations for each component. (e.g. lister, fetcher,
++  etc)
++
++Dependencies
++============
++
++This blueprint has a dependency on the following to handle compute-side work:
++
++- https://blueprints.launchpad.net/nova/+spec/compute-image-cache
++
++Testing
++=======
++
++- Unit tests
++- devstack integration
++- tempest?
++
++Documentation Impact
++====================
++
++Need to document new service and interactions with nova-compute.
++
++References
++==========
++
++None
+-- 
+1.9.1
+

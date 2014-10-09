@@ -1,0 +1,155 @@
+From 562af6e4fbb8510e7abcea4f8e13d60e1b1299d3 Mon Sep 17 00:00:00 2001
+From: pran1990 <praneshpg@gmail.com>
+Date: Mon, 14 Apr 2014 18:59:07 -0700
+Subject: [PATCH] blueprint Configure TCP Keepalive
+
+Change-Id: Iceb316278069799b8c3ed1ca4c63f83fdf5b444c
+---
+ specs/juno/configure-tcp-keepalive.rst | 135 +++++++++++++++++++++++++++++++++
+ 1 file changed, 135 insertions(+)
+ create mode 100644 specs/juno/configure-tcp-keepalive.rst
+
+diff --git a/specs/juno/configure-tcp-keepalive.rst b/specs/juno/configure-tcp-keepalive.rst
+new file mode 100644
+index 0000000..cd4640f
+--- /dev/null
++++ b/specs/juno/configure-tcp-keepalive.rst
+@@ -0,0 +1,135 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++==========================================
++Configure TCP Keepalive
++==========================================
++
++https://blueprints.launchpad.net/nova/+spec/configure-tcp-keepalive
++
++In this blueprint we aim to add configuration options to tune TCP keepalive.
++These will be used to enable/disable, and tune, TCP keepalive.
++
++
++Problem description
++===================
++
++To avoid socket leaks because of connections being left idle for any reason,the
++nova code has tcp keepalive automatically turned on in places like wsgi.py.
++However, there is no way to configure keepalive parameters.
++
++
++Proposed change
++===============
++
++nova.conf already has a tcp_keepidle setting. This is meant to be the the
++interval between the last data packet sent (excluding just ACKs) and the first
++keepalive probe; after the connection is marked to need keepalive, this counter
++is not used any further.
++In order to implement this blueprint I propose we specify the following
++configuration options:
++
++ * tcp_keepalive_interval, which is the interval between subsequential keepalive
++   probes
++ * tcp_keepalive_count, which is the number of unacknowledged probes to send before the
++   connection is considered dead
++ * tcp_keepalive_configure, which is the switch to turn on configuration of
++   tcp_keepalive. If this is False, default TCP values would be used.
++
++
++Alternatives
++------------
++
++None
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++None
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++None
++
++Performance Impact
++------------------
++
++This change will allow cluster owners to set tcp_keepidle, etc to values
++suitable for their setup, if they choose to do so. At present, this value
++defaults to 10 minutes (600 seconds), which is not necessarily good
++everywhere.
++
++Other deployer impact
++---------------------
++
++There will be three new configuration options in nova.conf. Deployers can
++choose to tune tcp keepalive by turning on the tcp_keepalive_configure
++flag. There is already an option tcp_keepidle for the initial idle window,
++so we only need to add options to set the probe interval and count. Some of
++these options are not supported on OS X, and the code must take this into account.
++
++Developer impact
++----------------
++
++None
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++    praneshpg
++
++
++Work Items
++----------
++
++* Changes to be made to nova.conf to add more configuration options for
++  tcp_keepalive
++* Changes to code in nova to read in these config values, and handle systems
++  where some socket settings might not be available
++
++
++Dependencies
++============
++
++None
++
++
++Testing
++=======
++
++None
++
++Documentation Impact
++====================
++
++There must be documentation to describe what the keepalive parameters mean, when
++and why they should be used, etc.
++
++References
++==========
++
++* TCP Keepalive HOWTO http://tldp.org/HOWTO/TCP-Keepalive-HOWTO/index.html
++
+-- 
+1.9.1
+

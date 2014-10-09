@@ -1,0 +1,189 @@
+From 14d4aa7875b0b50ac9bf1642ac44c4b31b9724e1 Mon Sep 17 00:00:00 2001
+From: Alvaro Lopez Garcia <aloga@ifca.unican.es>
+Date: Fri, 4 Jul 2014 14:38:28 +0200
+Subject: [PATCH] WIP: Propose to support spot instances
+
+This is an incomplete proposal to add initial support spot instances,
+to see if the idea makes sense or not as it is proposed or not. The
+spec is not complete yet.
+
+Implements: blueprint spots-instances
+Change-Id: Ide101ac64afefae4597e2a191b45ac51dc2fb9bb
+---
+ specs/juno/spot-instances.rst | 164 ++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 164 insertions(+)
+ create mode 100644 specs/juno/spot-instances.rst
+
+diff --git a/specs/juno/spot-instances.rst b/specs/juno/spot-instances.rst
+new file mode 100644
+index 0000000..7510f12
+--- /dev/null
++++ b/specs/juno/spot-instances.rst
+@@ -0,0 +1,164 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++==========================================
++Spot Instances Support
++==========================================
++
++https://blueprints.launchpad.net/nova/+spec/spot-instances
++
++Cloud computing may give users the illusion of infinite capacity, but it is not
++always like that. When the resources are full, and a request may not be
++satisfied, giving an error to the users. In some cases, there are tasks that can
++be interrupted (i.e. they are fault tolerant) to leave room to other tasks.
++Users may benefit from this (paying a lower price for more computing power) and
++operators may get their infrastructure usage increased.
++
++Problem description
++===================
++
++A spot instance is a special kind of instance that can be stopped or suspended
++if there are no resources available to satisfy another request with higher
++priority. This way a user may launch spot instances (probably at a fraction
++of the normal price) to fulfil fault-tolerant tasks (such as batch processing,
++web crawling, etc.), taking into account that they may be terminated (or
++suspended) at a given point without further advise.
++
++In some commercial providers, spot instances are bounded to a price bid
++that the user is able to pay for its instances. This way, a spot instance may be
++stopped if the price bid goes above the paid price or if there is no room for a
++non-spot instance.
++
++With the current OpenStack scheduling mechanism, instances are only spawned
++if there are enough available resources to satisfy the request. There is no
++way to prioritise a request against another, and there is no way a request
++could stop (or preempt) a running instance. When the computing capacity is
++tight, this situation may lead to an underutilization of the infrastructure.
++
++Consider the following use case: A scientific cloud computing infrastructure,
++with two kind of users: users from group-A requiring interactive tasks that
++need to be spawned in a short period of time and group-B that require a large
++amounts of computing power (for example, tasks that are traditionally executed
++on a batch system).
++
++This use case will require that the operators set a tight quota for group-B,
++since their requests may fill up the complete infrastructure for long periods
++of time. If the requests from group-B saturate the infrastructure, requests
++from group-A could not be satisfied. With the spot instances in place, request
++from group-B would run as spot instances and requests from group-A would stop
++some of the running instances if there is no room for them.
++
++Proposed change
++===============
++
++The aim of this blueprint is to introduce initial support for spot instances
++into nova. It will add the ability to tag an instance as a spot instance (via
++flavors) and the ability to stop running spot instances to free enough space
++for a non-spot instance. As a first implementation of spot instances it will not
++focus con the more complex bidding system.
++
++In order to tag an instance as an spot instance, the extra_specs attribute of
++a flavor will be used. This way, any instance spawned using that flavor, will
++become a spot instance. This makes possible that an operator can define
++precisely what instance types can be requested as a spot instance.
++
++Whenever a non-spot request cannot be satisfied, the scheduler will look into
++the running spot instances (if any) and will check if stopping some of them
++will release the needed resources for the new request. If the request can be
++satisfied, the scheduler will then stop that instances and the new request
++will be eventually scheduled into that slot.
++
++Alternatives
++------------
++
++To be done.
++
++Data model impact
++-----------------
++
++There should be no changes to the data model, since the extra_specs field of
++the flavors will be used to tag an instance as a spot one.
++
++REST API impact
++---------------
++
++This BP does not affect REST APIs.
++
++Security impact
++---------------
++
++There is a possible denial of service for spot instances, as pointed by Daniel
++Berrange: Somebody could request a large number of non-spot instances, causing
++many spot instances to be destroyed, then they could just immediately shut down
++their non-spot instances again. They wouldnt have incurred any real expense for
++the short time their non-spot instances run, but they will have killed off many
++other people's spot instances.
++
++Notifications impact
++--------------------
++
++Extra notifications will be raised when a machine is terminated.
++
++Other end user impact
++---------------------
++
++The end users will have a new type of instance type to take into
++consideration.
++
++They should be aware that any spot instance can be stopped at a given point,
++without further advise.
++
++Performance Impact
++------------------
++
++To be done.
++
++Other deployer impact
++---------------------
++
++To be done.
++
++Developer impact
++----------------
++
++To be done.
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  aloga
++
++Other contributors:
++  None
++
++Work Items
++----------
++
++To be done.
++
++Dependencies
++============
++
++To be done.
++
++Testing
++=======
++
++To be done.
++
++Documentation Impact
++====================
++
++To be done.
++
++References
++==========
++
++To be done.
+-- 
+1.9.1
+

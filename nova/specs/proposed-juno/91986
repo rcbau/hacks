@@ -1,0 +1,183 @@
+From e2ef586150a24bcf23345c1b7204af2dc47acee3 Mon Sep 17 00:00:00 2001
+From: shuangtai <shuangtai.tian@intel.com>
+Date: Sun, 4 May 2014 11:02:39 +0800
+Subject: [PATCH] Add CPU CQM (Cache Qos Monitoring) management
+
+Intel's new CPUs introduce Cache QoS Monitoring (CQM) allows an Operating System,
+Hypervisor or similar system management agent to determine the usage of cache
+by applications running on the platform. The initial implementation is directed
+at last level cache (LLC) monitoring. So this can be used to monitor the
+instance's cache.
+
+Add the RMID resouce plugin to manager which instance can be monitored
+the cache.
+
+Change-Id: I267e10d333e4b6a5c1664ce231a70f93b7acada8
+---
+ specs/juno/cache-qos-monitoring.rst | 154 ++++++++++++++++++++++++++++++++++++
+ 1 file changed, 154 insertions(+)
+ create mode 100644 specs/juno/cache-qos-monitoring.rst
+
+diff --git a/specs/juno/cache-qos-monitoring.rst b/specs/juno/cache-qos-monitoring.rst
+new file mode 100644
+index 0000000..f33de4c
+--- /dev/null
++++ b/specs/juno/cache-qos-monitoring.rst
+@@ -0,0 +1,154 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++==============================================
++ Add CPU CQM (Cache Qos Monitoring) management
++==============================================
++
++
++https://blueprints.launchpad.net/nova/+spec/cache-qos-monitoring
++
++CQM:Enables monitoring of cache occupancy on a per-thread (via RMID) basis.
++
++RMID : The ID of the application or thread on a core as specified by the
++OS/VMM. This ID is provided by the OS/VMM, and used by the platform to tag
++and monitor events such as cache occupancy.
++
++Intel's new CPUs introduce Cache QoS Monitoring (CQM) allows an Operating
++System, Hypervisor or similar system management agent to determine the usage
++of cache by applications running on the platform. The initial implementation
++is directed at last level cache (LLC) monitoring.
++
++We want to add this new feature into OpenStack in this blueprint. And this
++need kernel and xen to support the CQM feature. So We will do some work in
++kernel, xen, libvirt, xenapi and OpenStack.
++
++When get one instance's' cache data, should via a RMID, but the total RMID
++numbers of different platforms are differents. So we want to add a RMID
++managerment in Nova.
++
++
++Problem description
++===================
++
++The main use case is to monitor the cache of each intstance. The user can
++enable the CQM function in the Nova and get the instance's 'cache data from
++Ceilometer agent[3].
++#TBD
++
++
++Proposed change
++===============
++
++This blueprint dependencies on Paul Murray's blueprint[1].
++Add a RMID resource plugin to manager the RMID resource. The RMID plugin record
++how many RMIDs are used and the total RMID numbers of host.
++
++The deployer should add a key ("resource:cpu_cqm":True ) to extra_specs to mark
++if the instance need to use the CQM monitor, the RMID plugin will put the key to
++instance_system_metadata, when libvirt/xenapi creates the instance, it will start
++the instance's cache monitoring. if the instance is created successfully, the
++plugin will record one RMID was used.
++
++Also need a RMID filter to check if the host has RMID to the new instance, if
++not, will return 0.
++
++#TBD (more details about the libvirt module)
++
++Alternatives
++------------
++
++None
++
++Data model impact
++-----------------
++The blueprint used the extra_resources field in the compute node table to
++communicate the resource tracking information. This field was added to the
++database in Icehouse-2 but has not yet been used.
++The extra_specs field will be added to the instances table in
++Paul Murray's blueprint[1].
++
++REST API impact
++---------------
++
++None
++
++Security impact
++---------------
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++None
++
++Performance Impact
++------------------
++
++None
++
++Other deployer impact
++---------------------
++
++The plugins will be configured in the blueprint extensible-resource-tracking
++ways.
++
++Developer impact
++----------------
++
++None
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  shuangtai-tian
++  qiaowei-ren
++
++
++Work Items
++----------
++
++* Add the RMID resource plugin to resource tracker
++* Add the RMID resource consumer plubin to the host manager
++* Add extra_specs ("resource:cpu_cqm":True) to instance_system_metadata
++
++
++Dependencies
++============
++
++*This blueprint dependency on extensible-resource-tracking
++https://blueprints.launchpad.net/nova/+spec/extensible-resource-tracking
++
++*Also dependecy on the new version of kernel, xen, libvirt and xenapi.
++#TBD
++
++
++Testing
++=======
++
++Unit tests are sufficient to cover feature changes.
++
++
++Documentation Impact
++====================
++
++None
++
++References
++==========
++
++[1]https://blueprints.launchpad.net/nova/+spec/extensible-resource-tracking
++[2]https://blueprints.launchpad.net/nova/+spec/cache-qos-monitoring
++[3]https://blueprints.launchpad.net/ceilometer/+spec/cache-qos-monitoring
+-- 
+1.9.1
+

@@ -1,0 +1,157 @@
+From bb58667986713953813d75d7068e6a68295e7ac0 Mon Sep 17 00:00:00 2001
+From: James Chapman <james.p.chapman@intel.com>
+Date: Fri, 30 May 2014 16:56:41 +0100
+Subject: [PATCH] Title: libvirt-hugepage
+
+Enables libvirt VM's access hugepage memory pages.
+
+Change-Id: I5e06b3bdde849dd2ff239971cefee82540a5be4f
+Implements: blueprint libvirt-hugepage
+---
+ specs/juno/libvirt-hugepage.rst | 134 ++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 134 insertions(+)
+ create mode 100644 specs/juno/libvirt-hugepage.rst
+
+diff --git a/specs/juno/libvirt-hugepage.rst b/specs/juno/libvirt-hugepage.rst
+new file mode 100644
+index 0000000..c859707
+--- /dev/null
++++ b/specs/juno/libvirt-hugepage.rst
+@@ -0,0 +1,134 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++==========================================
++Libvirt hugepage backed memory support
++==========================================
++
++https://blueprints.launchpad.net/nova/+spec/libvirt-hugepage
++
++This blueprint gives the cloud deployer the option of providing guests with
++access to the hosts hugepage memory pages instead of the default sized memory
++pages. A config parameter in nova.conf will determine if guests can access the
++hosts default sized memory pages or hugepage memory pages.
++
++Problem description
++===================
++
++User space vhost (usvhost) allows a userspace process to communicate directly
++with a vswitch. In the virtual world this means the qemu process that hosts
++the guest has direct access to the user space vswitch, without the overhead
++of guest traffic passing through the kernel.
++
++To use usvhost with Intel(R) DPDK vSwitch there is a dependency that memory
++used is allocated from hugepages. Currently nova does not configure libvirt
++to provide guests access to the hosts hugepage memory.
++
++The overhead of the host operating systems virtual to physical memory
++translations can be reduced by providing guest access to larger memory
++pages on the hosts system.
++
++Currently the libvirt driver has the ability to enable guests to use hugepage
++backed memory, but nova needs enhancements to add this capability.
++
++Proposed change
++===============
++
++Depending on configuration flag in nova.conf, libvirt will add a
++"memoryBacking" element to the guest xml definition file.
++File: nova/virt/libvirt/config.py
++
++The LibvirtDriver will be modified to become aware of the hugepage memory
++availablility. This information can be used by the scheduler for guest
++placement.
++File: nova/virt/libvirt/driver.py
++
++Alternatives
++------------
++
++None
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++None
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++None
++
++Performance Impact
++------------------
++
++Guests that have access to a hosts hugepage memory configuration will see a
++significant reduction in memory access latencies. Particulary for guests with
++memory intensive workloads.
++
++Other deployer impact
++---------------------
++
++To avail of this feature the cloud deployer will need to configure hugepages
++on the node and set the (use_hugepages = True) config flag in nova.conf.
++
++Developer impact
++----------------
++
++None
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  <James Chapman>
++
++Other contributors:
++  <Przemyslaw Czesnowicz>
++
++Work Items
++----------
++
++Define "memoryBacking" element for the guest xml definition file.
++
++Add awareness to the libvirt driver of the hosts hugepage memory availability.
++
++Dependencies
++============
++
++None
++
++Testing
++=======
++
++Covered by existing tempest test
++
++Documentation Impact
++====================
++
++None
++
++References
++==========
++
++None
+-- 
+1.9.1
+

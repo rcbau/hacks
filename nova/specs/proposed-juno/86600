@@ -1,0 +1,145 @@
+From 8e8f89e534214349eb5a91c71d674a9190c3d773 Mon Sep 17 00:00:00 2001
+From: LiangChen <hs.chen@huawei.com>
+Date: Wed, 9 Apr 2014 20:17:06 -0400
+Subject: [PATCH] Add memory quota support for libvirt
+
+Add support to controller memory quota when creating instance.
+
+blueprint flavor-quota-memory
+
+Change-Id: I447f7e3cade02f09ae7395613c4d962a8ef8eeca
+---
+ specs/juno/flavor-quota-memory.rst | 120 +++++++++++++++++++++++++++++++++++++
+ 1 file changed, 120 insertions(+)
+ create mode 100644 specs/juno/flavor-quota-memory.rst
+
+diff --git a/specs/juno/flavor-quota-memory.rst b/specs/juno/flavor-quota-memory.rst
+new file mode 100644
+index 0000000..0aa223c
+--- /dev/null
++++ b/specs/juno/flavor-quota-memory.rst
+@@ -0,0 +1,120 @@
++This work is licensed under a Creative Commons Attribution 3.0 Unported 
++License.                                                                
++                                                                        
++http://creativecommons.org/licenses/by/3.0/legalcode                    
++
++==========================================
++Add memory limit for libvirt
++==========================================
++
++https://blueprints.launchpad.net/nova/+spec/flavor-quota-memory
++
++Currently nova has supported setting CPU quota,such as 'quota:cpu_quota' and 
++'quota:cpu_shares',so we can add memory quota too.
++
++KVM has only supported memory limit now,so i think we should support setting 
++memory limit first.Once KVM supports share etc,we can add it later.
++
++
++Problem description
++===================
++
++If we do not control user uses the memory resources, memory resources may be 
++more than the maximum allocation of memory for the guest at boot time, the host
++memory resources cannot control.
++
++
++Proposed change
++===============
++
++Add extra key in flavor,For example:memory:cpu_quota.
++'cpu_quota' stands the maximum memory the guest can use.
++
++Alternatives
++------------
++
++Using the same method as CPU quota.It is easy to be extended and little change.
++
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++None
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++None
++
++Performance Impact
++------------------
++
++It adds key in flavor.
++
++Other deployer impact
++---------------------
++
++None
++
++Developer impact
++----------------
++
++None
++
++Implementation
++==============
++
++None
++
++Assignee(s)
++-----------
++
++Primary assignee:  
++   <hs.chen@huawei.com>  
++
++
++Work Items
++----------
++
++1.If the instance has the key 'memory:cpu_quota',we add memory limit config in 
++the libvirt driver.
++2.Add testcase of the limit config.
++
++
++Dependencies
++============
++
++Ability to rely on the KVM support.
++
++
++Testing
++=======
++
++Create a virtual machine, use memory compression tool pressure to a maximum 
++value, check if it can be more than limit value.
++
++
++Documentation Impact
++====================
++
++None
++
++References
++==========
++
++None
+\ No newline at end of file
+-- 
+1.9.1
+

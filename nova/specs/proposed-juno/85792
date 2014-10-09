@@ -1,0 +1,324 @@
+From 977ee1e82dd091f9eb4329a18962466c6545ef83 Mon Sep 17 00:00:00 2001
+From: Christopher Lefelhocz <christopher.lefelhoc@rackspace.com>
+Date: Mon, 7 Apr 2014 14:20:41 -0500
+Subject: [PATCH] Propose Compute Image Precaching Capability
+
+blueprint compute-image-precache
+Change-Id: I9e84e2086a3543ba36148cbec2b1dd7da7acb005
+---
+ specs/juno/compute-image-precache.rst | 303 ++++++++++++++++++++++++++++++++++
+ 1 file changed, 303 insertions(+)
+ create mode 100644 specs/juno/compute-image-precache.rst
+
+diff --git a/specs/juno/compute-image-precache.rst b/specs/juno/compute-image-precache.rst
+new file mode 100644
+index 0000000..142572f
+--- /dev/null
++++ b/specs/juno/compute-image-precache.rst
+@@ -0,0 +1,303 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++===================================
++Compute Image Precaching Capability
++===================================
++
++https://blueprints.launchpad.net/nova/+spec/compute-image-precache
++
++This blueprint looks to improve build times.  Currently builds times
++are directly related to image downloading.  This is due to the
++on-demand nature of VM launch today.
++
++This proposal looks to extend/leverage compute's existing on-demand
++downloading capability to prepopulate images.  The current mechanism
++is used in launching VMs which is performed on-demand.  We would like
++to download images without VM launch.
++
++Problem description
++===================
++Currently image downloading is a component of VM launch.  As such
++administrators have no way to precache images that are commonly used.
++Admins use out of band mechanisms to precache images based on specific
++drivers being used.  Admins also need a mechanism which can control
++number of downloads.  Scalability issues arise in large deployments
++where downloading becomes a bottleneck if too many images are
++downloading at the same time.  The use case being explored is image
++caching of common images for public clouds.
++
++This spec will add a mechinism to preclude images from being garbage
++collected by the current periodic task _run_image_cache_maanger_pass in
++the compute manager.
++
++Proposed change
++===============
++The admin API will change by extending the POST call under os-hosts to
++precache an image on a given host.  The specifics are provided below
++under REST API impact.
++
++The underlying compute will be extended with RPC request to cache an
++image on the host::
++
++    def host_cache_image(ctxt, images)
++       """ Precache image on host
++       :param context: context permissions for actions of precaching
++       :param images: the glance uuids of the images that will be cached
++       """
++
++This allows outside services to systematically precache images on
++hosts and control the number of hosts that are downloading.
++Notifications will be used to allow admin to know when images are
++being downloaded.
++
++Also, to preclude images from being garbage collected by
++_run_image_cache_manager_pass, we will add a cached_images hook filter.
++The periodic task _run_image_cache_manager_pass defaults to run ever
++24 hours.  The hook filter will be a configuration option in the nova
++compute.  The hook filter will be passed to the driver method
++manage_image_cache and have the following signature::
++
++    def cached_images(context, images)
++       """ cached_images return a dict of images that should remain on host
++       :param context: context permissions for actions
++       :param images: List of UUID of images to check
++       """
++
++The default cached_images hook will make a glance call to check the
++images' meta properties.  Using x-image-meta-property-cache_in_nova as
++a switch, the cached_images returns a dict of which images should and
++should not be cached.  True means the driver should maintain the image
++regardless of current usage or age.  False means the driver is free to
++remove the image.
++
++The name x-image-meta-property-cache_in_nova was chosen based on the
++pre-existing property used by the Xen driver.
++
++Alternatives
++------------
++Four alternatives were considered prior to the proposed solution above.
++These solutions are currently in use in various forms in public clouds
++today.  The first solution is to build VMs to cache the image and then
++delete the build using a targeted host mechanism.  This is less than
++desirable for a couple of reasons.
++
++* The process requires a fair amount of book keeping and doesn't
++  scale.
++* Hosts could be temporarily fully utilized.  As such launching a VM
++  may not be an option even if caching is desired.
++
++The second option is to do this outside nova via script.  This allows
++more flexibility in download options and implementation.  However, no
++common functions can be shared down the road between drivers.  Also,
++the script would be prone to breaking due to changes in driver
++implementations along the way.  For instance, in the XenAPI
++implementation, cached images are recognized by the name "Glance
++<uuid>" if this ever changed, this would need to change in both the
++external script and nova.  This breakdown is not preferred.
++
++The third option is use aggregates and a periodic function to
++disseminate precaching.  Aggregates were not considered as it is
++currently a nova optional/extension feature.  Storing the information
++and using a periodic function implies state which is not a goal of
++this proposal.  The storing of cached images implies some form of
++stickiness and management which is not a goal of this proposal.
++
++The last option is to change nothing - Let image be downloaded and
++cached on-demand.  The initial build on a host may be slow depending
++on image size.  Network throughput may also suffer if many instances
++are built together.
++
++Data model impact
++-----------------
++None.
++
++REST API impact
++---------------
++We would like to provide this for both V2 and V3 APIs.
++
++Perform precaching
++
++V2 API specification:
++POST: v2/os-hosts/{host_name}/action
++
++V3 API specification:
++POST: v3/os-hosts/{host_name}/action
++
++Request parameters:
++* host_name: The name of the host of interest to you.
++* precache: Specify precaching action in the request body
++* images: the UUIDs of images we wish to precache
++
++JSON request:
++{ "precache": {"images": ["695ca76e-fc0d-4e36-82e0-8ed66480a999"]}}
++
++JSON response:
++{"images": ["695ca76e-fc0d-4e36-82e0-8ed66480a999"]}
++
++JSON schema definition::
++
++    precache = {
++        'type': 'object',
++        'properties': {
++            'precache': {
++                'type': ['object', 'null'],
++                'properties': {
++                    'images': {
++                        "type": "array",
++                        items: {
++                            "type": parameter_types.image.ref
++                        }
++                    }
++                 },
++                'required': ['image']
++                'additionalProperties': False,
++            },
++        },
++        'required': ['precache'],
++        'additionalProperties': False,
++    }
++
++Sample v2 request:
++POST: v2/os-hosts/deathstar/action -d { "precache":
++{"image": ["695ca76e-fc0d-4e36-82e0-8ed66480a999"]}}
++
++Sample v3 request:
++POST: v3/os-hosts/deathstar/action -d { "precache":
++{"image": ["695ca76e-fc0d-4e36-82e0-8ed66480a999"]}}
++
++HTTP response codes:
++v2:
++* Normal HTTP Response Code: 200 on hint to start cache being delivered.
++* HTTP Response Code: 400 on failure due to extension not being available
++* HTTP Response Code: 409 on image property cache_in_nova not existing or False
++v3:
++Same as v2.
++
++Validation:
++'image' must be of a uuid-str format.
++Failure Response Code: HTTPBadRequest with "Invalid image ref format" message.
++
++Security impact
++---------------
++The new Admin API will add the associated policy settings.
++Policy.jsons will be added for POST precache images actions.
++It will default to admin_context.  It is recommended that
++ONLY deployer/operators be allowed to access this command.
++
++Notifications impact
++--------------------
++Notifications will be added to compute.metrics and
++compute.host.image.cache.{start,error,end}.
++
++The compute.metrics will include a new resource field called
++'compute.image.cache' and contain a list of currently cached images.
++Since this information is sent periodically it will reflect the
++current state of compute.
++
++compute.host.image.cache.{start,error,end} will follow the same model
++as compute.instance.create.{start,error,end}.  Sending notifications
++at the start of caching, error, end of caching.  Relevant fields
++which will be passed as part of the payload are:
++* image_ref_url: Image URL (from Glance) that is being cached
++* created_at: Timestamp for when caching was started
++* downloaded_at: Timestamp for when cached was completed
++* message: High-level message describing notification. if the event
++type is an error, will contain error details.
++
++Other end user impact
++---------------------
++None.
++
++Performance Impact
++------------------
++The performance could significantly speed up the problem of
++distributing images to many hosts and subsequent build times.
++
++By default configuration, once a day the host will query for each
++image to determine whether it's a cached image or not.  The hosts
++periodic test may be spread, but clustered in a multiple minute
++interval.  This means the glance service needs to be scaled to handle
++the API load.
++
++Other deployer impact
++---------------------
++Deployers must be aware that just because an image is precached
++does not mean it will persist forever.  Deployers will need to be
++aware of both driver operation and configuration as a
++driver can evict images.  We have added a cached_images filter
++but this must be configured and the image property honored.
++
++The steps to caching an image will consist of the following:
++1) Perform a glance PUT on the image which sets the property
++cache_in_nova to True.
++2) For hosts where precaching is useful call the precache API
++
++The steps to remove cached images not currently in use is:
++1) Perform a glance PUT on the image which sets the property
++cache_in_nova to False.
++2) Wait for the next periodic call of _run_image_cache_manager_pass
++which removes unused images.
++
++Customer image prepopulation can best be leveraged by directing
++customers to a specific cell.  The cell being prepopulated would give
++the best build times while limiting the prepopulation to a subset of
++the fleet.  Longer term, a follow-on blueprint which feeds cached
++image information to the scheduler would also be beneficial to this
++feature.  The follow-on work will be part of a separate blueprint.
++
++The impact from a host perspective is the same as the time and network
++bandwidth it takes to launch a VM of the image type without caching on
++a host.  We do not anticipate this changing what would be the impact
++of a single download.
++
++The feature overall does allow for downloads to run in parallel (even
++encourages it).  This means there is a larger system implication.
++Deployers will need to recognize how many images and boxes they want
++to cache at a single time.  This affects load on glance servers or
++other services providing images.
++
++Developer impact
++----------------
++None.
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++Primary assignee:
++  leifz
++  belliott
++
++Other contributors:
++  alaski
++
++Work Items
++----------
++- Create api and hooks for drivers
++- Create precache xenapi driver reference implementation
++- Create a gating verification test with tempest/devstack
++- Update _run_image_cache_manager_pass to handle cached_images hook
++- Adjust libvirt driver imagecache to recognize cached_images hook
++- Create precache libvirt driver implementation (gate)
++
++Dependencies
++============
++None.
++
++Testing
++=======
++- devstack integration
++- Tests to poke the new admin API in Gating.
++
++Documentation Impact
++====================
++Need to document new Admin API.
++
++References
++==========
++None
+-- 
+1.9.1
+

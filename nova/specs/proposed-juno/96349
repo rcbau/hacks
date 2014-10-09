@@ -1,0 +1,181 @@
+From 7baa0c58c4d8dda5b2937b6234e5d2d4c566a251 Mon Sep 17 00:00:00 2001
+From: Vilobh Meshram <vilobhmm@yahoo-inc.com>
+Date: Thu, 8 May 2014 02:00:47 +0000
+Subject: [PATCH] Blueprint for Monitoring IP Availability in Openstack
+ Deployment
+
+Change-Id: I2551fa5d0824e8dc5225a499f8aca3b7c33ce21a
+
+Commit
+
+Change-Id: Ia3485d3a13acd63652bb2ecca5e5d0ac15150fc2
+---
+ specs/juno/monitoring-ip-availability.rst | 156 ++++++++++++++++++++++++++++++
+ 1 file changed, 156 insertions(+)
+ create mode 100644 specs/juno/monitoring-ip-availability.rst
+
+diff --git a/specs/juno/monitoring-ip-availability.rst b/specs/juno/monitoring-ip-availability.rst
+new file mode 100644
+index 0000000..e6ab5d8
+--- /dev/null
++++ b/specs/juno/monitoring-ip-availability.rst
+@@ -0,0 +1,156 @@
++================================================
++List all the available IP present in all subnets
++================================================
++
++https://blueprints.launchpad.net/nova/+spec/monitoring-ip-availability
++
++Problem description
++===================
++
++In an Openstack deployment monitoring usage of resource like
++compute, storage, network is critical. Having a way to keep
++track of these resources can be important so that proper actions
++can be taken in case a threshold is reached in resource consumption
++of these resources. This feature
++can be used to monitor IP availability in all the available subnets.
++
++Proposed change
++===============
++
++A new command nova fixed-ip-list will be introduced with the
++parameter ‘available’ to display the
++list of available IP’s present in all the subnets. This can be
++a useful utility to monitor IP availability.
++The target is for nova-network and if needed can be
++applied to neutron as well.
++
++1. The change will consist of modification at the nova-api
++layer and the nova client side.
++2. At the DB layer and the SQLAlchemy a new API will be
++added to list available IP’s.
++
++Alternatives
++------------
++
++None
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++API for specifying available fixed ips.
++
++V2 API specification:
++POST: v2/{tenant_id}/os-fixed-ips/action
++
++V2.1 API specification:
++POST: v2.1/{tenant_id}/os-fixed-ips/action
++
++V3 API specification:
++POST: v3/{tenant_id}/os-fixed-ips/action
++
++Request parameters:
++* tenant_id: The ID for the tenant or account in a multi-tenancy cloud.
++* action : available
++
++Sample v2 request:
++POST: v2/1b4a75e0c54049518438ee3e514e1844/os-fixed-ips/available
++Where 1b4a75e0c54049518438ee3e514e1844 : tenant-id
++
++HTTP response codes:
++Normal HTTP Response Code: 200 on success
++
++In the response we will get the list of all the available IP's present
++in all the subnets.
++INFO (connectionpool:203) Starting new HTTP connection (1):
++API-host DEBUG (connectionpool:295) 
++"GET /v2/1b4a75e0c54049518438ee3e514e1844/os-fixed-ips/available
++HTTP/1.1" 200 490028
++RESP: [200] {'date': 'Wed, 21 May 2014 22:48:30 GMT',
++'content-length': '490028',
++'content-type': 'application/json',
++'x-compute-request-id': 'req-161c898a-ca69-4e9f-9b43-fc3af12b9a47'}
++RESP BODY: {"fixed_ips_info": [{"allocated": false, "availableipcount": 4202,
++"reserved": false, "totalipcount": 4608, "address": "10.220.32.8"}.
++The response body will have the detail of the available ip count and
++totalipcount and the list of IP's which are available.
++
++Validation:
++‘action’ must be ‘available’
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++None
++
++Performance Impact
++------------------
++
++None
++
++Other deployer impact
++---------------------
++
++None
++
++Developer impact
++----------------
++
++The parameter will be optional, so no other code needs to be changed.
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++    Vilobh Meshram (vilobhmm@yahoo-inc.com)
++
++Work Items
++----------
++
++* Add an API to get the list of available IP’s for all subnets.
++* At the SQLAlchemy layer add an API to get the list of available
++IP’s for all subnets.
++* Changes at the nova-api layer to handle the request to list IP
++and invoke DB layer API.
++* Nova client changes to parse the command line options and
++invoke Nova API.
++
++Dependencies
++============
++
++None
++
++Testing
++=======
++
++Tempest test to be added to verify available IP list.
++
++Documentation Impact
++====================
++
++Changes to be made to the Nova API documentation to include
++the new command
++fixed-ip-list and additional parameter ‘available' that
++can be passed in.
++
++References
++==========
++
++None
+-- 
+1.9.1
+

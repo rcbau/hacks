@@ -1,0 +1,177 @@
+From 3e9b266116447a1df9ffd9631aa6deeec34c8efc Mon Sep 17 00:00:00 2001
+From: He Jie Xu <xuhj@linux.vnet.ibm.com>
+Date: Tue, 6 May 2014 17:23:44 +0800
+Subject: [PATCH] Enable extension policy rule as default of action policy rule
+ for v3 api
+
+This bp propose enable extension policy rule as default of action policy
+rule for v3 api, that will ease the maintenance burden of policy rules for
+deployer.
+
+Part of blueprint extension-level-policy-as-default-v3-api
+
+Change-Id: Ib034449bc1b339719ea6f57c4a49034fdac58211
+---
+ .../extension-level-policy-as-default-v3-api.rst   | 150 +++++++++++++++++++++
+ 1 file changed, 150 insertions(+)
+ create mode 100644 specs/juno/extension-level-policy-as-default-v3-api.rst
+
+diff --git a/specs/juno/extension-level-policy-as-default-v3-api.rst b/specs/juno/extension-level-policy-as-default-v3-api.rst
+new file mode 100644
+index 0000000..ed63506
+--- /dev/null
++++ b/specs/juno/extension-level-policy-as-default-v3-api.rst
+@@ -0,0 +1,150 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++=========================================================================
++Enable extension policy rule as default of action policy rule for v3 api
++=========================================================================
++
++https://blueprints.launchpad.net/nova/+spec/extension-level-policy-as-default-v3-api
++
++There are a lot of API in V3, and also a lot of policy rule that can be
++configured by deployer. For ease the maintenance burden of policy rules
++configuration, enable deployer to use extension policy rule instead of all
++the action policy rule in the same extension.
++
++Problem description
++===================
++
++For some extension, it provide policy rule for each API.
++
++For example:
++    "compute_extension:v3:os-aggregates:index": "rule:admin_api",
++    "compute_extension:v3:os-aggregates:create": "rule:admin_api",
++    "compute_extension:v3:os-aggregates:show": "rule:admin_api",
++    "compute_extension:v3:os-aggregates:update": "rule:admin_api",
++    "compute_extension:v3:os-aggregates:delete": "rule:admin_api",
++    "compute_extension:v3:os-aggregates:add_host": "rule:admin_api",
++    "compute_extension:v3:os-aggregates:remove_host": "rule:admin_api",
++    "compute_extension:v3:os-aggregates:set_metadata": "rule:admin_api",
++
++Actually the rule is same for all the API. If Deployer want to change
++the rule, Deployer need modify for each policy rule.
++
++Proposed change
++===============
++
++Extension rule: compute_extension:v3:[extension_name]
++Action rule: compute_extension:v3:[extension_name]:[action_name]
++
++If deployer want to set same rule for all the API in an extension, deployer
++just need write a rule for extension. Then that rule will apply to all the API
++in that extensions.
++
++If deployer want to change rule for one of API in that extension, it only
++need write an action policy rule for that API. Then it will override the rule
++of extension.
++
++For example:
++"compute_extension:v3:os-aggregates": "rule:admin_api",
++"compute_extension:v3:os-aggregates:set_metadata": "role:maintainer"
++
++This means the rule of APIs except set_metadata in os-aggregates extension
++is "rule:admin_api". For set_metadata, the rule is "role:maintainer".
++
++Alternatives
++------------
++
++None
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++None
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++None
++
++Performance Impact
++------------------
++
++None
++
++Other deployer impact
++---------------------
++If the policy configure file is unchanged, then this is completely backwards
++compatible.
++
++If the policy configure file is changed. There are something need notice:
++When action policy rule is unspecified, without this feature, the default
++rule will be applied. With this feature, the extension policy rule will be
++applied.
++
++Developer impact
++----------------
++A developer should still list every single possible policy setting available
++for the feature they are adding or modifying in policy.json, not just an
++overall policy setting for the extension. A deployer is always free to remove
++more specific settings, but without having an example they would be forced to
++read the nova api code to see what settings are possible.
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  Alex Xu <xuhj@linux.vnet.ibm.com>
++
++Other contributors:
++  None
++
++Work Items
++----------
++
++Enable extension policy rule as default of action policy rule for
++v3 api.
++
++Dependencies
++============
++
++None
++
++Testing
++=======
++Add unittest for this feature to ensure it works.
++
++
++Documentation Impact
++====================
++Upgrade impact documentation will need to be written so deployers are aware of
++this new feature.
++
++Developer documentation will need to notice developer list all the new policy
++rule in the policy configure file, that used to have an example for deployer
++knowing which rule they can use.
++
++References
++==========
++
++None
+-- 
+1.9.1
+

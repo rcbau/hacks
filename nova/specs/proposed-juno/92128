@@ -1,0 +1,258 @@
+From ea2233eda768e94b19fe777bbe7381006e8fa0a7 Mon Sep 17 00:00:00 2001
+From: Yuriy Taraday <yorik.sar@gmail.com>
+Date: Mon, 5 May 2014 18:39:16 +0400
+Subject: [PATCH] Add no-db-scheduler spec
+
+Change-Id: Ib9fb944323fce66eb15eeb3feeb5ffa83b7c481e
+---
+ specs/juno/no-db-scheduler.rst | 238 +++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 238 insertions(+)
+ create mode 100644 specs/juno/no-db-scheduler.rst
+
+diff --git a/specs/juno/no-db-scheduler.rst b/specs/juno/no-db-scheduler.rst
+new file mode 100644
+index 0000000..61f53f4
+--- /dev/null
++++ b/specs/juno/no-db-scheduler.rst
+@@ -0,0 +1,238 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++============================
++ Decouple scheduler from DB
++============================
++
++Launchpad entry: https://blueprints.launchpad.net/nova/+spec/no-db-scheduler
++
++This blueprint considers two major problems with current implementations of
++scheduler in Nova:
++
++* New features that impact scheduling have to either store their data in one
++  Text column (compute_nodes.stats) or add new colums to compute_node table
++  itself (which requires new migrations). This limits opportunities for
++  cross-project scheduling as it makes scheduler bound to DB schema.
++
++* Current implementation uses one big request to DB to retrieve all data about
++  compute nodes that resides there. These requests becomes a performance
++  bottleneck in large enough deployments.
++
++Problem description
++===================
++
++Currently DB is used for scheduler in these steps:
++
++* once in a minute (by default) every compute node updates its state in
++  database in compute_nodes tables in on JSON blob;
++* every time a new instance is to be scheduled, DB is queried for all existing
++  nodes and all their parameters;
++* after that scheduler selects appropriate host for a VM from aquired list.
++
++Flexibility of scheduler
++------------------------
++
++The main problem in direct storing of schedulling data in DB is limiting data
++available for scheduling to one project. For example, user might want to deploy
++VMs near existing Cinder volumes. This requires scheduler to hold information
++from different projects which is not possible with a single DB schema.
++
++Upcoming performance issues
++---------------------------
++
++compute_nodes table is mainly being accessed from two places:
++
++* every compute node issues an UPDATE once every minute (by default);
++* scheduler does global SELECT for all records for every VM boot request.
++
++One problem is a heavy load on one table: for 10000 of compute nodes the first
++part alone would produce hundreds of UPDATE requests per second while the
++second one would generate a lot of unnecessary DB->Python traffic.
++
++Proposed change
++===============
++
++These problems can be solved in the following steps (in any order):
++
++1. use schedulers' memory as a primary storage for scheduling-related
++   parameters and synchronize them through external backend;
++2. abstract out pushing data to scheduler to one RCP call which in future can
++   be called from different projects;
++3. store all data required for scheduling in one JSON for each node (avoid
++   limiting the data that can be used by DB schema) - mostly done by
++   https://blueprints.launchpad.net/nova/+spec/compute-node-stats-as-resource-tracker-extension
++
++These steps provide the following benefits:
++
++1. With this step we avoid re-requesting data for all nodes for each scheduling
++   operation. Each host state is updated rather rare (once in a minute by
++   default) so there's no reason to fetch mostly-static data from DB. We should
++   fetch data for hosts that provided new data since our last request instead.
++2. Using one single RPC call to scheduler instead of a number of direct DB
++   calls allows us to decouple scheduler from Nova and allow in future other
++   projects to send their data to one central scheduler.
++3. The first part allows to store any strucrured data in schedulers so that
++   different projects can provide their data that can be used for scheduling
++   without need to provide any schema updates.
++
++Synchronizer implementation details
++-----------------------------------
++
++The core for the new approach for host state storage is a new mechanism to
++provide schedulers with actual data about all compute nodes.
++
++Synchronizer uses these models:
++
++* Records
++
++  All data is stored in impersonal records consiting of ID and some JSON data.
++  In our case one record represents current state of compute node.
++
++* Updates
++
++  Update represents the act of updating one record and holds ID of updated
++  record and a timestamp. Updates also provide a token - a monotonic increasing
++  integer that differs for each update. Token is backend-dependent.
++
++* Namespaces
++
++  As our first goal is to allow storage for data from different projects, we
++  incapsulate records and updates to named namespaces. For host states in nova
++  "nova-hoststate" namespace is used.
++
++These models can be stored in any backend. Initial implementation proposes 2
++backends: SQLAlchemy and Memcached.
++
++Wherever the data is needed to be read or written, Synchronizer object is
++instantiated. It's initialized with a namespace name and a backend class. It
++provides 3 basic operations:
++
++* get all records;
++* put up new record (or update an existing one);
++* delete existing record.
++
++For every operation internal state is synchronized with backend.
++Synchronization process consits of the following steps:
++
++* latest fetched update's token is compared with the latest update's token
++  stored in the namespace;
++* if there are new updates, appropriate records are fetched from the backend
++  (note that the record will be fetched once even if there're a number of new
++  updates for it);
++* in case of some error (e.g. token sequence is broken or backend got flushed),
++  a timer is set to flush all state in 1 minute (by default) to allow hosts to
++  report their new state in the mean time;
++* once in a while (10 seconds by default) all old updates are purged from
++  backend.
++
++After synchronization get_all method returns data from internal state while put
++and delete methods send requests to backends.
++
++Alternatives
++------------
++
++Fanout all host states to all schedulers
++""""""""""""""""""""""""""""""""""""""""
++
++Compute nodes can fanout their state to all schedulers but it would put a
++significant load to message queue while still requiring to store states in DB
++to bootstrap new scheduler nodes.
++
++Data model impact
++-----------------
++
++SQLAlchemy (default) backend requires 3 new tables created in DB. Old
++compude_nodes.stats column should be deleted after migration.
++
++Note that since stats data is transient, no data migration is necessary.
++
++REST API impact
++---------------
++
++None.
++
++Security impact
++---------------
++
++None with default SQL backend. Memcached backend would need to be secured
++separately.
++
++Notifications impact
++--------------------
++
++None.
++
++Other end user impact
++---------------------
++
++None.
++
++Performance Impact
++------------------
++
++Performance benefit for large deployments (~10k nodes), no penalty for smaller
++clouds.
++
++Other deployer impact
++---------------------
++
++SQLAlchemy backend merely requires migrations to be run.
++
++Memcached backend would require deploying memcached alongside Nova and
++configure synchronizer to use its endpoints.
++
++Developer impact
++----------------
++
++None
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  yorik-sar
++
++Other contributors:
++  aovchinnikov (original developer)
++
++Work Items
++----------
++
++* implementation of new synchronizer (mostly done);
++* move as much scheduling-related data to host states as possible (eliminate
++  compute_nodes?)
++
++Dependencies
++============
++
++For memcached backend python-memcached is required.
++
++Testing
++=======
++
++This change doesn't change Nova behavior so it doesn't require changes in
++Tempest.
++
++Documentation Impact
++====================
++
++New configuration options should be documented.
++
++References
++==========
++
++Original etherpad description:
++https://etherpad.openstack.org/p/scheduler-design-proposal
++
++Discussion of original reasons for this change:
++https://docs.google.com/a/mirantis.com/document/d/1_DRv7it_mwalEZzLy5WO92TJcummpmWL4NWsWf0UWiQ/view
++
++Patches submitted for review:
++https://review.openstack.org/#/q/topic:bp/no-db-scheduler,n,z
+-- 
+1.9.1
+

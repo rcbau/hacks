@@ -1,0 +1,443 @@
+From cc38d868c0a65a376b9868d0b8059a167d956c26 Mon Sep 17 00:00:00 2001
+From: Sean Dague <sean@dague.net>
+Date: Fri, 9 May 2014 15:52:03 -0400
+Subject: [PATCH] Log Guidelines
+
+Draft logging guidelines for OpenStack. We're using the nova-specs
+repository here to gather feedback pre-summit, and pre-deciding
+on a cross project approach to guidelines like this. Nova is also
+a natural starting point as there are contributors interested in
+cleaning up Nova during Juno cycle.
+
+Part of bp:log-guidelines
+
+Change-Id: I674966988ed501dee323a106b84b5b6602d846b1
+---
+ specs/juno/log-guidelines.rst | 415 ++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 415 insertions(+)
+ create mode 100644 specs/juno/log-guidelines.rst
+
+diff --git a/specs/juno/log-guidelines.rst b/specs/juno/log-guidelines.rst
+new file mode 100644
+index 0000000..79bfad7
+--- /dev/null
++++ b/specs/juno/log-guidelines.rst
+@@ -0,0 +1,415 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++==========================================
++Logging Guidelines
++==========================================
++
++https://blueprints.launchpad.net/nova/+spec/log-guidelines
++
++Problem description
++===================
++
++The current state of logging both within, and between OpenStack
++components is inconsistent to the point of being somewhat harmful by
++obscuring the current state, function, and real cause of errors in an
++OpenStack cloud. In order to make OpenStack clouds possible for non
++super powered enabled humans to debug, which should make this better.
++
++Before we can address this in OpenStack, we first need to come up with
++a set of guidelines that we can get broad agreement on. This is
++expected to happen in waves, and this is the first iteration to gather
++agreement on.
++
++Proposed change
++===============
++
++Definition of Log Levels
++------------------------
++
++http://stackoverflow.com/a/2031209
++This is a nice writeup about when to use each log level. Here is a
++brief description:
++
++- Debug: Shows everything and is likely not suitable for normal
++  production operation due to the sheer size of logs generated
++- Info: Usually indicates successful service start/stop, versions and
++  such non-error related data. This should include largely positive
++  units of work that are accomplished (such as starting a compute,
++  creating a user, deleting a volume, etc.)
++- Audit: REMOVE - (all previous Audit messages should be put as INFO)
++- Warning: Indicates that there might be a systemic issue; potential
++  predictive failure notice
++- Error: An error has occurred and an administrator should research
++  the event
++- Critical: An error has occurred and the system might be unstable;
++  immediately get administrator assistance
++
++We can think of this from an operator perspective the following ways
++(Note: we are not specifying operator policy here, just trying to set
++tone for developers that aren't familiar with how these messages will
++be interpretted):
++
++- Critical : ZOMG! Cluster on FIRE! Call all pagers, wake up
++  everyone. This is an unrecoverable error with a service that has or
++  probably will lead to service death or massive degredation.
++- Error: Serious issue with cloud, administrator should be notified
++  immediately via email/pager. On call people expected to respond.
++- Warning: Something is not right, should get looked into during the
++  next work week. Administrators should be working through eliminating
++  warnings as part of normal work.
++- Info: normal status messages showing measureable units of positive
++  work passing through under normal functioning of the system. Should
++  not be so verbose as to overwhelm real signal with noise. Should not
++  be continuous "I'm alive!" messages.
++
++Proposed Changes From Status Quo
++~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
++
++- Deprecate and remove AUDIT level
++
++Rationale, AUDIT is confusing, and people use it for entirely the
++wrong purposes. The origin of AUDIT was a NASA specific requirement
++which is not longer really relevant to the current code.
++
++Information that was previously being emitted at AUDIT should instead
++be sent as notifications to a notification queue. *Note: Notification formats
++and frequency are beyond the scope of this spec.*
++
++Open Question: Logger Name Standardization
++~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
++In OpenStack code today, most loggers are created via:
++
++::
++   LOG = logging.getLogger(__name__)
++
++While this is useful for DEBUG levels, it's actually quite confusing
++for INFO and above levels and leads to output like:
++
++::
++   2014-04-25 18:49:21.546 INFO nova.virt.libvirt.firewall
++   [req-87280286-8964-46f3-9e8d-d55d7ecf6ebd
++   ServersAdminTestXML-1606495100 ServersAdminTestXML-1617692500]
++   [instance: 6e51a557-cde5-43e5-9e0f-5321158bee2a] Ensuring static
++   filters
++
++   2014-04-25 18:49:22.217 INFO nova.virt.libvirt.driver
++   [req-b20fe944-28f4-4076-8394-0a8e33554e14
++   ServersAdminTestJSON-492015978 ServersAdminTestJSON-253173963]
++   [instance: b3efe38b-82fd-4798-b36f-b1a0c302a00d] Creating image
++
++   2014-04-25 18:49:22.400 INFO nova.virt.libvirt.driver
++   [req-b20fe944-28f4-4076-8394-0a8e33554e14
++   ServersAdminTestJSON-492015978 ServersAdminTestJSON-253173963]
++   [instance: b3efe38b-82fd-4798-b36f-b1a0c302a00d] Using config drive
++
++   2014-04-25 18:49:22.409 INFO nova.compute.manager
++   [req-c234703f-60ac-4233-8d5b-0ee297288900
++   FixedIPsTestJson-1879416564 FixedIPsTestJson-1390666706] [instance:
++   ae31b4f6-18d2-46b6-94d9-2f116d825db0] Terminating instance
++
++Where the code implementation details on what module is used leak
++through to the operator. This may or may not be considered useful.
++
++This remains an open question about whether python module
++implementations should be in the logs vs. service names
++(i.e. nova-compute, nova-sched, nova-os-api, nova-ec2-api).
++
++
++Overall Logging Rules
++---------------------
++The following principles should apply to all messages
++
++Log messages should be a unit of work
++~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
++
++OpenStack services are typically multiworker so the immediate lines
++above and below a log message may not be related at all to the message
++that was printed. As such all messages should be a complete unit of
++work with enough context to know what happened with just that message.
++
++DEBUG messages may be more trace oriented, however they still need to
++provide enough context that their operation can be determined from a
++single log message. In a real environment there may be tens, hundreds,
++or even thousands of workers all processing content at the same time
++to the same log stores, and without fully contained message context
++piecing the flows back together may be very difficult.
++
++**Good**
++
++::
++   2014-01-26 15:36:10.597 28297 INFO nova.virt.libvirt.driver [-]
++   [instance: b1b8e5c7-12f0-4092-84f6-297fe7642070] Instance spawned
++   successfully.
++
++   2014-01-26 15:36:14.307 28297 INFO nova.virt.libvirt.driver [-]
++   [instance: b1b8e5c7-12f0-4092-84f6-297fe7642070] Instance destroyed
++   successfully.
++
++**Bad**
++
++::
++   2014-01-26 15:36:11.198 INFO nova.virt.libvirt.driver
++   [req-ded67509-1e5d-4fb2-a0e2-92932bba9271
++   FixedIPsNegativeTestXml-1426989627 FixedIPsNegativeTestXml-38506689]
++   [instance: fd027464-6e15-4f5d-8b1f-c389bdb8772a] Creating image
++
++   2014-01-26 15:36:11.525 INFO nova.virt.libvirt.driver
++   [req-ded67509-1e5d-4fb2-a0e2-92932bba9271
++   FixedIPsNegativeTestXml-1426989627 FixedIPsNegativeTestXml-38506689]
++   [instance: fd027464-6e15-4f5d-8b1f-c389bdb8772a] Using config drive
++
++   2014-01-26 15:36:12.326 AUDIT nova.compute.manager
++   [req-714315e2-6318-4005-8f8f-05d7796ff45d FixedIPsTestXml-911165017
++   FixedIPsTestXml-1315774890] [instance:
++   b1b8e5c7-12f0-4092-84f6-297fe7642070] Terminating instance
++
++   2014-01-26 15:36:12.570 INFO nova.virt.libvirt.driver
++   [req-ded67509-1e5d-4fb2-a0e2-92932bba9271
++   FixedIPsNegativeTestXml-1426989627 FixedIPsNegativeTestXml-38506689]
++   [instance: fd027464-6e15-4f5d-8b1f-c389bdb8772a] Creating config
++   drive at
++   /opt/stack/data/nova/instances/fd027464-6e15-4f5d-8b1f
++   -c389bdb8772a/disk.config
++
++This is mostly an overshare issue. At Info these are stages that don't
++really need to be fully communicated.
++
++Messages shouldn't need a secret decoder ring
++~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
++
++**Bad**
++
++::
++   2014-01-26 15:36:14.256 28297 INFO nova.compute.manager [-]
++   Lifecycle event 1 on VM b1b8e5c7-12f0-4092-84f6-297fe7642070
++
++General rule, when using constants or enums ensure they are translated
++back to user strings prior to being sent to the user.
++
++Specific Event Types
++--------------------
++
++Inbound WSGI requests
++~~~~~~~~~~~~~~~~~~~~~
++
++Should be:
++
++- Logged at **INFO** level
++- Logged exactly once per request
++- Include enough information to know what the request was
++
++Operator Deprecation Warnings
++~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
++
++Should be:
++
++- Logged at **WARN** level
++- Logged exactly once per service start (not on every request through
++  code)
++- Include directions on what to do to migrate from the deprecated
++  state
++
++REST API Deprecation Warnings
++~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
++Should be:
++
++- **Not** logged any higher than DEBUG (these are not operator facing
++  messages)
++- Logged no more than once per REST API usage / tenant. Definitely
++  not on *every* REST API call.
++
++Stacktraces in Logs
++~~~~~~~~~~~~~~~~~~~
++Stacktraces in logs should be an exceptional event for a completely
++unforeseeable circumstance that is not yet recoverable by the system.
++
++As such during normal behavior there should be no stack traces in the
++system. Any that arise should be filed as high priority bugs and be
++fixed as soon as possible.
++
++Logging by non-OpenStack Components
++~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
++OpenStack uses a ton of libraries, which have their own definitions of
++logging. This causes a lot of extraneous information in normal logs by
++wildly different definitions of those libraries.
++
++As such, all 3rd party libraries should have their logging levels
++adjusted so only real errors are logged.
++
++Currently proposed settings for 3rd party libraries:
++
++- amqp=WARN
++- boto=WARN
++- qpid=WARN
++- sqlalchemy=WARN
++- suds=INFO
++- iso8601=WARN
++- requests.packages.urllib3.connectionpool=WARN
++
++Security Guidelines
++~~~~~~~~~~~~~~~~~~~
++Logs should have a format that enables grouping of confidential data
++especially when logging data such as:
++
++- Passwords: Never log plain text passwords
++- Private Keys: Never log plain text private keys
++
++If the log message will also be used in an end user response (via a
++REST response of some sort, or logged in a database where the end user
++will have access to it), then additional measures should be taken,
++such as:
++
++- Exceptions: Unless the developer is sure that an exception will
++  never contain confidential information, exceptions should be
++  identified as confidential. This has historically been especially
++  problematic with database exceptions which may contain real field
++  data.
++- Recommend parsing the specific exception or error and providing an
++  abstracted/safe version back to the user
++- PII: Minimize Personally Identifiable Information (PII) logging
++  where possible
++- Tenant/Project ID Checking: If a user identifier (tenant/project ID)
++  is not present in the log record or does not match the current
++  authenticated user, do not show this log data to the user
++- Log Insecure Configurations: If a configuration option causes the
++  system to enter a potentially less secure state, log a message to
++  this effect for operators to see
++
++OpenStack's Oslo Log is capable of creating formatted logs with a
++section for confidential data. The following example contains two
++pieces of variable data: key_name which is not confidential data (and
++will equal 'ssh') and key_value which is a confidential key that
++should not be visible to anyone but admins/operators.
++
++Note: This is a contrived example for simplicity. If the key_value is
++a public ssh key, it probably isn't critical to hide it in the logs
++from the authorized user that it belongs to. If the key_value is a
++private ssh key, it shouldn't be logged to begin with.
++
++Bad Example:
++
++::
++   LOG.debug("User set %s key to value %s" % [key_name, key_value])
++
++Revised/Good Example:
++
++::
++   LOG.debug("User set %s key" % [key_name],
++   extra={private={value=key_value}})
++
++
++Note that the extra->private structure is used to hold all
++confidential data within logs so that it may be filtered out later
++before a user views logs. In this example, the key value is moved to a
++'private' dictionary which makes filtering out confidential data from
++logs easier as there will be a single keyword to locate in log entries
++if these guidelines are followed. An authenticated user may see that
++an ssh key has been changed but an operator may see the actual ssh key
++value in the logs.
++
++Alternatives
++------------
++
++Continue to have terribly confusing logs
++
++Data model impact
++-----------------
++
++NA
++
++REST API impact
++---------------
++
++NA
++
++Security impact
++---------------
++
++NA
++
++Notifications impact
++--------------------
++
++NA
++
++Other end user impact
++---------------------
++
++NA
++
++Performance Impact
++------------------
++
++NA
++
++Other deployer impact
++---------------------
++
++Should provide a much more standard way to determine what's going on
++in the system.
++
++Developer impact
++----------------
++
++Developers will need to be cognizant of these guidelines in creating
++new code or reviewing code.
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Assignee is for moving these guidelines through the review process to
++something that we all agree on. The expectation is that these become
++review criteria that we can reference and are implemented by a large
++number of people. Once approved, will also drive collecting volunteers
++to help fix in multiple projects.
++
++Primary assignee:
++  Sean Dague <sean@dague.net>
++
++Work Items
++----------
++Using this section to highlight things we need to decide that aren't
++settled as of yet.
++
++Proposed changes with general consensus
++
++- Drop AUDIT log level, move AUDIT message to INFO
++- Begin adjusting log levels within projects to match the severity
++  guidelines.
++
++Proposed changes *without* general consensus
++
++- Logger naming. There just wasn't much feedback yet.
++
++
++Dependencies
++============
++
++NA
++
++Testing
++=======
++
++See tests provided by
++https://blueprints.launchpad.net/nova/+spec/clean-logs
++
++Documentation Impact
++====================
++
++Once agreed upon this should form a more permanent document on logging
++specifications.
++
++References
++==========
++
++- Security Log Guidelines -
++  https://wiki.openstack.org/wiki/Security/Guidelines/logging_guidelines
++- Wiki page for basic logging standards proposal developed early in
++  Icehouse - https://wiki.openstack.org/wiki/LoggingStandards
+-- 
+1.9.1
+

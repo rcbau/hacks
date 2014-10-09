@@ -1,0 +1,351 @@
+From cfc3a7db32a1795d588a8d193822ac99ec8e1968 Mon Sep 17 00:00:00 2001
+From: Oleg Bondarev <obondarev@mirantis.com>
+Date: Mon, 23 Jun 2014 18:27:06 +0400
+Subject: [PATCH] Spec for Neutron migration feature
+
+This blueprint proposes a way to migrate running instances
+from Nova-network to Neutron.
+
+bp neutron-migration
+
+Change-Id: I8ca1918b189b879fc52a42f35931434f62b8edff
+---
+ specs/juno/neutron-migration.rst | 326 +++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 326 insertions(+)
+ create mode 100644 specs/juno/neutron-migration.rst
+
+diff --git a/specs/juno/neutron-migration.rst b/specs/juno/neutron-migration.rst
+new file mode 100644
+index 0000000..3f4af56
+--- /dev/null
++++ b/specs/juno/neutron-migration.rst
+@@ -0,0 +1,326 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++================================================================
++Nova-network to Neutron migration for an instance
++================================================================
++
++https://blueprints.launchpad.net/nova/+spec/neutron-migration
++
++This blueprint proposes a way to migrate running instances from Nova-network
++to Neutron.
++
++
++Problem description
++===================
++
++Nova-network deprecation process requires Neutron to reach full feature parity
++with Nova-network and as part of the parity plan there needs to be a way to
++automatically migrate existing deployments to Neutron. This will likely require
++changes to both Nova and Neutron as well as support at the orchestration
++level.
++
++
++Proposed change
++===============
++
++Glossary
++--------
++
++* nova-net instance - an instance whose networking is configured and controlled
++  by Nova-network service
++* neutron instance - an instance whose networking is configured and controlled
++  by Neutron service
++* nova-net node - a compute node using Nova-network as a primary network API
++* neutron node - a compute node using Neutron as a primary network API
++
++The current proposal describes an approach to perform a migration of one
++running nova-net instance from a nova-net node to the specified neutron
++node converting it to the neutron instance at the same time. Once implemented,
++this capability can then be consumed by an orchestration mechanism for bulk
++migrations.  Such migrations can be performed on a host-by-host basis.
++Creating and configuring the proper Neutron networks is out of scope of this
++document.
++
++Migrating state
++---------------
++
++In order to avoid the need for freezing the whole deployment we need to
++synchronize ip allocations between Nova-network and Neutron during the
++migration:
++
++* each neutron node should:
++
++ * continue using Nova-network to allocate/deallocate IPs until migration (on
++   all compute nodes) is complete
++ * use Neutron to actually set up new instances, using the IP that Nova
++   allocated
++
++Neutron nodes should be aware of migrating state in order to use nova-net for
++ip address management. Current proposal would be adding a new config option to
++define "migrating_to_neutron" state on a node.
++
++* all new instances should be created on neutron nodes
++
++This should be achievable by disabling all nova-compute services that are not
++neutron nodes. Thus the scheduler will not choose those nodes for new
++instances, while leaving them still accessible and running. It will be
++considered as the responsibility of the operator to disable those nodes before
++migrating to Neutron.
++
++Single instance migration
++-------------------------
++
++Once having a new empty neutron node an operator may migrate (live or
++cold) an instance there from a nova-net node. Target neutron
++node should be properly configured:
++
++* nova_net_neutron_network_map (DictOpt) - Mapping between Nova-network
++  networks and corresponding Neutron networks
++* nova_net_neutron_secgroup_map (DictOpt) - Mapping between Nova-network
++  security groups and corresponding Neutron ones
++
++Neutron migration as part of live migration will include following steps:
++
++* pre_live_migration at destination:
++
++  * for a given instance, retrieve its current network data - vif, security
++    groups, floating_ips
++  * ensure security groups and floating ips for the instance are mirrored from
++    Nova to Neutron
++  * for each vif associated with the instance, create a new port. The new port
++    should have the same ip/mac addresses, security groups,
++    floating ip as the VIF defined in Nova
++  * plug port
++  * send info about new VIFs' configuration to the source node
++
++* on source nova-net-node:
++
++  * perform live-migation for the instance updating it's interface(s)
++    config using info provided by dest node (libvirt "migrateToURI2" should be
++    able to do this)
++
++* post live migration at destination:
++
++  * update instance info cache with neutron vif data
++
++While live migration lets migrate instances with almost no downtime, not all
++valid nova configurations have support for it. Cold migration works for all
++hypervisors and is less risky than live migration.
++
++Neutron migration as part of cold migration:
++
++* prep_resize step at destination:
++
++  * get current network info of the instance
++  * for each VIF create a port on a corresponding Neutron network. The new port
++    should have the same ip/mac addresses, security groups, floating ips
++  * update instance info cache with new network info
++
++After instance is moved to the destination host it will be plugged to proper
++Neutron network(s) automatically (using new network info)
++
++Possible failures:
++
++* could not allocate a neutron port with target ip - ip is already allocated
++  (dhcp port)
++* could not allocate a neutron floating ip - ip is already allocated on
++  external net (router gateway)
++
++Dealing with such failures suggests adding the ability to specify alternative
++fixed and floating ips to use when migrating an instance. This might reduce
++the value of a live migration, since it may impact connectivity to a given
++instance and clients of that instance, so it will be considered out-of-scope
++for this spec. It will be the responsibility of the operator to detect and
++resolve these kinds of conflicts in advance of the migration method proposed
++by this spec.
++
++Alternatives
++------------
++
++1. Rather than convert instances during migration between nodes do migration
++within one host. This will need a new API call and may be achieved by:
++
++* reconfiguring compute service to use Neutron as the primary network API and
++  move it to "migrating_to_neutron" state
++* for a given instance, retrieve its current network data - vif, security
++  groups, floating_ips
++* ensure security groups and floating ips for the instance are mirrored from
++  Nova to Neutron
++* for each vif associated with the instance, create a new port using the
++  Neutron API
++* plug port
++* use libvirt to move the tap device between the nova network-managed
++  linux bridge and the neutron-managed linux bridge while the instance
++  remains running
++* update instance info cache with neutron vif data
++* all Nova API operations that utilize the network API should be routed
++  appropriately according to whether the instance is migrated (or created
++  during the migration process) or non-migrated
++
++However the preference was given to a migration between hosts as it is
++less disruptive and is actually the established pattern for big
++migrations/upgrades on real deployments.
++
++2. Add nova-network compatible mode for linux-bridge-agent:
++
++* Bridge naming br-<port-id> -->  br-<segmentation_id>
++  (so we can keep using exsisting br100 stuff in nova-network)
++* Iptables migration: we should re-generate new neutron based iptables
++  with new bridge name before this migration happens
++
++This is also a migration within one host. The benefit here is that this
++approach will likely allow migration with no dataplane downtime. However it
++is based on Linux Bridge plugin and one of major parts of Neutron-Nova parity -
++the DVR (Distributed Virtual Router) feature - a Neutron replacement for
++Nova-network multi-host functionality - will be based on OVS, so that was
++the primary reason to not go with this option.
++
++3. An alternative to "migrating_to_neutron" config option is having the new API
++wrapper which will be setting/unsetting "migrating" state for a compute node,
++removing the necessity of restarting the service. This adds operational
++flexibility which could be useful for a large cluster. This alternative
++however is not a part of current blueprint and can be implemented at any
++point later.
++
++
++Data model impact
++-----------------
++
++None
++
++
++REST API impact
++---------------
++
++None
++
++Security impact
++---------------
++
++None
++
++
++Notifications impact
++--------------------
++
++None
++
++
++Other end user impact
++---------------------
++
++* a connection reset for all existing TCP connections on the migrated instance
++  is expected
++* some time will be needed in order to refresh the arp tables, so data-plane
++  outages are possible for the following services during migration of L3
++  services:
++
++  * Routing
++  * DHCP
++
++
++Performance Impact
++------------------
++
++As described above in the mixed environment where some compute nodes use
++nova-net and some use neutron (migrating state) all neutron nodes should
++still use nova-net for ip-address management. This will likely slow down API
++calls that involve IP allocations/deallocations. After all instances are
++migrated this will not be needed.
++
++Other deployer impact
++---------------------
++
++In order to perform migration one should do the following:
++
++* start Neutron service and agents
++* create target Neutron networks, external networks, routers, security groups
++* prepare an empty compute node(s) with Neutron as default network API,
++  "migrating_to_neutron" set to True and nova_net_neutron_network/secgroup_map
++  properly configured
++* migrate instances from nova-net nodes to neutron nodes via live or cold
++  migration
++* restart Nova-compute service on each neutron node with "migrating_to_neutron"
++  config option set to False
++* stop Nova-network
++
++
++Developer impact
++----------------
++
++None
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  obondarev
++
++Other contributors:
++
++
++Work Items
++----------
++
++* ip allocations should be synchronized with nova-net on neutron nodes
++* update existing cold migration mechanism
++* update existing live migration mechanism
++* handle instance security groups migration
++* handle instance floating ip migration
++
++
++Dependencies
++============
++
++* https://blueprints.launchpad.net/neutron/+spec/specify-router-ext-ip
++
++* https://blueprints.launchpad.net/neutron/+spec/allow-specific-floating-ip-address
++
++
++Testing
++=======
++
++Along with unit and tempest testing Grenade Nova-net to Neutron migration test
++should be created which should be able to set up a multinode OpenStack
++deployment with several tenants/networks/instances, at least one nova-net
++compute and one neutron compute nodes. Then perform a full migration to Neutron
++and run all existing tempest network scenario tests (before and after the
++migration), including:
++
++* internal connectivity
++* external connectivity
++* security groups functionality
++* floating ips functionality
++
++This should be tested for all three network managers available in Nova-network.
++The target Neutron configurations should be ml2+ovs+flat for
++Flat/FlatDHCPManagers and ml2+ovs+vlan for VlanManager.
++
++
++Documentation Impact
++====================
++
++Documentation should be created/updated describing the whole neutron migration
++process in details.
++
++
++References
++==========
++
++etherpad from Juno summit:
++
++* https://etherpad.openstack.org/p/novanet-neutron-migration
++
++Related blueprint:
++
++* https://blueprints.launchpad.net/neutron/+spec/nova-to-quantum-upgrade
++
++Documents above contain some other useful links.
+-- 
+1.9.1
+

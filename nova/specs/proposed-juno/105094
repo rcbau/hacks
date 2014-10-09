@@ -1,0 +1,222 @@
+From fa6c7555fc7b5c3754503e6f04eebc78e27965d7 Mon Sep 17 00:00:00 2001
+From: kirankv <kiran-kumar.vaddi@hp.com>
+Date: Mon, 7 Jul 2014 01:54:26 -0700
+Subject: [PATCH] HyperV nova driver enhancement to create highly available
+ instances
+
+This blueprint creating-hyperv-ha-instances allows creating of highly
+available instances in a HyperV hosts that are in a failover cluster.
+Highly available virtual machines are defined by the the document
+http://technet.microsoft.com/en-us/library/cc967323.aspx as
+'Highly available virtual machines, also known as HAVMs, can easily be
+migrated to a different virtual machine host in a failover cluster to provide
+continuing service when their current host needs maintenance. If their current
+host fails, the HAVMs automatically migrate to a different host in the cluster
+through a process known as failover.'
+
+Change-Id: Ia2abf97d9d42ad37ac237d0457471e0533ff1945
+blueprint: creating-hyperv-ha-instances
+---
+ specs/juno/creating-hyperv-ha-instances.rst | 189 ++++++++++++++++++++++++++++
+ 1 file changed, 189 insertions(+)
+ create mode 100644 specs/juno/creating-hyperv-ha-instances.rst
+
+diff --git a/specs/juno/creating-hyperv-ha-instances.rst b/specs/juno/creating-hyperv-ha-instances.rst
+new file mode 100644
+index 0000000..2089e06
+--- /dev/null
++++ b/specs/juno/creating-hyperv-ha-instances.rst
+@@ -0,0 +1,189 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++===================================================================
++HyperV nova driver enhancement to create highly available instances
++===================================================================
++
++https://blueprints.launchpad.net/nova/+spec/creating-hyperv-ha-instances
++
++This blueprint creating-hyperv-ha-instances allows creating of highly
++available instances in a HyperV hosts that are in a failover cluster.
++Highly available virtual machines are defined by the the document
++http://technet.microsoft.com/en-us/library/cc967323.aspx as
++'Highly available virtual machines, also known as HAVMs, can easily be
++migrated to a different virtual machine host in a failover cluster to provide
++continuing service when their current host needs maintenance. If their current
++host fails, the HAVMs automatically migrate to a different host in the cluster
++through a process known as failover.'
++The following whitepaper provides more details.
++Failover Clustering in Windows Server 2008 R2 - Whitepaper
++
++Problem description
++===================
++
++Existing HyperV nova driver does not provide the benefits available
++on HyperV hosts configured in a failover cluster and therefore when a
++host in the cluster fails the instance is not available to the user.
++
++Proposed change
++===============
++
++Add support to configure high availability for an instance in the
++HyperV nova driver. This is done by modifying the instance creation
++steps in the following way
++
++* 1. Create instances on shared storage
++* 2. Configure the instance as highly available
++
++Also, the image cache should also be created on the shared storage
++
++A new boolean config option failover_clustering will be added. When the option
++is set to true, the proposed changes take effect.
++
++The user can override the config on a per instance basis by specifying the
++property hyperv_ha as false
++
++Alternatives for implementation of the proposed change
++
++* 1. Using the config option approach the existing driver behaviour can be
++  modified without adding a new driver deriving from the existing driver.
++  However with this approach, the implementation will have conditional switch
++  since WMI calls to get cluster data are done using a different namespace
++  and classes.
++* 2. Create a new driver that derives from the existing driver. Only override
++  the methods that require changes.
++
++It is proposed to using alternative 1 described above since the changes are
++limited to spawn method.
++
++Configuration requirements that have to be met by the HyperV host for
++HA to work correctly
++(Ref: http://technet.microsoft.com/en-us/library/cc742396.aspx)
++
++Networking - All nodes in the same cluster must use the same name for the
++virtual network that provides external networking for the virtual machines.
++
++Processor - If the nodes in the cluster use different processor versions,
++make sure that the virtual machine is configured for processor compatibility.
++
++Security - All nodes in the cluster must use the same authorization policy.
++
++Storage - Must use shared storage that is supported by both the Failover
++Clustering feature and Hyper-V.
++
++Alternatives
++------------
++
++* 1. A single driver manages all the hosts in the cluster. The problem
++  with this is the server hosting the nova-compute should always be available.
++  To make this work the nova-compute service must be made a clustered service.
++* 2. The nova-compute runs in a VM that is hosted in a host in the cluster.
++  This VM is configured as a highly available VM. The drawback of this
++  approach is that the remote WMI are slow and therefore will impact the
++  performance of the driver.
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++None
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++None
++
++Performance Impact
++------------------
++
++Instance deployments will have additional WMI calls done to detect the shared
++storage. However since the image cache is on the shared storage, the number of
++downloads from glance is reduced. Earlier each host has its own cache and
++therefore needed to download its own copy.
++
++Other deployer impact
++---------------------
++
++None
++
++Developer impact
++----------------
++
++* This change only impacts the HyperV nova driver. Other drivers will not be
++  impacted due to this change.
++
++Implementation
++==============
++
++The connections are done to the root/MSCluster namespace
++First, the HA resource group of the VMs disk is obtained using the query
++ASSOCIATORS OF {MSCluster_Resource.Name=insert_disk_name_here}
++where ResultRole = GroupComponent
++ResultClass = MSCluster_ResourceGroup
++If its not part of a group a new group can be created using CreateGroup
++
++The resource is created using the CreateResource method
++The resource is brough online using BringOnline method
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  kiran-kumar-vaddi
++
++Other contributors:
++
++Work Items
++----------
++
++* Modify the code the selects the location to spawn an instance to select only
++  shared storage (Cluster Shared Volumes)
++* Enable HA on the instance before starting the instance
++* The image cache must be on shared storage
++
++Dependencies
++============
++
++None
++
++Testing
++=======
++
++The unit tests will be modified to test the branches introduced by the above
++work items
++
++Documentation Impact
++====================
++
++A new boolean config option failover_clustering will be added. When the option
++is set to true, the instances are configured as highly available instances.
++
++The user can override the config on a per instance basis by specifying the
++property hyperv_ha as false.
++
++References
++==========
++
++Failover Clusters in Windows Server 2008 R2
++http://technet.microsoft.com/en-us/library/ff182338(v=ws.10).aspx
++
++Failover Clustering Overview (Win 2012 and Win 2012 R2)
++http://technet.microsoft.com/en-us/library/hh831579.aspx
+\ No newline at end of file
+-- 
+1.9.1
+

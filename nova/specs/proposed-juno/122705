@@ -1,0 +1,189 @@
+From 5f4286a3edfa9c62a1a5c0da371a39322d4b3622 Mon Sep 17 00:00:00 2001
+From: eliymen <liyi.meng@ericsson.com>
+Date: Wed, 17 Sep 2014 15:51:17 +0200
+Subject: [PATCH] adaptive status pulling
+
+This change propose to introudce adaptive status pulling into nova
+design, which make nova more efficent and robust.
+
+Related to blueprint adaptive-status-pulling
+
+Change-Id: I551f01f56072d49ab1f69fc2ad32510f3e7ebca6
+---
+ specs/juno/adaptive-status-pulling.rst | 164 +++++++++++++++++++++++++++++++++
+ 1 file changed, 164 insertions(+)
+ create mode 100644 specs/juno/adaptive-status-pulling.rst
+
+diff --git a/specs/juno/adaptive-status-pulling.rst b/specs/juno/adaptive-status-pulling.rst
+new file mode 100644
+index 0000000..d81a396
+--- /dev/null
++++ b/specs/juno/adaptive-status-pulling.rst
+@@ -0,0 +1,164 @@
++
++=======================
++Adaptive status pulling
++=======================
++
++Launchpad blueprint:
++
++https://blueprints.launchpad.net/nova/+spec/adaptive-status-pulling
++
++In this blueprint, we propose nova should try to predicate a expected
++time to finish an operation, with taking input load into account, adapt
++ pulling interval based on expected completion time and min/max_timeout.
++which will:
++* ensure system functional as design in most of the case
++* reduce the RESTful communication in between sub-systems
++* ensures end user experience
++* overcome the shortcomings in RESTful system, while still keep REST
++architecture style intact
++
++The same idea could spread over all OpenStack components, but lets start from
++nova.
++
++Problem description
++===================
++
++OpenStack is designed with RESTFul architecture style. It therefore inerits
++many advatages/disadvantages of the architeture.One of disadvantages we see is
++that client need to query the progress of an operation with issueing new
++requests after it issues the inital request to kick off a long execution
++operation.
++
++Most of the implementations today keep querying with a fixed interval
++regardless how long the operation will take in server side, which results in:
++* a too short interval increase un-nessary load on system, while a too long
++  one decrease user experience.
++* it is impossible to set a timeout that fixes all cases since a higher load
++  input will take longer time to execute.
++
++Proposed change
++===============
++
++Our proposal is to introduce a mechenism that perform adaptive status pulling
++for OpenStack. Below is how the mechenism works.
++
++For any long execution opertion, which client needs to pull server to learn
++about the result/status/progress, we assume there are:
++ - a max_time, which represents the maximum time to complete the operation in
++   an extream situation.
++ - a min_time, which represents the minimum time to complete the operation in
++   very lucky situation.
++ - expected_time, which represents the avaerage time to complete the operation
++   in normal situation.
++
++Assume the total pulling re-try N=100, applying the well-known 20-80 rules,
++we decide the pulling interval as bellow:
++- interval0 = min_time. (from 0 - min_time)
++- interval1 = (expected_time – min_time) /20, (from min_time to epxected_time)
++- interval2 = (max_time - expected_time) /80, (from epxected_time to max_time)
++
++The max/min/epected_time, they could be set by human being at design time or
++through configuration, or they could even be learned with machine learning
++plugin module for OpenStack system. For this blueprint, we will go with the
++first option. Most of the time, it is not very hard to set these three values.
++We'll take an example here to explain our algorithm above.
++
++Creating a bootable volume in OpenStack which needs to write an image file
++into disk, the operation time is more or less depending on the writing speed of
++the harddisk. The most common harddish we see is mechenical rotating harddisk,
++which has a writing speed about 50MB/s; but if you are trying with a poor-man
++solution, backing your system with USB 1.1, the speed is about 1MB/s; or you
++are running a high performance server, the speed might be up to 500MB/s, lets
++say the image file to write is 1GB, so:
++- max_time = 1GB/1MB/s = 1024s
++- min_time = 1GB/500MB/s = 2s
++- expected_time = 1GB/50MB/s = 20s
++
++with our algorithm above,
++- the first pulling request with happen at 2th seconds.
++- from 2th - 20th second, pulling request is issued every 0.9 seconds
++- from 20th - 1024th second, pulling request is issued every 12.5 seconds
++
++This blueprint will create a waiting function to implmented the above algorithm
++then go through all nova code, address the places that need to improve, update
++the implementation with using the new waiting function. an example for such kind
++of change is available at https://review.openstack.org/#/c/104876/
++
++Alternatives
++------------
++
++The exsiting solution
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++None
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++This should expect to improve user experience with OpenStack.
++
++Performance Impact
++------------------
++
++This should improve system efficiency with reducing un-necessary traffics, and system robust.
++
++Other deployer impact
++---------------------
++
++This might reduce the need of system configuration for deployer.
++
++Developer impact
++----------------
++
++None
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++  Liyi Meng(liyi.meng@ericsson.com), Jay Pipes(jaypipes@gmail.com)
++
++Work Items
++----------
++
++* Implement wait function:
++  wait_func(min_time, max_time, average_time, pulling_fun, retry=100)
++* Going through nova code and update if necessary.
++
++Dependencies
++============
++
++None
++
++Testing
++=======
++
++New unit test for each change might needed.
++
++Documentation Impact
++====================
++
++
++References
++==========
++
++* https://review.openstack.org/#/c/104876/
+-- 
+1.9.1
+

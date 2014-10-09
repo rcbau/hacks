@@ -1,0 +1,257 @@
+From c9314bda1d3a2ecabea9fd8130524c35a916b41b Mon Sep 17 00:00:00 2001
+From: Arnaud Legendre <arnaudleg@gmail.com>
+Date: Mon, 31 Mar 2014 16:36:08 -0700
+Subject: [PATCH] Propose: Cloning for VMware Datastore backed disks
+
+Take advantage of the Glance VMware storage backend merged in Icehouse
+to avoid fetching the image through the network for the Nova VMware
+driver.
+
+Related to blueprint vmware-clone-image-handler
+
+Change-Id: I373ddacad8f3ea1c1e01d2f8c0bc17c80a123285
+---
+ specs/juno/vmware-clone-image-handler.rst | 231 ++++++++++++++++++++++++++++++
+ 1 file changed, 231 insertions(+)
+ create mode 100644 specs/juno/vmware-clone-image-handler.rst
+
+diff --git a/specs/juno/vmware-clone-image-handler.rst b/specs/juno/vmware-clone-image-handler.rst
+new file mode 100644
+index 0000000..41f8822
+--- /dev/null
++++ b/specs/juno/vmware-clone-image-handler.rst
+@@ -0,0 +1,231 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++==================================================
++Storage: Cloning for VMware Datastore backed disks
++==================================================
++
++https://blueprints.launchpad.net/nova/+spec/vmware-clone-image-handler
++
++Take advantage of the Glance VMware storage backend merged in Icehouse
++to avoid fetching and pushing the image through the network with the Nova
++VMware driver.
++
++Problem description
++===================
++
++Currently, the VMware driver is consuming Glance APIs to fetch and push images
++while spawning and snapshotting virtual machines.
++It requires Nova to invoke the upload and download Glance operations which means
++that the bits will go through the network unless they are already cached.
++
++Proposed change
++===============
++
++In Icehouse, the VMware backend storage was introduced in Glance: it gives
++the ability to store images in the VMware datastores.
++
++For a spawn operation, the Nova VMware driver should now be able to copy
++directly the image in the datastore using the vCenter primitive operation
++CopyDatastoreFile.
++
++For a snapshot operation, it should be able to copy the snapshot to the Glance
++folder, update the location and make the image ready.
++
++This blueprint relies on the blueprint image-multiple-location (see References)
++which provides the image handling logic. The image handler framework is generic:
++it lives in the virt folder and can be consumed by every driver.
++The framework triggers a handler based on the location of a Glance image or not
++for generic handlers that do not require a location scheme to be triggered.
++
++Each driver implements its own flavor of the interface
++(fetch, push, move, delete) provided in the image handler framework.
++Each driver can have several image handlers: in the case of VMware,
++we will have one generic "download" which provides the same functionality as it
++is today (download/upload the image to Glance) and one "copy" that is using the
++location provided by the Glance V2 API and will use this location to
++locate the image on the datastore and use it.
++
++To summarize, this blueprint gives the ability to copy the image in the
++datastore directly instead of upload/downloading the bits by leveraging
++the image handler framework which itself leverages the Glance image location.
++
++Alternatives
++------------
++
++- Alternative for RBD:
++  https://blueprints.launchpad.net/nova/+spec/rbd-clone-image-handler
++- Upload an image to Glance backed by Cinder (this requires a change to
++  the Glance Cinder driver to enable upload operation, which requires
++  multi-attach of volumes in Cinder and make it available through
++  the Brick library). This approach is currently discussed by several people but
++  it doesn't exactly fit the use case of this blueprint: here we want to
++  consume images stored in the Glance datastore backend without using Cinder
++  (and provide the optimization if possible).
++
++The approach adopted in this blueprint doesn't break any existing feature.
++
++
++Data model impact
++-----------------
++
++None.
++
++REST API impact
++---------------
++
++None.
++
++Security impact
++---------------
++
++None.
++
++Notifications impact
++--------------------
++
++None.
++
++Other end user impact
++---------------------
++
++Spawn:
++If Glance datastore backend is used and Glance API V2 is consumed by Nova,
++the optimization will happen if possible without any input from the user.
++
++Snapshot:
++Nova needs to know where to put the snaphot which means that it needs
++to know where Glance expects the images to be located. If the Nova driver fails
++to put the image to the folder for some reason, the snapshot will be uploaded
++to Glance (and consequently any kind of storage: swift, s3, etc. can be used)
++
++In both cases (spawn and snapshot):
++To get the copy optimization, the datastore containing the image should be
++mounted to one of the ESX hosts of the cluster where the VM is
++spawned/snapshotted.
++If no single ESX host in the cluster has concurrent access to the snapshotted
++image and the glance datastore, vCenter will trigger a host-to-host network
++copy which will still be considerably more efficient the regular way involving
++a data path through glance service, vCenter and an ESX host.
++In case of a deployment contains several regions: as long as Glance is
++accessible from both regions, the image can be downloaded/uploaded the regular
++way.
++
++Performance Impact
++------------------
++
++The performance optimization is the main value of this blueprint.
++Spawn:
++- With the download image handler (same speed as it is today):
++first spawn has to fetch the image, next spawn for the same image should use
++the cache if the image is cached.
++- With the copy image handler (much faster than what is proposed today):
++first spawn copies the bits to the cache, next spawn for the same image
++uses the cache if the image is cached.
++
++Snapshot:
++- With the download image handler (same speed as it is today):
++upload the snapshot to Glance
++- With the copy image handler (much faster than what is proposed today):
++snapshot copied to the Glance for a new image
++
++Other deployer impact
++---------------------
++
++- The Glance folder needs to be configured: 'store_image_dir' in the [vmware]
++  section which contains the images in Glance. The value of this setting in
++  Nova should match the value set in Glance 'vmware_store_image_dir':
++  https://github.com/openstack/glance/blob/master/etc/glance-api.conf#L512
++- Glance should be configured to have 'show_image_direct_url' set to True.
++- The image handler framework relies on the Glance location scheme of the image.
++  If the location is different than vsphere://, the copy handler
++  is not going to be triggered. Consequently, existing images with scheme
++  file://, swift:// etc. will go through the download image handler.
++- We provide "copy, download" as default order for the image handler.
++  This means that if the location is vsphere://, the copy will be preferred but
++  download can be used as a fallback.
++
++This optimization is optional. It will apply only if the deployment is using
++the Glance datastore backend and the admin wants to take advantage of it.
++The general idea/behavior is download by default or copy if possible (possible
++means location is vpshere:// and the folder in the config is specified).
++
++Everything will work correctly even if the configuration provided is incorrect
++or if nothing is provided: no optimization (that's it).
++
++Also, the Glance datastore containing the images (preferably NFS) should be
++mounted to one of the ESX host of the cluster otherwise the copy might
++not be as efficient as it should be.
++The choice for NFS is due to the fact that VMFS has some limitation in the
++number of hosts that can attach it (NFS doesn't have this limitation).
++
++Developer impact
++----------------
++
++None.
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++    Arnaud Legendre (arnaud)
++
++Work Items
++----------
++
++This blueprint is divided in three parts:
++
++1. Integrate with the image handler framework. This means
++   that we should provide a default download image handler.
++
++2. Provide a copy image handler which provides the performance
++   optimization for spawn discussed above.
++
++3. Add the required code to keep the snapshot in the array.
++
++Dependencies
++============
++
++This change requires the Image Handler framework to be merged
++(review: https://review.openstack.org/#/c/33409/ bp:
++https://blueprints.launchpad.net/nova/+spec/image-multiple-location).
++
++Testing
++=======
++
++Current tests should work. If the copy fails, the image handler will
++fall back to the download.
++Spawning a VM using the copy both for spawn and snapshot should work
++but faster.
++Minesweeper will be able to run in this mode. We actually plan to make it
++work in both modes (Juno roadmap).
++
++Documentation Impact
++====================
++
++The new configuration variable 'store_image_dir' in the [vmware] section
++needs to be documentated. This variable should be the same as
++'vmware_store_image_dir' in the Glance configuration.
++
++Also, the Glance datastore containing the images (preferably NFS) should be
++mounted to each ESX host otherwise the copy might not be as efficient as it
++should be: see Other Deployer section for more details.
++
++References
++==========
++
++Same idea for RBD:
++https://blueprints.launchpad.net/nova/+spec/rbd-clone-image-handler
++
++Initial Blueprint containing everything (image handler framework + consumers):
++https://blueprints.launchpad.net/nova/+spec/image-multiple-location
++
++Glance Datastore:
++http://git.openstack.org/cgit/openstack/glance/tree/glance/store/\
++vmware_datastore.py
+-- 
+1.9.1
+

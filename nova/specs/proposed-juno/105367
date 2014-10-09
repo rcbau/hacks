@@ -1,0 +1,161 @@
+From 73cbd0b0ba6dd7f1f7fd594a74a7323881fff684 Mon Sep 17 00:00:00 2001
+From: gengjh <gengjh@cn.ibm.com>
+Date: Fri, 11 Jul 2014 13:09:35 +0800
+Subject: [PATCH] Propose: Support to transfer ownership of instances
+
+Related to blueprint transfer-instance-ownership
+
+Change-Id: Ibd70848d231f036a89d10137a65c658160455bc4
+---
+ specs/juno/transfer-instance-ownership.rst | 138 +++++++++++++++++++++++++++++
+ 1 file changed, 138 insertions(+)
+ create mode 100644 specs/juno/transfer-instance-ownership.rst
+
+diff --git a/specs/juno/transfer-instance-ownership.rst b/specs/juno/transfer-instance-ownership.rst
+new file mode 100644
+index 0000000..5fac707
+--- /dev/null
++++ b/specs/juno/transfer-instance-ownership.rst
+@@ -0,0 +1,138 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++===========================
++Transfer instance ownership
++===========================
++
++https://blueprints.launchpad.net/nova/+spec/transfer-instance-ownership
++
++Support to transfer an existing instance to another tenant or owner
++
++Problem description
++===================
++
++We need provide a way to update the tenant id and user id of an existing
++instance to allow transferring ownership of the instance to another
++tenant/project or owner.
++
++
++Proposed change
++===============
++
++* Update the tenant id or user id of an existing instance
++
++  * If the target user id does not belong to the specified tenant, need throw
++    exception.
++  * If the network doesn't belong to the target tenant this transfer should
++    be denied.
++  * If the based image doesn't belong to the target tenant this transfer
++    should be denied.
++  * If the related flavor doesn't belong to the target tenant this transfer
++    should be denied.
++  * If the attached volume will be transfered as well.
++
++* To support this function, we need new nova cli named 'update'
++
++  * The user id is an required attribute.
++  * The tenant id is an optional attribute.
++  * The existing rename command will be merged into this function, and suggest
++    to deprecate the rename command.
++
++Alternatives
++------------
++
++
++Data model impact
++-----------------
++
++None.
++
++REST API impact
++---------------
++
++New provide Nova API extension for the v2 API to support update tenant_id,
++user_id and name of the instance.
++
++Security impact
++---------------
++
++None.
++
++Notifications impact
++--------------------
++
++None.
++
++Other end user impact
++---------------------
++
++None.
++
++
++Performance Impact
++------------------
++
++When update the tenant id or user id, we need invoke the keystone client
++api to validate it.
++Need call cinder api to update the ownership of the attached volume.
++
++Other deployer impact
++---------------------
++
++None.
++
++Developer impact
++----------------
++
++None.
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  genggjh
++
++Other contributors:
++
++Work Items
++----------
++
++* Update the tenant id or user id in nova api
++
++* Update novaclient to support this
++
++* Add new nova cli: 'nova update', to support update the tenant id or
++  user id and instance name.
++
++* Add new test cases in tempest
++
++
++Dependencies
++============
++
++None.
++
++
++Testing
++=======
++
++New new test cases in tempest to cover this end to end function.
++
++
++Documentation Impact
++====================
++
++Need provide new nova cli 'nova update' to support this function.
++
++
++References
++==========
++
++* https://blueprints.launchpad.net/nova/+spec/transfer-instance-ownership
+\ No newline at end of file
+-- 
+1.9.1
+

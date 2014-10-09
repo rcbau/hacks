@@ -1,0 +1,234 @@
+From 37929b119f1d567147b64a8bc0d72296a525ab89 Mon Sep 17 00:00:00 2001
+From: Yunhong Jiang <yunhong.jiang@intel.com>
+Date: Tue, 24 Jun 2014 16:11:35 -0700
+Subject: [PATCH] Nodename in pci device
+
+PCI device tracker manages the PCI devices in a compute node. Currently the
+PCI device tracker identifies the compute node with compute_node_id, this
+arrangement causes several issues because the compute_node_id is created
+in very late stage. It should be changed to be host/nodename.
+
+Change-Id: I4dc1cd7a1dc9b1d200b0eca985b57929bb46ee5b
+Implements: blueprint nodename-in-pci-device
+---
+ specs/juno/nodename-in-pci-device.rst | 208 ++++++++++++++++++++++++++++++++++
+ 1 file changed, 208 insertions(+)
+ create mode 100644 specs/juno/nodename-in-pci-device.rst
+
+diff --git a/specs/juno/nodename-in-pci-device.rst b/specs/juno/nodename-in-pci-device.rst
+new file mode 100644
+index 0000000..6cd2b05
+--- /dev/null
++++ b/specs/juno/nodename-in-pci-device.rst
+@@ -0,0 +1,208 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++==========================================
++Nodename in pci device
++==========================================
++
++https://blueprints.launchpad.net/nova/+spec/nodename-in-pci-device
++
++PCI device tracker manages the PCI devices in a compute node. Currently the
++PCI device tracker identifies the compute node with compute_node_id, this
++arrangement causes several issues because the compute_node_id is created
++in very late stage. It should be changed to be host/nodename.
++
++Problem description
++===================
++PCI device tracker manages the PCI devices in a compute node. Currently the
++PCI device tracker identifies the compute node with compute_node_id.
++
++However, the compute_node_id is created and valid only after the compute
++node entry is created in database, while the PCI device tracker, and the
++corresponding PCI devices, are created and used before that. We have to
++set up the compute_node_id later on each PCI device after compute node is
++created in database, and we also need make sure the PCI device will not be
++saved to database before the compute_node_id is setup. It's really bad.
++
++It also make scheduler client library effort difficult because the
++scheduler client library has to send back the compute_node_id to the
++resource tracker.
++
++We should use the host/nodename to identify the compute node that the PCI
++device is hosted, which will make things much easier.
++
++Proposed change
++===============
++
++The PciDevice table will be updated to use the host/nodename and keep the
++compute_node_id field deprecated. The corresponding unique constraint and index
++will be removed.
++
++The PCI device object will be updated to use host/nodename. The
++compute_node_id field will be deprecated. The PCI device object will
++be enhanced to translate the compute_node_id to host/nodename in run
++time for legacy API. See details discussion on the 'Data model impact'
++section on how to update the PCI device object and the conductor.
++
++
++The PCI device tracker will be updated to use host/nodename to identify the
++compute node. New API is provided to select PCI devices based on compute node.
++
++A migration script will be created to populate the host/nodename field in the
++database schema.
++
++Alternatives
++------------
++
++This is an enhancement to current implementation, so one of alternative is
++the current poor implementation.
++
++There are several alternative for the migration solution. Currently we are
++trying the additive migration, i.e. the migration script will only change
++the schema, while the conductor will update the data additively. Another
++alternative is to change the data in the migration script. We select the
++additive migration method because it's suggested as new solution, also
++because the potential big number of the PCI devices in the cloud.
++
++Data model impact
++-----------------
++
++The schema for the PciDevice table will be changed. The compute_node_id
++column will be deprecated. Two new columns will be added as host/node to
++identify the corresponding compute node's host and nodename.
++
++Below is a work flow of the migration process:
++
++1. Database migration:
++A migration script will change the schema. As it only change the schema, it
++will hopefully be quick.
++After the database migration, the compute node id will be deprecated and the
++host/node row will be populated later when new conductor is alive.
++At this time, all the PCI devices in the DB will have invalid host/node
++information, which will be updated later by conductor.
++
++New DB API will be added to query PCI device table using host/nodename, and
++the legacy query using compute_node_id will be kept for backward
++compatibility.
++
++2. Conductor/API service migration:
++When the conductor is updated, it will use the new DB api code to access the
++database.
++
++New APIs using host/nodename will be added to the PCI device object. Legacy
++API will be kept for backward compatibility. The implementations of legacy API
++will be changed to use new DB API. They will firstly translate the
++compute_node_id to host/nodename, and then use the new DB API to access the DB.
++
++The API layer will now use the new PCI device object code to access the DB.
++
++Some consideration needed to handle the stale data in DB. Stale data means the
++PCI device in DB that has not been updated by compute node yet. As the stale
++data is not updated, so the host/nodename columns are not populated. If
++conductor does not get any PCI devices using new DB API, it has to turn to
++legacy DB API, to check if any stale data left. If there are really any stale
++data, the conductor will update the stale data to avoid legacy API for this
++row anymore.
++
++However, because the conductor can't distinguish compute node w/o assignable
++PCI devices and compute node w/ stale data, it will always turn to legacy
++API for compute node w/o assignable PCI devices. This is a performance hit
++if most of the compute nodes have no assignable PCI devices.
++
++One solution is two-steps update. The first step is to update the conductor
++and support stale data. Later, after all compute nodes are updated in step 3,
++we will update the conductor again to remove the support the stale data, as
++it's assumed that all stale data has been updated by compute node and no stale
++data anymore.
++
++3. Compute migration:
++The updated compute node will use the new PCI device object code to access the
++conductor.
++
++4. Conductor service migration again
++As discussed in step 2, we need migrate the conductor service again, to
++remove the support of the stale data. This migration will not change the API
++layer, but it will not access stale data using legacy API, so the version will
++still be bumped.
++
++REST API impact
++---------------
++
++N/A.
++
++Security impact
++---------------
++
++N/A
++
++Notifications impact
++--------------------
++
++N/A
++
++Other end user impact
++---------------------
++
++N/A
++
++Performance Impact
++------------------
++
++One performance consideration here:
++The PCI device object legacy API need translate the compute_node_id to
++host/nodename before DB access. Hopefully this will be ok because it happens
++only temply when system update. After upgrade, it should not happen.
++
++Other deployer impact
++---------------------
++
++As stated in the "Data model impact" section, there will be a window that
++the PCI api can't get the request PCI devices.
++
++The two-step update will make the update process tricky, not sure if it will
++be easy for operator to handle it.
++
++Developer impact
++----------------
++
++N/A
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  yunhong-jiang
++
++
++Work Items
++----------
++
++PCI device object changes
++PCI device tracker changes
++Database changes.
++
++Dependencies
++============
++
++N/A
++
++Testing
++=======
++
++We will add unit test. As there is no gate for PCI device yet and the PCI 3rd
++party test is not published yet, we can't enhance the tempest.
++
++Documentation Impact
++====================
++
++N/A
++
++References
++==========
++N/A
+-- 
+1.9.1
+

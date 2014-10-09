@@ -1,0 +1,247 @@
+From 02cc3548f8c91c77ad0e4c18ca624bbe94c4921b Mon Sep 17 00:00:00 2001
+From: Zhi Yan Liu <zhiyanl@cn.ibm.com>
+Date: Thu, 10 Apr 2014 20:50:22 +0800
+Subject: [PATCH] Propose: Adding generic image transfer layer to nova.virt
+
+Take advantage of the Glance image multiple location feature, adding a
+layer to transparently dispatch image consuming request, e.g. download,
+upload, to relevant handler plug-ins which working for different storage
+backend with appropriate approach.
+
+Related to blueprint virt-image-transfer-layer
+
+Change-Id: Ifd1c0b6c31325ec7e1b838d8010fc0f2454988a2
+Signed-off-by: Zhi Yan Liu <zhiyanl@cn.ibm.com>
+---
+ specs/juno/virt-image-transfer-layer.rst | 218 +++++++++++++++++++++++++++++++
+ 1 file changed, 218 insertions(+)
+ create mode 100644 specs/juno/virt-image-transfer-layer.rst
+
+diff --git a/specs/juno/virt-image-transfer-layer.rst b/specs/juno/virt-image-transfer-layer.rst
+new file mode 100644
+index 0000000..e86f2a9
+--- /dev/null
++++ b/specs/juno/virt-image-transfer-layer.rst
+@@ -0,0 +1,218 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++==================================================
++Adding generic image transfer layer to nova.virt
++==================================================
++
++https://blueprints.launchpad.net/nova/+spec/virt-image-transfer-layer
++
++Take advantage of the Glance image multiple location feature, adding a layer
++to transparently dispatch image consuming request, e.g. download, upload, to
++relevant handler plug-ins which working for different storage backend with
++appropriate approach.
++
++Problem description
++===================
++
++Currently Nova driver is always consuming image from single
++backend storage which Glance API internal selected or exposed by direct-url
++mechanism. For XenAPI driver, it could use bittorrent approach additionally.
++This approach is imperfect:
++
++1. If one image backend storage failure, Nova doesn't know to consume image
++   from another locations.
++
++2. Nova is consuming Glance APIs to fetch and push images while spawning and
++   snapshotting virtual machines, it requires Nova to invoke the upload and
++   download Glance operations which means that the bits will go through the
++   network with HTTP request. But for different image backend storage, it will
++   be great if Nova be able to evaluate the backend model where images location
++   is communicated and using storage particular technology to handle images,
++   this would significantly reduce the data transfer (up-bound and down-bound)
++   overhead and increase Glance efficiency.
++
++3. Nova doesn't allow to appoint image backend storage selection order.
++   For example deployer might like try to consuming image from Ceph first then
++   to VMware storage for particular rack, compute nodes, availability zone.
++
++Proposed change
++===============
++
++Adding a generic image handler framework, it lives in the virt folder and can
++be consumed by every driver. The framework triggers a handler based on the
++location of a Glance image or not for generic handlers that do not require a
++location to be triggered. Each driver implements its own flavour of the
++interface (fetch, push, move, delete) with optimized storage accessing
++technology particularly which required by image handler framework.
++
++Each hypervisor driver can have several image handlers (see References), the
++framework will load relevant handlers according to configuration for different
++hypervisor, and those non-applicable handlers will be skipped automatically as
++well.
++
++The common code will be put into nova.virt.image, and any driver-specific code
++goes into the drivers' namespace.
++
++Fundamental implementation steps:
++
++1. To change Glance image service/api to expose get_locations()
++   as a public interface.
++
++2. Adding nova.virt.images.ImageHandler base class to the Nova common image
++   layer which has fetch, push, move and delete interfaces.
++
++3. Implementing nova.virt.images.DefaultImageHandler class which inherits
++   above base class. It uses download and upload approach (HTTP GET and POST)
++   to fetch and push image bits as Nova current default handling behaviour.
++
++4. To implement load_image_handlers() entry function, it will be called when
++   particular hypervisor driver initialization and loads deployer configured
++   image handlers plug-ins for different hypervisor separately.
++
++5. Implementing nova.virt.images.handle_image() function, evaluate the schema
++   where images location is communicated and using applicable handler to handle
++   that image.
++
++6. To change nova.virt.images.fetch_to_raw() function to leverage image
++   handler framework.
++
++7. Changing like nova.virt.libvirt.ImageCacheManager to leverage image handler
++   framework as well.
++
++Alternatives
++------------
++
++None.
++
++Data model impact
++-----------------
++
++There is no any data model impact for this idea/change. But I'd like to share
++my thoughts about the priority of image locations selection when Nova consumes
++it. Currently Glance already support this selection function of image location
++(see References), it allows deployer provided a prioritized location "type"
++list with preferred order (each of them is a store name), which equals the
++preference of backend storage. Now, Glance team are separating glance.store out
++from codebase as a dedicated sub-project, which will contains this fucntion.
++So in future patch, I'd like to leverage it in image handler framework level
++(be transparent for under layer handlers), and as result the location can be
++prioritized by operator as particular deployment needed. This can be used to
++support the case of #3 in "Problem description" section.
++
++REST API impact
++---------------
++
++None.
++
++Security impact
++---------------
++
++None.
++
++Notifications impact
++--------------------
++
++None.
++
++Other end user impact
++---------------------
++
++The change of this blueprint will have no any impact, it doesn't need any input
++from end user, but the follow up image handler probably will do some.
++(see References)
++
++Performance Impact
++------------------
++
++There's no any impact but the performance optimization is the main value of
++follow up blueprints which based on this image handler framework.
++(see References)
++
++Other deployer impact
++---------------------
++
++Deployer has no any impact, but follow steps will be needed for follow
++up handler:
++
++- Enabling image handlers by Nova settings as deployer needed order.
++  This change will add:
++
++  1. A new configure option called 'image_handlers'.
++  2. A download handler which is the default one for Nova named 'download'.
++     It can be used as a fall-back for follow up handler (see References).
++
++  So deployer could configure Nova option as "image_handlers=download", and
++  when Nova has more available image handlers in future, deployer could add
++  them as needed to this option with required order.
++
++- Glance should be configured to have 'show_multiple_locations' and/or
++  'show_image_direct_url' set to True. If Glance isn't configured properly(s)
++  nova just fall-back to the way it works today which could be covered by
++  'download handler' default one.
++
++Developer impact
++----------------
++
++None.
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  Zhi Yan Liu (lzy-dev)
++
++Work Items
++----------
++
++The implementation is not complicated so one patch is enough (see References).
++
++Dependencies
++============
++
++- This blueprint requires use-glance-v2-api changes to be merged.
++  blueprint: https://blueprints.launchpad.net/nova/+spec/use-glance-v2-api
++
++- This blueprint needs standardize-nova-image changes to be merged
++  blueprint: https://blueprints.launchpad.net/nova/+spec/standardize-nova-image
++
++Testing
++=======
++
++The necessary tempest testing for the case is covered by use-glance-v2-api
++blueprint as a dependency which will be used by this feature like using Glance
++v2 api to obtain image locations, and "download" handler, the only image
++handler this blueprint implemented, will just keep current Nova existing
++behavior (using Glance v1 api or v2), so this BP doesn't need additional
++tempest case. The testing for other handers will be covered by other
++dedicated blueprint (see References).
++
++Documentation Impact
++====================
++
++- The new configuration variable 'image_handlers' in the 'DEFAULT' section
++  needs to be documented.
++
++- To document how to implement an image handler and plug it in Nova.
++
++References
++==========
++
++- The idea for Ceph storage:
++  https://blueprints.launchpad.net/nova/+spec/rbd-clone-image-handler
++
++- The idea for VMware storage:
++  https://blueprints.launchpad.net/nova/+spec/vmware-clone-image-handler
++
++- The change of this blueprint is reverted due to problems with glance v2 API:
++  Change-Id: Idce8d21ae37bfdbb28a2567120a83d1061061904
++  http://lists.openstack.org/pipermail/openstack-dev/2014-March/029831.html
++
++- The idea of image location selection Glance implemented:
++  https://blueprints.launchpad.net/glance/+spec/image-location-selection-strategy
+\ No newline at end of file
+-- 
+1.9.1
+

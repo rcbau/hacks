@@ -1,0 +1,363 @@
+From 4c0c42ec5005eda5f2137d1a8caa943a1da8f3f0 Mon Sep 17 00:00:00 2001
+From: Jamie Lennox <jamielennox@redhat.com>
+Date: Tue, 10 Jun 2014 15:46:44 +1000
+Subject: [PATCH] Standardize Client Parameters
+
+This spec represents one of the goals of the Session work happening
+within the clients, to standardize the security and authentication
+parameters (and code).
+
+There is ongoing work in the client to define the correct names and
+methods of loading the same parameters for multiple clients. To make
+sure that that work is accepted I would like to make sure that the
+servers are onboard with the direction. Whilst this is for nova if
+accepted the same pattern will be deployed to the other services as
+well.
+
+Change-Id: Ifce7283dd0ff432b44332d4cc8003dc91936ff71
+---
+ specs/juno/standardize-client-params.rst | 332 +++++++++++++++++++++++++++++++
+ 1 file changed, 332 insertions(+)
+ create mode 100644 specs/juno/standardize-client-params.rst
+
+diff --git a/specs/juno/standardize-client-params.rst b/specs/juno/standardize-client-params.rst
+new file mode 100644
+index 0000000..77a6525
+--- /dev/null
++++ b/specs/juno/standardize-client-params.rst
+@@ -0,0 +1,332 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++=============================
++Standardize Client Parameters
++=============================
++
++https://blueprints.launchpad.net/nova/+spec/standardize-client-params
++
++Every time nova (or any other service) wishes to talk to another service we end
++up in the position of having to support that client's every option in the
++config file. This is a burden on developers and can lead to missing security
++options as they are added or differences in parameter handling.
++
++Problem description
++===================
++
++The lack of consistency in the clients has led to the config options describing
++server to server communications being handled on an as needed basis. This has
++led to inconsistencies such as being able to set CA certificates for most
++services, but not for glance. It also means that valuable deployment options
++such as HTTP timeouts and client certificates cannot be configured from nova.
++
++Further as we move to Keystone V3 authentication and other additional
++authentication mechanisms the number of possible authentication options
++available for every client becomes endless.
++
++There needs to be one standard way of loading security and authentication
++options regardless of the server such that Nova (and others) are not having to
++manually keep track of these configuration options.
++
++Current the Cinder options look like::
++
++    [DEFAULT]
++
++    # Info to match when looking for cinder in the service
++    # catalog. Format is: separated values of the form:
++    # <service_type>:<service_name>:<endpoint_type> (string value)
++    #cinder_catalog_info=volume:cinder:publicURL
++
++    # Override service catalog lookup with template for cinder
++    # endpoint e.g. http://localhost:8776/v1/%(project_id)s
++    # (string value)
++    #cinder_endpoint_template=<None>
++
++    # Region name of this node (string value)
++    #os_region_name=<None>
++
++    # Location of ca certificates file to use for cinder client
++    # requests. (string value)
++    #cinder_ca_certificates_file=<None>
++
++    # Number of cinderclient retries on failed http calls (integer
++    # value)
++    #cinder_http_retries=3
++
++    # Allow to perform insecure SSL requests to cinder (boolean
++    # value)
++    #cinder_api_insecure=false
++
++    # Allow attach between instance and volume in different
++    # availability zones. (boolean value)
++    #cinder_cross_az_attach=true
++
++Neutron::
++
++    [DEFAULT]
++
++    # URL for connecting to neutron (string value)
++    #neutron_url=http://127.0.0.1:9696
++
++    # Timeout value for connecting to neutron in seconds (integer
++    # value)
++    #neutron_url_timeout=30
++
++    # Username for connecting to neutron in admin context (string
++    # value)
++    #neutron_admin_username=<None>
++
++    # Password for connecting to neutron in admin context (string
++    # value)
++    #neutron_admin_password=<None>
++
++    # Tenant id for connecting to neutron in admin context (string
++    # value)
++    #neutron_admin_tenant_id=<None>
++
++    # Tenant name for connecting to neutron in admin context. This
++    # option is mutually exclusive with neutron_admin_tenant_id.
++    # Note that with Keystone V3 tenant names are only unique
++    # within a domain. (string value)
++    #neutron_admin_tenant_name=<None>
++
++    # Region name for connecting to neutron in admin context
++    # (string value)
++    #neutron_region_name=<None>
++
++    # Authorization URL for connecting to neutron in admin context
++    # (string value)
++    #neutron_admin_auth_url=http://localhost:5000/v2.0
++
++    # If set, ignore any SSL validation issues (boolean value)
++    #neutron_api_insecure=false
++
++    # Authorization strategy for connecting to neutron in admin
++    # context (string value)
++    #neutron_auth_strategy=keystone
++
++    # Name of Integration Bridge used by Open vSwitch (string
++    # value)
++    #neutron_ovs_bridge=br-int
++
++    # Number of seconds before querying neutron for extensions
++    # (integer value)
++    #neutron_extension_sync_interval=600
++
++    # Location of CA certificates file to use for neutron client
++    # requests. (string value)
++    #neutron_ca_certificates_file=<None>
++
++and Glance::
++
++    [DEFAULT]
++
++    # Default glance hostname or IP address (string value)
++    #glance_host=$my_ip
++
++    # Default glance port (integer value)
++    #glance_port=9292
++
++    # Default protocol to use when connecting to glance. Set to
++    # https for SSL. (string value)
++    #glance_protocol=http
++
++    # A list of the glance api servers available to nova. Prefix
++    # with https:// for ssl-based glance api servers.
++    # ([hostname|ip]:port) (list value)
++    #glance_api_servers=$glance_host:$glance_port
++
++    # Allow to perform insecure SSL (https) requests to glance
++    # (boolean value)
++    #glance_api_insecure=false
++
++    # Number of retries when downloading an image from glance
++    # (integer value)
++    #glance_num_retries=0
++
++Many of these options such as `neutron_extension_sync_interval` or
++`cinder_catalog_info` are specific to the clients and will remain. However some
++such as `*_ca_certificates` (Note: Glance doesn't have one) `*_api_insecure`
++are common and will be loaded by the helper functions.
++
++Proposed change
++===============
++
++The clients are in the process of having the security and authorization
++components standardized. To use a client you:
++
++1. Construct an authentication plugin which has a username and password or any
++   other form of authentication (e.g. oauth, kerberos) options.
++
++2. Construct a session object containing options such as certificates and
++   connection parameters (e.g. http timeout), and the authentication plugin.
++
++3. Construct a client with the session object.
++
++The first two steps above will become standard for all clients and as such
++keystoneclient is defining a standard set of helper mechanisms to allow them to
++be loaded from any OSLO config file.
++
++To facilitate this the proposal is to group related client functions into their
++own ini section rather than prefix them in the DEFAULT section. An example
++would be::
++
++    [neutron]
++
++    certfile = '/path/to/client.crt'
++    keyfile = '/path/to/key.key'
++    cafile = '/path/to/ca.crt'
++    insecure = False
++    timeout = 300
++    auth_name = v2password
++    auth_url = 'http://keystone:5000/v2.0/
++    user_name = 'user'
++    password = 'pass'
++    tenant_name = 'tenn'
++
++Note: the use of `[neutron]` is purely an example, what the sections are called
++is left undefined for now.
++
++Using these options then looks something like::
++
++    from keystoneclient.auth import conf
++    from keystoneclient import session
++    from neutronclient.v2_0 import client
++
++    option_group = 'neutron'
++
++    sess = session.Session.load_from_conf_options(CONF, option_group)
++    sess.auth = conf.plugin_from_conf(CONF, option_group)
++    client = client.Client(session=sess)
++
++In the case where authentication is not needed (using the user's
++authentication) the auth plugin would be provided by auth_token middleware or
++constructible from those headers.
++
++For simplicity it would be good to move the other non-standard options into
++this same ini group, however that is left open for now.
++
++Alternatives
++------------
++
++Essentially the alternative is to go on manually supporting the options for the
++individual clients. This leads to shortcomings such as the current inability to
++use client certificates to do inter-service communication and the inability to
++set glance CA certificates from configuration.
++
++With the standardization happening in the clients already Nova could maintain
++it's own config loading scheme however for consistency across the projects it
++would be better to just have one defined scheme. It also means that as new
++options are added Nova would automatically gain the ability to use these
++options if set in config.
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++None
++
++Security impact
++---------------
++
++This proposal will give deployers more control over the security settings of
++the clients and allow continuing improvements in security without each option
++being additionally supported by nova.
++
++It will go most of the way to allowing SSL everywhere deployments and allow a
++new range of authentication mechanisms to be used for server interaction.
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++None
++
++Performance Impact
++------------------
++
++None
++
++Other deployer impact
++---------------------
++
++Configuration changes are well defined above. The exact names of these are
++currently still in review in keystoneclient.
++
++Developer impact
++----------------
++
++None
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  jamielennox
++
++Other contributors:
++
++Work Items
++----------
++
++The majority of work to implement this will not be done in nova.
++
++* Finalize the config and authentication loading in keystoneclient
++* Convert cinderclient, neturonclient and glanceclient to use the session
++  object.
++* Change nova to instantiate client objects with the session.
++
++Dependencies
++============
++
++This proposal will requires ongoing work across at least 3 different client
++projects. The intention of raising this spec now is to make sure that the end
++goal is agreed upon by the servers rather than going and implementing the
++client side only to find that Nova and others are unwilling to change.
++
++There is still time to affect things like option names in keystoneclient.
++
++Testing
++=======
++
++As applicable changes to configuration should be mirrored in devstack and gate
++testing as well as updating any affected unit tests.
++
++As we are changing the default configuration options the continual passing of
++gate tests will be good indication that the changes are working.
++
++Documentation Impact
++====================
++
++The configuration options for the client related options are going to need to
++be changed and the old ones deprecated.
++
++References
++==========
++
++* Session objects:
++  http://www.jamielennox.net/blog/2014/02/24/client-session-objects/
++
++* cinderclient use session object:
++  https://review.openstack.org/#/c/95986/
++
++* Create a session object from a config file:
++  https://review.openstack.org/#/c/95015/
++
++* Create an auth plugin from a config file:
++  https://review.openstack.org/#/c/79542/
+-- 
+1.9.1
+

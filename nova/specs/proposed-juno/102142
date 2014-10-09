@@ -1,0 +1,139 @@
+From 8052b0b4dbf9e95468b4d33be985108cc1bd292a Mon Sep 17 00:00:00 2001
+From: Your Name <you@example.com>
+Date: Tue, 24 Jun 2014 07:09:42 +0000
+Subject: [PATCH] Blueprint for the implementation of Nested Quota Driver API
+
+Nested Quota Driver API helps in the enforcement of
+quotas in hierarchical projects
+
+Change-Id: I26fda89e3a3a6eed15fc13daf8a49111e13c30e2
+---
+ specs/juno/nested-quota-driver-api.rst | 116 +++++++++++++++++++++++++++++++++
+ 1 file changed, 116 insertions(+)
+ create mode 100644 specs/juno/nested-quota-driver-api.rst
+
+diff --git a/specs/juno/nested-quota-driver-api.rst b/specs/juno/nested-quota-driver-api.rst
+new file mode 100644
+index 0000000..f93616d
+--- /dev/null
++++ b/specs/juno/nested-quota-driver-api.rst
+@@ -0,0 +1,116 @@
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++=======================
++nested-quota-driver-api
++=======================
++
++https://blueprints.launchpad.net/nova/+spec/nested-quota-driver-api
++
++Nested quota driver for Nested Quota Management will enable  OpenStack projects to enforce quota in nested projects.The current openstack nova implementation can support only one level of hierarchy,ie projects and users.The nested projects is having a hierarchical structure, where each project contains projects and users inside it ,except those at the leaf nodes,which contain only users.
++
++Problem description
++===================
++Use Case 1 :
++Consider the use case of a special effects company named Industrial Light And Magic(ILM). The parent project ILM ,will be having different projects like ANIMATION,ACTION and FICTION,to deal with different types of films.So, under FICTION there will be projects like MATRIX,AVATAR etc ,under ACTION there will be MI,SKYFALL etc and ANIMATION will be having projects like SHREK,TINTIN etc.Consider the hierarchy ILM->FICTION->MATRIX.Suppose, George is having admin role in ILM,John is having admin role in FICTION and Peter is having admin role in MATRIX.Through role inheritance,George and John will be having the same role in their child projects.
++Suppose the free instance cores in ILM and FICTION are 500 and 100,respectively.And MATRIX, which has a total allocation of 50 cores,needs an additional 150 cores.If the user is George ,FICTION will take 50 cores from ILM ,and a total of 150 cores will be given to MATRIX.But John cannot provide 150 cores to MATRIX, as he doesn't have any role in ILM and FICTION is having only 100 free cores with it.
++Suppose after some time, MATRIX doesn't require 75 cores and it needs to be allocated back to the parent project.If John is doing the deletion,the 75 cores will add to the free quota of FICTION and if George is doing the deletion,75 cores will add to the free quota of ILM.
++For efficient utilization of resources,it is ensured that more free quota is available at the higher levels,so that maximum number of projects can make use of it.
++
++Proposed change
++===============
++Quota Allocation:
++When the user tries to do an allocation in a project,all the hierarchy up to the topmost parent where the user is having a role is found out.The free quota is accumulated by traversing up the order, till the sufficient amount of quota is found and the allocation will be done top down the order.
++Quota Deletion:
++If the quota is deleted,then that quota will add to the free quota of the top most project where the user who is deleting is having the same role.
++Project Deletion:
++A project can be deleted if it doesn't have allocation in the child project.The quota of the deleted project ,will add to the free quota of the top most project where the user is having the same role.
++
++Alternatives
++------------
++
++None
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++None
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++None
++
++Other end user impact
++---------------------
++None
++
++Performance Impact
++------------------
++
++If the sufficient free quota is not available with the immediate parent,it has to be taken from the projects further up in the order ,which requires more database operations
++
++Other deployer impact
++---------------------
++
++None
++
++Developer impact
++----------------
++
++None
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++Primary assignee:
++Sajeesh
++Other contributors:
++vishy
++shwicke
++raildo
++tellesnobrega
++morganfainberg
++
++
++Work Items
++----------
++
++1.The current dbquotadriver should be extended for nested projects
++2.When the immediate parent is not having sufficient quota for the child ,there should be an iterative mechanism to go up the hierarchy till sufficient quota is found.
++3.While deletion of quota and projects,the free quota should add to the topmost parent project,where the user who is deleting is having the same rule.
++
++Dependencies
++============
++
++Depends on keystone to  get the hierarchy of projects,and the users and their corresponding roles in those projects
++
++
++Testing
++=======
++
++Integration and unit tests should be added.It should be verified that ,whether the quota is properly allocated from the parent and if sufficient quota is not available with the immediate parent,it is taken from higher  levels.Also,it should be verfied that ,when there is a deletion of quota or project,the free quota is getting added to the top most project,where the user is having the same role.
++
++Documentation Impact
++====================
++
++None
++
++
++References
++==========
++
++https://wiki.openstack.org/wiki/HierarchicalMultitenancy
+-- 
+1.9.1
+

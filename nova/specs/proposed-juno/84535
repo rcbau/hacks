@@ -1,0 +1,174 @@
+From 84ab76872d4e9c2bda9fbb544c67f2c1eaf97f03 Mon Sep 17 00:00:00 2001
+From: Shawn Hartsock <hartsocks@vmware.com>
+Date: Tue, 1 Apr 2014 15:52:18 -0400
+Subject: [PATCH] Propose: VMware vm_ref (aka vm_util) refactor
+
+Improper use of virtual machine references (vm_ref) in vm_util.py is the
+source of many critical and high priority bugs. Refactoring this utility
+so that there is one-right-way to get a virtual machine reference will
+simplify the process of adding features to the driver and eliminate bugs.
+
+related to blueprint vmware-vm-ref-refactor
+
+Change-Id: I883ce071e91bc8c6b11a3960b093a21af026ad7b
+---
+ specs/juno/vmware-vm-ref-refactor.rst | 147 ++++++++++++++++++++++++++++++++++
+ 1 file changed, 147 insertions(+)
+ create mode 100644 specs/juno/vmware-vm-ref-refactor.rst
+
+diff --git a/specs/juno/vmware-vm-ref-refactor.rst b/specs/juno/vmware-vm-ref-refactor.rst
+new file mode 100644
+index 0000000..9b3ed1a
+--- /dev/null
++++ b/specs/juno/vmware-vm-ref-refactor.rst
+@@ -0,0 +1,147 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++======================
++VMware vm_ref refactor
++======================
++
++https://blueprints.launchpad.net/nova/+spec/vmware-vm-ref-refactor
++
++Improper use of virtual machine references (vm_ref) in vm_util.py is the
++source of many critical and high priority bugs. Refactoring this utility
++so that there is one-right-way to get a virtual machine reference will
++simplify the process of adding features to the driver and eliminate bugs.
++
++
++Problem description
++===================
++
++High/Critical priority problems caused by vm_util.py :
++
++* https://bugs.launchpad.net/nova/+bug/1258179
++
++* https://bugs.launchpad.net/nova/+bug/1290807
++
++* https://bugs.launchpad.net/nova/+bug/1295381
++
++The structure and use of the vm_util.py has become convoluted. It is time
++to reexamine the code around this utility.
++
++
++Proposed change
++===============
++
++* Create a data object to hold virtual machine properties such as vm_ref, name,
++  and other frequently accessed yet nonvolatile attributes of a virtual machine
++
++* Re-write and refactor common virtual machine search and retrieval utilities to
++  better conserve network bandwidth.
++
++* Re-configure the caching utilities to store virtual machine data objects by
++  faster to use indexes
++
++* Introduce a cache aging scheme.
++
++
++Alternatives
++------------
++
++* https://review.openstack.org/#/c/79833/ - began a general exploration of the
++  use of virtual machine references and its cache. This work is incomplete and
++  does not cover the cases needed to address other critical issues.
++
++Data model impact
++-----------------
++
++* Introduces transient vSphere virtual machine data objects that will be easier
++  to use with Nova. No data should be persisted to the Nova database.
++
++REST API impact
++---------------
++
++None.
++
++Security impact
++---------------
++
++None.
++
++Notifications impact
++--------------------
++
++Not applicable.
++
++Other end user impact
++---------------------
++
++None applicable.
++
++Performance Impact
++------------------
++
++This will improve total aggregate performance of the VMware driver through more
++efficient use of networking bandwidth as the refactor will aggregate multiple
++separate network fetches into a single network fetch.
++
++Other deployer impact
++---------------------
++
++None applicable.
++
++Developer impact
++----------------
++
++* single point of authority for how to associate an instance with a virtual
++  machine reduces code-noise and improves capability to review
++
++* smarter use of vSphere API establishes better practice when dealing with
++  vSphere and components under remote management.
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  hartsock
++
++Other contributors:
++  TBD
++
++Work Items
++----------
++
++* Identify all uses of virtual machine references in the driver
++
++* Introduce new virtual machine data model object
++
++* Introduce single source of authority for finding virtual machine references
++
++* route all virtual machine reference uses through new utility methods and objects
++
++Dependencies
++============
++
++None.
++
++Testing
++=======
++
++* Standard Minesweeper tests
++
++* extended unit tests
++
++Documentation Impact
++====================
++
++Internal driver developer documentation changes only.
++
++References
++==========
++
++For design discussions see:
++* https://etherpad.openstack.org/p/vmware-vm_util-refactor
+-- 
+1.9.1
+

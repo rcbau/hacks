@@ -1,0 +1,187 @@
+From ea73965fc860b3d52fd59d4dfbb9af65189ee0ac Mon Sep 17 00:00:00 2001
+From: Balazs Gibizer <balazs.gibizer@ericsson.com>
+Date: Tue, 22 Apr 2014 17:15:25 +0200
+Subject: [PATCH] Add PCI and PCIe device capability aware scheduling
+
+Change-Id: I17ed35db2dd2f7ad9943e0d09fc203701f8c11f2
+---
+ .../pci-device-capability-aware-scheduling.rst     | 167 +++++++++++++++++++++
+ 1 file changed, 167 insertions(+)
+ create mode 100644 specs/juno/pci-device-capability-aware-scheduling.rst
+
+diff --git a/specs/juno/pci-device-capability-aware-scheduling.rst b/specs/juno/pci-device-capability-aware-scheduling.rst
+new file mode 100644
+index 0000000..1837055
+--- /dev/null
++++ b/specs/juno/pci-device-capability-aware-scheduling.rst
+@@ -0,0 +1,167 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++===============================================
++PCI and PCIe device capability aware scheduling
++===============================================
++
++https://blueprints.launchpad.net/nova/+spec/pci-device-capability-aware-scheduling
++
++In most Data Centers they have a heterogeneous compute host environment
++which is sourced from various manufacturers and these hosts contain various
++components such as PCI and PCIe devices. As the data center expands and more
++hosts are added and removed over a period of time the PCI cards on these
++compute hosts will differ from different vendors and different versions
++will support different capabilities over a period of time in this
++heterogeneous environment. Similarly not all compute hosts
++in the data center will have the same PCI cards throughout and
++typically some hosts will carry specialized PCIe devices to support hardware
++acceleration services such as encryption etc. while others will not.
++
++When a tenant requests for an instance to be provisioned there are certain
++applications that benefit and in some cases require being placed on a
++compute host that supports a specific PCI/PCIe capabilities and
++in such a case nova db should contain the inventory of which PCI/PCIe
++devices are installed in which hosts to assist in this fine grain placement
++of an instance where the application requires specific capability such as
++High Order packet throughput on a Network Interface Card (NIC) card as an
++example.
++
++
++Problem description
++===================
++
++As an End User I want to have my instances scheduled on a host where some
++PCI/PCIe capability exists so that I can get better performance.
++
++As a Deployer I want to automate the discovery and classification of the
++capabilities of my compute hosts so that I don't have to manually configure
++nova to use the capability information for instance scheduling.
++
++Use Case
++--------
++
++* Deployer installs couple of new compute blades with 40G NICs
++* Nova detects the new capabilities of the new hosts and creates new
++  host aggregate for 40G NICs capability and puts the new hosts
++  into the proper aggregate
++* Deployer checks the new host aggregates and decide which capability
++  sets he want to publish for his tenants. He creates the proper
++  flavors.
++* Tenant uses the new flavors to boot instances
++* Nova scheduler will use the existing AggregateInstanceExtraSpecsFilter
++  to match the requirements with capabilities
++
++
++Proposed change
++===============
++
++Introduce a new nova-capability agent that runs at the start up of the
++compute host. This agent will use the standard Linux tool set to discover
++available PCI/PCIe devices and their capabilities. In this blueprint we will
++cover only NICs but later on the idea can be extended with other devices.
++In this blueprint we will handle the existence of such devices and in case
++of NICs we will use the link speed of the device as a capability,
++but later on the solution can be extened with other capabilities.
++
++This agent will use nova public API to put the compute host automatically into
++host aggregates according to the discovered capabilities. Also the agent will
++create new host aggregate if it finds a totally new host capability.
++
++
++Alternatives
++------------
++
++Flavor creation is still a manual step. We can avoid this manual step by
++allowing the tenants to express the requirements via scheduler hints.
++This alternative is not choosen because deployer would loose the control
++of what kind of capability sets are used. Also deployer wouldn't have
++out of the box billing support in this sollution.
++
++Current proposal uses nova public API. Alternatively the new nova-capability
++agent could use the message bus and nova internal API to achieve the same
++goal.
++
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++None
++
++Security impact
++---------------
++
++New nova-capability agent might need sudo right on the compute hosts to be able to
++discover every capability. Needs further investigation.
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++None
++
++Performance Impact
++------------------
++
++Large amount of host aggregates might affect scheduler perfomance
++
++Other deployer impact
++---------------------
++
++The new nova-capability agent needs to be started on the compute host
++
++Developer impact
++----------------
++
++None
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  balazs-gibizer
++
++Other contributors:
++  alan-kavanagh
++  liyi-meng
++
++Work Items
++----------
++
++To be defined!
++
++
++Dependencies
++============
++
++None
++
++Testing
++=======
++
++To be defined!
++
++Documentation Impact
++====================
++
++OpenStack Intallation Guide is impacted with the new service
++
++References
++==========
++
++None
+-- 
+1.9.1
+

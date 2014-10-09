@@ -1,0 +1,169 @@
+From 505ec8701fffdc444722e0ee1e8d0886f31bd22f Mon Sep 17 00:00:00 2001
+From: Yuriy Taraday <yorik.sar@gmail.com>
+Date: Tue, 8 Jul 2014 13:34:20 +0400
+Subject: [PATCH] Add rootwrap-daemon-mode blueprint
+
+blueprint rootwrap-daemon-mode
+
+Change-Id: Ib61a72adfa1a0296f63d3856c22cd94b2481c01e
+---
+ specs/juno/rootwrap-daemon-mode.rst | 147 ++++++++++++++++++++++++++++++++++++
+ 1 file changed, 147 insertions(+)
+ create mode 100644 specs/juno/rootwrap-daemon-mode.rst
+
+diff --git a/specs/juno/rootwrap-daemon-mode.rst b/specs/juno/rootwrap-daemon-mode.rst
+new file mode 100644
+index 0000000..596efc5
+--- /dev/null
++++ b/specs/juno/rootwrap-daemon-mode.rst
+@@ -0,0 +1,147 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++====================
++rootwrap daemon mode
++====================
++
++https://blueprints.launchpad.net/nova/+spec/rootwrap-daemon-mode
++
++Nova is one of projects that heavily depends on executing actions on compute
++and network nodes that require root priviledges on Linux system. Currently this
++is achieved with oslo.rootwrap that has to be run with sudo. Both sudo and
++rootwrap produce significant performance overhead. This blueprint is one of the
++series of blueprints that would cover mitigating rootwrap part of the overhead
++using new mode of operations for rootwrap - daemon mode. These blueprints will
++be created in several projects starting with oslo.rootwrap [#rw_bp]_.
++
++Problem description
++===================
++
++As you can see in [#ne_ml]_ rootwrap presents big performance overhead for
++Neutron. Impact on Nova is not as signigicant since most of the work is done
++with libvirt's API but it is still there.
++Details of the overhead are covered in [#rw_bp]_.
++
++Proposed change
++===============
++
++This blueprint proposes adopting upcoming change in oslo.rootwrap that would
++allow to run rootwrap daemon. The daemon will work just as a usual rootwrap but
++will accept commands to be run over authenticated UNIX domain socket instead of
++command line and will run continuously in background.
++
++Note that this is not usual RPC over some message queue. It uses UNIX socket,
++so no remote connections are available. It also uses digest authentication with
++key shared over stdout (pipe) with parent process, so no other processes will
++have access to the daemon. Further details of rootwrap daemon are covered in
++[#rw_bp]_.
++
++``use_rootwrap_daemon`` configuration option should be added that will make
++``utils.execute`` use daemon instead of usual rootwrap.
++
++Alternatives
++------------
++
++Alternative approaches have been discussed for Neutron in [#ne_eth]_.
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++None
++
++Security impact
++---------------
++
++This change requires additional endpoint to be available to run as root -
++``nova-rootwrap-daemon``. It should be added to the ``sudoers`` file.
++
++All security issues with using client+daemon instead of plain rootwrap are
++covered in [#rw_bp]_.
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++None
++
++Performance Impact
++------------------
++
++This change introduces performance boost for disk and network operations that
++are required to be run with root priviledges in ``nova-compute`` and
++``nova-network``. Current state of rootwrap daemon shows over 10x speedup
++comparing to usual ``sudo rootwrap`` call. Total speedup for Nova will be less
++impressive but should be noticeable.
++
++Other deployer impact
++---------------------
++
++This change introduces new config variable ``use_rootwrap_daemon`` that
++switches on new behavior. Note that by default ``use_rootwrap_daemon`` will be
++turned off so to get the speedup one will have to turn it on. With it turned on
++``nova-rootwrap-daemon`` is used to run commands that require root priviledges.
++
++This change also introduces new binary ``nova-rootwrap-daemon`` that should
++be deployed beside ``nova-rootwrap`` and added to ``sudoers``.
++
++Developer impact
++----------------
++
++None
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  yorik-sar (Yuriy Taraday, YorikSar @ freenode)
++
++Work Items
++----------
++
++The only work item here is to implement new config variable and run rootwrap in
++daemon mode with it.
++
++Dependencies
++============
++
++* rootwrap-daemon-mode blueprint in oslo.rootwrap [#rw_bp]_.
++
++Testing
++=======
++
++This change doesn't change APIs so it doesn't require additional integration
++tests. If tempest is happy with ``use_rootwrap_daemon`` turned on, the feature
++works.
++
++Documentation Impact
++====================
++
++None
++
++References
++==========
++
++.. [#rw_bp] oslo.rootwrap blueprint:
++   https://blueprints.launchpad.net/oslo/+spec/rootwrap-daemon-mode
++
++.. [#ne_ml] Original mailing list thread:
++   http://lists.openstack.org/pipermail/openstack-dev/2014-March/029017.html
++
++.. [#ne_eth] Original problem statement summarized here:
++   https://etherpad.openstack.org/p/neutron-agent-exec-performance
+-- 
+1.9.1
+

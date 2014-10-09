@@ -1,0 +1,142 @@
+From f1ae5b6e69bd801372330f61f1df5beffe660bce Mon Sep 17 00:00:00 2001
+From: Alexis Lee <alexisl@hp.com>
+Date: Wed, 25 Jun 2014 11:18:48 +0100
+Subject: [PATCH] Add periodic task heartbeat file
+
+At present it's difficult to verify that all Nova services are
+responsive, rather than merely running. Touch a heartbeat file, the
+freshness of which can easily be monitored by EG an Icinga check.
+
+Change-Id: Ibbc62fb9866b33d046ff2fe13588b4d02db3d250
+---
+ specs/juno/periodic-heartbeat.rst | 118 ++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 118 insertions(+)
+ create mode 100644 specs/juno/periodic-heartbeat.rst
+
+diff --git a/specs/juno/periodic-heartbeat.rst b/specs/juno/periodic-heartbeat.rst
+new file mode 100644
+index 0000000..9209c7b
+--- /dev/null
++++ b/specs/juno/periodic-heartbeat.rst
+@@ -0,0 +1,118 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++==================
++Periodic heartbeat
++==================
++
++https://blueprints.launchpad.net/nova/+spec/periodic-heartbeat
++
++At present it's difficult to verify that all Nova services are responsive,
++rather than merely running. Touch a heartbeat file, the freshness of which can
++easily be monitored by EG an Icinga check.
++
++Problem description
++===================
++
++As a service operator, I would like to ensure Nova services have not hung. It
++is naturally easy to check the responsiveness of the API service, but there is
++no simple way to check the other services.
++
++Proposed change
++===============
++
++This spec proposes an additional periodic task as part of nova/manager.py which
++will run as part of the Nova API, scheduler, conductor and compute services.
++This task will touch a file in a well-known location, the freshness of which
++can easily be monitored by EG an Icinga check.
++
++Alternatives
++------------
++
++We could open up a REST API on the other services. That seems a heavyweight
++solution to the simple requirements posed by this spec. If more extensive
++service status requirements are introduced, this alternative may be more
++proportionate.
++
++Data model impact
++-----------------
++
++None.
++
++REST API impact
++---------------
++
++None.
++
++Security impact
++---------------
++
++None.
++
++Notifications impact
++--------------------
++
++None.
++
++Other end user impact
++---------------------
++
++None.
++
++Performance Impact
++------------------
++
++Very low to none.
++
++Other deployer impact
++---------------------
++
++None.
++
++Developer impact
++----------------
++
++None.
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  alexisl
++
++Other contributors:
++  None
++
++Work Items
++----------
++
++* Add periodic task
++
++
++Dependencies
++============
++
++None.
++
++Testing
++=======
++
++This is a simple change, so unit tests should be sufficient.
++
++Documentation Impact
++====================
++
++A note should be made about this behaviour so that operators may take advantage
++of it.
++
++
++References
++==========
++
++None.
+-- 
+1.9.1
+

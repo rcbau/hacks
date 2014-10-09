@@ -1,0 +1,303 @@
+From f40bb1c92bac0f112afad95a83f81ced471bce85 Mon Sep 17 00:00:00 2001
+From: Vincent Hou <sbhou@cn.ibm.com>
+Date: Wed, 2 Apr 2014 05:26:03 -0400
+Subject: [PATCH] Propose: Add server snapshot support
+
+Notes: Please forgive me for my poor language skill. I have not
+come up with a better name for this proposal, so just tentatively
+call it server snapshot. The server snapshot here means a
+snapshot/restore point used to save the status of an VM and used
+to restore this VM only, which is different from the nova snapshot.
+
+Related to blueprint driver-specific-snapshot
+
+Change-Id: Ifabe546f60a1e4d93817e217fd1a53d1c0a5768e
+---
+ specs/juno/server-snapshot-support.rst | 275 +++++++++++++++++++++++++++++++++
+ 1 file changed, 275 insertions(+)
+ create mode 100644 specs/juno/server-snapshot-support.rst
+
+diff --git a/specs/juno/server-snapshot-support.rst b/specs/juno/server-snapshot-support.rst
+new file mode 100644
+index 0000000..c593344
+--- /dev/null
++++ b/specs/juno/server-snapshot-support.rst
+@@ -0,0 +1,275 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++===========================
++Add server snapshot support
++===========================
++
++https://blueprints.launchpad.net/nova/+spec/driver-specific-snapshot
++
++The server snapshot here means a snapshot/restore point used to save
++the status of an VM and restore this VM only, which is different from
++the nova snapshot. This proposal adds the server snapshot support for
++the VM, so that the VM can be fast restored from this server snapshot
++without connection to glance.
++
++Problem description
++===================
++
++There is already a snapshot concept in nova, which actually creates an
++image and uploads it to glance store for other VMs to spawn. This
++proposal bring in a server snapshot, which does not need to be uploaded
++to glance and is used for the fast recover of the master VM.
++
++It takes a very long time to upload and download a big image. With the
++server snapshot saved in the local repository of the hypervisor to keep
++the status of the VM, the VM can be restored from it directly without
++the image transfer.
++
++How to use the server snapshot?
++The VM allows multiple server snapshots to be created. The user can choose
++which server snapshot the VM will restore from. The server snapshots for
++one VM exist in a tree structure and they can save the root disk and the
++memory. Take VMware as an example, the snapshot is saved in the same folder as
++the VM. When we migrate the VM via the command, the server snapshots can be
++migrated together with the VM. Ephemeral storage and volumes are tentatively
++not in consideration. The server snapshot is used to restore the master VM
++only, not to spawn other new VMs.
++
++
++Proposed change
++===============
++
++Take VMware VCenter driver as the initial implementation: reference code
++can be found via https://review.openstack.org/#/c/85243/
++1. Add a new model for the server snapshot.
++2. Add an API extension to create server snapshot, revert/restore from
++the server snapshot, list the server snapshot for an instance and
++delete the server snapshot.
++3. Add quota management to the server snapshot. There will be a quota limit
++for the number of server snapshots one VM can create under one tenant.
++4. API extension to create server snapshot, revert/restore from
++the server snapshot, list the server snapshot for an instance and
++delete the server snapshot.
++
++Some hypervisors do not have to implement it, if it is not necessary.
++However, the others may implement it with their server snapshot.
++
++Alternatives
++------------
++
++None
++
++Data model impact
++-----------------
++
++Add a data model for server snapshot.
++
++REST API impact
++---------------
++
++Use the nova api extension to implement it.
++
++* Create a server snapshot
++
++  * The user can created a server snapshot for a VM via this method.
++
++  * Method type: PUT
++
++  * Normal http response code(s): 201
++
++  * Resource URl: http://IP:port/instance/instance-ID
++
++  * The parameters contain server snapshot name, description and metadata.
++    Different hypervisors to have different key-value pairs for
++    configuration. For example, if we set memory=true for VMware, the memory
++    status will be saved.
++
++  * JSON schema definition for the body data:
++    {
++        "os-createServerSnapshot": {
++        "snapshot_name": "snapshot_name",
++        "description": "description",
++        "metadata": {
++            "memory": "false",
++            "quiesce": "true"
++        }
++        }
++    }
++
++  * JSON schema definition for the response data:
++    {
++        "server_snapshot": {
++            "instance_id": "instance_id",
++            "snapshot_name": "snapshot_name",
++            "snapshot_id": "snapshot_id",
++            "create_time": "create_time",
++            "description": "description",
++            "is_current_snapshot": "True",
++            "metadata": {
++                "vm_state": "vm_state",
++                "quiesced": "quiesced",
++                "replaySupported": "replaySupported"
++            }
++        }
++    }
++
++* List all the server snapshots for a VM
++
++  * The user can list all the available server snapshots for a given VM
++    via this method.
++
++  * Method type: GET
++
++  * Normal http response code(s): 202
++
++  * Resource URl: http://IP:port/instance/instance-ID
++
++  * The parameters contain VM ID.
++
++  * JSON schema definition for the body data:
++    {
++        "os-listServerSnapshot":
++            "instance_id": "instance_id"
++    }
++
++  * JSON schema definition for the response data:
++    {
++        "server_snapshots": [
++        {
++            "instance_id": "instance_id",
++            "snapshot_name": "snapshot_name",
++            "snapshot_id": "snapshot_id",
++            "create_time": "create_time",
++            "description": "description",
++            "is_current_snapshot": "True",
++            "metadata": {
++                 "vm_state": "vm_state",
++                 "quiesced": "quiesced",
++                 "replaySupported": "replaySupported"
++            }
++        }
++        ]
++    }
++
++* Restore the VM from one of its server snapshots
++
++  * The user can restore the VM to its server snapshot.
++
++  * Method type: POST
++
++  * Normal http response code(s): 203
++
++  * Resource URl: http://IP:port/instance/instance-ID
++
++  * The parameters contain server snapshot ID.
++
++  * JSON schema definition for the body data:
++    {
++        "os-restoreServerSnapshot": {
++            "snapshot_id": "snapshot_id"
++        }
++    }
++
++* Delete a server snapshot
++
++  * The user can delete the server snapshot via this method.
++
++  * Method type: DELETE
++
++  * Normal http response code(s): 204
++
++  * Resource URl: http://IP:port/server_snapshot/server_snapahot-ID
++
++  * The parameters contain server snapshot ID..
++
++  * JSON schema definition for the body data:
++    {
++        "os-listServerSnapshot": {
++            "snapshot_id": "snapshot_id"
++        }
++    }
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++The users can create the nova snapshot and the server snapshot. If they
++do not need to save the snapshot in the glance store and just need fast
++recover for the master VM, they can choose to create the server snapshot.
++
++Performance Impact
++------------------
++
++It takes less time to recover the VM back to the server snapshot than
++rebuild the VM from the image.
++
++Other deployer impact
++---------------------
++
++None
++
++Developer impact
++----------------
++
++None
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  houshengbo(Vincent Hou)
++
++
++Work Items
++----------
++
++1. Add an API extension for the server snapshot.
++2. Add a data model for the server snapshot.
++3. Add the implementation of the server snapshot for the hypervisor,
++   which needs the server snapshot. The following interfaces will be
++   implemented: CreateServerSnapshot, RestoreFromServerSnapshot,
++   DeleteServerSnapshot and List/Get server Snapshot.
++
++An implementation for VMware drivers is going:
++https://review.openstack.org/#/c/85243/
++
++Dependencies
++============
++
++None
++
++Testing
++=======
++
++Add unit tests to test the actions of create, revert/restore, list
++and delete for the server snapshot.
++
++Documentation Impact
++====================
++
++Add explanations to the server snapshot and its difference from the
++nova snapshot.
++
++References
++==========
++
++https://blueprints.launchpad.net/nova/+spec/driver-specific-snapshot
++https://etherpad.openstack.org/p/live-snapshot
++A reference implementation for VMware: https://review.openstack.org/#/c/85243/
+-- 
+1.9.1
+

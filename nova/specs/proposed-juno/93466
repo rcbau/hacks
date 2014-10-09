@@ -1,0 +1,188 @@
+From a7d4eea2ff39db7bccb46a428710a0002bf885eb Mon Sep 17 00:00:00 2001
+From: Michael H Wilson <geekinutah@gmail.com>
+Date: Tue, 13 May 2014 10:18:32 -0400
+Subject: [PATCH] Introduce support for a synchronous slave
+
+We were able to introduce support for offloading reads to a slave
+connection in Icehouse. However the slaving model was left up to
+the deployer. Because we assumed that a deployer could use an async
+slave we weren't able to fully segregate reads. This spec aims
+to solve this problem.
+
+Change-Id: I2029e1b0c152a91c711fea8f04bb293be8e6bbd7
+---
+ specs/juno/synchronous-read-support.rst | 162 ++++++++++++++++++++++++++++++++
+ 1 file changed, 162 insertions(+)
+ create mode 100644 specs/juno/synchronous-read-support.rst
+
+diff --git a/specs/juno/synchronous-read-support.rst b/specs/juno/synchronous-read-support.rst
+new file mode 100644
+index 0000000..931e4b6
+--- /dev/null
++++ b/specs/juno/synchronous-read-support.rst
+@@ -0,0 +1,162 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++============================================
++Provide a connection for a synchronous slave
++============================================
++
++
++https://blueprints.launchpad.net/nova/+spec/synchronous-read-support
++
++We want to be able to scale the DB layer of Nova further and to do this
++we want to let deployers isolate their workloads to different classes of
++hardware. By seperating out writes, reads affected by causality and reads
++not affected by causality we can optimize for those workloads.
++
++Problem description
++===================
++
++Support for offloading some reads to replication slaves was added in the
++Icehouse release. This was nice, but was unusable from the perspective of
++workflows that are sensitive to a non-causal replication slave. For example,
++if you call an API that writes to the DB then call a different API that
++should take into consideration the data that was just written, there is a
++chance that the asynchronous slaves hasn't written that out to it's version
++of the database. This has the potential to break the workflow.
++
++Proposed change
++===============
++
++I want to add an additional db connection that is intended for a synchronous
++replication slave or slave cluster. If a deployer chooses to specify this
++connection in Nova's configuration all reads will go here unless explicitly
++sent to the asynchronous connection.
++
++Alternatives
++------------
++
++There is a sharding model in Nova, cells, which was designed specifically to
++deal with issues of scale. Because of it's bolt-on nature it is sometimes
++unattractive to deployers. It could be argued that we need to handle the DB
++scaling problem in Nova itself rather than scaling the DB as a seperate
++problem.
++
++It could be argued that time would be better spent working on cells or
++another form of handling application level sharding of the data problem.
++
++Another alternative would be to provide a all_reads_from_slave boolean
++to let deployers take care of the sync vs async problems themselves and
++not worry about another handle from the application level.
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++None
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++None
++
++Performance Impact
++------------------
++
++Adding any synchronous db slaves will affect performance in the following
++ways:
++
++The Round Trip Time of any write is a function of the slowest node that
++is part of the relationship. The takeway is that you must make sure your
++hardware that hosts these is equal to the performance that you expect
++across the board.
++
++Other deployer impact
++---------------------
++
++We will add a new configuration parameter:
++
++sync_slave_connection
++
++also will begin the deprecation process for
++
++slave_connection
++
++in favor of
++
++async_slave_connection
++
++If a deployment provides a valid sync_slave_connection all reads that are not
++explicitly sent to the async_slave_connection will be sent there. Deployments
++should understand the implications of adding a synchronous db slave into
++their infrastructure. It would also be important to tune all three sql
++connections for their particular workload so that the benefits may be fully
++enjoyed.
++
++Also, it should be noted that a synchronous cluster is going to multiply your
++number of required writes for each transaction. Specifically take writes and
++times that by the number of synchronous nodes in the cluster.
++
++Developer impact
++----------------
++
++None
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  <geekinutah>
++
++Other contributors:
++  <launchpad-id or None>
++
++Work Items
++----------
++
++-Add another connection to the db session code
++-Add logic to determine if a query is a write or a read and conditionally
++send a read down to the synchronous session.
++-Start the process of deprecating the slave_conection configuration option
++in favor of async_slave_conection.
++
++Dependencies
++============
++
++None
++
++Testing
++=======
++
++We will want to add an additional database instance into some testing
++environments to make sure interactions are smooth.
++
++Documentation Impact
++====================
++
++We will need to upgrade the operations guide to reflect the ability to send
++reads to a seperate database cluster.
++
++References
++==========
++
++None
+-- 
+1.9.1
+

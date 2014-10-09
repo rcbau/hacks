@@ -1,0 +1,417 @@
+From 1bb6d723210fb558413b10c62c00f5e2178aa9b3 Mon Sep 17 00:00:00 2001
+From: vinodkumarboppanna <vinod.kumar.boppanna@cern.ch>
+Date: Fri, 11 Apr 2014 11:09:04 +0200
+Subject: [PATCH] A blue print describing the new Domain Quota feature
+ implementation with V2 APIs for Nova
+
+Change-Id: I8b0b41f5fb262223f4f37f4b88d09d711037a793
+---
+ specs/juno/domain-quota-driver-api.rst | 396 +++++++++++++++++++++++++++++++++
+ 1 file changed, 396 insertions(+)
+ create mode 100644 specs/juno/domain-quota-driver-api.rst
+
+diff --git a/specs/juno/domain-quota-driver-api.rst b/specs/juno/domain-quota-driver-api.rst
+new file mode 100644
+index 0000000..78020ec
+--- /dev/null
++++ b/specs/juno/domain-quota-driver-api.rst
+@@ -0,0 +1,396 @@
++::
++
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++=======================
++domain-quota-driver-api
++=======================
++
++https://blueprints.launchpad.net/nova/+spec/domain-quota-driver-api
++
++Nova V2 APIs for Domain Quota Management will enable OpenStack projects to
++enforce domain quotas in Nova.
++
++
++Problem description
++===================
++
++Currently, OpenStack services make usage of quotas to limit the project
++resources. For example, the "Instances" quota represents the number of
++instances that can be created in a project. So, the existing "DbQuotaDriver"
++in Nova allows to set the Quotas at Project/Tenant and User Level. But there
++is a need to enforce the quotas at Domain Level as well. A new driver called
++"Domain Quota Driver" is made available to enforce domain quotas in Nova.
++Also, to use this driver, a new set of APIs are required for CRUD operations
++on quotas at domain, project and user level. This driver depends on
++Keystone V3 context i.e the auth token should be generated using Keytone V3.
++If Keystone V2 is used, then the APIs for using domain quotas will fail.
++
++
++Proposed change
++===============
++
++A new driver called "Domain Quota Driver" will be made available in addition
++to the existing "DbQuotaDriver". The Nova can use two drivers in parallel,
++they will be called by the Quota Engine. New tables will be added to the Nova
++Database to store the quotas and its usages for a domain. The Domain Quota
++Driver strictly follows the hierarchy in implementing the quotas which means
++that administrator has to first set the quotas for domain before setting the
++quotas for a project in that domain. The same also holds for projects and
++users. The administrator has to first set the quotas for project before
++setting the quotas for users in that project. If no quotas are set, then
++the default values will be used at all levels. Ideally both the drivers can
++co-exists. But if the administrator used os-quota-sets (i.e) DbQuotaDriver to
++set quotas at project level and then moved to os-domain-quota-sets i.e
++DomainQuotaDriver, then the administrator has to set the quotas for the domain
++before doing any changes to the quota limits of the projects. Also, the
++minimum values that can be set for a quota parameter in the domain has to be
++greater than or equal to the sum of the quota parameter values of all the
++projects in that domain. For vice-versa case i.e moving from
++os-domain-quota-sets to domain-quota-sets, there is no such problem.
++
++The DomainQuotaDriver always maintains that sum of quota values of siblings
++at a level should always be less than or equal to the quota levels at their
++parent. The reverse condition is also applicable i.e the quota values at a
++parent should always be greater than the sum of quota values of its children.
++So, when an update of quota is requested, these rules are always followed.
++
++
++Alternatives
++------------
++
++None
++
++
++Data model impact
++-----------------
++
++- Three new Tables will be added namely 'domain_quotas', 'domain_quota_usages'
++  and 'domain_reservation'. The schema of these three tables is:
++
++- A database migration named '234_create_domain_quotas_tables.py' which includes
++  the table schema as
++
++   domain_quota = Table('domain_quotas', meta,
++            Column('id', Integer, primary_key=True, nullable=False),
++            Column('created_at', DateTime),
++            Column('updated_at', DateTime),
++            Column('deleted_at', DateTime),
++            Column('deleted', Integer),
++            Column('domain_id', String(255)),
++            Column('resource', String(255), nullable=False),
++            Column('hard_limit', Integer()),
++            mysql_engine='InnoDB',
++            mysql_charset='utf8')
++
++    domain_quota_usage = Table('domain_quota_usages', meta,
++            Column('id', Integer, primary_key=True, nullable=False),
++            Column('created_at', DateTime),
++            Column('updated_at', DateTime),
++            Column('deleted_at', DateTime),
++            Column('deleted', Integer),
++            Column('domain_id', String(255)),
++            Column('resource', String(255), nullable=False),
++            Column('in_use', Integer, nullable=False),
++            Column('reserved', Integer, nullable=False),
++            Column('until_refresh', Integer),
++            mysql_engine='InnoDB',
++            mysql_charset='utf8')
++
++    domain_reservation = Table('domain_reservations', meta,
++        Column('id', Integer, primary_key=True, nullable=False),
++        Column('created_at', DateTime),
++        Column('updated_at', DateTime),
++        Column('deleted_at', DateTime),
++        Column('deleted', Integer),
++        Column('uuid', String(length=36), nullable=False),
++        Column('domain_id', String(255)),
++        Column('usage_id', Integer, nullable=False),
++        Column('resource', String(length=255)),
++        Column('delta', Integer, nullable=False),
++        Column('expire', DateTime),
++        mysql_engine='InnoDB',
++        mysql_charset='utf8')
++
++
++REST API impact
++---------------
++
++A new openstack extension will be added and called "os-domain-quota-sets".
++The following APIs will be provided to enforce domain quotas by using
++"Domain Quota Driver"
++
++    * Show Quotas
++        * Show quotas for a domain/tenant/user
++        * GET Method
++        * 202 - OK
++        * 403 - FORBIDDEN
++        * v2/{tenant_id}/os-domain-quota-sets/{domain_id}
++        * project_id, user_id
++        * JSON request - None
++        * JSON response -
++                'quota_set': {
++                        'type': 'object','properties': {
++                            'instances': {
++                                'type': 'int', 'pattern': '^[0-9]+$'
++                            },'cores': {
++                                'type': 'int', 'pattern': '^[0-9]+$'
++                            },'ram': {
++                                'type': 'int', 'pattern': '^[0-9]+$'
++                            },'floating_ips': {
++                                'type': 'int', 'pattern': '^[0-9]+$'
++                            },'fixed_ips': {
++                                'type': 'int', 'pattern': '^[0-9]+$'
++                            },'metadata_items': {
++                                'type': 'int', 'pattern': '^[0-9]+$'
++                            },'injected_files': {
++                                'type': 'int', 'pattern': '^[0-9]+$'
++                            },'injected_file_content_bytes': {
++                                'type': 'int', 'pattern': '^[0-9]+$'
++                            },injected_file_path_bytes': {
++                                'type': 'int', 'pattern': '^[0-9]+$'
++                            },'key_pairs': {
++                                'type': 'int', 'pattern': '^[0-9]+$'
++                            },'security_groups': {
++                                'type': 'int', 'pattern': '^[0-9]+$'
++                            },'security_group_rules': {
++                                'type': 'int', 'pattern': '^[0-9]+$'
++                            },'id':{
++                                'type': 'string', 'minLength': 0,
++                                'maxLength': 255, 'pattern': '^[a-fA-F0-9]*$'
++
++                            }
++
++                        },'required': ['instances', 'cores', 'ram',
++'floating_ips', 'fixed_ips','metadata_items', 'injected_files',
++'injected_file_content_bytes', 'injected_file_path_bytes',
++'key_pairs', 'security_groups', 'security_group_rules'],
++                        'additionalProperties': False
++
++                    }
++
++    * Show Default Quotas
++        * Show default quotas for a domain
++        * GET
++        * 200 - OK
++        * 403 - FORBIDDEN
++        * v2/{tenant_id}/os-domain-quota-sets/{domain_id}/defaults
++        * None
++        * JSON request - None
++                        'quota_set': {
++                            'type': 'object','properties': {
++                                'instances': {
++                                    'type': 'int', 'pattern': '^[0-9]+$'
++                                },'cores': {
++                                    'type': 'int', 'pattern': '^[0-9]+$'
++                                },'ram': {
++                                    'type': 'int', 'pattern': '^[0-9]+$'
++                                },'floating_ips': {
++                                    'type': 'int', 'pattern': '^[0-9]+$'
++                                },'fixed_ips': {
++                                    'type': 'int', 'pattern': '^[0-9]+$'
++                                },'metadata_items': {
++                                    'type': 'int', 'pattern': '^[-9]+$'
++                                },'injected_files': {
++                                    'type': 'int', 'pattern': '^[0-9]+$'
++                                },'injected_file_content_bytes': {
++                                    'type': 'int', 'pattern': '^[0-9]+$'
++                                },'injected_file_path_bytes': {
++                                    'type': 'int', 'pattern': '^[0-9]+$'
++                                },'key_pairs': {
++                                    'type': 'int', 'pattern': '^[0-9]+$'
++                                },'security_groups': {
++                                    'type': 'int', 'pattern': '^[0-9]+$'
++                                },'security_group_rules': {
++                                    'type': 'int', 'pattern': '^[0-9]+$'
++                                },'id':{
++                                    'type': 'string', 'minLength': 0,
++                                    'maxLength': 255, 'pattern': '^[a-fA-F0-9]*$'
++
++                                }
++
++                            },'required': ['instances', 'cores', 'ram',
++'floating_ips', 'fixed_ips', 'metadata_items', 'injected_files',
++'injected_file_content_bytes','injected_file_path_bytes', 'key_pairs',
++'security_groups', 'security_group_rules'], 'additionalProperties': False
++
++                    }
++
++    * Update Quotas
++        * Update quotas for a domain/tenant/user
++        * PUT
++        * 200 - ACCEPTED
++        * 403 - FORBIDDEN
++        * v2/{tenant_id}/os-domain-quota-sets/{domain_id}
++        * project_id, user_id
++        * JSON request -
++                        'quota_set': {
++                            'type': 'object','properties': {
++                                'instances': {
++                                    'type': 'int', 'pattern': '^[0-9]+$'
++                                },'cores': {
++                                    'type': 'int', 'pattern': '^[0-9]+$'
++                                },'ram': {
++                                    'type': 'int', 'pattern': '^[0-9]+$'
++                                },'floating_ips': {
++                                    'type': 'int', 'pattern': '^[0-9]+$'
++                                },'fixed_ips': {
++                                    'type': 'int', 'pattern': '^[0-9]+$'
++                                },'metadata_items': {
++                                    'type': 'int', 'pattern': '^[0-9]+$'
++                                },'injected_files': {
++                                    'type': 'int', 'pattern': '^[0-9]+$'
++                                },'injected_file_content_bytes': {
++                                    'type': 'int', 'pattern': '^[0-9]+$'
++                                },'injected_file_path_bytes': {
++                                    'type': 'int', 'pattern': '^[0-9]+$'
++                                },'key_pairs': {
++                                    'type': 'int', 'pattern': '^[0-9]+$'
++                                },'security_groups': {
++                                    'type': 'int', 'pattern': '^[0-9]+$'
++                                },'security_group_rules': {
++                                    'type': 'int', 'pattern': '^[0-9]+$'
++
++                                }
++
++                           },'required': ['instances', 'cores', 'ram',
++'floating_ips', 'fixed_ips', 'metadata_items', 'injected_files',
++'injected_file_content_bytes','injected_file_path_bytes', 'key_pairs',
++'security_groups', 'security_group_rules'],
++                            'additionalProperties': False
++
++                    }
++
++         * JSON response -
++                    'quota_set': {
++                        'type': 'object','properties': {
++                            'instances': {
++                                'type': 'int', 'pattern': '^[0-9]+$'
++                            },'cores': {
++                                'type': 'int', 'pattern': '^[0-9]+$'
++                            },'ram': {
++                                'type': 'int', 'pattern': '^[0-9]+$'
++                            },'floating_ips': {
++                                'type': 'int', 'pattern': '^[0-9]+$'
++                            },'fixed_ips': {
++                                'type': 'int', 'pattern': '^[0-9]+$'
++                            },'metadata_items': {
++                                'type': 'int', 'pattern': '^[0-9]+$'
++                            },'injected_files': {
++                                'type': 'int', 'pattern': '^[0-9]+$'
++                            },'injected_file_content_bytes': {
++                                'type': 'int', 'pattern': '^[0-9]+$'
++                            },'injected_file_path_bytes': {
++                                'type': 'int', 'pattern': '^[0-9]+$'
++                            },'key_pairs': {
++                                'type': 'int', 'pattern': '^[0-9]+$'
++                            },'security_groups': {
++                                'type': 'int', 'pattern': '^[0-9]+$'
++                            },'security_group_rules': {
++                                'type': 'int', 'pattern': '^[0-9]+$'
++
++                            },
++
++                        },'required': ['instances', 'cores', 'ram',
++'floating_ips', 'fixed_ips', 'metadata_items', 'injected_files',
++'injected_file_content_bytes', 'injected_file_path_bytes', 'key_pairs',
++'security_groups', 'security_group_rules'],
++                        'additionalProperties': False
++
++                    }
++
++    * Delete Quotas
++        * Delete quotas for a domain/tenant/user
++        * DELETE
++        * 200 - ACCEPTED
++        * 403 - FORBIDDEN
++        * v2/{tenant_id}/os-domain-quota-sets/{domain_id}
++        * project_id, user_id
++        * JSON request - None
++        * JSON response - None
++
++
++Security impact
++---------------
++
++This change uses the Keystone V3 token to get the domain_id from the scope.
++
++
++Notifications impact
++--------------------
++
++None
++
++
++Other end user impact
++---------------------
++
++    New commands will be added to python-novaclient so as to call the above
++mentioned APIs for Domain Quota Management
++
++Performance Impact
++------------------
++
++None
++
++Other deployer impact
++---------------
++
++    - One config option added to nova.conf i.e "domain_quota_driver"
++    - This feature comes into immediate effect after it is merged
++
++Developer impact
++----------------
++
++    None
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++     Primary assignee:
++         vinod-kumar-boppanna
++
++Work Items
++----------
++
++    Nova REST V2 API: DONE
++
++    Nova Quota Driver DB Methods: DONE
++
++    Nova REST API unit tests: DONE
++
++    The following is up for review:
++          Addressed by: https://review.openstack.org/#/c/75967/
++
++Dependencies
++============
++
++  - This depends on Keystone V3 Context. Also, the Keystone V3 client
++    should use V3 API and should not fall back to V2 API. Code has been
++    already merged to solve this and addressed by
++    https://review.openstack.org/#/c/75731/
++
++Testing
++=======
++
++    The Integration and Unit tests are added and they can be tested by running
++    'test_domain_quotas'. Before running this, add a environment variable
++    "NOVA_TEST_CONF" and point this to nova.conf file
++
++Documentation Impact
++====================
++
++    The APIs documentation needs to be updated to include the new extension
++    API. For more information, look at
++    https://wiki.openstack.org/wiki/APIs_for_Domain_Quota_Driver
++
++References
++==========
++
++None
+-- 
+1.9.1
+

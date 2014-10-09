@@ -1,0 +1,167 @@
+From 750e9d3d6d0e7a0106410aa66ccdd2da667abe02 Mon Sep 17 00:00:00 2001
+From: Angelo Matarazzo <angelo.matarazzo@dektech.com.au>
+Date: Tue, 2 Sep 2014 23:43:16 +0200
+Subject: [PATCH] First commit. Some sections are not complete
+
+Change-Id: I5df78864ad44de2d2332da366f6baa55e91185a1
+---
+ specs/juno/pxe-boot-instance.rst | 147 +++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 147 insertions(+)
+ create mode 100644 specs/juno/pxe-boot-instance.rst
+
+diff --git a/specs/juno/pxe-boot-instance.rst b/specs/juno/pxe-boot-instance.rst
+new file mode 100644
+index 0000000..71b6f09
+--- /dev/null
++++ b/specs/juno/pxe-boot-instance.rst
+@@ -0,0 +1,147 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++=================
++PXE Boot Instance
++=================
++
++
++https://blueprints.launchpad.net/nova/+spec/pxe-boot-instance
++
++
++This specification proposes a way to grant a compute instance the chance to 
++boot from network.
++
++Problem description
++===================
++
++
++Currently, compute instances must be booted from images (or snapshots) 
++stored in Glance or volumes stored in Cinder. 
++
++In enterprise environments it is often desired to be able to use a Preboot 
++Execution Environment (PXE) to boot and install custom operating systems on 
++virtual machines. For this reason the aim of this specification is to give the 
++End Users the chance to select "network" as a possible booting source.
++
++It has to be underlined that the aim of this document is not to define a PXE 
++service within OpenStack: the PXE boot service should managed externally via 
++another machine within a tenant/provider network. Selecting the "network" as 
++boot device a compute instance will be created and it will broadcast a DHCP 
++request from which the PXE boot sequence will start, if a PXE Server is 
++configured to manage that request.
++
++Once PXE/Network booting is selected by the user as the instance boot 
++source, this will always be the default boot option for the instance's entire 
++lifecycle. i.e. it won't just PXE boot one-time and then revert back to 
++default.
++
++Proposed change
++===============
++
++Libvirt grants yet a way to trigger the boot from network of a virtual 
++machine,  specifing the Libvirt XML attribute <boot 
++dev='network'/> where required. We propose to 
++take advantage of this libvirt feature within OpenStack.
++
++A new option "--netboot" will be introduced in python-novaclient module to 
++specify the compute instance will boot from network and not from an image or 
++volume. Python-novaclient will associate to this option a fixed special 
++image token id, in this way no changes to REST API will be necessary.
++
++Nova module will recognize the special image token id, will bypass any 
++check on its existence and it will use the Libvirt Driver to generate an 
++appropriate Libvirt XML domain to boot the compute instance from network.
++
++Alternatives
++------------
++
++None.
++
++Data model impact
++-----------------
++  
++None.
++
++REST API impact
++---------------
++
++None.
++
++Security impact
++---------------
++
++None.
++
++Notifications impact
++--------------------
++
++None.
++
++Other end user impact
++---------------------
++
++[[Aside from the API, are there other ways a user will interact with this
++feature?
++
++* Does this change have an impact on python-novaclient? What does the user
++  interface there look like?]]
++
++Performance Impact
++------------------
++
++None.
++
++Other deployer impact
++---------------------
++
++
++Developer impact
++----------------
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  matarazzoangelo
++
++Other contributors:
++  
++
++Work Items
++----------
++
++
++
++Dependencies
++============
++
++None.
++
++
++Testing
++=======
++
++
++
++Documentation Impact
++====================
++
++User guide is affected by these changes:
++--A new section "Lauch an instance from network" should be added
++--The Section nova commands should be changed
++    
++
++References
++==========
++
++https://blueprints.launchpad.net/nova/+spec/libvirt-empty-vm-boot-pxe
++
++https://wiki.openstack.org/wiki/Nova/Blueprints/pxe-boot-instance
+-- 
+1.9.1
+

@@ -1,0 +1,139 @@
+From 642aaf63327522b94d3ac33d34d50eb0f94bdc69 Mon Sep 17 00:00:00 2001
+From: Ryan Moore <ryan.moore@hp.com>
+Date: Tue, 10 Jun 2014 16:36:15 +0100
+Subject: [PATCH] Propose add caching of host az-mapping
+
+For blueprint host-az-caching
+
+Change-Id: I4f1012e250f772c1b3e5897cc4b64ee73d1d4364
+---
+ specs/juno/scheduler-host-az-caching.rst | 117 +++++++++++++++++++++++++++++++
+ 1 file changed, 117 insertions(+)
+ create mode 100644 specs/juno/scheduler-host-az-caching.rst
+
+diff --git a/specs/juno/scheduler-host-az-caching.rst b/specs/juno/scheduler-host-az-caching.rst
+new file mode 100644
+index 0000000..5d4d8a1
+--- /dev/null
++++ b/specs/juno/scheduler-host-az-caching.rst
+@@ -0,0 +1,117 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++========================================================
++Scheduler: add host az caching to AvailabilityZoneFilter
++========================================================
++
++https://blueprints.launchpad.net/nova/+spec/host-az-caching
++
++Add host az caching to the Availability Zone Filter to reduce db
++calls and therefore improve performance.
++
++Problem description
++===================
++
++Currently the AvailabilityZoneFilter does a lookup against the database to
++retrieve the availability zone for the host.
++
++The mapping between the host and az is usually static and so could be cached.
++
++Proposed change
++===============
++
++Implement a cache with a randomised timeout (default = 1hr) to prevent all
++hosts refreshing at the same time.
++
++Alternatives
++------------
++
++None
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++None
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++None
++
++Performance Impact
++------------------
++
++Scheduler filters get called once per host for every instance being created.
++Introducing host az caching will reduce time spent in the Availability Zone
++Filter.
++By caching the host az for an hour will reduce the calls to the database
++from once per host for every instance created to once per host per hour.
++
++Other deployer impact
++---------------------
++
++If users wish to modify from default of (60*60) 1 hour a config option of
++az_cache_timeout can be set to specify the time in seconds before a
++cached host-availability zone mapping is forgotten.
++
++Setting az_cache_timeout to -1 will disable host az caching.
++
++This change that takes immediate effect after its merged.
++
++Developer impact
++----------------
++
++None
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  moorryan
++
++Work Items
++----------
++
++Code posted - https://review.openstack.org/#/c/99127/
++
++Dependencies
++============
++
++None
++
++Testing
++=======
++
++Unit tests.
++
++Documentation Impact
++====================
++
++Add details of new configuration parameter 'az_cache_timeout'.
++
++References
++==========
++
++None
+-- 
+1.9.1
+

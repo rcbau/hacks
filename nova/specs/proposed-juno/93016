@@ -1,0 +1,148 @@
+From c267fc543be313eee50de69aad6e5322ee244586 Mon Sep 17 00:00:00 2001
+From: Rushi Agrawal <rushi.agr@gmail.com>
+Date: Thu, 8 May 2014 11:30:57 +0530
+Subject: [PATCH] EC2: Volume type support
+
+Expose volume type in the EC2 API
+
+Blueprint: ec2-volume-type
+
+Change-Id: Id8c1f14c5694787413c7fcd7585541f5b089dc31
+---
+ specs/juno/ec2-volume-type.rst | 124 +++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 124 insertions(+)
+ create mode 100644 specs/juno/ec2-volume-type.rst
+
+diff --git a/specs/juno/ec2-volume-type.rst b/specs/juno/ec2-volume-type.rst
+new file mode 100644
+index 0000000..0c26f45
+--- /dev/null
++++ b/specs/juno/ec2-volume-type.rst
+@@ -0,0 +1,124 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++======================
++Volume type in EC2 API
++======================
++
++https://blueprints.launchpad.net/nova/+spec/ec2-volume-type
++
++The concept of volume type is not exposed via the OpenStack's EC2 API.
++This blueprint is to address that, and make the EC2 API consistent with
++AWS's.
++
++Problem description
++===================
++
++Volumes created by OpenStack's EC2 API does not have 'volumeType' attribute.
++AWS provides two volumes types currently -- 'standard' and 'io1', where
++'standard' is for normal volumes without any guarantees, and 'io1' volumes
++to which we can attach a value for guaranteed IOPS. We should allow
++a way for deployers to configure the backend such that these volume types are
++exposed, if the backend supports it. If the deployer has only the 'standard'
++volume types, he should be able to expose only that, and then the code should
++raise error if the user requests for a volume of unsupported volume type.
++
++Proposed change
++===============
++
++For standard volumes, we will just return a volume type 'standard' via the
++EC2 API if no volume type is associated with the volume on Cinder side. Also,
++along with this, we'll also provide with a config option in case the deployer
++wants to associate a specific Cinder volume type to 'standard' volume type
++in the EC2 API.
++
++For all other Cinder volume type values, the EC2 API will continue showing
++the value for key 'volumeType' as null. As the aim of this blueprint is
++limited, a future blueprint will be required to make sure we only expose
++'standard' volumes in the EC2 API, and prune out all other volumes.
++
++Alternatives
++------------
++
++None
++
++Data model impact
++-----------------
++
++No data model impact.
++
++REST API impact
++---------------
++
++The DescribeVolumes API will now return volumes, which will now have
++'volumeType' key a value of 'standard' for standard volumes.
++
++Security impact
++---------------
++
++Can't see any.
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++None
++
++Performance Impact
++------------------
++
++None
++
++Other deployer impact
++---------------------
++
++None
++
++Developer impact
++----------------
++
++None
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  rushiagr (Rushi Agrawal)
++
++Work Items
++----------
++
++* Expose volume type in EC2 API. (Single work item)
++
++Dependencies
++============
++
++None
++
++Testing
++=======
++
++Unit tests, as usual will be included. Tempest tests need to be written too,
++to test this tweak which this BP is proposing
++
++Documentation Impact
++====================
++
++EC2 API document will be impacted due to this change. We will now need
++to highlight that volume type will be exposed via the API.
++
++References
++==========
++
++* CreateVolume from EC2 docs: http://docs.aws.amazon.com/AWSEC2/latest/APIReference/ApiReference-query-CreateVolume.html
++* DescribeVolumes from EC2 docs: http://docs.aws.amazon.com/AWSEC2/latest/APIReference/ApiReference-query-DescribeVolumes.html
+-- 
+1.9.1
+

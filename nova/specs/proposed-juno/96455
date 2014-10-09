@@ -1,0 +1,256 @@
+From 045ec0ecdf51e9d43b99a16af7ea323d12fe672a Mon Sep 17 00:00:00 2001
+From: Paul Marshall <paul.marshall@rackspace.com>
+Date: Thu, 29 May 2014 07:57:40 -0500
+Subject: [PATCH] Enable online extend of in-use Cinder volumes
+
+Online volume extend allows volumes that are attached to instances (in-use)
+to be extended without first detaching them. This spec defines a Nova
+extension that is required by Cinder to issue an online volume extend,
+specifically this requires iSCSI rescan and the ability to return the size of
+the volume block device from the compute host that the instance is running on.
+
+Change-Id: I1c4224161566fdb3fc13048057c2b4726c8c83f0
+---
+ specs/juno/online-volume-extend-extension.rst | 230 ++++++++++++++++++++++++++
+ 1 file changed, 230 insertions(+)
+ create mode 100644 specs/juno/online-volume-extend-extension.rst
+
+diff --git a/specs/juno/online-volume-extend-extension.rst b/specs/juno/online-volume-extend-extension.rst
+new file mode 100644
+index 0000000..7befd08
+--- /dev/null
++++ b/specs/juno/online-volume-extend-extension.rst
+@@ -0,0 +1,230 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++=============================================
++Enable online extend of in-use Cinder volumes
++=============================================
++
++https://blueprints.launchpad.net/nova/+spec/online-volume-extend-extension
++
++Online volume extend allows volumes that are attached to instances (in-use)
++to be extended without first detaching them. This spec defines a Nova
++extension that is required by Cinder to issue an online volume extend,
++specifically this requires iSCSI rescan and the ability to return the size of
++the volume block device from the compute host that the instance is running on.
++
++Problem description
++===================
++
++Currently Cinder volumes must be detached from instances before they can be
++extended. In cases where services are using the volume (e.g., a Trove
++instance running MySQL), these services must be stopped, causing downtime
++for the user. For Cinder to extend in-use volumes, it needs the compute host
++that the instance is running on to be able to issue an iSCSI rescan and
++return the size of the volume block device so Cinder can poll until the block
++device is actually the new size. Online extend also requires support from the
++underlying hypervisor and volume backend.
++
++Proposed change
++===============
++
++To support Cinder online extend this spec proposes a corresponding Nova
++extension to run the following on the underlying compute host (via the virt
++driver):
++
++* Rescan iSCSI. This will allow the underlying compute host to see the new
++  size of the volume block device after it has been extended by Cinder.
++
++* Get volume block device size. This will allow Cinder to poll until the
++  underlying block device is actually the new size on the compute host before
++  Cinder completes the online extend.
++
++This initial proposal only covers the minimum required components for some
++hypervisors, specifically those that do not require any additional hooks
++to expose the updated size of the volume block device inside instances.
++Additional work would be required to support this extension for other virt
++drivers (see additional comments in Developer impact).
++
++The Cinder portion of the online extend feature is proposed in [1]_.
++
++Alternatives
++------------
++
++The main alternative is simply to detach the volume for extend, which is
++already supported, and requires services using the volume to be offline.
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++Add os-online_extend_volume extension with the following API calls:
++
++PUT v2/{tenant_id}/servers/{server_id}/os-online_extend_volume
++
++* Issues an iSCSI rescan on the compute host with the instance and volume
++* Normal http response code: 202
++* Expected error http response code: 404: Instance not found
++* JSON schema definition for the body data::
++
++    {
++        "volume_id": "string"
++    }
++
++* JSON schema definition for the response data: None
++* Example use case:
++
++  Request:
++
++  PUT v2/fa83baf8315542229f39af36aa643206/servers/822b2c1b-e4c4-4b12-\
++      b28e-35ca7f036edb/os-online_extend_volume
++
++  Body::
++
++    {
++        "volume_id": "e5f556d2-3cfe-4ef1-9ddd-6ddb07d9b9b4",
++    }
++
++  Response: HTTP 202/Accepted
++
++* Policy changes: Requires admin API access or it must be explicitly
++  enabled by an admin in policy.json
++
++GET v2/{tenant_id}/servers/{server_id}/os-online_extend_volume/{volume_id}
++
++* Get the block device size of a volume on the compute host where it is
++  attached to a server
++* Normal http response code: 200
++* Expected error http response code: 404: Instance not found
++* JSON schema definition for the body data: None
++* JSON schema definition for the response data::
++
++    {
++        "blockdev": {
++            "volume_id": "string",
++            "bytes": integer
++        }
++    }
++
++* Example use case:
++
++  Request:
++
++  GET v2/fa83baf8315542229f39af36aa643206/servers/822b2c1b-e4c4-4b12-\
++      b28e-35ca7f036edb/os-online_extend_volume/e5f556d2-3cfe-4ef1-9ddd-\
++      6ddb07d9b9b4
++
++  Response: HTTP 200/OK
++
++  ::
++
++    {
++        "blockdev":{
++            "volume_id": "e5f556d2-3cfe-4ef1-9ddd-6ddb07d9b9b4",
++            "bytes": 4294967296
++        }
++    }
++
++* Policy changes: Requires admin API access or it must be explicitly
++  enabled by an admin in policy.json
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++These Nova operations are included in novaclient for Cinder, however, users
++will simply perform an online extend via Cinder if a deployer has it enabled.
++
++Performance Impact
++------------------
++
++Both of the calls in this extension require calls to the underlying compute
++host. Rescan is non-blocking and getting block device size is blocking.
++However, these calls should only be made when a user has issued an online
++extend from Cinder.
++
++Other deployer impact
++---------------------
++
++The online extend extension is disabled by default for users and therefore
++it must be explicitly enabled in Cinder and Nova by a deployer if they
++have the required hypervisor and volume backend support.
++
++Developer impact
++----------------
++
++In addition to backend volume support, other virt drivers may support this
++extension as-is if they do not require any additional mechanisms to notify
++running instances of updated block device sizes. Libvirt versions that
++support block resize would likely need an additional call to notify the
++running instance of the new volume block device size.
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  paulvmarshall
++
++Work Items
++----------
++
++Add online extend extension with two API calls: rescan and get block device
++size.
++
++Add rescan to compute manager, compute rpc api, and the virt driver interface.
++
++Add get block device size to compute manager, compute rpc api, and the virt
++driver interface.
++
++Add unit tests for both rescan and get block device size.
++
++Add rescan and get block device size calls to novaclient.
++
++
++Dependencies
++============
++
++The initial implementation requires backend volume support as well as
++hypervisors that do not require additional mechanisms to expose updated
++block device sizes to instances, such as OpenVZ:
++https://github.com/stackforge/openvz-nova-driver
++
++
++Testing
++=======
++
++The initial implementation of this extension is disabled by default and
++requires special hypervisor and volume backend support (e.g., OpenVZ and HP
++LH SAN), therefore, it will only be tested by unit tests and non-gate 3rd
++party tests.
++
++
++Documentation Impact
++====================
++
++None. Documentation will be included for Cinder.
++
++
++References
++==========
++
++.. [1] https://blueprints.launchpad.net/cinder/+spec/inuse-extend-volume-extension
+-- 
+1.9.1
+

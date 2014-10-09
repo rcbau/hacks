@@ -1,0 +1,261 @@
+From b693f7479189fdf2647519b3619f4cc8aa4ecf57 Mon Sep 17 00:00:00 2001
+From: James Penick <penick@yahoo-inc.com>
+Date: Mon, 12 May 2014 19:38:08 +0000
+Subject: [PATCH] Enhance Nova quotas by adding a concept of state management
+ to quotas. Make it easier to align existing business processes with
+ OpenStack.
+
+https://blueprints.launchpad.net/nova/+spec/quota-state-management
+
+
+Change-Id: Ie4f6d71f463e128ebb532766ffb5dad37bbebecd
+---
+ specs/juno/quota-state-management.rst | 236 ++++++++++++++++++++++++++++++++++
+ 1 file changed, 236 insertions(+)
+ create mode 100644 specs/juno/quota-state-management.rst
+
+diff --git a/specs/juno/quota-state-management.rst b/specs/juno/quota-state-management.rst
+new file mode 100644
+index 0000000..f619a5c
+--- /dev/null
++++ b/specs/juno/quota-state-management.rst
+@@ -0,0 +1,236 @@
++..
++   This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++==========================================
++Quota state management
++==========================================
++
++Blueprint is here: 
++https://blueprints.launchpad.net/nova/+spec/quota-state-management
++
++Enhance Nova quotas by adding a concept of state management to quotas. Making 
++it easier to align existing business processes with OpenStack.
++
++Problem description
++===================
++Some private cloud operators depend on quota to not only control the rate at
++which their tenants consume their cloud, but also track how much of their
++cloud has been allocated. Unfortunately the operator has no visibility into
++how often a tenant has requested their quota be increased, or if there are
++any quota increase requests in the pipe. At the moment nova quota allocations
++cannot be tracked on a discrete basis. When one looks at the quota for a given
++tenant they will only see what is currently available to that tenant, without
++any history associated with that.
++
++When one of our private cloud tenants wants to increase their quota
++they’ll need to file a request. That request will be compared against
++projected cluster capacity as well as certain financial models. If the request 
++falls within certain parameters it’ll need larger finance approval before the
++quota can be allocated. During this process there is no visibility to either
++operators,finance partners, or capacity planning teams who may need to view
++the overall capacity of a given cluster. In an enterprise each request could
++change hands many times. There will be race conditions when multiple tenants
++request capacity at the same time. We need a way to request, review, approve,
++and deny quota enhancement requests within OpenStack.
++
++Some quota allocations are granted on a temporary basis. Say during a traffic
++spike you want to increase quota for a given tenant, but take it away after a
++predetermined period of time. For that we need a concept of leasing quotas.
++
++
++Proposed change
++===============
++
++Implement state management and leasing in quotas. Tenant quota will be no
++longer be a single row per tenant, per resource, but instead per-tenant,
++per-resource, per-request. A tenants available quota will now be the sum of
++their active quotas.
++This means that there is now a concept of "soft" vs "hard" quota. Soft quota
++will be the sum of all quota requests from a given project excluding those
++that have been deleted. Hard quota will represent only the quota that has been
++marked as active.
++Additionally each quota can have an optional "TTL" applied to it. Once TTL has
++expired that quota should be marked as disabled in the DB. 
++
++Alternatives
++------------
++Public and private providers could continue to manage this quota state outside
++of openstack. This would result in significant duplication of effort. Bringing
++this simple concept in to OpenStack would make it much easier to integrate into
++enterprise. 
++
++Data model impact
++-----------------
++
++Add 4 elements to the quota model:
++
++* 'Active' (boolean) to indicate whether or not the row should be used to
++  calculate a Project's total available quota.
++* 'state' to track whether the quota is New, In-Review, Denied, or Expired.
++  This should be an INT with a foreign key constraint to the ID in a new
++  quota-state table. 
++* 'external_ref' medium text field for a json blob to associate arbitrary 
++  external reference key/value pairs.
++  eg: ``{
++  "original_request":"http://someurl.com/bug.cgi/ref=12345",
++  "capacity_approval":"http://some-site.com/blah.cgi?foo=12345"
++  }``
++* 'expires' (datetime, default=NULL) the date on which the given quota 
++  should no longer be considered valid. A null value indicates the 
++  quota will never expire.
++
++A new model will be created called "quota_state" with the following elements:
++
++* 'id' Auto increment,
++* 'state' Varchar(32), Unique, Not NULL. Contains the name of the state. "New,
++  In-Review, Denied, Approved, Expired" etc
++* 'created_at' datetime, Not NULL
++* 'modified_at' datetime, auto(now)
++
++The purpose behind this new model is to make the state concept as extensible
++as possible.
++
++
++REST API impact
++---------------
++
++* os-quota-sets
++
++  * enhance this method to return a list of all quota requests, as well as thei
++    list of soft vs hard quota.
++  * A description of what the method does suitable for use in user i
++    documentation
++  * GET
++  * Normal http response code(s)
++
++  * Expected error http response code(s)
++
++    * A description for each possible error code should be included
++      describing semantic errors which can cause it such as
++      inconsistent parameters supplied to the method, or when an
++      instance is not in an appropriate state for the request to
++      succeed. Errors caused by syntactic problems covered by the JSON
++      schema defintion do not need to be included.
++
++  * URL for the resource
++
++  * Parameters which can be passed via the url
++
++  * JSON schema definition for the body data if allowed
++
++  * JSON schema definition for the response data if any
++
++
++limits
++* This method should be modified to return a dict of the sum of the "soft" 
++limits in the json blob as well as the "absolute" limits.
++
++absolute-limits
++* Add a flag to allow returning the sum of the json blob for all tenants, 
++rather than just a specified tenant.
++
++Security impact
++---------------
++
++Displaying absolute limits for all tenants should be locked down to just the 
++admin user, or another arbitrary role type (capacity_admin). Many companies 
++would consider the size of their private cloud, allocated quota, and used 
++capacity to be proprietery information and would not want that shared.
++Further concern, if you have a very large number of tenants, quotas, and quota
++requests this method could require significant database time to select, sum, 
++and return those lines. An attacker could use this as a resource exhaustion
++DoS.
++
++Notifications impact
++--------------------
++
++Other end user impact
++---------------------
++
++python-novaclient will need to be extended to include the --all-tenants flag 
++for the absolute-limits method.
++
++the json blob returned by absolute-limits will include "soft" limits, which
++will be a deviation from the way it returns now.
++
++when allocating quota the cloud admin will need to supply an additional flag to
++mark the state of quota as "approved".
++
++Performance Impact
++------------------
++
++Calculating quota by summing rows is going to require more compute resources on
++the DB server. This would only be significant in large or 'mega' scale 
++environments. This can be mitigated in those environments by calling quota-get
++against read-only DB hosts. 
++
++Other deployer impact
++---------------------
++By default this wont make any changes to how quotas are allocated. But there
++will be additional hooks to allow operators to take advantage of this. By
++default creating quotas will be 'hard' quota. 
++
++Developer impact
++----------------
++
++* Any API changes will need to be aligned with this
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  penick@yahoo-inc.com
++
++Other contributors:
++ openstack-dev@yahoo-inc.com,
++ Anyone else who wants to help out. 
++
++Work Items
++----------
++
++* Gain consensus on the blueprint 
++* Write the code :)
++
++
++Dependencies
++============
++
++
++
++Testing
++=======
++
++
++
++Documentation Impact
++====================
++
++There will be moderate impact to documentation to track not only the CLI 
++changes mentioned above, but also the best practices for integrating quota
++management with enterprise processes.
++
++
++References
++==========
++
++Please add any useful references here. You are not required to have any
++reference. Moreover, this specification should still make sense when your
++references are unavailable. Examples of what you could include are:
++
++* Links to mailing list or IRC discussions
++
++* Links to notes from a summit session
++
++* Links to relevant research, if appropriate
++
++* Related specifications as appropriate (e.g.  if it's an EC2 thing, link the
++  EC2 docs)
++
++* Anything else you feel it is worthwhile to refer to
+-- 
+1.9.1
+

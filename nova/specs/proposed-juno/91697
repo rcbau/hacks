@@ -1,0 +1,196 @@
+From a962033435fb520202e6c6e59629a8e9a0cfa630 Mon Sep 17 00:00:00 2001
+From: spandhe <spandhe@yahoo-inc.com>
+Date: Thu, 1 May 2014 22:48:01 +0000
+Subject: [PATCH] Add username in the response of nova list command
+
+Description: Currently nova list command does not show which user the
+particular VM belong too. In enterprise deployments, knowing which user
+booted the VM could be very useful for the cluster administrator.
+This will save admin a lot of manual steps before knowing the owner of
+the VM. In this blueprint, we plan to add an additional column
+'username' to 'nova list' output which will facilitate cluster
+maintenance for the administrator
+
+https://blueprints.launchpad.net/nova/+spec/add-username-in-nova-list-response
+
+Change-Id: Ib729572431d343ce240079e4af33f396a935e7ba
+---
+ .../username-in-nova-list-for-admin-purpose.rst    | 166 +++++++++++++++++++++
+ 1 file changed, 166 insertions(+)
+ create mode 100644 specs/juno/username-in-nova-list-for-admin-purpose.rst
+
+diff --git a/specs/juno/username-in-nova-list-for-admin-purpose.rst b/specs/juno/username-in-nova-list-for-admin-purpose.rst
+new file mode 100644
+index 0000000..447531b
+--- /dev/null
++++ b/specs/juno/username-in-nova-list-for-admin-purpose.rst
+@@ -0,0 +1,166 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++==================================
++Add username in nova list response
++==================================
++
++https://blueprints.launchpad.net/nova/+spec/add-username-in-nova-list-response
++
++Currently nova list command does not show which user the particular
++VM belong too. In enterprise deployments, knowing which user booted
++the VM could be very useful for the cluster administrator.
++This will save admin a lot of manual steps before knowing the owner
++of the VM. In this blueprint, we plan to add an additional column
++'username' to 'nova list' output which will facilitate cluster
++maintenance for the administrator
++
++Problem description
++===================
++
++There are various scenarios in an enterprise cluster when an
++administrator needs to contact the owner/user of the VM,
++e.g. tracking down the owner of a noisy VM to ask him about
++the unexpected amount of traffic, or finding all VMs in
++SHUTOFF/ERROR state and asking the owners for permission to delete
++the VMs, etc. In the current implementation, nova list command does
++not show any information about the user that booted the VM.
++The administrator should have an easy way to get that information
++without manually looking at the database. Hence, it will be nice to
++have that in the output of 'nova list' command. In order to populate
++user information, novaclient needs to query keystone to get the user list
++each time it receives the request. Since it might be an expensive
++operation, it makes sense to keep it 'admin' only.
++
++Proposed change
++===============
++
++Following modifications to novaclient are expected
++
++  * When a user runs a command 'nova list --owner', novaclient creates
++    an object of keystoneclient with current auth_token and endpoint
++    as the auth_url.
++  * Using this keystoneclient object, novaclient queries users list
++    for the requested tenant from keystone and creates a users dict.
++  * While printing the response for 'nova list --owner', novaclient
++    checks whether this information is available. If it is, novaclient
++    shell displays it.
++  * If the context is non-admin, keystoneclient returns Forbidden
++    exception. Novaclient handles this exception and returns an
++    empty users dict.
++  * Seeing that users dict is empty, novaclient shell skips displaying
++    Username column.
++
++In order to achieve this, keystoneclient needs to be imported inside
++novaclient, which means a dependency on keystoneclient would be added
++in novaclient.
++
++Alternatives
++------------
++
++None
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++* Additional call to keystone from novaclient
++
++    keystoneclient.users.list(tenant)
++
++    GET /v2.0/users
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++End user will see an additional column in the output of
++'nova list --owner' command, titled 'Username'
++
++Performance Impact
++------------------
++
++Minor performance impact will be expected from keystoneclient query.
++Everytime the admin runs this command, a new request will be sent to
++keystoneclient. This might add minor performance impact depending on
++the size of the output
++
++Other deployer impact
++---------------------
++
++None
++
++Developer impact
++----------------
++
++None
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++   shraddha-pandhe
++Other contributors:
++   None
++
++Work Items
++----------
++
++* Import keystoneclient in novaclient
++* If --owner is present in the args, create a keystoneclient object
++  using the auth_key and the endpoint url
++* call keystoneclient.users.list
++* The call will fail if the user is non-admin. The exception will be
++  handled and empty dictionary will be returned to the caller
++* The call will succeed if the user is admin and a dictionary of
++  usernames and user-id's will be returned to the caller
++* For every user-id, novaclient will then fetch the username and display
++  it in the output
++
++Dependencies
++============
++
++* Keystoneclient would be a dependency for novaclient
++
++None
++
++Testing
++=======
++
++* The username information should be displayed in 'nova list --owner'
++  output it the user is admin
++* Make sure the username is returned only for admin role
++  and not for any other role.
++
++Documentation Impact
++====================
++
++Changes to be made to novaclient documentation to include the
++additional argument to 'nova list' command and parameter
++'username' in the response.
++
++References
++==========
++
++None
++
++
+-- 
+1.9.1
+

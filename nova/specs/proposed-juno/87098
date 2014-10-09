@@ -1,0 +1,175 @@
+From 9f798fa1558c281349dd18bf37ea6fd4d5aeaef1 Mon Sep 17 00:00:00 2001
+From: Belmiro Moreira <moreira.belmiro.email.lists@gmail.com>
+Date: Sat, 12 Apr 2014 23:49:30 +0200
+Subject: [PATCH] Define multiple default schedule zones
+
+This blueprint implements possibility to have multiple schedule
+availability zones as default, instead only one.
+
+blueprint schedule-set-availability-zones
+
+Change-Id: I45a5f7cb1a72ce5d9ace21f142086df4b50868d3
+---
+ specs/juno/default-schedule-zones.rst | 150 ++++++++++++++++++++++++++++++++++
+ 1 file changed, 150 insertions(+)
+ create mode 100644 specs/juno/default-schedule-zones.rst
+
+diff --git a/specs/juno/default-schedule-zones.rst b/specs/juno/default-schedule-zones.rst
+new file mode 100644
+index 0000000..f719e7e
+--- /dev/null
++++ b/specs/juno/default-schedule-zones.rst
+@@ -0,0 +1,150 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++====================================================
++Support multiple default schedule availability zones
++====================================================
++
++https://blueprints.launchpad.net/nova/+spec/schedule-set-availability-zones
++
++Define multiple default schedule availability zones.
++
++
++Problem description
++===================
++
++For deployments that use availability zones (example: avz_a, avz_b, avz_c,
++avz_critical) when an user creates an instance if the availability zone is not
++explicitly defined (ex: --availability-zone=avz_b) the instance is schedule in
++the availability zone defined by the configuration option
++"default_schedule_zone".
++
++This is a problem because the resources for the "default_schedule_zone"
++will be overloaded compared with the others avzs if users don't define an
++available zone.
++
++If configuration option "default_schedule_zone" is not defined all availability
++zones are considered at schedule time. This is not interesting if some of them
++shouldn't be default (ex: avz_critical).
++
++
++Proposed change
++===============
++
++The goal of this blueprint is to have the possibility to have multiple schedule
++ availability zones as default, instead only one.
++
++This means:
++deprecate "default_schedule_zone" configuration option and have instead 
++"default_schedule_zones=[]"
++
++Using the same example of the Problem description:
++"default_schedule_zones=[avz_a, avz_b, avz_c]"
++
++When an instance is created, if the user doesn't define an availability zone,
++it will be schedule into one compute node in the list of default schedule
++availability zones. The advantage of this approach is that when a deployment has
++multiple availability zones the instances will be spread between them instead
++overload only one, if users don't specify an availability zone.
++
++To implement this change is necessary to remove to current behavior of
++saving in "instances" table the default "availability_zone" when a user doesn't
++specify one. Anyway when query for the avz of an instance nova doesn't use this
++value.
++
++
++Alternatives
++------------
++
++None.
++
++Data model impact
++-----------------
++
++None.
++
++REST API impact
++---------------
++
++None.
++
++Security impact
++---------------
++
++None.
++
++Notifications impact
++--------------------
++
++None.
++
++Other end user impact
++---------------------
++
++None.
++
++Performance Impact
++------------------
++
++None.
++
++Other deployer impact
++---------------------
++
++The configuration option "default_schedule_zone" will be deprecated and replaced
++by "default_schedule_zones=[]"
++
++Developer impact
++----------------
++
++None.
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  <moreira-belmiro-email-lists>
++
++Work Items
++----------
++
++* deprecate "default_schedule_zone" and replace it by "default_schedule_zones"
++  configuration option.
++
++* if an user doesn't specify an availability zone it shouldn't be added in the
++  DB (remove the current behavior).
++
++* change AvailabilityZoneFilter to support multiple "default_schedule_zones".
++
++
++Dependencies
++============
++
++None.
++
++
++Testing
++=======
++
++All changes will have unit tests.
++
++
++Documentation Impact
++====================
++
++The documentation considering "default_schedule_zone" configuration option
++needs to be updated for "default_schedule_zones".
++
++
++References
++==========
++
++None.
++
+-- 
+1.9.1
+

@@ -1,0 +1,321 @@
+From 7ebd51c89616181938704a6c0c98502fb4b76a46 Mon Sep 17 00:00:00 2001
+From: wingwj <wingwj@gmail.com>
+Date: Wed, 9 Apr 2014 17:54:54 +0800
+Subject: [PATCH] nova-specs for "add-support-for-cpu-hotadd"
+
+The blueprint aims to implement vCPUs hot-add feature
+
+Change-Id: Ibb5d97a24283274cedc2dc23a6b7588b26c4bbc8
+Implements: blueprint add-support-for-cpu-hotadd
+---
+ specs/juno/add-support-for-cpu-hotadd.rst | 297 ++++++++++++++++++++++++++++++
+ 1 file changed, 297 insertions(+)
+ create mode 100644 specs/juno/add-support-for-cpu-hotadd.rst
+
+diff --git a/specs/juno/add-support-for-cpu-hotadd.rst b/specs/juno/add-support-for-cpu-hotadd.rst
+new file mode 100644
+index 0000000..eb00c14
+--- /dev/null
++++ b/specs/juno/add-support-for-cpu-hotadd.rst
+@@ -0,0 +1,297 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++=================================================================
++Add support for vcpu hotadd
++=================================================================
++
++https://blueprints.launchpad.net/nova/+spec/add-support-for-cpu-hotadd
++
++Cpu hotadd feature has been supported by qemu(since version 1.6.2)
++and libvirt(since version 1.2). This feature is useful for some users
++to scale the VM without reboot or migrate the instances.
++The blueprint aims to implement vCPUs hot-add feature in nova.
++
++Now only libvirt driver can support this function.
++
++Problem description
++===================
++
++Currently we can change the flavor and rebuild the instance to add vCPUs.
++But it is not support adding vCPUs to a running instance without rebuild
++to effect.
++
++We should have the ability to add vCPUs immediately without rebuild instances.
++
++Now only libvirt driver can support this function.
++The VMware Driver can support the feature in later blueprints.
++By the way, not all Linux kernels and Windows operating systems support it.
++It's dependent upon whether the guest OS supports it.
++
++Specifically, newer Linux kernels (please check the document for details),
++Windows Server 2012 (Standard and Enterprise Edition),
++Windows Server 2008 Datacenter Edition have support for CPU hot add.
++
++Proposed change
++===============
++
++QEMU version must be greater than or equal to 1.5.0,
++libvirt version must be greater than or equal to 1.1.0.
++
++Only the image contains 'qemu_guest_agent' in its metadata
++could support this function.
++
++1. Add a new extension API "hot_modify_vcpu_units"
++   which the owner and admin can use it.
++
++2. Add the "hotplug_vcpus" API in base virt driver.
++
++3. Add an extra key-value pair like "{'maxVCPUs': (int)maxNums}" into
++   extra_specs of flavor to define the instance's max vCPUs number.
++   The 'VCPUs' used in the original flavors actually indicate
++   the initial vCPUs number for creating instances in libvirt.
++   The 'maxNums' can not be smaller than 'VCPUs' in flavor
++
++   All instances using the flavors without this tag shall be processed as usual,
++   but they can not be applied the new feature
++
++   If the flavor's maxVCPUs is smaller than its vCPUs
++   (that means administrator sets the wrong configuration..),
++   The tag will be ignored, and the createVM/startVM request will be processed
++   like normal flavor's instance as usual
++
++4. Need to specify whether this image has installed 'qemu-guest-agent'
++   using image metadata, like 'hw_qemu_guest_agent=yes'.
++   Images without this tag will be raised 'NotSupportedException'
++   if the API is called.
++
++5. The 'vcpus' field in DB Instances table will be used to record
++   real vCPUs of instances. It aims to ensure vCPUs number correct
++   if instance is rebooted/started/rebuilt/evacuated and so on.
++   (That means all the functions above need to modify together in this BP.)
++   If one flavor does not have "maxVCPUs" tag in its extra_spec, the value of
++   "vcpus" equals to "VCPUs" in its flavor.
++
++6. The vCPUs calculation will be changed from "guest.vcpus = flavor.vcpus"
++   to "guest.vcpus = instance['vcpus']" in 'to_xml()'
++   for spawn()/hard_reboot()/rescue()/..
++
++7. Change one element in the config-xml of instance in libvirt driver
++   from "<vcpu>X</vcpu>" to "<vcpu current='X'>%maxNums%</vcpu>",
++   if 'maxNums' is specified in flavor.
++
++8. The 'get_vcpu_used()' in compute node for resource updating won't be changed.
++   Here we don't ensure all instances in the host has enough vCPUs to hotplug.
++   We still use the original 'dom.vcpus()' to count the current using vCPUs.
++   These two values are the same for normal old-style instances.
++
++9. The API 'DescribeInstance' needs to add one key-pair property
++   into the response body to show the current 'vCPUs' of this instance
++   which can be obtained from DB instances table.
++
++Alternatives
++------------
++
++1. Support image without 'qemu-guest-agent'
++
++In the above design, only the image installed 'qemu_guest_agent'
++can support this feature.
++
++Actually, if image doesn't contain qemu-guest-agent,
++after "hotplug_vcpus" action in libvirt, the user can execute
++some commands manually in the instance to activate the new plugged vCPUs:
++
++'echo 1 > /sys/devices/system/cpu/cpuX/online'
++
++* The 'X' means which vCPU you want to active.
++* The range of 'X' is from 0 to (amount of vCPUs - 1).
++* For example, the 'cpu0' means your instance only has one vCPU.
++* The count of the executions relies on the vCPUs number your instance has.
++
++The reason why this proposal isn't chosen is the manual operations is not
++friendly enough to end-users.
++
++* If normal images need to be supported, the API response ought to
++  give two different answers to end-users based on your image attribute,
++  like 'Your operation took effort.' or 'Your operation is applied, but you
++  need to execute some commands in your instance...'.
++
++* Moreover, if one instance plugged new 4 vCPUs,
++  end-user needs to execute the command four times.
++
++So this is not a good idea IMO.
++
++
++2. Add this feature for extending "resize" to "hot resize"
++
++The idea came from John Garbutt in reviewing on the PatchSet11.
++
++* Add one optional param like 'online=true'
++* Opt out the params which haven't been supported for hot pluging (mem, disk)
++  in resize when using the 'online' flag
++* Do an off-line resize to the same size that would double check the params.
++  Disk processing will be still the same it used to be.
++
++But now libvirt can only support cpu hot-plug,
++cpu hot-unplug & mem hot-plug/unplug has not been supported.
++
++Therefore, if I implement the feature into "resize",
++that means this new "hot resize" API can only support one "hotplug" feature.
++It is almost the same than the original "resize" function.
++
++The other reason I don't want to add the feature into resize(),
++is this feature needs some requirements(metadata, image..).
++So It's not a good idea to add more branches of judgement/execution
++in resize()'s logic.
++
++So I don't think this is a completed solution for "hot" resize.
++I paste the idea here to hear other reviewers' opinion.
++
++
++Data model impact
++-----------------
++
++The original 'vcpus' field in table Instances will be used
++to record current using vCPUs number of instances.
++
++
++REST API impact
++---------------
++
++1. Add one API "hot_modify_cpu_units"
++
++The rest API look like this in v2::
++ /v2/{project_id}/servers/{server_id}/action
++
++    {
++        'hot_modify_cpu_units':{
++        'vcpus':2
++        }
++
++    }
++
++and in v3 it is like::
++ /v3/servers/{server_id}/action
++
++    {
++        'hot_modify_cpu_units':{
++        'vcpus':3
++        }
++
++    }
++
++The 'vcpus' means the new vCPUs number you want to change to. No default value.
++
++The status code will be 200 when the request has succeeded.
++If the request fails, corresponding exception will be raised.
++The related information(like 'vcpus' in Instances table) will be roll back.
++
++* The 'vcpus' in body must be bigger than the current vCPUs number of instance.
++  If not, one exception like 'NotImplementedError' will be raised.
++
++* The 'vcpus' in body must be smaller than the 'maxVCPUs' param in flavor.
++  If not, one new exception like 'VCPUsLimitExceeded' will be raised.
++
++* All instances which flavor without 'maxVCPUs' will be raised
++  'NotSupportedException' if the API is called.
++
++* The instances which image without 'qemu_guest_agent' tag will be raised
++  'NotSupportedException' if the API is called.
++
++2. Modify API "DescribeInstance"
++
++Needs to add one optional key-pair property into the response body
++to show the current 'realVCPUs' of this instance.
++The value will not be None or '':
++
++{
++    'server':{
++    'currentVCPUs':4
++    }
++
++}
++
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++Needs to add two new types of notification:
++1. hot_modify_cpu_units.start
++2. hot_modify_cpu_units.end
++
++Other end user impact
++---------------------
++
++This function will be added into python-novaclient when this work finish.
++
++Performance Impact
++------------------
++
++None
++
++Other deployer impact
++---------------------
++
++The policy for this API will be added into policy.json.
++The default value is 'rule:admin_or_owner'.
++
++
++Developer impact
++----------------
++
++None
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Assignee: wingwj <wingwj@gmail.com>
++
++
++Work Items
++----------
++
++1. Code this function in v2
++2. Code this function in v3
++3. Finish tempest tests
++4. Code this function in python-novaclient
++
++
++Dependencies
++============
++
++Now only libvirt driver can support this function.
++
++1. QEMU >= 1.5.0
++2. libvirt >= 1.1.0
++
++
++Testing
++=======
++
++Unit tests and tempest tests will check "hot_modify_cpu_units" function.
++UTs for API/DB/libvirt driver will be examined separately.
++In integrated tests and tempest, it will test them together.
++
++Documentation Impact
++====================
++
++A description of this function will be added into Compute API V2
++and V3 Reference.
++
++
++References
++==========
++
++None
+\ No newline at end of file
+-- 
+1.9.1
+

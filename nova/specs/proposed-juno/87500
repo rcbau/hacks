@@ -1,0 +1,218 @@
+From 194007694f0ab2e5433a3d1257505bce52b7c325 Mon Sep 17 00:00:00 2001
+From: Yongli He <yongli.he@intel.com>
+Date: Tue, 15 Apr 2014 17:05:00 +0800
+Subject: [PATCH] proposed blueprint for pci extra info provisioning
+
+facility which provisioning PCI device extra information to
+Nova besides the vendor_id/product_id.
+
+blueprint pci-extra-info-provisioning
+
+Change-Id: I1812022c748b1232c3ca763c4e3611fd0af738ea
+---
+ specs/juno/pci-extra-info.rst | 193 ++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 193 insertions(+)
+ create mode 100644 specs/juno/pci-extra-info.rst
+
+diff --git a/specs/juno/pci-extra-info.rst b/specs/juno/pci-extra-info.rst
+new file mode 100644
+index 0000000..4b3b9b2
+--- /dev/null
++++ b/specs/juno/pci-extra-info.rst
+@@ -0,0 +1,193 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++===============================================
++PCI passthrough Extra information of PCI device
++===============================================
++
++https://blueprints.launchpad.net/nova/+spec/pci-extra-info-provisioning
++
++for better deploying and use Nova PCI passthrough, there is need a facility
++to provisioning extra PCI device information to Nova besides the vendor_id
++product_id.
++
++Problem description
++===================
++
++in current PCI passthrough the pci device only have few standard pci property
++like the product_id, vendor_id. there is lack of a method to provisioning the
++PCI device's related information to cloud. this make hard to use the pci
++passthrough for tenant.
++
++
++use case this spec try to cover:
++
++  * Tenant want a GPU which support the OpenGL and DirectX 11.
++    Tenant really don't care the vendor_id and product_id only if the GPU
++    suport the OpenGL and DirectX 11.
++
++    current solution:
++    admin need to create a alias which contain all posssible vendor/product.
++    i.e.
++    pci_alias={"vendor_id":"8086", "product_id":"1520", "name":"DirectX11"}
++    pci_alias={"vendor_id":"10DE", "product_id":"0028", "name":"DirectX11"}
++    note: same name's alias means 'OR' operation.
++
++    proposal for better solution:
++    1. when depoly, attach to each GPU with it's suported DirectX and OpenGL
++    capability
++    pci_information = [{"vendor_id":"8086", "product_id":"1520"},
++    {"e.DirectX11":"True"} ]
++    pci_information = [{"vendor_id":"10DE", "product_id":"0028"},
++    {"e.DirectX11":"True"} ]
++    2. admin just create a alias to request the OpenGL and DirectX 11
++    directly.
++    pci_alias={"name":"DirectX11", "e.DirectX11":"True"}
++
++  * Tenant want a PCI offloading card which suport 3DES, AES, and ssl
++    Tenant really don't care the vendor_id and product_id only if the PCI card
++    suport the 3DES, AES, and ssl algorithm.
++    Note: this use case share same solution with first one.
++
++
++Proposed change
++===============
++
++to address the current pci passthrough problem, this spec introduce a flexable
++extra information provisioning for pci device.
++
++PCI devices have PCI standard properties like address (BDF), vendor_id,
++product_id, etc, other none standard pci device infomation like GPU supported
++DirectX version,PCI offloading card supported algorithms are the extra
++information of a pci device.
++
++to support extra information provisioning, extra infomation based scheduling,
++here are changes to current pci passthrough.
++
++1. add new config option for pci support extra information
++   currently compute node the whit-list define a set of filters. PCI device
++   passed filtering will be available for allocation.
++
++   for supporting attach extra info to pci device, add a new configuration item
++   pci_information:
++
++  * pci_information = [ { pci-specs } ,{pci-extra-attrs } ]
++  * pci-specs is a dict of { string-key: string-value } pairs , this only match
++    standard device properties, like vendor_id, address, product_id,etc.
++  * pci-extra-attrs is a dict of { string-key: string-value } pairs. these
++    values can be arbitrary. all this extra attrs will be store in the pci
++    device table's extra info field. and the extra attrs should use this naming
++    schema:
++    e.attrname
++
++2. PCI stats report PCI device pools base on both standard properties and extra
++   information.
++   current PCI stats report device pools based on vendor_id, product_id and
++   pf_address.
++   The stats pool should contains all the PCI properties which pci_information
++   provided.
++
++3. Currently PCI alias support only vendor_id/product_id as keys, and we need
++   enhance it to support all keys from pci_information.
++
++
++Alternatives
++------------
++
++None
++
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++None
++
++Security impact
++---------------
++
++None
++
++* Does this change involve cryptography or hashing?
++
++* Does this change require the use of sudo or any elevated privileges?
++
++* Does this change involve using or parsing user-provided data? This could
++  be directly at the API level or indirectly such as changes to a cache layer.
++
++
++Notifications impact
++--------------------
++None
++
++Other end user impact
++---------------------
++
++Aside from the API, are there other ways a user will interact with this
++feature?
++
++* Does this change have an impact on python-novaclient? What does the user
++  interface there look like?
++
++Performance Impact
++------------------
++
++None
++
++Other deployer impact
++---------------------
++
++None
++
++Developer impact
++----------------
++
++None
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  yongli.he@intel.com
++
++
++Work Items
++----------
++
++None
++
++Dependencies
++============
++
++None
++
++
++Testing
++=======
++
++the pci passthrough now need run OS on bearmetal compute node, not a VM based
++test environment, there is needed to providing 3rd test platform for PCI
++passthrough testing.
++
++
++Documentation Impact
++====================
++
++None
++
++References
++==========
++
++None
++
+-- 
+1.9.1
+

@@ -1,0 +1,307 @@
+From 108e18d09e8b239c1c9ed9df2ef45c6bded20ee9 Mon Sep 17 00:00:00 2001
+From: Johannes Erdfelt <johannes@erdfelt.com>
+Date: Wed, 25 Jun 2014 07:21:04 -0700
+Subject: [PATCH] Online Schema Changes
+
+Make schema changes execute online (ie while services are running) when
+safely and semantically possible. This will allow operators to reduce the
+amount of downtime currently required during deploys by running most
+database schema changes when services are running.
+
+Change-Id: Ibbab7cb29911d52b57c467c6bfbc5876d1102e79
+---
+ specs/juno/online-schema-changes.rst | 282 +++++++++++++++++++++++++++++++++++
+ 1 file changed, 282 insertions(+)
+ create mode 100644 specs/juno/online-schema-changes.rst
+
+diff --git a/specs/juno/online-schema-changes.rst b/specs/juno/online-schema-changes.rst
+new file mode 100644
+index 0000000..6aa62d5
+--- /dev/null
++++ b/specs/juno/online-schema-changes.rst
+@@ -0,0 +1,282 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++=====================
++Online Schema Changes
++=====================
++
++https://blueprints.launchpad.net/nova/+spec/online-schema-changes
++
++Make schema changes execute online (ie while services are running) when
++safely and semantically possible. This will allow operators to reduce the
++amount of downtime currently required during deploys by running most
++database schema changes when services are running.
++
++
++Problem description
++===================
++
++* All database migrations are currently required to be run offline.
++
++* Database migrations have historically been a source of lengthy downtime
++  during deployments.
++
++
++Proposed change
++===============
++
++The existing 'db sync' nova-manage command will be split into three
++separate phases:
++
++#. Expand. This would apply changes that are compatible with old running
++   code.
++#. Migrate. This would apply changes that are necessary to be run offline.
++#. Contract. This would apply changes that are compatible with new
++   running code.
++
++Those schema changes that can be safely and semantically applied while
++running online will be moved from sqlalchemy-migrate managed migrations
++to a new schema synchronizer. Data migrations will continue being managed
++by sqlalchemy-migrate.
++
++The schema synchronizer will generate DDL statements to bring an existing
++database (mostly) into line with the model defined in
++nova/db/sqlalchemy/model.py.
++
++Only schema changes that can be safely and semantically applied online
++will be done during the expand and contract phases. This will be an
++inclusive list that is intended to be initially conservative at first.
++The automatation can become more sophisticated in the future.
++
++Schema changes that will be automatically performed during expand:
++- Table creates
++- Column additions
++- Non-Unique Index additions
++
++Schema changes that will be automatically performed during migrate:
++- Unique Index additions/drops
++- Foreign Key additions/drops
++
++Schema changes that will be automatically performed during contract:
++- Table drops
++- Column drops
++- Non-Unique Index drops
++
++Those schema changes that are not listed will need to be manually made
++as part of an sqlalchemy-migrate migration. As an example, column type
++changes will need to be done as part of an sqlalchemy-migrate migration
++because it is generally not safe to be executed online and it is
++difficult to automate on all databases.
++
++The list of schema changes that can be safely applied online can be
++different depending on the database software and version used. As an
++example, MySQL will acquire a table lock for index additions in MySQL
++5.1. If the schema change isn't safe to run online for the running
++database, they would be executed during the migrate phase (ie offline).
++
++As a result, the list of schema changes that can run online is a subset
++of the list of schema changes that can be automated.
++
++Alembic will be used for it's DDL generating module. Alembic will not
++replace the current use of sqlalchemy-migrate as part of this blueprint.
++
++The migrate and contract phases would verify that the previous phases
++(expand in the case of migrate, expand and migrate in the case of
++contract) no longer need to be executed before continuing.
++
++This would be performed by generating the list of needed changes for
++the previous phases and verifying they are empty. This indicates the
++previous phases were either run or unnecessary.
++
++The existing 'db sync' command would be reimplemented to effectively
++run the 'db expand', 'db migrate' and 'db contract' commands. This
++would provide a backwards compatible and simpler way to upgrade the
++database for those that don't wish to run migrations online.
++
++A new '--dryrun' argument would print, instead of execute, each
++generated DDL statement. This could be used by database administrators
++to see what would be executed for a particular phase. These can be
++optionally executed manually if desired. The schema synchronizer will
++not generate that DDL statement since the running schema does not
++have that difference anymore.
++
++Also, a 'db compare' command would show the differences between the
++running schema and the model in an easier to read and more comprehensive
++format.
++
++
++Alternatives
++------------
++
++Splitting the existing single stream of migrations into three separate
++streams of migrations. This would allow some schema changes to be
++executed online.
++
++This limits the schema changes that can be safely executed online to
++that of the lowest common denominator of databases supported by Nova.
++
++This would also require changes to sqlalchemy-migrate to be able to
++manage seperate streams of migrations.
++
++Alembic has an autogenerate module that can compare a model against
++a running schema and generate a list of differences. It currently has
++a variety of deficiencies in ordering of operations (wrt to foreign
++keys), incomplete features (TODOs for constraints, etc) and database
++specific issues (type aliasing in MySQL confuses it).
++
++In the future, after the problems with Alembic and SQLAlchemy are
++resolved, the autogenerate module could be a good engine to use.
++However, it's unclear when it will be ready and even if it was ready
++today, it would not be possible to use an extremely new version of
++either module in Nova so quickly.
++
++
++Data model impact
++-----------------
++
++The existing model needs to be brought in line with changes migrations
++make. These are limited to a handful of cases:
++
++- PostgreSQL index name limitations
++- PostgreSQL Enum type naming
++- MySQL index length restrictions
++- Foreign key names
++
++
++REST API impact
++---------------
++
++None
++
++
++Security impact
++---------------
++
++None
++
++
++Notifications impact
++--------------------
++
++None
++
++
++Other end user impact
++---------------------
++
++None
++
++
++Performance Impact
++------------------
++
++Running online DDL changes can affect the performance of a running system.
++This is optional and is only done when the deployer explicitly requests
++it.
++
++This can mitigated by the deployer by scheduling the expand and contract
++phases to be run during periods of low activity. The expand phase can
++be run an arbitrary amount of time before the migrate phase. Likewise,
++the contract phase can be run an arbitrary amount of time after the
++migrate phase.
++
++
++Other deployer impact
++---------------------
++
++The new 'db compare' command provides a means of viewing differences
++between the current schema and the model.
++
++The expand and contract phases are optional. If not explicitly run
++otherwise, the existing call to 'nova-manage db sync' would execute all
++necessary schema changes, as is the existing behavior.
++
++Those deployers that want to take advantage of the online schema changes
++will need to run the 'db expand', 'db migrate' and 'db contract' commands
++at the appropriate steps in their deployment process.
++
++Deployers that have made local schema changes (extra indexes, columns,
++tables, etc) will need to update the model to ensure those additions
++aren't dropped during the contract phase.
++
++
++Developer impact
++----------------
++
++Since the model will now be used as the authoritative source of
++information for schema changes, it is required to keep it updated
++as new sqlalchemy-migrate migrations are added. A new unit test will
++enforce this.
++
++Less work developing database migrations. Most schema changes will be
++handled automatically by the schema synchronizer.
++
++No more migration compaction. The initial creation of tables for a
++database is handled completely by the schema synchronizer.
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  johannes.erdfelt
++
++Other contributors:
++  None
++
++
++Work Items
++----------
++
++- Bring model into line with existing migrations
++- Implement schema synchronizer
++- Implement new 'expand', 'migrate', 'contract' and 'compare' commands
++  to 'nova-manage db'
++- Reimplement 'db sync' to use the new expand, migrate and contract calls
++- Drop schema changes from existing migrations that are now done
++  automatically as part of the schema synchronizer
++
++
++Dependencies
++============
++
++The schema synchronizer is implemented on top of alembic for its DDL
++generating functionality. This is already in the OpenStack global
++requirements list, but will be a new addition for Nova.
++
++
++Testing
++=======
++
++No tempest tests will be added since tempest does not do any upgrade
++testing.
++
++Grenade currently tests upgrades from older versions of Nova. No changes
++are necessary since it currently uses 'nova-manage db sync' and that
++will ensure that the expand, migrate and contract steps are executed.
++
++turbo-hipster tests upgrades using production database snapshots. No
++changes are necessary since it currently uses 'nova-manage db sync' as
++well.
++
++
++Documentation Impact
++====================
++
++Documentation will need to be updated to include the new 'expand',
++'migrate', 'contract' and 'compare' commands to 'nova-manage db'.
++
++Release Notes will need to be updated to warn that the model will need
++to be updated with local schema changes.
++
++
++References
++==========
++
++https://etherpad.openstack.org/p/juno-nova-live-upgrade
+-- 
+1.9.1
+

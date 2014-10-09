@@ -1,0 +1,188 @@
+From 8a1092b88694460a4fc661625cc7a919ad152f3a Mon Sep 17 00:00:00 2001
+From: Przemyslaw Czesnowicz <przemyslaw.czesnowicz@intel.com>
+Date: Tue, 27 May 2014 12:39:06 +0100
+Subject: [PATCH] Support dpdkvhost in LibvirtGenericVIFDriver
+
+Propose to extend LibvirtGenericVIFDriver class to support
+dpdkvhost. This will allow Openvswitch derivatives that
+use Intel(R) DPDK to be used with Openstack.
+
+Blueprint: https://blueprints.launchpad.net/nova/+spec/libvirt-ovs-use-usvhost
+
+Change-Id: Ibcf7d5354e39fa3ad4d021acff8d3e3e50c0900d
+---
+ specs/juno/libvirt-ovs-use-usvhost.rst | 162 +++++++++++++++++++++++++++++++++
+ 1 file changed, 162 insertions(+)
+ create mode 100644 specs/juno/libvirt-ovs-use-usvhost.rst
+
+diff --git a/specs/juno/libvirt-ovs-use-usvhost.rst b/specs/juno/libvirt-ovs-use-usvhost.rst
+new file mode 100644
+index 0000000..89876bd
+--- /dev/null
++++ b/specs/juno/libvirt-ovs-use-usvhost.rst
+@@ -0,0 +1,162 @@
++============================================
++Support dpdkvhost in LibvirtGenericVIFDriver
++============================================
++
++https://blueprints.launchpad.net/nova/+spec/libvirt-ovs-use-usvhost
++
++Open vSwitch based virtual switches that use Intel(R) DPDK offer dpdkvhost
++mechanism to connect VM's to the switch.
++The existing ovs vif bindings in LibvirtGenericVIFDriver are not compatible
++with this mechanism. We propose to add support for dpdkvhost by creating a new
++vif binding.
++
++Problem description
++===================
++
++Intel(R) DPDK UserSpace vhost is a high-throughput implementation of the
++standard qemu vhost interface for qemu versions <2.0
++
++The Intel(R) DPDK Userspace implemention of the vHost backend uses the CUSE
++kernel module to replace the standard /dev/vhost-net character device
++with a userspace character device to intercept ioctls from QEMU.
++This allows the standard vhost interface to be used
++with userspace only vswitches.
++
++To avoid confusion with other userspace vhost implementations,
++Intel(R) DPDK userspace vhost will be called dpdkvhost
++
++Existing libvirt ovs vif bindings don't support dpdkvhost on
++Intel(R) DPDK enabled virtual switches (ie. Open vSwitch,
++Intel(R) DPDK Accelerated vSwitch). To allow use of dpdkvhost via nova a
++new vif type is required.
++
++Proposed change
++===============
++A new vif_type VIF_TYPE_VHOST_CUSE will be added to support dpdkvhost.
++
++Add {get_config, plug, unplug}_ovs_vhost_cuse methods to
++LibvirtGenericVIFDriver.
++{get_config, plug, unplug}_ovs_vhost_cuse will be called
++when the vif_type is VIF_TYPE_VHOST_CUSE.
++
++The {get_config, plug, unplug}_ovs_vhost_cuse will implement dpdkvhost
++support.
++
++To support dpdkvhost in Nova and Neutron enhancements to
++mech_openvswitch and mechanism_odl will be made to detect if the new vif_type
++should be used.
++
++For full details of the neutron changes see the following blueprint:
++https://blueprints.launchpad.net/neutron/+spec/ml2-use-dpdkvhost
++
++Alternatives
++------------
++1:
++in addtion to the above changes the LibvirtGenericVIFDriver
++can be extended to pass a list of supported vif_types to neutron.
++this removes the need for neutron to determine if the hypervisor supports
++the new vif_type but requires nova to maintian a list of all vif_types
++supprted by each hypervisor.
++
++see the following post for more details:
++http://lists.openstack.org/pipermail/openstack-dev/2014-July/039853.html
++
++2:
++Add {get_config, plug, unplug}_ovs_vhost_cuse methods to
++LibvirtGenericVIFDriver. Those methods would be called from
++{get_config, plug, unplug}_ovs  depending on the value of ovs_use_vhost_cuse
++variable. ovs_use_dpdkvhost will be passed in binding:vif_details by neutron.
++The {get_config, plug, unplug}_ovs_vhost_cuse would implement the dpdkvhost
++support.
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++None
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++None
++
++Performance Impact
++------------------
++
++Userspace vHost was developed to enable high-throughput workloads without
++modifications to QEMU or the guest VMs.
++
++For performance measurements based on Intel(R) DPDK Accelerated vSwitch
++please refer to:
++https://01.org/sites/default/files/page/intel_dpdk_vswitch_performance_figures_0.10.0_0.pdf
++
++Other deployer impact
++---------------------
++
++To use this feature an Intel(R) DPDK enabled vSwitch is required.
++
++note that supporting side by side deployments of any combination of
++kernel open vswitch, dpdk enabled open vswitch and the intel(R) dpdk vswitch
++on the same compute node is out of scope of the current change.
++
++Developer impact
++----------------
++
++None
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  przemyslaw-czesnowicz
++
++Secondary assignee:
++  sean-k-mooney
++
++Work Items
++----------
++
++Implement new vif type in nova.virt.libvirt.vif
++
++Dependencies
++============
++
++Neutron:
++https://blueprints.launchpad.net/neutron/+spec/ml2-use-dpdkvhost
++
++Testing
++=======
++
++Unit tests will be added to test added code.
++
++Documentation Impact
++====================
++
++References
++==========
++
++Intel(R) DPDK accelerated vSwitch
++https://github.com/01org/dpdk-ovs
++
++dpdkvhost support in openvswitch.org
++TBA
++
++dpdkvhost description (section 22.0)
++http://www.intel.com/content/dam/www/public/us/en/documents/guides/intel-dpdk-sample-applications-user-guide.pdf
+-- 
+1.9.1
+

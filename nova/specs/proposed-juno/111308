@@ -1,0 +1,145 @@
+From 983d7f1c11ccbcfb1492b5e713244fc6ec88d625 Mon Sep 17 00:00:00 2001
+From: Dennis Kliban <dkliban@redhat.com>
+Date: Fri, 1 Aug 2014 11:13:23 -0400
+Subject: [PATCH] Added VirtProperties object blueprint
+
+Change-Id: Ie76e034fb3bb5c321da5a9debf23f54efc2c909f
+---
+ specs/juno/virt-properties-object.rst | 125 ++++++++++++++++++++++++++++++++++
+ 1 file changed, 125 insertions(+)
+ create mode 100644 specs/juno/virt-properties-object.rst
+
+diff --git a/specs/juno/virt-properties-object.rst b/specs/juno/virt-properties-object.rst
+new file mode 100644
+index 0000000..5e4dda8
+--- /dev/null
++++ b/specs/juno/virt-properties-object.rst
+@@ -0,0 +1,125 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++===========================================
++Virt Properties Objects Support
++===========================================
++
++https://blueprints.launchpad.net/nova/+spec/convert-image-meta-into-nova-object
++
++In an effort to standardize which image properties are available to the nova
++drivers, a NovaObject needs to be created. This object will take a dictionary
++of values provided by Glance and verify that the keys are one of the allowed
++ones listed here: https://wiki.openstack.org/wiki/VirtDriverImageProperties
++
++The new VirtProperties object will be consumed by the nova drivers. It will
++not be backed by a database.
++
++Problem description
++===================
++
++Each nova driver expects slightly different property names from glance image
++meta data.
++
++Proposed change
++===============
++
++Create a NovaObject that will contain a standard list of properties. The object
++will be contructed from glance image meta properties.  Each driver will be
++upgraded to use the new object instead of the properties dictionary.
++
++Alternatives
++------------
++
++This is the accepted direction of the project to solve this
++problem. However, alternatives would be:
++
++1. Don't solve the problem and continue using unversioned and completely
++   arbitrary dictionaries of properties.
++
++Data model impact
++-----------------
++
++None.
++
++REST API impact
++---------------
++
++None.
++
++Security impact
++---------------
++
++None.
++
++Notifications impact
++--------------------
++
++None.
++
++Other end user impact
++---------------------
++
++None.
++
++Performance Impact
++------------------
++
++None.
++
++Other deployer impact
++---------------------
++
++Moving to objects enhances the ability for deployers to incrementally
++roll out new code. It is, however, largely transparent for them.
++
++Developer impact
++----------------
++
++This is normal refactoring, so the impact is minimal. In general,
++objects-based code is easier to work with, so long-term it is a win
++for the developers.
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  dkliban
++
++Work Items
++----------
++
++* Create VirtProperties object
++* Upgrade libvirt driver
++* Upgrade xenapi driver
++* Upgrade vmwareapi driver
++
++Dependencies
++============
++
++None.
++
++Testing
++=======
++
++In general, unit tests require minimal change when this happens,
++depending on how the tests are structured. Ideally, they are already
++mocking out database calls, which means the change to objects is a
++transparent one. In reality, this usually means minor tweaking to the
++tests to return whole data models, etc.
++
++Documentation Impact
++====================
++
++Need to publish the new list of standard virt property names.
++
++References
++==========
++
++* https://blueprints.launchpad.net/nova/+spec/convert-image-meta-into-nova-object
+-- 
+1.9.1
+

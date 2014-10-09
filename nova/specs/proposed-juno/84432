@@ -1,0 +1,385 @@
+From ecfca92ed1141de4e5fd16f0bd7abf66fc258b58 Mon Sep 17 00:00:00 2001
+From: Sergio Cazzolato <sergio.j.cazzolato@intel.com>
+Date: Tue, 1 Apr 2014 10:27:37 -0300
+Subject: [PATCH] per-flavor-quotas
+
+Currently when an operator has to set up quotas, is not able to define
+the quotas based on the # of a given flavor, for instance, define the
+user quotas as 3 x m1.medium flavor.
+
+Then, if a user boots a new instance and the limit for the flavor
+associated to this is exceeded, the system won't create this instance.
+
+This blueprint comes from the operators feedback:
+https://etherpad.openstack.org/p/operators-feedback-mar14 -> line 448
+
+To address this request I propose to add a new resource for the flavors
+that can be use when the operator set up the user quotas.
+
+Related to blueprint per-flavor-quotas.
+
+Change-Id: Iccdfb38e3e9288cd48152a11cf8386000c4f82ac
+---
+ specs/juno/per-flavor-quotas.rst | 350 +++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 350 insertions(+)
+ create mode 100644 specs/juno/per-flavor-quotas.rst
+
+diff --git a/specs/juno/per-flavor-quotas.rst b/specs/juno/per-flavor-quotas.rst
+new file mode 100644
+index 0000000..b2d061f
+--- /dev/null
++++ b/specs/juno/per-flavor-quotas.rst
+@@ -0,0 +1,350 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++=================
++per-flavor-quotas
++=================
++
++https://blueprints.launchpad.net/nova/+spec/per-flavor-quotas
++
++This blueprint allows the operators to define quotas per flavor.
++
++
++Problem description
++===================
++
++Currently when an operator has to set up quotas, is not able to define the
++quotas based on the number of a given flavor, for instance, define the user
++quotas as 3 x m1.medium flavor.
++
++Then, if a user boots a new instance and the limit for the flavor associated
++to this is exceeded, the system won't create this instance.
++
++This blueprint comes from the operators feedback:
++https://etherpad.openstack.org/p/operators-feedback-mar14 -> line 448
++
++Use Cases:
++
++1. The operator wants to apply a default set of quotas to all flavors in
++   the system which are applied in addition to any other quotas to control the
++   profile of flavors that users can create. For example:
++
++   . ram: 16284
++
++   . m1.tiny: 32
++
++   . m1.small: 8
++
++   . m1.meduim: 2
++
++   . m1.large: 1
++
++2. The operator wants to be able to introduce a new flavor and control
++   access to a small group of users (in a way more granular than just
++   allow/deny via an ACL). For example you might during the early access stage
++   want to limit to 1 or 2 instances only of the new flavor). So the steps here
++   are like:
++
++   1. There are no quota flavors defined (i.e. current state and default state
++      after this change with default quota for flavors = -1.
++   2. I define a new flavor with a default quota for this flavor only of 0.
++      Other flavors remain unlimited.
++   3. I define quota values for the new flavor just for a subset of projects.
++   4. When I want to make it generally available, I either remove the few per
++      project quotas of the early adopters, and/or apply a default quota for
++      the new flavor.
++
++Proposed change
++===============
++
++To address this request I propose to add a new resource for the flavors that
++can be use when the operator sets up the user quotas.
++
++So when a user attempts to create an instance, the quotas system will check if
++there is a limit for the involved flavor and will block the creation in case
++the number of instances already created + 1 is bigger than the current quota.
++
++As any other resource, the unlimited value will be represented with (-1).
++
++The quota resources based on flavors will be named "flavor_<flavor_id>". The
++resource named 'flavor' which will be defined as default in the quota-class,
++will be used as default for flavors which don't have a quota defined.
++
++As any other resource any flavor_* can be set for any user and project, and
++also as default through quota-class.
++
++In case a flavor is deleted, all the references to this flavor in the quotas
++will be deleted as well. The instances that were created based on this flavor
++which are running will continue running, but the usages and quotas for this
++resource will not be measured any more.
++
++There aren't restrictions between flavors and other resources.
++
++The order followed when quotas are either applied or set is the following:
++
++1. Quotas for the current resources such as ram, instances, cores,
++   floating_ips, etc.
++2. Quotas for flavors.
++
++
++Alternatives
++------------
++
++An alternative is to define quota templates and use them to associate it with
++flavors. This mechanism is similar to the solution proposed but doesn't
++meet all the scenarios.
++
++Data model impact
++-----------------
++
++Tables are not impacted.
++
++The flavor resources will be stored with a name as: flavor_<flavorid>.
++
++The flavor resources will be updated once a flavor is created or deleted.
++
++A Migration script has to be created to:
++
++. Update the usages table with the information related to the flavors in use.
++. Add the resource 'flavor' with value -1 to the defaults.
++
++
++REST API impact
++---------------
++
++Change in the response when getting the quotas for a user/tenant.
++* Method: GET
++* Path: /os-quota-sets/{tenant_id}
++* Resp: Normal Response Codes 200
++
++JSON response
++
++{
++ "quota_set": {
++  "cores": 20,
++  "fixed_ips": -1,
++  "floating_ips": 10,
++  "id": "fake_tenant",
++  "injected_file_content_bytes": 10240,
++  "injected_file_path_bytes": 255,
++  "injected_files": 5,
++  "instances": 10,
++  "key_pairs": 100,
++  "metadata_items": 128,
++  "ram": 51200,
++  "security_group_rules": 20,
++  "security_groups": 10,
++  "flavor_3": 2,
++  "flavor_4": 1
++
++ }
++
++}
++
++Change in the response when getting the default quotas.
++* Method: GET
++* Path: /os-quota-sets/defaults
++* Resp: Normal Response Codes 200
++
++JSON response
++
++{
++ "quota_set": {
++  "cores": 20,
++  "fixed_ips": -1,
++  "floating_ips": 10,
++  "id": "fake_tenant",
++  "injected_file_content_bytes": 10240,
++  "injected_file_path_bytes": 255,
++  "injected_files": 5,
++  "instances": 10,
++  "key_pairs": 100,
++  "metadata_items": 128,
++  "ram": 51200,
++  "security_group_rules": 20,
++  "security_groups": 10,
++  "flavor_3": 2,
++  "flavor": -1
++
++ }
++
++}
++
++Change in the request when updating the quotas for a user/tenant.
++* Method: POST
++* Path: /os-quota-sets/{tenant_id}/{user_id}
++* Resp: Normal Response Codes 200
++
++JSON response:
++
++{
++ "quota_set": {
++  "force": "True",
++  "instances": 9,
++  "flavor_3": 4
++
++ }
++
++}
++
++JSON Schema:
++
++"quota_set" = {
++ "type":"object",
++ "required":false,
++ "properties": {
++
++  "quota_set": {
++   "type":"object",
++   "required":false,
++   "properties":{
++
++    "cores": {"type":"number", "required":false},
++    "fixed_ips": {"type":"number", "required":false},
++    "flavor_<flavor_id>": {"type":"number", "required":false},
++    "floating_ips": {"type":"number", "required":false},
++    "injected_file_content_bytes": {"type":"number", "required":false},
++    "injected_file_path_bytes": {"type":"number", "required":false},
++    "injected_files": {"type":"number", "required":false},
++    "instances": {"type":"number", "required":false},
++    "key_pairs": {"type":"number", "required":false},
++    "metadata_items": {"type":"number", "required":false},
++    "ram": {"type":"number", "required":false},
++    "security_group_rules": {"type":"number", "required":false},
++    "security_groups": {"type":"number", "required":false}
++
++   }
++
++  }
++
++ }
++
++}
++
++
++Security impact
++---------------
++
++None
++
++
++Notifications impact
++--------------------
++
++None
++
++
++Other end user impact
++---------------------
++
++This change affects the client user interface adding new optional values when
++update a quota:
++
++quota-update
++    --tenant-id <tenant_id>
++    --instances <instances>
++    --cores <cores>
++    --ram <ram>
++    --floating-ips
++    --fixed-ips <fixed-ips>
++    --metadata-items <metadata-items>
++    --injected-files <injected-files>
++    --injected-file-content-bytes <injected-file-content-bytes>
++    --injected-file-path-bytes <injected-file-path-bytes>
++    --key-pairs <key-pairs>
++    --security-groups <security-groups>
++    --security-group-rules <security-group-rules>
++    --flavor_<flavor-id> <flavors>
++    <name>
++
++quota-class-update
++    --instances <instances>
++    --cores <cores>
++    --ram <ram>
++    --floating-ips
++    --fixed-ips <fixed-ips>
++    --metadata-items <metadata-items>
++    --injected-files <injected-files>
++    --injected-file-content-bytes <injected-file-content-bytes>
++    --injected-file-path-bytes <injected-file-path-bytes>
++    --key-pairs <key-pairs>
++    --security-groups <security-groups>
++    --security-group-rules <security-group-rules>
++    --flavor_<flavor-id> <flavors>
++    --flavor <flavors>
++    default
++
++Performance Impact
++------------------
++
++The main impact on performance is when:
++
++* A flavor is deleted due to all the quotas with that flavor have to be
++  deleted.
++
++* Some quota operations will require to go to the db in order to check that
++  the flavor resource exists.
++
++Other deployer impact
++---------------------
++
++None
++
++Developer impact
++----------------
++
++None
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee: sergio-j-cazzolato
++
++
++Work Items
++----------
++
++Tasks to do as part of this bp:
++
++* Change the API to verify quotas when boot a new instance.
++* Create the DB migration script.
++* Update the db to update quotas when a flavor is deleted.
++* Update the client to support the new resources.
++
++
++Dependencies
++============
++
++None
++
++
++Testing
++=======
++
++Tempest tests are needed to validate:
++
++* The new API
++* The new instances cannot be created once the quota has been reached
++* The db migration
++
++Documentation Impact
++====================
++
++Documentation needed for:
++
++* Rest API
++* Client Interface
++* Operators Guide
++
++References
++==========
++
++Link to notes from a summit session:
++https://etherpad.openstack.org/p/operators-feedback-mar14 -> line 448
+-- 
+1.9.1
+

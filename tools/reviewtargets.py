@@ -30,7 +30,7 @@ def print_heading(header):
     HEADERS.append(header)
 
 
-def approval_to_string(approval):
+def approval_to_string(approval, markup=True):
     s = '%s:%s(%s)' % (approval['by'].get('username',
                                           repr(approval['by'])),
                        approval['type'],
@@ -40,10 +40,14 @@ def approval_to_string(approval):
               '0': 'gray',
               '1': 'green',
               '2': 'green'}
-    return '<font color="%s">%s</font>' % (colors[approval['value']], s)
+
+    if markup:
+        return '<font color="%s">%s</font>' % (colors[approval['value']], s)
+    else:
+        return s
 
 
-def get_votes(review):
+def get_votes(review, markup=True):
     votes = []
     lowest = 0
     highest = 0
@@ -51,7 +55,7 @@ def get_votes(review):
     for approval in review.get('currentPatchSet', {}).get('approvals', []):
         lowest = min(int(approval['value']), lowest)
         highest = max(int(approval['value']), highest)
-        votes.append(approval_to_string(approval))
+        votes.append(approval_to_string(approval, markup=markup))
 
     return votes, lowest, highest
     
@@ -64,11 +68,6 @@ def print_review(review, message, skip_reviewed_by_me=True, dependancy=False):
     local_output = []
 
     if review in PRINTED:
-        return
-
-    if review['subject'].startswith('WIP '):
-        return
-    if review['subject'].startswith('WIP:'):
         return
 
     for approval in review.get('currentPatchSet', {}).get('approvals', []):
@@ -114,8 +113,20 @@ def filter_obvious(possible):
             continue
         if review.get('status') == 'WORKINGPROGRESS':
             continue
+        if review['subject'].startswith('WIP '):
+            return
+        if review['subject'].startswith('WIP:'):
+            return
 
-        yield review
+        votes, _, _ = get_votes(review, markup=False)
+        skip = False
+        for vote in votes:
+            if vote.endswith('Workflow(-1)'):
+                skip = True
+                continue
+
+        if not skip:
+            yield review
 
 
 def targets():
@@ -200,7 +211,7 @@ def targets():
             for ps in review['patchSets']:
                 for approval in ps.get('approvals', []):
                     if approval['by'].get('username', '') == ARGS.username:
-                        vote = approval_to_string(approval)
+                        vote = approval_to_string(approval, markup=False)
 
             if vote:
                 previously_reviewed.setdefault(vote, [])

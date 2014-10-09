@@ -1,0 +1,514 @@
+From 9996a8aecad3b951f457774b45672f7d5a5777d9 Mon Sep 17 00:00:00 2001
+From: Mike Spreitzer <mspreitz@us.ibm.com>
+Date: Wed, 16 Apr 2014 16:43:17 -0400
+Subject: [PATCH] Add simultaneous scheduling for server groups
+
+Work In Progress ATM.
+
+Change-Id: I0389fc32dc83d69f9af48b3d7f8289de7609dbbd
+---
+ specs/juno/simultaneous-server-group.rst | 492 +++++++++++++++++++++++++++++++
+ 1 file changed, 492 insertions(+)
+ create mode 100644 specs/juno/simultaneous-server-group.rst
+
+diff --git a/specs/juno/simultaneous-server-group.rst b/specs/juno/simultaneous-server-group.rst
+new file mode 100644
+index 0000000..3f3521a
+--- /dev/null
++++ b/specs/juno/simultaneous-server-group.rst
+@@ -0,0 +1,492 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++=========================================
++Simultaneous Scheduling of a Server Group
++=========================================
++
++https://blueprints.launchpad.net/nova/+spec/simultaneous-server-group
++
++This blueprint is about extending server group functionality so that
++the scheduling decisions about all the members can be made
++simultaneously.  Currently scheduling decisions are made serially ---
++one member (or homogenous cohort) is scheduled at a time, taking into
++account the decisions that have been made previously.  The current
++approach can paint itself into a corner that would be avoided if the
++decisions were made simultaneously.  That is, the new implementation
++will transform the scheduling input into a multi-variable optimization
++problem about the whole group and solve it.  Following OpenStack
++tradition, this blueprint uses the term "scheduling" even though it is
++really focused only on placement.
++
++
++Problem description
++===================
++
++Consider the following use case.  A cloud user wants to create a
++3-tier web application with a preference for affinity among all the
++servers (that is, VM instances) in the application.  The three
++different servers have different images and flavors.  The cloud
++operator prefers to keep some of his hosts highly utilized and the
++rest powered off.  Consider a situation in which, for each tier of the
++new application, there is sufficient available capacity on some host
++but no powered-up host has capacity for all three tiers.  There is
++also a powered-down host that could accommodate all three tiers.  With
++the current scheduling approach, the application will be spread across
++those three distant hosts.  With the new scheduling approach the whole
++application could be co-located on a formerly powered-down host.
++
++Proposed change
++===============
++
++The proposed change is described in distinct sections below for API,
++Data Model, and Implementation.
++
++This builds on two or three other recent or current pieces of work.
++The server group functionality is still being completed and
++documented.  It is hoped that the work proposed in
++https://blueprints.launchpad.net/nova/+spec/solver-scheduler will be
++revived and utilized here.  Finally, as reservations are involved,
++this might somehow use Blazar (nee Climate); today Blazar does not
++seem to expose the needed functionality, which is reserving fractions
++of host capacity without creating virtual resources.
++
++There are several independent directions in which follow-on work can
++proceed.  One is increasing the expressiveness of the input: refining
++the existing policy types and adding additional policy types, and
++allowing nesting of groups.  Another direction is generalizing beyond
++Compute instances, which can be done in two steps: first allowing the
++Compute instances to be constrained by already-scheduled resources of
++other types (e.g., Cinder volumes), second by bringing the non-Compute
++resources into the simultaneous decision-making.
++
++API
++
++The current API for server groups can be organized into two phases:
++defining the group, and then creating the members of the group.  The
++proposed change adds two phases and moves the scheduling
++decision-making from one phase to an earlier one.  The proposed
++phases are as follows.
++
++#. Group Definition/Update
++#. Simultaneous Scheduling
++#. Member Creation/Update
++#. Final Confirmation
++
++The flow can be summarized in ASCII art as follows.
++
++| Group Definition/Update<----+
++|            +                |
++|            |                |
++|            |                |
++|            v                |
++| Simultaneous Scheduling+----+
++|            +                |
++|            |                |
++|            |                |
++|            v                |
++| Member Creation/Update+-----+
++|            +                |
++|            |                |
++|            |                |
++|            v                |
++| Final Confirmation+---------+
++
++In the Group Definition phase the group's identity is established, the
++client provides the group's scheduling policies, and the client
++describes each intended member of the group.  Each of those
++descriptions carries the information needed for scheduling --- which
++is less than the information needed later for creation/update.  In
++particular, a member description provided by the client in the Group
++Definition phase is the following subset of the information provided
++in the create/update operation: flavor, availability zone, scheduling
++hints (if any are needed beyond the group's policies).  The client
++also supplies an identifier for each member, with no two members in a
++group sharing an identifier.  Because the client supplies the ID, it
++is easy to make this operation idempotent.
++
++The client can return to the Group Definition/Update phase at any
++time, to modify the policies and member descriptions for an existing
++group.
++
++In the Simultaneous Scheduling phase, the client invokes one
++operation that causes the joint decision to be made.  This takes into
++account the policies and member descriptions that are currently in
++effect, and returns a token for the decision made.  The decision is
++internally remembered in a reservation, perhaps using Climate's
++reservation fucntionality.  The reservation is only leased.  The lease
++time is long, but the client must occasionally refresh the lease if
++the client wants to hold it for a long time.  The reservation needs to
++be held until the Final Confirmation phase is completed.  This is a
++matter of the time to do management operations, this is NOT the time
++for the created/updated application to complete its work.
++
++After requesting that a joint decision be made, the client can then
++issue the same request again (without changing the group's policies or
++its set of member descriptions); in this case the implementation
++considers the problem to be unchanged (even though other aspects of
++the problem could have actually changed), does not change its
++decision, and *does* return the same decision token.  In short, the
++joint decision making operation is idempotent.
++
++While a decision has been made but not yet reached Final Confirmation,
++the client can potentially return to Group Definition/Update to modify
++the policies and member descriptions and then request a new joint
++decision.  In this case the new decision overrides the old decision;
++the old decision's lease is terminated and a new lease is started.
++
++In the Member Creation/Update phase, the client proceeds (much like it
++does today) to create/update the individual members of the group.
++Each creation operation includes a reference to the group.  The
++proposed change here is that each creation operation will also include
++the corresponding member identifier (or identifiers, in the case of
++creation of a homogenous batch of servers).
++
++During the Member Creation/Update phase, in general some create
++operations will succeed, some will fail, and some will never even be
++tried (i.e., the client forgoes them because of earlier failures).
++For some of the failures, Nova will recognize that the reserved
++capacities are nonetheless being used; for others, Nova will know that
++the reserved capacities are not being used; and for the remainder Nova
++will not be sure.
++
++If a create operation requests different capacities than were in the
++corresponding member description...
++
++If a create operation includes a group ID but not a member ID then it
++is scheduled on its own at that time, using the group's policies, and
++is added to the group.  In other words, the current behavior applies.
++If a create operation does not include a group ID then the server is
++scheduled in isolation and is not added to a group, just like the
++current behavior.
++
++In the Final Confirmation phase, the client invokes one operation (the
++final confirmation operation) and gives it the corresponding decision
++token.  This allows the implementation to quickly free capacities that
++were reserved but Nova now knows will not be used.
++
++The implementation will build on the work on the solver scheduler.  It
++will introduce a new scheduling operation, which takes a whole group
++as input.  It also introduces operations for refreshing a lease and
++doing final confirmation.
++
++This is proposed to happen after the Gantt and no-db-scheduler work
++are done.
++
++
++Alternatives
++------------
++
++The API could be simplified by moving responsibility for creating the
++members from the client into the implementation.  That has been
++considered and rejected, because it removes desired modularity from
++the system.
++
++Rather than describing all the group members up front, one alternative
++would be to continue with the current style of API in which group
++members are introduced only as they are created but, as each member
++(or homogenous cohort) is introduced, make a new joint decision about
++all the group members revealed thus far (with a preference for leaving
++already-placed members in place).  If it is decided to move an
++already-placed member then live migration would be used to move that
++member to the newly-chosen place.  This has the disadvantage of
++increasing the asymptotic computational complexity of creating a group
++by a factor that is the number of create operations.  Also, live
++migration is not always possible.  And when it is possible, it has
++some costs: it uses some memory, CPU, disk, and network --- thus
++having an indirect performance on all servers using those underlying
++resources.  Live migration also has some direct impact on the server
++being migrated.
++
++Consider this modification of the previous alternative: when a new
++server (or homogenous cohort) is created, first try sequential
++scheduling (that is, see if it can be placed without allowing moves of
++already-placed servers) and, only if it cannot, do simultaneous
++scheduling of the whole group-thus-far and do live migration of
++existing members for which a new placement is chosen.  The performance
++of this alternative depends on the probability that the sequential
++scheduling fails.  That probability is difficult to estimate, but I
++expect it will be low in most situations.  The expected computational
++cost of this alternative will be lower than that of the previous, by
++an amount that depends on that difficult-to-estimate probability; the
++other disadvantages of the previous approach apply to this one too.
++Additionally, this alternative will produce a less good placement than
++the previous alternative would in cases where sequential scheduling
++finds some placement but simultaneous scheduling finds a better
++placement.  If all the placement policies are hard --- that is, must
++be satisifed --- then every placement is either allowed or disallowed
++and that last disadvantage does not apply; OTOH if some placement
++policies are soft --- that is, state a goal that can be met to some
++degree --- then some placements are better than others and the last
++disadvantage applies.
++
++
++Data model impact
++-----------------
++
++New Data Model
++^^^^^^^^^^^^^^
++
++The proposed change introduces a table, which might be called this
++instance_requests table, to hold the member descriptions provided in
++the Group Definition/Update phase.  This table will have a record for
++each member description, keyed by the combination of the group UUID
++and the client-supplied ID for the member description.  The dependent
++fields of the record will contain the description.
++
++The proposed change also introduces another table, which might be
++called the instance_decisions table, to hold the decisions made.  It
++will have a record for each member for which a decision has been made.
++The key of a record will be compounded from the group's UUID, the
++decision token, and the client-supplied member description ID.
++
++The proposed change also introduces a table, which might be called the
++decisions table.  It holds a record for each decision.
++
++The usual story about deleted records.
++
++Schema and data migration
++^^^^^^^^^^^^^^^^^^^^^^^^^
++
++The new tables are added before the new operations are enabled.  No
++records need to be created as the new tables are added.  There are no
++changes to the schemas of existing tables.
++
++REST API impact
++---------------
++
++Each API method which is either added or changed should have the following
++
++* Specification for the method
++
++  * A description of what the method does suitable for use in
++    user documentation
++
++  * Method type (POST/PUT/GET/DELETE)
++
++  * Normal http response code(s)
++
++  * Expected error http response code(s)
++
++    * A description for each possible error code should be included
++      describing semantic errors which can cause it such as
++      inconsistent parameters supplied to the method, or when an
++      instance is not in an appropriate state for the request to
++      succeed. Errors caused by syntactic problems covered by the JSON
++      schema defintion do not need to be included.
++
++  * URL for the resource
++
++  * Parameters which can be passed via the url
++
++  * JSON schema definition for the body data if allowed
++
++  * JSON schema definition for the response data if any
++
++* Example use case including typical API samples for both data supplied
++  by the caller and the response
++
++* Discuss any policy changes, and discuss what things a deployer needs to
++  think about when defining their policy.
++
++Example JSON schema definitions can be found in the Nova tree
++http://git.openstack.org/cgit/openstack/nova/tree/nova/api/openstack/compute/schemas/v3
++
++Note that the schema should be defined as restrictively as
++possible. Parameters which are required should be marked as such and
++only under exceptional circumstances should additional parameters
++which are not defined in the schema be permitted (eg
++additionaProperties should be False).
++
++Reuse of existing predefined parameter types such as regexps for
++passwords and user defined names is highly encouraged.
++
++Idempotency impact
++^^^^^^^^^^^^^^^^^^
++
++The proposed change does not make things worse.  The new operations
++are idempotent, and the old ones remain as bad as they currently are.
++
++Security impact
++---------------
++
++Describe any potential security impact on the system.  Some of the items to
++consider include:
++
++* Does this change touch sensitive data such as tokens, keys, or user data?
++
++* Does this change alter the API in a way that may impact security, such as
++  a new way to access sensitive information or a new way to login?
++
++* Does this change involve cryptography or hashing?
++
++* Does this change require the use of sudo or any elevated privileges?
++
++* Does this change involve using or parsing user-provided data? This could
++  be directly at the API level or indirectly such as changes to a cache layer.
++
++* Can this change enable a resource exhaustion attack, such as allowing a
++  single API interaction to consume significant server resources? Some examples
++  of this include launching subprocesses for each connection, or entity
++  expansion attacks in XML.
++
++For more detailed guidance, please see the OpenStack Security Guidelines as
++a reference (https://wiki.openstack.org/wiki/Security/Guidelines).  These
++guidelines are a work in progress and are designed to help you identify
++security best practices.  For further information, feel free to reach out
++to the OpenStack Security Group at openstack-security@lists.openstack.org.
++
++Notifications impact
++--------------------
++
++Please specify any changes to notifications. Be that an extra notification,
++changes to an existing notification, or removing a notification.
++
++Other end user impact
++---------------------
++
++Aside from the API, are there other ways a user will interact with this feature?
++
++* Does this change have an impact on python-novaclient? What does the user
++  interface there look like?
++
++Performance Impact
++------------------
++
++Describe any potential performance impact on the system, for example
++how often will new code be called, and is there a major change to the calling
++pattern of existing code.
++
++Examples of things to consider here include:
++
++* A periodic task might look like a small addition but if it calls conductor or
++  another service the load is multiplied by the number of nodes in the system.
++
++* Scheduler filters get called once per host for every instance being created, so
++  any latency they introduce is linear with the size of the system.
++
++* A small change in a utility function or a commonly used decorator can have a
++  large impacts on performance.
++
++* Calls which result in a database queries (whether direct or via conductor) can
++  have a profound impact on performance when called in critical sections of the
++  code.
++
++* Will the change include any locking, and if so what considerations are there on
++  holding the lock?
++
++Other deployer impact
++---------------------
++
++Discuss things that will affect how you deploy and configure OpenStack
++that have not already been mentioned, such as:
++
++* What config options are being added? Should they be more generic than
++  proposed (for example a flag that other hypervisor drivers might want to
++  implement as well)? Are the default values ones which will work well in
++  real deployments?
++
++* Is this a change that takes immediate effect after its merged, or is it
++  something that has to be explicitly enabled?
++
++* If this change is a new binary, how would it be deployed?
++
++* Please state anything that those doing continuous deployment, or those
++  upgrading from the previous release, need to be aware of. Also describe
++  any plans to deprecate configuration values or features.  For example, if we
++  change the directory name that instances are stored in, how do we handle
++  instance directories created before the change landed?  Do we move them?  Do
++  we have a special case in the code? Do we assume that the operator will
++  recreate all the instances in their cloud?
++
++Developer impact
++----------------
++
++Discuss things that will affect other developers working on OpenStack,
++such as:
++
++* If the blueprint proposes a change to the driver API, discussion of how
++  other hypervisors would implement the feature is required.
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Who is leading the writing of the code? Or is this a blueprint where you're
++throwing it out there to see who picks it up?
++
++If more than one person is working on the implementation, please designate the
++primary author and contact.
++
++Primary assignee:
++  <launchpad-id or None>
++
++Other contributors:
++  <launchpad-id or None>
++
++Work Items
++----------
++
++Work items or tasks -- break the feature up into the things that need to be
++done to implement it. Those parts might end up being done by different people,
++but we're mostly trying to understand the timeline for implementation.
++
++
++Dependencies
++============
++
++* Include specific references to specs and/or blueprints in nova, or in other
++  projects, that this one either depends on or is related to.
++
++* If this requires functionality of another project that is not currently used
++  by Nova (such as the glance v2 API when we previously only required v1),
++  document that fact.
++
++* Does this feature require any new library dependencies or code otherwise not
++  included in OpenStack? Or does it depend on a specific version of library?
++
++
++Testing
++=======
++
++Please discuss how the change will be tested. We especially want to know what
++tempest tests will be added. It is assumed that unit test coverage will be
++added so that doesn't need to be mentioned explicitly, but discussion of why
++you think unit tests are sufficient and we don't need to add more tempest
++tests would need to be included.
++
++Is this untestable in gate given current limitations (specific hardware /
++software configurations available)? If so, are there mitigation plans (3rd
++party testing, gate enhancements, etc).
++
++
++Documentation Impact
++====================
++
++What is the impact on the docs team of this change? Some changes might require
++donating resources to the docs team to have the documentation updated. Don't
++repeat details discussed above, but please reference them here.
++
++
++References
++==========
++
++Please add any useful references here. You are not required to have any
++reference. Moreover, this specification should still make sense when your
++references are unavailable. Examples of what you could include are:
++
++* Links to mailing list or IRC discussions
++
++* Links to notes from a summit session
++
++* Links to relevant research, if appropriate
++
++* Related specifications as appropriate (e.g.  if it's an EC2 thing, link the EC2 docs)
++
++* Anything else you feel it is worthwhile to refer to
+-- 
+1.9.1
+

@@ -1,0 +1,188 @@
+From 4e1cc0e3cab498ada66a50bfe828b80fad274da1 Mon Sep 17 00:00:00 2001
+From: Steven Deaton <sdeaton2@gmail.com>
+Date: Wed, 21 May 2014 06:09:20 +0000
+Subject: [PATCH] Add delete node to nova-manage
+
+Add ability to permanently delete a retired compute node. The idea is
+to make simple database queries, no schema changes, though that may
+be necessary when this is to be implemented.
+
+blueprint add-delete-node-to-nova-manage
+
+Change-Id: Ie7e8f4ed649a750431b843469804bcc359324df1
+---
+ specs/juno/add-delete-node-to-nova-manage.rst | 162 ++++++++++++++++++++++++++
+ 1 file changed, 162 insertions(+)
+ create mode 100644 specs/juno/add-delete-node-to-nova-manage.rst
+
+diff --git a/specs/juno/add-delete-node-to-nova-manage.rst b/specs/juno/add-delete-node-to-nova-manage.rst
+new file mode 100644
+index 0000000..ae488cd
+--- /dev/null
++++ b/specs/juno/add-delete-node-to-nova-manage.rst
+@@ -0,0 +1,162 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++
++==========================================
++Add 'delete-node' to nova-manage
++==========================================
++
++Include the URL of your launchpad blueprint:
++
++https://blueprints.launchpad.net/nova/+spec/add-delete-node-to-nova-manage
++
++Currently there is no way to delete a compute node from an existing
++environment - the compute node can be marked as deleted, but this doesn't
++delete anything. For the sake of sanity with regards to database content
++and also for the ease of use aspect, it would be nice to have the ability
++to not only delete a compute node from an environment, but actually have it
++deleted, not just marked as such.
++
++
++Problem description
++===================
++
++There is currently no way to manually delete a compute node aside from making
++manual database changes.
++
++For an end-user, this makes it impossible to delete old decommissioned nodes.
++
++For an operator, it makes it a hassle to deal with, since it is easier to just
++type a command and have the CLI make the API call, which in turn will make
++the necessary database changes for you.
++
++
++Proposed change
++===============
++
++Add an API call that will allow for actual compute node deletion from a
++database - in all applicable tables.
++
++Add CLI funtionality to make this API call and verify success.
++(This will likely just be needed for python-novaclient, but adding here for
++completeness.)
++
++
++Alternatives
++------------
++
++I have seen no other alternatives to deleting an old node aside from making
++database changes. The goal here is to make that manual labor obsolete and
++to also allow for the permanent deletion where desired.
++
++
++Data model impact
++-----------------
++
++There should be no changes needed, since the proposition is simply allowing
++for making database queries, not schema changes.
++
++
++REST API impact
++---------------
++
++* delete-node
++
++  * Permanently delete retired compute node.
++
++  * POST or DELETE - not sure which is more ideal here.
++
++  * /delete-node/
++
++  * Pass UUID of hypervisor
++
++
++Security impact
++---------------
++
++This should not require anything other than 'nova' database user access,
++since my proposed change only affects hypervisor information.
++
++This proposed change should also be only accessible via 'nova-manage', versus
++simply 'nova' so that it can only be run an admin.
++
++
++Notifications impact
++--------------------
++
++None.
++
++
++Other end user impact
++---------------------
++
++There should be a python-novaclient call created for my proposed API addition.
++
++
++Performance Impact
++------------------
++
++None.
++
++
++Other deployer impact
++---------------------
++
++None.
++
++
++Developer impact
++----------------
++
++None.
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  None
++
++Other contributors:
++  None
++
++
++Work Items
++----------
++
++* Create API call
++
++* Create call function in python-novaclient
++
++
++Dependencies
++============
++
++None.
++
++
++Testing
++=======
++
++A simple test to create a new hypervisor in the database, and then delete
++that hypervisor should be sufficient.
++
++
++Documentation Impact
++====================
++
++There will need to be a change to the related nova pages in the documentation.
++
++I can [and would]  personally take care of the doc changes.
++
++
++References
++==========
++
++None.
+-- 
+1.9.1
+

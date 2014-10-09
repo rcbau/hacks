@@ -1,0 +1,174 @@
+From a3aa819e987ccb4f702633567795668d25de98d7 Mon Sep 17 00:00:00 2001
+From: Phil Day <philip.day@hp.com>
+Date: Tue, 22 Apr 2014 13:37:59 +0000
+Subject: [PATCH] Refactor virt driver capabilities to support inheretence
+
+Currently the capabilities dict in the generic virt driver is
+over-written by each driver as required (or left unchanged).
+
+his is problematic when new capabilities are added with what should
+be a common default for most drivers, esp for an external driver class
+such as Ironic.  This BP proposes a simple refactor to provide
+inheritance for the capabilities dict.
+
+Although a simple change to implement it has an effect on all
+driver development going forwards and hence seems worth of capturing
+as a blueprint.
+
+Change-Id: Ibe479d405f8f3bf395bca357ed7373ad459eb750
+---
+ specs/juno/refactor-virt-capabilities.rst | 142 ++++++++++++++++++++++++++++++
+ 1 file changed, 142 insertions(+)
+ create mode 100644 specs/juno/refactor-virt-capabilities.rst
+
+diff --git a/specs/juno/refactor-virt-capabilities.rst b/specs/juno/refactor-virt-capabilities.rst
+new file mode 100644
+index 0000000..339bb12
+--- /dev/null
++++ b/specs/juno/refactor-virt-capabilities.rst
+@@ -0,0 +1,142 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++=================================
++Refactor Virt Driver Capabilities
++=================================
++
++https://blueprints.launchpad.net/nova/+spec/refactor-virt-capabilities
++
++Refactor the capabilites exposed by virt drivers to support basic
++inheritance.
++
++
++Problem description
++===================
++
++The virt driver provides a capabilities dict which allows the compute
++manager to determine the support for optional features such as
++"has_imagecache" and "supports_recreate".
++
++Currently this is a dict which each hypervisor driver either leaves
++intact of replaces completly, which means that whan a new capability
++is introduced, with a default value in the generic driver which maps
++to the existing functionality all drivers that have any specific
++capability settings need to be updated.    Since Ironic includes
++a hypervisor driver which sits outside Nova the problem is extended
++to one that spans projects.
++
++
++Proposed change
++===============
++
++The proposed solution is to refactor the code slightly so that capabilities
++only need to be defined in a hypervisor specific driver if they differ from
++the default.
++
++The change could be as simple as something like the following in the
++generic driver init method:
++     capabilites.update(driver_specific_capabilites)
++
++Alternatives
++------------
++
++The alternatives are to either continue redefining all capabilities in any
++driver that needs to change one or mor values, or to make sure that any code
++that reads a capaibility provides the required deafult value if the capability
++is not defined.
++
++Data model impact
++-----------------
++
++None, the change is restricted to the initialisation of the virt driver.
++
++REST API impact
++---------------
++
++None, the change is restricted to the initialisation of the virt driver.
++
++Security impact
++---------------
++
++None, the change is restricted to the initialisation of the virt driver.
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++None
++
++Performance Impact
++------------------
++
++None
++
++Other deployer impact
++---------------------
++
++None 
++
++Developer impact
++----------------
++
++Developers adding a new capability to the virt driver will only have
++to declare the capability in the generic driver and any driver that
++supports the non-default setting.
++
++The default setting of any new capabilty should always match the
++existing functionality.
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++
++  philip-day
++
++
++Work Items
++----------
++
++* Refactor virt driver initialisation
++
++
++Dependencies
++============
++
++None
++
++
++Testing
++=======
++
++The net effect of the change will be that each driver still exposes the 
++same set of capabilities.
++
++The basic mechanism will be covered by unit tests.
++
++Existing Hypervisor specific CI tests will highlight any functional changes
++introduced by accident.
++
++
++Documentation Impact
++====================
++
++None 
++
++
++References
++==========
++
++None
+-- 
+1.9.1
+

@@ -1,0 +1,179 @@
+From 894e8f42ed57f45c1dd297dcf6770c5a07c0705e Mon Sep 17 00:00:00 2001
+From: Ala Rezmerita <ala.rezmerita@cloudwatt.com>
+Date: Thu, 17 Apr 2014 16:25:59 +0200
+Subject: [PATCH] Live migrate all running instances from the host
+
+Blueprint for live-migration of all running instances from the host
+
+Change-Id: I59f85aa334eba6d3b1a084000cd7c1b48e974f75
+Implements: blueprint host-servers-live-migrate
+---
+ specs/juno/host-servers-live-migrate.rst | 156 +++++++++++++++++++++++++++++++
+ 1 file changed, 156 insertions(+)
+ create mode 100644 specs/juno/host-servers-live-migrate.rst
+
+diff --git a/specs/juno/host-servers-live-migrate.rst b/specs/juno/host-servers-live-migrate.rst
+new file mode 100644
+index 0000000..39a69de
+--- /dev/null
++++ b/specs/juno/host-servers-live-migrate.rst
+@@ -0,0 +1,156 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++================================================
++Live migrate all running instances from the host
++================================================
++
++https://blueprints.launchpad.net/python-novaclient/+spec/host-servers-live-migrate
++
++The aim of this feature in python-novaclient is to allow Operators in only
++one command to live migrate all running instances from one host to other hosts.
++
++
++Problem description
++===================
++
++Currently, in order to perform a maintenance operation on a host without
++service interruption for customers, Openstack Operator can live-migrate one
++by one each running instance from the host.
++
++To facilitate this operation, we propose a wrapper in python-novaclient
++that would, in only one command, live-migrate all hypervisor running instances
++to other hosts.
++
++The major difference between this new feature and two existing novaclient
++commands, namely host-evacuate [1] and host-servers-migrate [2], is that
++host-servers-live-migrate command will be transparent for customer,
++without any downtime for running instances :
++
++* ``host-evacute`` command is targeting failed compute nodes, and will
++  fail for compute nodes that are up
++
++* ``host-servers-migrate`` will **suspend** all running instances on a
++  host in order to migrate the instances on new host.
++
++
++Proposed change
++===============
++
++The new command will internally use the existing server live-migrate API,
++but since Nova API V3 brings some changes in the manner to query the hypervisor
++information, the proposed change will add two feature implementations in
++python-novaclient.
++
++The existing live-migration command in python-novaclient uses several
++optional arguments:
++
++* ``--block-migrate``   True in case of block_migration.
++
++* ``--disk-over-commit`` Allow disk overcommit.
++
++And positional arguments:
++
++* ``<server>``          Name or ID of server.
++
++* ``<host>``            Destination host name.
++
++Proposed new command, host-servers-live-migrate, will keep the
++same optional arguments: ``--block-migrate`` and ``--disk-over-commit``.
++The optional positional argument ``host`` will be renamed to
++``--target_host <target_host>`` and a new positional argument ``host``
++will be used in order to designate the compute node that will be taken
++out of action.
++
++
++Alternatives
++------------
++
++In order to avoid multiple calls from client, the alternative would be to
++implement this feature in Nova.
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++None
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++The user can trigger this feature by:
++``nova host-servers-live-migrate host``
++
++Performance Impact
++------------------
++
++None
++
++Other deployer impact
++---------------------
++
++None
++
++Developer impact
++----------------
++
++None
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  arezmerita
++
++Work Items
++----------
++
++* Implement the feature for Nova API V2
++
++* Implement the feature for Nova API V3
++
++Dependencies
++============
++
++None
++
++Testing
++=======
++
++Since live-migration feature is already well covered by tempest tests, we
++think that unit tests are sufficient.
++
++
++Documentation Impact
++====================
++
++OpenStack Command-Line Interface Reference must be updated in order to
++add new command in Compute command-line client.
++
++
++References
++==========
++
++.. [1] https://blueprints.launchpad.net/python-novaclient/+spec/evacuate-host
++
++.. [2] https://blueprints.launchpad.net/python-novaclient/+spec/host-servers-migrate
+-- 
+1.9.1
+

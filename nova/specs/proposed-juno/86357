@@ -1,0 +1,174 @@
+From 9a456a88ce1be314575374458b842c5995a6d154 Mon Sep 17 00:00:00 2001
+From: eliymen <liyi.meng@ericsson.com>
+Date: Wed, 9 Apr 2014 15:37:16 +0200
+Subject: [PATCH] Propose dynamic logging for nova
+
+This adds dynamic-logging spec to describe the new feature
+that allows dynamically configure logging level for nova
+serices.
+
+Related to blueprint dynamic-logging
+
+Change-Id: I77a43ce44664d2aafb9b76ee9fed68cce0bb1547
+---
+ specs/juno/dynamic-logging.rst | 148 +++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 148 insertions(+)
+ create mode 100644 specs/juno/dynamic-logging.rst
+
+diff --git a/specs/juno/dynamic-logging.rst b/specs/juno/dynamic-logging.rst
+new file mode 100644
+index 0000000..d8b1c3e
+--- /dev/null
++++ b/specs/juno/dynamic-logging.rst
+@@ -0,0 +1,148 @@
++
++=================================
++Dynamic logging for nova services
++=================================
++
++Launchpad blueprint:
++
++https://blueprints.launchpad.net/nova/+spec/dynamic-logging
++
++This blueprint is to allow OpenStack operator dynamically configure logging level
++for nova services on-the-fly, without modifying nova.conf and rebooting services,
++therefore improve system availability.
++
++Problem description
++===================
++
++As it is today, logging level is statically configured inside nova.conf. To modify
++it, operator need to shutdown nova services and restart them. This is an obvious
++limit for both End User and Deployer.
++
++Being End User, I want to see the system always work without interruption.
++
++Being Deployer, I want to the system be available for my customers to keep them
++happy. I also want to troubleshooting and analyze on a live system for many
++reasons, like addressing hard-to-catch bugs that might run away from scene in
++case of rebooting system.
++
++Proposed change
++===============
++
++This blueprint is to extend nova-manage, allow OpenStack Operator issue a request
++over AMQP toward all nova services that are currently running, changing its
++logging level without rebooting those services. This will allow OpenStack operator
++set a much less verbose logging in nova.conf file, but still have a chance to
++collect necessary logs when they are needed for troubleshooting.
++
++Internally, the feature could be implemented as part of BaseRPCAPI which is already
++available in nova, simply a single function call is added. Optionally, it can be
++separated in a new API, like ConfigRPCAPI in the future for in case similar
++features are added. For this particular feature, adding a new API might be over-
++engineering.
++
++Since OpenStack components are sharing similar architecture, this blueprint is
++also applicable to cinder, neutron, and other components. However, only nova
++services are covered in this blueprint.
++
++Please note that the solution dose not persist the logging level after it is
++issued. Because this feature is supposed to use for temporarily increasing logging
++level, but not permanently.
++
++Alternatives
++------------
++
++An alternative is to just make nova services reload their config file upon SIGHUP.
++The limit of this alternative is that it will reset the states of the process and
++may cause interruption to the services. This blueprint is exactly aiming to remove
++this limit.
++
++Another option could be implementing this feature as a common service for all
++OpenStack services through oslo library. However olso is a library, it might be
++good for dealing with "static" configuration, but not flexible enough to cope
++with dynamic scenario. This feature could be extended in the future to pass over
++oslo.config objects as input parameters, and therefore introducing a powerful
++operation and maintenance interface for OpenStack. The change today is obviously
++supporting that to happen.
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++None
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++None
++
++Performance Impact
++------------------
++
++This might improve the system performance with limit logging level, and
++only increase it when needed.
++
++Other deployer impact
++---------------------
++
++There will be a new sub-command availabe for nova-manage.
++
++Developer impact
++----------------
++
++None
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++  liyi-meng
++
++An implementation proposal is available at:
++https://review.openstack.org/#/c/82460/
++
++Work Items
++----------
++
++* Update GetLogCommands class in file nova/cmd/manage.py to add a new command
++  named level, which used to update the logging level of a service/module.
++  Optionally, rename  GetLogCommands into LogCommands
++* Update nova/baserpc.py to add a client side and server side function, which
++  reset the logging to expected level as issued from nova-manage command line
++  interface.
++
++Dependencies
++============
++
++None
++
++Testing
++=======
++
++This is a minor change, a unit test case might be enough.
++
++Documentation Impact
++====================
++
++Update nova-manage printout to feedback to caller, which log level is available.
++Also update nova-manage document if there is any.
++
++References
++==========
++
++* https://blueprints.launchpad.net/oslo/+spec/cfg-reload-config-files
+-- 
+1.9.1
+

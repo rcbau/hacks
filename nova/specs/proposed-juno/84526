@@ -1,0 +1,142 @@
+From 8289cf41762929f0880f1c6cdaf1de2a33df2a6a Mon Sep 17 00:00:00 2001
+From: Brian Elliott <bdelliott@gmail.com>
+Date: Tue, 1 Apr 2014 14:09:53 -0500
+Subject: [PATCH] Spec for bp/message-in-update-notifications
+
+blueprint message-in-update-notifications
+
+Change-Id: I9c75a2feaeb7be0f079b8377932f668aa8b011c1
+---
+ specs/juno/message-in-update-notifications.rst | 120 +++++++++++++++++++++++++
+ 1 file changed, 120 insertions(+)
+ create mode 100644 specs/juno/message-in-update-notifications.rst
+
+diff --git a/specs/juno/message-in-update-notifications.rst b/specs/juno/message-in-update-notifications.rst
+new file mode 100644
+index 0000000..d2a7776
+--- /dev/null
++++ b/specs/juno/message-in-update-notifications.rst
+@@ -0,0 +1,120 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++====================================================
++Add a message field to instance update notifs
++====================================================
++
++https://blueprints.launchpad.net/nova/+spec/message-in-update-notifications
++
++Add a string field, 'message', to compute instance update notifications.
++This 'message' field will make it easier for external notification
++consumers to deduce the purpose of the update.
++
++Problem description
++===================
++
++Nova emits a number of instance update notifications for various state changes
++and VM spawning steps.  It can be difficult to reconstruct the purpose of the
++update from the message payload.
++
++The xenapi driver, for example, emits update notifications for many instance
++spawning sub-steps.  These do not always modify the vm or task state so a
++message describing the purpose of the notification. (e.g. devices_attached)
++can help with tasks like writing a notification consumer that is able to
++report on the performance of these steps.
++
++Proposed change
++===============
++
++Allow for extra fields in the compute.instance.update payload, including
++'message'.  The message will be a description of the type of update being
++generated.  Possible values for the field will be enumerated in
++nova.compute.update_messages.
++
++Alternatives
++------------
++
++None
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++None
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++Additional field(s) in payload
++
++Other end user impact
++---------------------
++
++None
++
++Performance Impact
++------------------
++
++Minimal
++
++Other deployer impact
++---------------------
++
++Notification consumers must be able to cope with extra payload fields.
++
++A boolean flag will be added to toggle the use of these extra payload fields.
++
++Developer impact
++----------------
++
++None
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  belliott
++
++Work Items
++----------
++
++* Define possible message values
++* Add extra fields to notification. (with boolean toggle flag)
++* Update virtapi to take extra_notification_info
++
++Dependencies
++============
++
++None
++
++Testing
++=======
++
++Unit tests
++
++Documentation Impact
++====================
++
++* 'message' field added to compute.instance.update notif
++* config flag to disable extra payload fields
++
++References
++==========
++
++None
+-- 
+1.9.1
+

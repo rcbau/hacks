@@ -1,0 +1,193 @@
+From 62eec40387cdb2a9a4ac79f0bc7f7c7cdebb49c2 Mon Sep 17 00:00:00 2001
+From: abhishek-kekane <abhishek.kekane@nttdata.com>
+Date: Fri, 11 Apr 2014 13:34:15 +0000
+Subject: [PATCH] nova-specs: Add sharePolicy element for vnc
+
+From libvirt 1.0.6 version onwards share policy feature is supported
+to control the way consoles are accessed by the user. We can use this
+share policy for domain's VNC console by adding it to libvirt driver
+in nova to manage the opening of number of VNC sessions.
+
+Change-Id: I22522c086b9120d0baa4b638f7ebb45a79d0b100
+---
+ specs/juno/vnc-configurable-share-policy.rst | 168 +++++++++++++++++++++++++++
+ 1 file changed, 168 insertions(+)
+ create mode 100644 specs/juno/vnc-configurable-share-policy.rst
+
+diff --git a/specs/juno/vnc-configurable-share-policy.rst b/specs/juno/vnc-configurable-share-policy.rst
+new file mode 100644
+index 0000000..036aabf
+--- /dev/null
++++ b/specs/juno/vnc-configurable-share-policy.rst
+@@ -0,0 +1,168 @@
++=====================================================
++Add sharePolicy attribute to graphics element for vnc
++=====================================================
++
++https://blueprints.launchpad.net/nova/+spec/vnc-configurable-share-policy
++
++From libvirt 1.0.6 version onwards share policy feature is supported to control 
++the way consoles are accessed by the user.
++
++Presently it is possible to configure share policy for vnc in 3 different
++ways:-
++1. allow-exclusive, allows clients to ask for exclusive access by dropping
++other connections 
++2. force-share, This is the default value, It allows multiple clients to
++connect to the console in parallel sharing the same session
++3. ignore, welcomes every connection unconditionally
++
++We can make use of this share policy which will allow service provider to
++restrict only single authorized user to connect to the console dropping
++previously connected users automatically if "allow-exclusive" share policy
++is configured.
++
++Problem description
++===================
++
++We have reported one bug related to the DoS style attack on noVNC server
++Reference to https://bugs.launchpad.net/nova/+bug/1227575
++
++The above problem can be solved to certain extent if provider uses share
++policy as allow-exclusive as oppose to "force-shared" which is the default
++one as of today.
++
++Proposed change
++===============
++
++Add a new 'vnc_sharepolicy' parameter to nova.conf, possible options available
++to the administrator are 'allow-exclusive | force-shared | ignore'. By default
++'vnc_sharepolicy' will be set to 'force-shared'.
++
++During loading of compute driver (libvirt), it will check whether the vnc is
++enabled or not. If yes, then it will validate the vnc_sharepolicy parameter
++only when the installed libvirt version is 1.0.6 or above. If the provider has
++configured incorrect value other than the above 3 possible options, then it
++will raise InvalidVNCSharedPolicyOption exception which will lead nova-compute
++service to fail to start.
++
++Implement logic to add 'sharePolicy' attribute to the graphics element for
++type vnc only when the installed libvirt version is 1.0.6 or above.
++
++Examples
++
++<graphics type="vnc" autoport="yes" keymap="en-us" listen="127.0.0.1"
++ sharePolicy="force-shared"/>
++<graphics type="vnc" autoport="yes" keymap="en-us" listen="127.0.0.1"
++ sharePolicy="allow-exclusive"/>
++<graphics type="vnc" autoport="yes" keymap="en-us" listen="127.0.0.1"
++ sharePolicy="ignore"/>
++
++Note: This share policy is only used by vnc and not spice.
++
++
++Alternatives
++------------
++
++None
++
++
++Data model impact
++-----------------
++
++None
++
++
++REST API impact
++---------------
++
++None
++
++
++Security Impact
++---------------
++
++None
++
++
++Notifications impact
++--------------------
++
++None
++
++
++Other End user impact
++---------------------
++
++None
++
++
++Performance Impact
++------------------
++
++None
++
++
++Other deployer impact
++---------------------
++
++Add vnc_sharepolicy parameter in nova.conf
++
++Format for vnc_sharepolicy in nova.conf:
++----------------------------------------
++vnc_sharepolicy = 'allow-exclusive | force-shared | ignore'
++
++Example:
++vnc_sharepolicy = allow-exclusive
++
++
++Developer impact
++----------------
++
++None
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  abhishek-kekane
++
++Other contributors:
++  None
++
++
++Work Items
++----------
++
++- Add a new vnc_sharepolicy new parameter in the nova.conf
++- Depending on the vnc_enabled, validate vnc_sharepolicy parameter and
++  implement logic to add sharePolicy attribute to the graphics element
++  in libvirt driver
++- Add unitests for coverage
++
++
++Dependencies
++============
++
++None
++
++
++Testing
++=======
++
++As this is internal change no need to add tempest tests for the same.
++Only unitests for coverage will do.
++
++
++Documentation Impact
++====================
++
++Refer Deployer impact
++
++
++References
++==========
++http://libvirt.org/formatdomain.html
++https://bugs.launchpad.net/nova/+bug/1227575
+-- 
+1.9.1
+

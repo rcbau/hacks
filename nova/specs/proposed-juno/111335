@@ -1,0 +1,141 @@
+From 0ff0e48781ecf7153dcc3e76a1c3dc0d66be43d9 Mon Sep 17 00:00:00 2001
+From: Dmitry Guryanov <dguryanov@parallels.com>
+Date: Fri, 1 Aug 2014 20:54:16 +0400
+Subject: [PATCH] Add Parallels Cloud Server support into virt/libvirt driver
+
+This specification proposes to implement modification in
+virt/libvirt driver to support Parallels Cloud Server
+(http://www.parallels.com/products/pcs/).
+
+Change-Id: Ibbc19ca2181827e7c6576f82f756898a13503f2e
+---
+ specs/juno/pcs-support.rst | 117 +++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 117 insertions(+)
+ create mode 100644 specs/juno/pcs-support.rst
+
+diff --git a/specs/juno/pcs-support.rst b/specs/juno/pcs-support.rst
+new file mode 100644
+index 0000000..e9fdcf9
+--- /dev/null
++++ b/specs/juno/pcs-support.rst
+@@ -0,0 +1,117 @@
++=====================================================
++Parallels Cloud Server support in nova/libvirt driver
++=====================================================
++
++https://blueprints.launchpad.net/nova/+spec/pcs-support
++
++This specification proposes to make changes in nova/libvirt driver in order to
++support Parallels Cloud Server (http://www.parallels.com/products/pcs/).
++
++Problem description
++===================
++
++Parallels Cloud Server (PCS) is a virtualization solution, which enables
++hosters to use container and hypervisor virtualization over the same API.
++PCS is supported by libvirt, but OpenStack can't use it because of some
++differences in domains configration and supported features.
++
++
++Proposed change
++===============
++
++To implement this feature we need to make a set of small changes in
++nova/libvirt driver so that it will create PCS domains correctly. The end
++user will be able to configure nova to use PCS by setting libvirt.virt_type
++option to "parallels".
++
++Alternatives
++------------
++
++The alternate way is to use separate nova driver
++https://github.com/parallels/pcs-nova-driver
++
++pros:
++* There is no middle layer between OpenStack and PCS, pcs-nova-driver uses
++PCS's python API.
++* Changes in pcs-nova-driver will not affect nova/libvirt's code.
++
++cons:
++* It's hard to maintain out-of-tree driver.
++* pcs-nova-driver is unlikely to be accepted into nova's tree.
++
++Data model impact
++-----------------
++
++None.
++
++REST API impact
++---------------
++
++None.
++
++Security impact
++---------------
++
++None.
++
++Notifications impact
++--------------------
++
++None.
++
++Other end user impact
++---------------------
++
++None.
++
++Performance Impact
++------------------
++
++None.
++
++Other deployer impact
++---------------------
++
++In order to use PCS as Openstack compute node, deployer must install
++nova-compute packages on PCS node and set libvirt.virt_type config option
++to "parallels".
++
++Developer impact
++----------------
++
++None
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  dguryanov
++
++Work Items
++----------
++
++To be filled
++
++
++Dependencies
++============
++
++None
++
++Testing
++=======
++
++To be filled
++
++Documentation Impact
++====================
++
++None
++
++References
++==========
++
++Parallels Cloud Server: http://www.parallels.com/products/pcs/.
+-- 
+1.9.1
+

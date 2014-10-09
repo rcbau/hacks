@@ -1,0 +1,151 @@
+From 78defc48c0a83fa349406d4e36f983367ea3466a Mon Sep 17 00:00:00 2001
+From: LiangChen <hs.chen@huawei.com>
+Date: Mon, 14 Apr 2014 21:54:52 -0400
+Subject: [PATCH] Add support for physical CD-ROM when VM is running
+
+Sometimes we need to attach/detach host's or PC's CD-ROM device to a running
+instance when we want to access content directly without upload to glance.
+
+blueprint use-physical-cdrom
+
+Change-Id: I5284892e8b4ad47133df568c7dae563178a7dd3f
+---
+ specs/juno/use-physical-cdrom.rst | 125 ++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 125 insertions(+)
+ create mode 100644 specs/juno/use-physical-cdrom.rst
+
+diff --git a/specs/juno/use-physical-cdrom.rst b/specs/juno/use-physical-cdrom.rst
+new file mode 100644
+index 0000000..10a89aa
+--- /dev/null
++++ b/specs/juno/use-physical-cdrom.rst
+@@ -0,0 +1,125 @@
++
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++==================================================
++Add support for physical CD-ROM when VM is running
++==================================================
++
++https://blueprints.launchpad.net/nova/+spec/use-physical-cdrom
++
++Sometimes we need to attach/detach PC's CD-ROM device to a running instance
++when we want to access content directly without upload to glance.
++
++Base on this feature, user needn't to convert CD-ROM disk to ISO file or copy
++the content of CD-ROM disk into the instance.
++
++The feature makes administrator's maintenance more convenient.
++
++Problem description
++===================
++
++Currently the user access the ISO's content has the following methods:
++
++* Downloading the ISO (or the files on it) into the instance and access it by
++  network.
++* Uploading the ISO file to glance build it to image, and then use the image
++  to create disk, and then attach disk to VMs to access content.
++
++The above is base on ISO, if the user only has the CD/DVD, he/she must use
++some software convert it to ISO or copy content base on VM's network first.
++
++With this feature, the user can access the PC's CD-ROM device directly, so it
++easy to operate.
++
++
++Proposed change
++===============
++
++Add CD-ROM service in compute node, add plug in dashboard as CD-ROM client.
++Thus the CD-ROM of the PC can be use as a host's device.
++
++
++Alternatives
++------------
++None
++
++
++Data model impact
++-----------------
++None
++
++REST API impact
++---------------
++
++Modify the existing "attach_block_device" action.
++
++Security impact
++---------------
++None
++
++Notifications impact
++--------------------
++None
++
++Other end user impact
++---------------------
++
++None
++
++Performance Impact
++------------------
++None
++
++Other deployer impact
++---------------------
++None
++
++Developer impact
++----------------
++None
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++   <hs.chen@huawei.com>
++
++
++
++Work Items
++----------
++
++
++* Add server in compute node.
++* Add client plug in dashboard.
++* Modify attach_block_device API.
++* Add testcase.
++
++
++Dependencies
++============
++
++The compute node must be able to connect to the PC which visits dashborad.
++
++
++Testing
++=======
++
++Unit tests and tempest tests will added.
++
++Documentation Impact
++====================
++
++Add the use case to the Virtual Machine Image Guide.
++
++
++References
++==========
++None
+\ No newline at end of file
+-- 
+1.9.1
+

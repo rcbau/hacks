@@ -1,0 +1,221 @@
+From 708590b955bf9433a0e2c9f71a88ee350817a252 Mon Sep 17 00:00:00 2001
+From: Mateusz Blaszkowski <mateusz.blaszkowski@intel.com>
+Date: Tue, 8 Jul 2014 14:56:44 +0200
+Subject: [PATCH] Action type aware scheduling.
+
+Blueprint proposes to add "action_type" key to "filter_properties"
+so that filters and weighers could be aware of currently processed
+action (scheduling / rescheduling / migration / resize / live-migration
+/ evacuation / unshelving).
+
+Change-Id: I36624233b5d436aedcb289848e6fd5e535efa1c7
+---
+ specs/juno/action-type-aware-scheduling.rst | 196 ++++++++++++++++++++++++++++
+ 1 file changed, 196 insertions(+)
+ create mode 100644 specs/juno/action-type-aware-scheduling.rst
+
+diff --git a/specs/juno/action-type-aware-scheduling.rst b/specs/juno/action-type-aware-scheduling.rst
+new file mode 100644
+index 0000000..01e3f6b
+--- /dev/null
++++ b/specs/juno/action-type-aware-scheduling.rst
+@@ -0,0 +1,196 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++=============================================================================
++Action type aware scheduling
++=============================================================================
++
++https://blueprints.launchpad.net/nova/+spec/action-type-aware-scheduling
++
++Currently in ``FilterScheduler`` there is no variable indicating which action
++triggered the request that is currently processed. The behavior of filters and
++weighers may be different depending on the fact if currently processed request
++is scheduling / rescheduling / migration / resize / live-migration /
++evacuation / unshelving.
++
++What this blueprint proposes is to add a new variable which would keep an
++action type. It should be accessible from custom scheduler filters and
++weighers. This could be accomplished using ``filter_properties`` dictionary - a
++new key like ``'action_type'`` can be added there.
++
++
++Problem description
++===================
++
++Right now it's difficult to check which action triggered scheduling in
++FilterScheduler, you need to use ``task_state`` from ``filter_properites`` and
++some other properties to distinguish between them:
++
++* if ``task_state`` is ``"scheduling"`` you need to use ``retry`` parameter
++   to distinguish between scheduling and rescheduling.
++* if ``task_state`` is ``"resize_prep"`` you need to check if old and new VM
++   flavor is the same to distinguish between migration and resize.
++* if ``task_state`` is ``"migrating"`` then it's live migration (this one is
++   really confusing).
++* if ``task_state`` is ``"unshelving"`` then this request was triggered by
++   unshelving action.
++* another action to distinguish is evacuation, as once blueprint
++   *find-host-and-evacuate-instance* will be implemented, evacuation will also
++   be able to trigger scheduling.
++
++Therefore if your custom filter needs this information to properly schedule a
++VM, you need to use complicated if-else statement. It would be much easier if
++there was a flag in ``filter_properties`` that indicates action type.
++
++With this feature you will be able to schedule your VMs according to action
++that triggered scheduling. For example (if this blueprint will be implemented:
++https://blueprints.launchpad.net/nova/+spec/find-host-and-evacuate-instance)
++you would be able to keep multiple compute nodes for emergency evacuation
++purpose and place VMs on them only when scheduling was triggered by evacuation.
++In order to achieve this, user would need to create his own simple filter and
++add some hosts to the host-aggregate. Then, inside filter, user can check if
++the currently executed action is evacuation. If so, the only thing left is to
++check if the currently filtered host is in the appropriate (created before)
++host-aggregate. This way users can achieve the functionality of leaving some
++hosts for evacuation purposes.
++
++User can also keep a host for rescheduling only to be sure that if other hosts
++fail booting a VM, then the scheduling decision will always be to place on
++this one particular host. This can be done using custom filter like in the
++above example.
++
++To be clear, there is no advanced logic in the implementation of this
++blueprint. It proposes to update ``filter_properties`` so that users have more
++flexibility in writing their own filters and weighers. They will be aware
++what action triggered scheduling of the VMs. It may also be useful in the
++future for reporting purposes.
++
++
++Proposed change
++===============
++
++We intend to change:
++
++* ``compute/api.py`` file where ``filter_properties`` for migrate and resize
++   are created;
++* ``conductor/manager.py`` file for create and unshelve actions;
++* ``conductor/tasks/live_migrate`` for live migration action;
++
++In these files we will insert ``action_type`` element into
++``filter_properties``. It will be set to the corresponding action. Probably
++best type for this is ``nova.compute.instance_actions`` enum and we want to add
++missing live migration action to it.
++
++
++Alternatives
++------------
++
++Another way of doing this is to modify ``FilterScheduler`` and add this flag in
++``schedule_run_instance`` using aforementioned if-else statement. This is an
++improper way of developing this feature because in the future there can be an
++action type that is indistinguishable from others using only the current set of
++``filter_properties``.
++
++
++Data model impact
++-----------------
++
++None
++
++
++REST API impact
++---------------
++
++None
++
++
++Security impact
++---------------
++
++None
++
++
++Notifications impact
++--------------------
++
++None
++
++
++Other end user impact
++---------------------
++
++None
++
++
++Performance Impact
++------------------
++
++Solution we propose is adding only one assignment to methods where scheduling
++requests are created. This should have no impact on performance.
++
++
++Other deployer impact
++---------------------
++
++If deployer is using his custom filters he will have more information to decide
++on which node a particular VM should be launched. Additional flag in
++``filter_properties`` won't affect any already developed filters or
++``FilterScheduler`` extensions.
++
++
++Developer impact
++----------------
++
++Developers will have more flexibility in defining rules in stock filters.
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  mateusz-blaszkowski-8
++
++Other contributors:
++  michal-dulko-f
++
++
++Work Items
++----------
++
++* Insert ``action_type`` to ``filter_properties`` in proper places.
++* Add unit tests for all scheduling actions checking if ``action_type``
++   element is present in ``filter_properties``.
++
++
++Dependencies
++============
++
++None
++
++
++Testing
++=======
++
++As this feature at the start will be used only if user will modify filters or
++``FilterScheduler`` on his own it doesn't need any new integration tests. Unit
++tests will be sufficient.
++
++
++Documentation Impact
++====================
++
++None
++
++
++References
++==========
++
++None
++
++
+-- 
+1.9.1
+

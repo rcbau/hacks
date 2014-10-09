@@ -1,0 +1,200 @@
+From 03ac4e1236a2e07a82950fc17472db8ebba4e13e Mon Sep 17 00:00:00 2001
+From: JingYuan <yj.yuan@huawei.com>
+Date: Sun, 4 May 2014 22:17:10 +0800
+Subject: [PATCH] Support hot-plug USB device
+
+Users have requirements of using USB device, the detailed information can refer
+to BP https://blueprints.launchpad.net/nova/+spec/usb-passthrough.
+There maybe some VMs which need to use USB device dynamically, so I think it is
+necessary to provide function of hot-plug USB device.
+
+blueprint usb-hot-plug
+
+Change-Id: I4044693074e52a65a0c1cc51a07fbf6c4b4a0535
+---
+ specs/juno/usb-hot-plug.rst | 173 ++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 173 insertions(+)
+ create mode 100644 specs/juno/usb-hot-plug.rst
+
+diff --git a/specs/juno/usb-hot-plug.rst b/specs/juno/usb-hot-plug.rst
+new file mode 100644
+index 0000000..0a2c6f2
+--- /dev/null
++++ b/specs/juno/usb-hot-plug.rst
+@@ -0,0 +1,173 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++===========================
++Support hot-plug USB device
++===========================
++
++Include the URL of your launchpad blueprint:
++
++https://blueprints.launchpad.net/nova/+spec/usb-hot-plug
++
++Users have requirements of using USB device, the detailed information can
++refer to BP
++https://blueprints.launchpad.net/nova/+spec/usb-passthrough.
++
++There maybe some VMs which need to use USB device, so I think it is
++necessary to provide function of hot-plug USB device.
++
++
++Problem description
++===================
++
++Use cases:
++
++A user wants to install ERP software which needs USB-KEY for authentication
++in a running VM. he proposes request to system administrator and they
++perform the following steps:
++
++1. The administrator goes to the machine room and insert USB-KEY to host
++where the VM is running in.
++
++2. The administrator adds some configuration(like white-list with USB-KEY's
++product and vendor information) to nova-compute, restart nova-compute to
++trigger it to discovery new devices and save them to DB.
++
++3. The end user queries USB-KEY information from API or portal.
++
++4. The end user attaches USB-KEY to VM.
++
++
++Proposed change
++===============
++
++We should add the following functions to nova:
++
++1. Add API to query USB device information of a hypervisor.
++
++2. Add API to attach USB device to a VM.
++
++3. Add API to detach USB device from a VM.
++
++Alternatives
++------------
++
++None
++
++Data model impact
++-----------------
++
++It can refer to USB-passthrough in
++https://review.openstack.org/#/c/86118/
++
++
++REST API impact
++---------------
++
++* API for attach USB device to VM
++
++V2 API specification:
++
++Post  v2/​{tenant_id}​/servers/​{server_id}/action
++
++{
++
++  "attach_usb_devices": {"usb_devices_requests":[{"id": 1}]}
++
++}
++
++V3 API specification:
++
++Post  v3​/servers/​{server_id}/action
++
++
++* API for detach USB device from VM
++
++V2 API specification:
++
++Post  v2/​{tenant_id}​/servers/​{server_id}/action
++
++{
++
++  "detach_usb_devices": {"usb_devices_requests":[{"id": 1}]}
++
++}
++
++V3 API specification:
++
++Post  v3​/servers/​{server_id}/action
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++It can refer to USB-passthrough in
++https://review.openstack.org/#/c/86118/
++
++Performance Impact
++------------------
++
++None
++
++Other deployer impact
++---------------------
++
++None
++
++Developer impact
++----------------
++
++It can refer to USB-passthrough in
++https://review.openstack.org/#/c/86118/
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  <Jing Yuan>
++
++
++Work Items
++----------
++
++Step 1: Implement function of attach USB device to VM.
++
++Step 2: Implement function of detach USB device from VM.
++
++Dependencies
++============
++
++None
++
++
++Testing
++=======
++
++It is necessary to add tempest for this new function.
++
++Documentation Impact
++====================
++
++It is necessary to add doc for how to use this new function.
++
++
++References
++==========
++
++None
+-- 
+1.9.1
+

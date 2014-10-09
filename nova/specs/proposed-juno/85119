@@ -1,0 +1,166 @@
+From 1c350e18336aa5d1be44807eb96f461f3ff6339b Mon Sep 17 00:00:00 2001
+From: Michal Dubiel <md@semihalf.com>
+Date: Thu, 3 Apr 2014 19:36:17 +0200
+Subject: [PATCH] Add initial support for FreeBSD host as a compute node
+
+The purpose of this blueprint is introducing support for FreeBSD host as
+a nova compute node.
+
+Change-Id: I80804f0db3f9dde7f097411b6537515b7aa40897
+---
+ specs/juno/freebsd-compute-node.rst | 143 ++++++++++++++++++++++++++++++++++++
+ 1 file changed, 143 insertions(+)
+ create mode 100644 specs/juno/freebsd-compute-node.rst
+
+diff --git a/specs/juno/freebsd-compute-node.rst b/specs/juno/freebsd-compute-node.rst
+new file mode 100644
+index 0000000..d565a9a
+--- /dev/null
++++ b/specs/juno/freebsd-compute-node.rst
+@@ -0,0 +1,143 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++======================================================
++Add initial support for FreeBSD host as a compute node
++======================================================
++
++https://blueprints.launchpad.net/nova/+spec/freebsd-compute-node
++
++The purpose of this work is to provide support for compute nodes running on
++the FreeBSD operating system. Those will be able to run VMs with either qemu or
++the native FreeBSD hypervisor - bhyve. Also it will include a minimal
++nova-network driver supporting the bridge mode networks.
++
++
++Problem description
++===================
++
++Right now deployers are not able to build their cloud using FreeBSD as a host
++for compute node servers. There is no support for that OS in nova. Consequently,
++recently grown FreeBSD native hypervisor - bhyve can not be utilized.
++
++
++Proposed change
++===============
++
++Extend existing libvirt compute driver so that it supports both qemu and bhyve
++managed VMs on FreeBSD platforms, along with other necessary adjustments for
++the nova.virt subsystem and simple bridge mode networking.
++
++Alternatives
++------------
++
++An alternative approach would be to implement separate, native bhyve compute
++driver for nova. Still, necessity for the freebsd_net driver for nova-network
++would apply here. This path seems to be more complicated and harder to
++accomplish.
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++None
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++None
++
++Performance Impact
++------------------
++
++None
++
++Other deployer impact
++---------------------
++
++None
++
++Developer impact
++----------------
++
++None
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  <md-sh>
++
++Work Items
++----------
++
++* Adjustments to the libvirt compute driver to support new hypervisor backend
++  - bhyve.
++
++* Adjustments to the libvirt vif driver to support other than linux_net
++  nova-network driver.
++
++* Implementation of libvirt firewall driver as iptables are not available on
++  FreeBSD
++
++* Implementation of freebsd_net driver (equivalent of linux_net) for
++  nova-network to support guest networking.
++
++* Implementation of FreeBSD memory disk support (equivalent of loop device on
++  Linux) for nova.virt.disk.mount module, necessary for file injection into
++  guest's file systems.
++
++* Adjustments to nova.virt.configdrive module to support FreeBSD platform.
++
++
++Dependencies
++============
++
++Primary new dependency is the FreeBSD OS itself. There might be new command
++line tools dependency like 'mdconfig' ('losetup' on Linux), etc.
++
++
++Testing
++=======
++
++New CI for FreeBSD platform has to be introduced, where all unit and integration
++tests will be run.
++
++
++Documentation Impact
++====================
++
++* There has to be new installation guide for FreeBSD.
++
++* Configuration options reference should be updated with new value options.
++
++
++References
++==========
++
++* http://www.freebsd.org/
++
++* http://bhyve.org/
++
++* http://libvirt.org/
+-- 
+1.9.1
+

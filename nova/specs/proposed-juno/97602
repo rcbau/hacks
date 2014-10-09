@@ -1,0 +1,231 @@
+From 1086f2d00b92d05c92ed9e3eb5187d6c79fbdde7 Mon Sep 17 00:00:00 2001
+From: Mitsuhiro Tanino <mitsuhiro.tanino@hds.com>
+Date: Thu, 5 Jun 2014 12:18:16 -0400
+Subject: [PATCH] LVM: Support a volume-group on shared storage
+
+Current LVM cinder driver only supports iSCSI topology and a guest instance
+on nova compute is connected to a cinder volume(logical volume) on a
+volume-group via iSCSI target.
+
+This proposal adds a feature to connect cinder volume to an instance directly
+using LVM on a shared storage volume.
+
+As a result, an instance which uses cinder volume can directly issue I/O to
+volumes via FC and this provides better I/O performance to a instance.
+
+In this feature, both cinder and nova pieces are necessary, and blueprint
+for cinder piece was already approved.
+
+Change-Id: Ifdce68ef859e9cd2936f8678c9c49d8066d67704
+Implements: blueprint lvm-driver-for-shared-storage
+---
+ specs/juno/lvm-driver-for-shared-storage.rst | 197 +++++++++++++++++++++++++++
+ 1 file changed, 197 insertions(+)
+ create mode 100644 specs/juno/lvm-driver-for-shared-storage.rst
+
+diff --git a/specs/juno/lvm-driver-for-shared-storage.rst b/specs/juno/lvm-driver-for-shared-storage.rst
+new file mode 100644
+index 0000000..a36df37
+--- /dev/null
++++ b/specs/juno/lvm-driver-for-shared-storage.rst
+@@ -0,0 +1,197 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++==========================================
++Support LVM on a shared storage volume
++==========================================
++
++https://blueprints.launchpad.net/nova/+spec/lvm-driver-for-shared-storage
++
++Current LVM cinder driver only supports iSCSI topology and a guest instance
++on nova compute is connected to a cinder volume(logical volume) on a
++volume-group via iSCSI target.
++
++This proposal add a feature to connect cinder volume to an instance directly
++using LVM on a shared storage volume.
++
++As a result, an instance which uses cinder volume can directly issue I/O to
++volumes via FC and this provides better I/O performance to a instance.
++
++In this feature, both cinder and nova pieces are necessary, and blueprint
++for cinder piece was already approved.
++
++https://blueprints.launchpad.net/cinder/+spec/lvm-driver-for-shared-storage
++
++
++Problem description
++===================
++
++Here is a use case for this proposal.
++
++Conventionally, operations to an enterprise storage such as volume creation,
++deletion, snapshot, etc are only permitted system administrator and they
++handle these operations after carefully examining.
++
++In OpenStack cloud environment, workloads of storages have been increasing
++and it is difficult to manage the workloads because every user have a
++permission to execute storage operations via cinder.
++
++In order to use expensive storage more efficiently, I think it is better to
++reduce hardware based storage workload by offloading the workload to software
++based volume operation on a case by case basis.
++
++If we have two drivers in regards to a storage, we can provide volumes
++both way as the situation demands. For example,
++
++- As for "Standard" type storage, use proposed software based LVM
++  cinder driver.
++- As for "High performance" type storage, use hardware based cinder driver.
++  (Ex. Higher charge than "Standard" volume)
++
++For more detail of this proposal such as benefits, use-cases, please refer
++URLs in section "Reference".
++
++Proposed change
++===============
++
++Introduce LibvirtSharedLvmDriver class to virt.libvirt.volume and add the
++class to list of volume_drivers to handle in case of "lvm".
++
++In this class, connect_volume() and disconnect_volume() will be implemented
++to handle LVM on a shared storage volume.
++
++- connect_volume()
++
++  When a storage volume is shared to multiple nodes, volume activation to
++  created logical volume(LV) is necessary before attaching a created volume
++  to an instance.
++  After volume creation at cinder node, only cinder node knows the volume and
++  other compute nodes do not know about the created LV. Therefore, these two
++  steps are necessary to attach the created volume.
++
++  - Update LV list and status using "lvs" at a compute node.
++  - Activate LV using "lvchange -ay" is required at a compute node.
++
++  After volume activation, access device path /dev/VG1/LV1 is created at
++  compute node. Libvirt and qemu can handle device path and attach a volume
++  using this.
++
++- disconnect_volume()
++  After detaching a cinder volume from an instance, the compute node does
++  not have to access a cinder volume. In order to keep a consistency of
++  cinder volume, volume deactivation using "lvchange -an" is required at a
++  compute node. This operation will remove access device path /dev/VG1/LV1
++  so that the compute node can't access to the volume using the device
++  path until the volume will be attached to an instance again.
++  In this method, underlying connection to LVM on shared storage volume
++  is continuously maintained.
++
++Alternatives
++------------
++
++None.
++
++Data model impact
++-----------------
++
++None.
++
++REST API impact
++---------------
++
++None.
++
++Security impact
++---------------
++
++None.
++
++Notifications impact
++--------------------
++
++None.
++
++Other end user impact
++---------------------
++
++The user attaches and detaches cinder volumes which are created from
++LVM on a shared storage volume in the same way that any user does.
++
++Performance Impact
++------------------
++
++There is performance impact of IOPs by using LVM compared to using
++a single underlying volume but the impact is subtle.
++
++Other deployer impact
++---------------------
++
++To apply this feature to OpenStack environment, storage admin needs to
++prepare a storage volume which is shared between cinder node and compute
++nodes and also needs to create a volume group on top of the storage volume.
++
++And then, storage admin needs to configure cinder.conf to use sharedLVM
++driver and the created storage volume as a cinder backend-storage.
++
++Here is a sample of cinder.conf::
++
++ enabled_backends=SharedLVM
++ [SharedLVM]
++ volume_group=cinder-shared-volume
++ volume_driver=cinder.volume.drivers.lvm.SharedLVMDriver
++ volume_backend_name=SharedLVM
++
++Configuration of nova driver is not required in this feature.
++
++Developer impact
++----------------
++
++None.
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++   mitsuhiro-tanino
++
++Work Items
++----------
++
++None.
++
++
++Dependencies
++============
++
++This feature depends on following cinder blueprint.
++ https://blueprints.launchpad.net/cinder/+spec/lvm-driver-for-shared-storage
++
++Testing
++=======
++
++Unit tests will be added in nova.
++
++Documentation Impact
++====================
++
++Cinder driver documentation will be added.
++There is no impact to nova documentation.
++
++References
++==========
++
++Blueprints:
++ https://blueprints.launchpad.net/nova/+spec/lvm-driver-for-shared-storage
++ https://blueprints.launchpad.net/cinder/+spec/lvm-driver-for-shared-storage
++
++Wiki:
++ https://wiki.openstack.org/wiki/Cinder/NewLVMbasedDriverForSharedStorageInCinder
++
++openstack-dev discussion:
++ [openstack-dev] [Cinder] Support LVM on a shared LU
+-- 
+1.9.1
+

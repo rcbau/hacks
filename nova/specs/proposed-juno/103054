@@ -1,0 +1,225 @@
+From bd4f47265cf27e5e79d4b6965f9724301865120b Mon Sep 17 00:00:00 2001
+From: Kanagaraj Manickam <kanagaraj.manickam@hp.com>
+Date: Fri, 27 Jun 2014 13:54:50 +0530
+Subject: [PATCH] vmware: enables mutliple backend drivers
+
+It enables the multiple backend drivers for
+nova-compute to improve the node usage,
+scalability of nova-compute and to enable
+one nova-compute per hypervisor
+
+Change-Id: I9c90246b3bb5419efa04b6b66ef1c026b556891d
+---
+ specs/juno/nova-compute-multi-backend-support.rst | 200 ++++++++++++++++++++++
+ 1 file changed, 200 insertions(+)
+ create mode 100644 specs/juno/nova-compute-multi-backend-support.rst
+
+diff --git a/specs/juno/nova-compute-multi-backend-support.rst b/specs/juno/nova-compute-multi-backend-support.rst
+new file mode 100644
+index 0000000..123d22a
+--- /dev/null
++++ b/specs/juno/nova-compute-multi-backend-support.rst
+@@ -0,0 +1,200 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++=============================================
++Nova-compute multiple backend drivers support
++=============================================
++
++https://blueprints.launchpad.net/nova/+spec/multi-back-ends-for-nova-compute
++
++This blueprint enables to run multiple nova-compute process from a given
++Node where nova-compute is installed.  And is similar to
++Cinder feature https://wiki.openstack.org/wiki/Cinder-multi-backend
++
++Problem description
++===================
++
++Following are the issues exist with nova-compute:
++
++1.node is under utilized: Nova-compute is designed to configure with only
++one type of nova compute driver like kvm, vmware, citrix,etc. And for
++hypervisors like kvm, nova-compute is installed on the hypervisor node
++itself and here CPU, memory will be shared load will be high as
++hypervisor is running on the nova-compute. But for the vmware
++hypervisors, nova-compute is installed on the separate node and its
++called proxy for nova-compute. So the load on the proxy-compute node will
++be comparatively lesser and it will be more efficient if nova-compute node
++is allowed to configure multiple compute proxy driver similar to the
++cinder-volume multi-backend architecture.
++
++2. Scalability is  big challenge: By enabling the multiple back-end
++drivers, it helps to improve the scale-ability of the given nova-compute as
++it can handle more number of instance action across multiple backend
++drivers.
++
++3. One nova compute per hyervisor: It helps to model one nova-compute per
++hypervisor as decided in juno release onwards.
++
++
++Proposed change
++===============
++
++Cinder already solved the same issue by means of multi-backend and same can
++be leveraged for nova-compute  to launch one nova-compute process per backend
++driver as detailed below:
++
++Update the nova.conf such that all common configuration will go in the
++[DEFAULT] section and for each backend drirver, create one section as below:
++
++[DEAFULT]
++#back_ends will have comma separated set of compute drivers section
++#Each compute driver could be same or different
++back_ends = vcdriver1, vcdriver2, xen1
++
++[vcdriver1]
++...
++
++[vcdriver2]
++...
++
++[xen1]
++...
++
++With these configuration in place, when nova-compute starts, it will spawn
++3 nova-compute one for each of the configured driver.
++
++NOTE: This helps to launch different hypervisor drivers from the same node
++similar to cinder.
++
++Functionality wise there is no change and its only the service launching
++process change to address the drawbacks mentioned above.
++
++Alternatives
++------------
++
++For example, Consider the exemple of vmware VC driver.
++one nova-compute was supporting as many clusters in the
++given vcenter. Assume that admin wants to use a vcenter with 30 clusters,
++then in icehouse, only one nova-compute is sufficient to handle all  clusters
++But in juno design summit, it was decided that, there should be only one vmware
++cluster per nova-compute. so to support 30 clusters, admin needs to follow one
++of the work-around given below:
++
++1. Run 30 nova-compute nodes(servers) and each node for one cluster. Usually
++admin runs nova-compute on high-end servers, and it is an under utilization of
++server as only one nova-compute runs per server.
++
++2. In a given high-end node, run 30 compute-node process and each process
++with independent copy of nova.conf. Here admin needs to run nova-compute from
++the command line, as there can be only upstart service named 'nova-compute'
++per node.
++
++In both the case, admin needs to maintain the same nova.conf parameters in all
++30 nodes except the vmware->cluser_name parameter. This is more of error prone
++and for updating any of a given parameter is cumbersome, as it needs to be
++Updated across 30 node's nova.conf.
++
++Apart from this issue, running 30 compute process would imply that 30 different
++cache directories are required on the datastore. This would effectively kill
++the storage. By using multi backend support, this can be avoided as nova lock
++mechanism is file based in the image management
++.
++
++Data model impact
++-----------------
++No change
++
++REST API impact
++---------------
++
++No change
++
++Security impact
++---------------
++
++No change
++
++Notifications impact
++--------------------
++
++No change
++
++Other end user impact
++---------------------
++
++No change
++
++Performance Impact
++------------------
++
++As each backend will be exposed as separate nova-compute process as
++existing today, there won't be no performance impact.
++
++Other deployer impact
++---------------------
++
++Only change is nova.conf as mentioned in the "proposed change" page.
++
++Developer impact
++----------------
++
++No Change.
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++
++Primary assignee:
++  kanagaraj-manickam
++
++Other contributors:
++  None
++
++Work Items
++----------
++
++1. Nova compute module update to launch one nova-compute per driver
++
++2. Enable drivers to retrieve the driver parameters from respective section
++of nova.conf.
++
++3. Update the queue name.
++a. Current format: compute.<nova-compute-node-host-name>.
++b. New format: computee.<nova-compute-node-host-name>.<backend-name>
++
++4. Make sure that scheduler is able to identify the nova-computes launched
++in the multi backend modes and status updates are happening properly.
++
++5. Make sure that "nova-manage service list" command provides the correct
++details as configured in the multi backend mode.
++
++
++Dependencies
++============
++
++It will refer the existing functionality of cinder-volume
++
++Testing
++=======
++
++Here unit testing of all compute.py, and its counter part nova.service module,
++compute manager modules should be updated with new test cases for the updated
++codes.Make sure existing tests successfully passed
++
++
++Documentation Impact
++====================
++
++As mentioned the "proposed change" section, the nova.conf will be updated.
++
++
++References
++==========
++cinder multi-backed: https://wiki.openstack.org/wiki/Cinder-multi-backend
+-- 
+1.9.1
+
