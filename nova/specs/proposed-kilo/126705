@@ -1,0 +1,202 @@
+From 8077d098da440c2332bbd3aa269f82014c171a4e Mon Sep 17 00:00:00 2001
+From: "Chris St. Pierre" <stpierre@metacloud.com>
+Date: Tue, 7 Oct 2014 14:30:36 -0500
+Subject: [PATCH] Support a common cache for metadata
+
+Currently, the Nova metadata API stores its cache in memory, which
+prevents it from being shared amongst multiple hypervisors and thus
+reduces the hit rate. This blueprint proposes to optionally replace
+the in-memory cache with the new oslo.cache, allowing cache sharing
+between hypervisors.
+
+Change-Id: Ife6beb8508522ef334cc21d11f82380e87a2963c
+---
+ specs/kilo/approved/common-nova-metadata-cache.rst | 176 +++++++++++++++++++++
+ 1 file changed, 176 insertions(+)
+ create mode 100644 specs/kilo/approved/common-nova-metadata-cache.rst
+
+diff --git a/specs/kilo/approved/common-nova-metadata-cache.rst b/specs/kilo/approved/common-nova-metadata-cache.rst
+new file mode 100644
+index 0000000..7ab3e98
+--- /dev/null
++++ b/specs/kilo/approved/common-nova-metadata-cache.rst
+@@ -0,0 +1,176 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++===================================
++Support a common cache for metadata
++===================================
++
++https://blueprints.launchpad.net/nova/+spec/common-nova-metadata-cache
++
++Currently, the Nova metadata API stores its cache in memory, which
++prevents it from being shared amongst multiple hypervisors and thus
++reduces the hit rate. This blueprint proposes to optionally replace
++the in-memory cache with ``oslo.cache``, which is to be `rewritten
++with dogpile.cache <https://review.openstack.org/#/c/97155/>`_,
++allowing cache sharing between hypervisors.
++
++Problem description
++===================
++
++Under heavy use, the Nova metadata API can be a significant
++performance bottleneck. In our experience, this bottleneck can be
++greatly improved by implementing a longer-lived, shared cache. I have
++already proposed a change, https://review.openstack.org/#/c/119421/,
++that will make the cache time configurable, but that is of limited
++benefit when the cache cannot be shared amongst multiple hypervisors.
++
++Use Cases
++---------
++
++This improves the performance of the Nova metadata API in all cases,
++but particularly when the metadata API is used heavily. This use
++pattern can be common with configuration management systems that draw
++their own metadata from Nova, for instance.
++
++Project Priority
++----------------
++
++None.
++
++Proposed change
++===============
++
++By using ``oslo.cache`` to back the metadata cache, we can provide the
++option to share the cache between hypervisors by using memcached (for
++instance) and greatly increase the cache hit rate.
++
++The use of a common cache will be optional; the simple in-memory cache
++will still remain supported in order to keep simple deployments simple.
++
++Alternatives
++------------
++
++The only other way to increase cache hit rates is to increase the TTL
++of cache items, which we have already proposed.
++
++Data model impact
++-----------------
++
++None.
++
++REST API impact
++---------------
++
++None.
++
++Security impact
++---------------
++
++This actually makes it more difficult to launch a resource exhaustion
++attack, since the cache will no longer be stored in memory local to
++each hypervisor, but instead in a central system that can be protected
++(and set to expire the cache) independently.
++
++Notifications impact
++--------------------
++
++None.
++
++Other end user impact
++---------------------
++
++None.
++
++Performance Impact
++------------------
++
++If the central caching feature is enabled, the operator can expect:
++
++* Memory usage on each individual hypervisor to decrease;
++* Cache hits on the metadata API (and thus performance thereof) to
++  increase;
++* A new service (or an existing memcached service) that uses more
++  memory.
++
++Other deployer impact
++---------------------
++
++A new group, ``[metadata_cache]``, should be added to ``nova.conf``,
++to configure ``oslo.cache``. It is anticipated that it will contain
++the following options, all of which are exact analogs to the same
++options in the ``[cache]`` section of ``keystone.conf`` (see
++http://docs.openstack.org/developer/keystone/configuration.html#caching-layer),
++although the implementation of the rebuilt ``oslo.cache`` may change:
++
++* ``enabled``
++* ``debug_cache_backend``
++* ``backend``
++* ``expiration_time``
++* ``backend_argument``
++
++The defaults, although liable to change depending on how the new
++``oslo.cache`` is implemented, will be::
++
++    enabled = yes
++    debug_cache_backend = no
++    backend = dogpile.cache.memory
++    expiration_time = 15
++    backend_argument =
++
++This will mimic the current state of a completely in-memory cache.
++
++Developer impact
++----------------
++
++When writing unit tests that may use the metadata API, developers will
++need to select the memory cache backend.
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  stpierre
++
++Work Items
++----------
++
++#. Write the caching layer module. Depending on how much of the
++   existing Keystone key-value store is incorporated into the new
++   ``oslo.cache``, this can either be cribbed substantially from
++   Keystone, or from ``oslo.cache``.
++#. Update the metadata request handler to use the new caching layer
++   instead of the in-memory cache.
++
++Dependencies
++============
++
++This depends on the `oslo-cache-using-dogpile
++<https://review.openstack.org/#/c/97155/>`_ blueprint, which rewrites
++``oslo.cache`` to use ``dogpile.cache``.
++
++Testing
++=======
++
++The change linked above already extends unit tests to actually test
++the metadata request handler, so they should be sufficient to test
++that portion of it. New tests will need to be added to test the
++caching layer, but since that's not exposed functionally no new
++tempest tests should be necessary.
++
++Documentation Impact
++====================
++
++The options listed above will need to be added to the
++documentation. It is expected that much of the Keystone documentation
++(or new ``oslo.cache`` documentation) can be borrowed whole cloth.
++
++References
++==========
++
++None.
+-- 
+1.9.1
+

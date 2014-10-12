@@ -1,0 +1,172 @@
+From d09b1982fc0fb29f2dc57e13b12fc7797f839737 Mon Sep 17 00:00:00 2001
+From: "Chris St. Pierre" <stpierre@metacloud.com>
+Date: Tue, 7 Oct 2014 14:29:05 -0500
+Subject: [PATCH] Relax resource name restrictions
+
+This proposes to relax the artificial naming restrictions currently in
+place for resource (instance, flavor, etc.) names.
+
+Change-Id: Idd6c56d1ba131f7ac6abaecbf2afc68483b320c8
+---
+ .../approved/relax-resource-name-restrictions.rst  | 149 +++++++++++++++++++++
+ 1 file changed, 149 insertions(+)
+ create mode 100644 specs/kilo/approved/relax-resource-name-restrictions.rst
+
+diff --git a/specs/kilo/approved/relax-resource-name-restrictions.rst b/specs/kilo/approved/relax-resource-name-restrictions.rst
+new file mode 100644
+index 0000000..effc081
+--- /dev/null
++++ b/specs/kilo/approved/relax-resource-name-restrictions.rst
+@@ -0,0 +1,149 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++================================
++Relax resource name restrictions
++================================
++
++https://blueprints.launchpad.net/nova/+spec/relax-resource-name-restrictions
++
++Currently, the only allowed characters in most resource names are
++Unicode alphanumerics, space, and ``[.-_]``. This should be expanded
++to all printable unicode characters and horizontal spaces.
++
++Problem description
++===================
++
++Resource names are unnecessarily restricted. It's pretty much always a
++bad idea to add unnecessary restrictions without a good
++reason. Furthermore, the current restriction already allows Unicode,
++so any Unicode-related concerns should not be tied to this blueprint.
++
++Use Cases
++---------
++
++While there may not be an immediate need to use, for example, the
++ever-useful `PILE OF POO <http://codepoints.net/U+1F4A9>`_ in a flavor
++name, it's hard to come up with a reason people *shouldn't* be allowed
++to use it.
++
++Project Priority
++----------------
++
++None.
++
++Proposed change
++===============
++
++Instead of a strict whitelist of alphanumerics, space, and ``[.-_]``,
++we propose to allow all printable Unicode characters and horizontal
++spaces. With reference to `Unicode character categories
++<http://www.fileformat.info/info/unicode/category/index.htm>`_, the
++allowed characters will be:
++
++* All characters that are not in the ``C`` (Other, including control
++  and format characters) and ``Z`` (Separator) categories; and
++* Characters in the ``Zs`` (Separator, Space) category.
++
++Alternatives
++------------
++
++There are many other possible restrictions, but all of them are
++arbitrary in some way.
++
++Perhaps the most reasonable alternative would be to allow the Unicode
++subset that MySQL supports as ``utf8mb4``, which excludes four-byte
++Unicode characters, but this should be left as an implementation
++detail, and Nova itself shouldn't introduce its own additional
++restrictions, since it may be backended by other databases, or MySQL
++with wide character support.
++
++Data model impact
++-----------------
++
++None.
++
++REST API impact
++---------------
++
++The validation for many REST endpoints will change; for instance,
++creating a flavor called "m1.small+" will fail on Juno, but will
++succeed once this spec is implemented. That said, the new allowed
++characters are a strict superset of the old allowed characters, so
++this should only be an issue moving from Kilo to Juno; all resources
++created on Juno will work on Kilo.
++
++Security impact
++---------------
++
++None.
++
++Notifications impact
++--------------------
++
++None.
++
++Other end user impact
++---------------------
++
++None.
++
++Performance Impact
++------------------
++
++None.
++
++Other deployer impact
++---------------------
++
++None.
++
++Developer impact
++----------------
++
++None.
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  stpierre
++
++Work Items
++----------
++
++#. Create a new name validation regex that allows all printable
++   Unicode characters and horizontal spaces.
++#. Make all JSON Schema documents use the new regex for resource name
++   validation.
++
++Dependencies
++============
++
++None.
++
++Testing
++=======
++
++No new tempest tests are required; existing tempest tests that test
++resource name validation will need to be modified to include names
++that are now invalid under the new, relaxed, restrictions.
++
++Documentation Impact
++====================
++
++Docs that mention the old resource name restrictions will need to be
++updated to the new ones.
++
++References
++==========
++
++* Mailing list discussion: http://lists.openstack.org/pipermail/openstack-dev/2014-September/045917.html
++* Tempest test updates: https://review.openstack.org/#/c/120451/
++* Nova change: https://review.openstack.org/#/c/119741/
+-- 
+1.9.1
+
