@@ -1,5 +1,7 @@
 #!/usr/bin/python
 
+# Run this from a directory containing a checkout of nova-specs
+
 
 import json
 import re
