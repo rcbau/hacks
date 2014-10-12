@@ -9,8 +9,12 @@ print 'Which release are we talking about here?'
 release = sys.stdin.readline().rstrip()
 
 
-with open('%s.json' % release) as f:
-    data = json.loads(f.read())
+json_filename = '%s.json' % release
+if not os.path.exists(json_filename):
+    data = {}
+else:
+    with open(json_filename) as f:
+        data = json.loads(f.read())
 
 
 patches = []
@@ -24,9 +28,15 @@ for patch in os.listdir('proposed-%s' % release):
     if not patch in patches:
         print '------------------------------------------------------------------------'
         print 'Patch: %s' % patch
+        previously_approved = ''
         with open('proposed-%s/%s' %(release, patch)) as f:
             lines = f.readlines()[0:100]
+            for line in lines:
+                if line.lower().startswith('previously-approved: '):
+                    previously_approved = ':'.join(line.split(':')[1:]).lstrip()
+            
             print ''.join(lines)
+
         print
         print '*****'
         print
@@ -37,8 +47,11 @@ for patch in os.listdir('proposed-%s' % release):
         data.setdefault(topic, {})
         data[topic].setdefault(title, [])
         data[topic][title].append(patch)
+        if previously_approved:
+            data.setdefault('__previously_approved__', [])
+            data['__previously_approved__'].append(patch)
 
-        with open('juno.json', 'w') as f:
+        with open(json_filename, 'w') as f:
             f.write(json.dumps(data, indent=4, sort_keys=True))
 
         print '------------------------------------------------------------------------'

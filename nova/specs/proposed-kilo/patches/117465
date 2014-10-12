@@ -1,0 +1,246 @@
+From a6ea5395ef4b625706337f35d23f1b7334e1f2cd Mon Sep 17 00:00:00 2001
+From: Andreas Scheuring <andreas.scheuring@de.ibm.com>
+Date: Wed, 27 Aug 2014 19:32:01 +0200
+Subject: [PATCH] Blueprint for adding macvtap support to novas libvirt driver.
+
+Change-Id: Ib17d1929b2a02e291d7c9ba891421e3d49fac6b9
+Implements: blueprint macvtap-vif
+---
+ specs/kilo/macvtap-vif.rst | 225 +++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 225 insertions(+)
+ create mode 100644 specs/kilo/macvtap-vif.rst
+
+diff --git a/specs/kilo/macvtap-vif.rst b/specs/kilo/macvtap-vif.rst
+new file mode 100644
+index 0000000..218131f
+--- /dev/null
++++ b/specs/kilo/macvtap-vif.rst
+@@ -0,0 +1,225 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++
++====================================================================
++Add MacVTap as new virtual interface type for libvirt virtualization
++====================================================================
++
++https://blueprints.launchpad.net/nova/+spec/macvtap-vif
++
++This blueprint adds support for MacVTap in bridge mode to the Nova driver for
++libvirt. Therefore a new virtual interface type, let's call it "macvtap_bridge"
++, will be added.
++
++MacVTap network virtualization also requires a new Neutron plug-in and a new
++Neutron agent to be introduced. This Neutron-related work is described in the
++Neutron blueprint "macvtap-linuxbridge".
++
++
++Problem description
++===================
++
++**Support for network adapters not using promiscuous mode**
++
++MacVTap supports the use of VLAN and Flat networking with network adapters
++that have disabled promiscuous mode or that do not support promiscuous mode in
++the first place. Not using promiscuous mode on an OpenStack compute node allows
++network administrators to have a better control over what packets are seen by
++that node.
++
++Instead of relying on promiscuous mode in the underlying network adapter,
++the MacVTap device driver supports registering the MAC addresses of the
++instances in the underlying network adapter as unicast addresses.
++This unicast address registration is also known as "secondary unicast address
++registration" or "hardware MAC filtering". Unicast address registration can be
++supported by Linux network device drivers through a standard API. MacVtap can
++also be used with default network cards in promiscuous mode.
++
++Note: The use of VXLAN and GRE does not depend on promiscuous mode or unicast
++address registration, because the network traffic from and to instances is
++transferred through tunnels. In this case, the only  MAC address that needs
++to be known by the network adapter is the one of the tunnel endpoint.
++
++**Performance**
++
++MacVTap brings the instances closer to each other and to the network adapter,
++because there are less device driver levels involved compared to other
++vswitching technologies.
++As a result, performance should be improved in terms of less CPU consumption on
++the compute node, and a higher bulk data transfer rate.
++
++Because the MacVTap device will be instantiated in bridge mode, instances on
++the same hypervisor and in the same OpenStack tenant network can directly
++communicate with each other, without going to the external switch.
++
++
++Proposed change
++===============
++
++Add a new virtual interface to Nova's libvirt driver. The corresponding
++domain.xml notation would look like this:
++
++::
++
++  <interface type='direct'>
++  <source dev='eth0.17' mode=’bridge’/>
++  <model type='virtio' />
++  </interface>
++
++
++For VLAN networking, the whole solution (including the Neutron-related changes)
++would look like this:
++
++::
++
++  +-------------------------------------------------------+
++  |                                                       |
++  |                           configured by novacpu       |
++  |                                                       |
++  |          +----------------+      +-------------+      |
++  |          |    GUEST_1     |      |   GUEST_2   |      |
++  |          | +----+  +----+ |      |  +----+     |      |
++  |          | |eth0|  |eth1| |      |  |eth0|     |      |
++  |          +-+--+-+--+--+-+-+      +--+--+-+-----+      |
++  |               |       |                |              |
++  |               |       |                |              |
++  |               |       |                |              |
++  |        +------+-+   +-+------+    +----+---+          |
++  |        |macVtap0|   |macVtap1|    |macVtap2|          |
++  |        +-----+--+   +---+----+    +----+---+          |
++  |              |          |              |              |
++  +-------------------------------------------------------+
++                 |          |              |
++                 |          +-----------+  |
++                 |                      |  |
++           +-------------------------------------+
++           |     |                      |  |     |
++           |  +--+----+               +-+--+--+  |
++           |  |eth0.17|               |eth0.18|  |
++           |  +---+---+               +---+---+  |
++           |      |                       |      |
++           |      +--------+--------------+      |
++           |               |                     |
++           |             +-+--+                  |
++           |             |eth0|                  |
++           |             +----+                  |
++           |               configured by l2 agent|
++           +-------------------------------------+
++
++
++For each neutron network a vlan device (in this picture eth0.17, eth0.18) will
++be created. Each guest is attached via a MacVtap to this vlan device.
++
++
++**Restrictions**
++
++* Only support for a standalone OpenStack compute node, not for the OpenStack
++  network node (dhcp, routing, floatingip). Network nodes still requires the
++  traditional linuxbridge or openvswitch plug-in/agent to allow dhcp, routing
++  and floatingip.
++
++* Only the NoopFirewallDriver is supported. As iptables or ebtables cannot be
++  applied on MacVTap, we see the following impact:
++
++    * No security groups and rules support
++    * "no-mac-spoofing" filters not supported
++
++
++Alternatives
++------------
++
++Implement unicast registration of MAC addresses in linuxbridge or in
++openvswitch.
++
++
++Data model impact
++-----------------
++
++no
++
++REST API impact
++---------------
++
++no
++
++Security impact
++---------------
++
++Only NoopFirewall driver supported. As a result:
++
++* No security groups and rules
++* No spoofing prevention
++
++
++Notifications impact
++--------------------
++
++no
++
++Other end user impact
++---------------------
++
++no
++
++Performance Impact
++------------------
++
++MacVTap should improve the performance.
++
++
++Other deployer impact
++---------------------
++
++no
++
++Developer impact
++----------------
++
++no
++
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  andreas-scheuring
++
++
++Work Items
++----------
++
++
++Dependencies
++============
++
++Depends on Neutron blueprint "linuxbridge-macvtap":
++https://blueprints.launchpad.net/neutron/+spec/macvtap-linuxbridge
++
++
++Testing
++=======
++
++* Unittest
++* Tempest? To be discussed!
++* Third Party CI? To be discussed!
++
++
++Documentation Impact
++====================
++
++no
++
++
++References
++==========
++
++Neutron blueprint "linuxbridge-macvtap":
++https://blueprints.launchpad.net/neutron/+spec/macvtap-linuxbridge
+-- 
+1.9.1
+

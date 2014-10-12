@@ -1,0 +1,84 @@
+{
+    "API": {
+        "Add instance administrative lock status to the instance detail results": [
+            "127139"
+        ], 
+        "Add user limits to the limits API (as well as project limits)": [
+            "127094"
+        ], 
+        "Allow all printable characters in resource names": [
+            "126696"
+        ], 
+        "Implement instance tagging": [
+            "127281"
+        ], 
+        "Microversion support": [
+            "127127"
+        ], 
+        "Support X509 keypairs": [
+            "105034"
+        ]
+    }, 
+    "Containers Service": {
+        "Initial specification": [
+            "114044"
+        ]
+    }, 
+    "Hypervisor: Hyper-V": {
+        "Allow volumes to be stored on SMB shares instead of just iSCSI": [
+            "102190"
+        ]
+    }, 
+    "Hypervisor: VMWare": {
+        "Add support for the HTML5 console": [
+            "127283"
+        ], 
+        "Allow Nova to access a VMWare image store over NFS": [
+            "126866"
+        ]
+    }, 
+    "Hypervisor: libvirt": {
+        "Add a new linuxbridge VIF type, macvtap": [
+            "117465"
+        ], 
+        "Add support for SMBFS as a image storage backend": [
+            "103203"
+        ], 
+        "Support libvirt storage pools": [
+            "126978"
+        ]
+    }, 
+    "Instance features": {
+        "Support direct LVM storage where the instance is using Cinder's LVM driver": [
+            "127318"
+        ]
+    }, 
+    "Internationalization": {
+        "Enable lazy translations of strings": [
+            "126717"
+        ]
+    }, 
+    "Scheduler": {
+        "Add an IOPS weigher": [
+            "97520"
+        ], 
+        "Allow limiting the flavors that can be scheduled on certain host aggregates": [
+            "122530"
+        ], 
+        "Move select_destinations() to using a request object": [
+            "127612"
+        ]
+    }, 
+    "Security": {
+        "Provide a reference implementation for console proxies that uses TLS": [
+            "126958"
+        ]
+    }, 
+    "__previously_approved__": [
+        "126717", 
+        "126978", 
+        "97520", 
+        "127281", 
+        "126958"
+    ]
+}

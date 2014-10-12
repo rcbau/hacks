@@ -91,9 +91,7 @@
         ], 
         "Tweak the output of \"nova hypervisor-state\" to show the number of free vcpus after the cpu_allocation_ratio is taken into account": [
             "98058"
-        ]
-    }, 
-    "Administrative features": {
+        ],
         "Add log translation hints": [
             "104509"
         ], 
@@ -326,7 +324,7 @@
             "103617"
         ]
     }, 
-    "VMWare specific features": {
+    "Hypervisor: VMWare": {
         "Add support for the Glance VMWare image store support": [
             "84281"
         ], 

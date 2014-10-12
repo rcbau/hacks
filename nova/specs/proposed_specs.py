@@ -24,7 +24,7 @@ if __name__ == '__main__':
     kilo_spec_re = re.compile('.*specs/kilo/.*\.rst.*')
     kilo_impl_re = re.compile('.*specs/kilo/implemented/.*\.rst.*')
 
-    
+
     for line in runcmd('ssh review.openstack.org gerrit query '
                        '--format=json --current-patch-set '
                        'project:openstack/nova-specs').split('\n'):
@@ -34,8 +34,8 @@ if __name__ == '__main__':
         j = json.loads(line)
         if not 'project' in j:
             continue
-        if j.get('status') == 'MERGED':
-            continue
+        #if j.get('status') == 'MERGED':
+        #    continue
 
         spec_match = []
         implemented = False
@@ -48,11 +48,11 @@ if __name__ == '__main__':
             m = kilo_impl_re.match(line)
             if m:
                 implemented = True
-            
+
             m = juno_spec_re.match(line)
             if m:
                 spec_match.append('juno')
-            
+
             m = kilo_spec_re.match(line)
             if m:
                 spec_match.append('kilo')
