@@ -1,0 +1,359 @@
+{
+    "API": {
+        "A proposal for how to support neutron in the v3 API": [
+            "92926"
+        ], 
+        "Add support for tagging to the EC2 API": [
+            "90276"
+        ], 
+        "Expose hypervisor metrics via an API": [
+            "91998"
+        ], 
+        "Expose nested project quotas": [
+            "102142"
+        ], 
+        "Expose the available resources on a given hypervisor node": [
+            "102727", 
+            "104402"
+        ], 
+        "Include extra-specs information in the output of flavor show and list calls": [
+            "95408"
+        ], 
+        "More filters while listing EC2 volumes": [
+            "104450"
+        ], 
+        "Morphing the v3 API proposal into a v2.1 API": [
+            "84695"
+        ], 
+        "Pass through creation hints to cinder when auto-creating volumes on instance boot": [
+            "106330"
+        ], 
+        "Support X509 keypairs": [
+            "105034"
+        ], 
+        "Supporting micro-versions in the v2.1 API": [
+            "96139", 
+            "101648", 
+            "104418"
+        ]
+    }, 
+    "Administrative": {
+        "A scheme to support online SQL schema changes": [
+            "102545"
+        ], 
+        "Add a new nova service which pre-caches images on hypervisor nodes": [
+            "85768"
+        ], 
+        "Add additional database indexes to help address slow SQL queries": [
+            "97520"
+        ], 
+        "Add support for monitoring the number of free IPs in a given fixed-ip block": [
+            "94299"
+        ], 
+        "Allow TLS for connections to spice and vnc consoles": [
+            "101026"
+        ], 
+        "Allow deletion of hypervisor nodes via nova-manage": [
+            "94536"
+        ], 
+        "Allow ephemeral instance storage to be served by cinder": [
+            "91321"
+        ], 
+        "Allow quotas to be defined in terms of multiples of a specified flavor": [
+            "84432"
+        ], 
+        "Allow volumes to be force detached from instances": [
+            "84048"
+        ], 
+        "Consume cinder event notifications": [
+            "87546"
+        ], 
+        "Continue moving cold migrations to conductor": [
+            "86907"
+        ], 
+        "Define a default quota flavor (post \"Allow quotas to be defined in terms of multiples of a specified flavor\")": [
+            "84521"
+        ], 
+        "Enable the nova metadata cache to be a shared resource to improve the hit rate": [
+            "121646"
+        ], 
+        "Implement support for nested quotas": [
+            "110639"
+        ], 
+        "Make TCP keepalive tunable": [
+            "87427"
+        ], 
+        "More clearly mark auto disabled hypervisors in the SQL database": [
+            "88515"
+        ], 
+        "Refactor the iSCSI driver to support other iSCSI transports besides TCP": [
+            "86637"
+        ], 
+        "Tweak the output of \"nova hypervisor-state\" to show the number of free vcpus after the cpu_allocation_ratio is taken into account": [
+            "98058"
+        ]
+    }, 
+    "Administrative features": {
+        "Add log translation hints": [
+            "104509"
+        ], 
+        "Allow more than one hypervisor driver to be used per nova-compute process": [
+            "103054"
+        ], 
+        "Implement a heartbeat for nova services": [
+            "102540"
+        ], 
+        "Implement support for nested quotas": [
+            "102201"
+        ]
+    }, 
+    "Hypervisor: Docker": {
+        "Proposed re-integration of the docker driver": [
+            "103571"
+        ]
+    }, 
+    "Hypervisor: FreeBSD": {
+        "Add FreeBSD as a supported hypervisor operating system": [
+            "85119"
+        ]
+    }, 
+    "Hypervisor: Hyper-V": {
+        "Add power off and reboot support": [
+            "104630"
+        ], 
+        "Allow the creation of highly available instances": [
+            "105094"
+        ], 
+        "Allow volumes to be stored on SMB shares instead of just iSCSI": [
+            "102190"
+        ], 
+        "Support generation 2 virtual machines": [
+            "103945"
+        ], 
+        "Support the rescue instance operation": [
+            "105042"
+        ], 
+        "Use RemoteFX to expose GPU features of instances": [
+            "105041"
+        ]
+    }, 
+    "Hypervisor: Ironic": {
+        "Add config drive support": [
+            "98930"
+        ], 
+        "Support for selecting ironic nodes based on boot mode": [
+            "108582"
+        ]
+    }, 
+    "Hypervisor: libvirt": {
+        "Add support for SDSHypervisor Cinder volumes": [
+            "107244"
+        ], 
+        "Add support for SMBFS as a volume type": [
+            "103203"
+        ], 
+        "Add support for StorPool volumes": [
+            "115716"
+        ], 
+        "Add support for TPM pass-through to instances": [
+            "85558"
+        ], 
+        "Add support for the Parallels Cloud Server": [
+            "111335"
+        ], 
+        "Allow flavours to specify which libvirt storage engine is used": [
+            "91957"
+        ], 
+        "Allow instances to be booted via PXE instead of downloading an image from glance": [
+            "118474"
+        ], 
+        "Allow instances to be pinned to specific hypervisor CPUs": [
+            "92054"
+        ], 
+        "Allow swap files to be configured to a separate location from disk files": [
+            "83727"
+        ], 
+        "Enable Intel dpdkvhost support for attaching VIFs to instances": [
+            "95805"
+        ], 
+        "Enable vCPUs to be added to running instances": [
+            "86273"
+        ], 
+        "Make hugepages accessible to instances": [
+            "96821"
+        ], 
+        "Make image snapshot upload plugable so that we can support other protocols": [
+            "84671"
+        ], 
+        "Make the USB controller exposed to instances configurable": [
+            "88334"
+        ], 
+        "Make the virtio driver more configurable": [
+            "103797"
+        ], 
+        "Separate out the various supported virtualization types (kvm, lxc, etc) into separate classes": [
+            "91460"
+        ], 
+        "Support incremental snapshots of instances": [
+            "106306"
+        ], 
+        "Use libvirt's sharing policy feature to control access to VNC consoles": [
+            "86901"
+        ]
+    }, 
+    "Image feature": {
+        "Convert to using the glance v2 API": [
+            "84887"
+        ], 
+        "Pre-fetch specific images to hypervisor nodes to speed up boot times": [
+            "85792"
+        ]
+    }, 
+    "Image features": {
+        "Make fetching images from glance pluggable so that its easier to write alternate implementations": [
+            "86583"
+        ]
+    }, 
+    "Instance features": {
+        "Add spot instance support": [
+            "104883"
+        ], 
+        "Add support for GPFS instance image storage": [
+            "105385"
+        ], 
+        "Allow USB devices to be passed through to instances": [
+            "86118"
+        ], 
+        "Allow instance resize without migration": [
+            "105466", 
+            "105479"
+        ], 
+        "Allow users of Nova such as Trove \"hide\" instances running as a certain user from the user": [
+            "90678"
+        ], 
+        "Configure the vCPU over-commitment for specific flavors": [
+            "87213"
+        ], 
+        "Enable USB redirection over remote console connections": [
+            "89834"
+        ], 
+        "Enable changing the owner of an instance. There were two proposed implementations": [
+            "85811", 
+            "105367"
+        ], 
+        "Implement VMThunder support for booting many identical instances using boot-from-volume": [
+            "94060", 
+            "108241", 
+            "108244"
+        ], 
+        "Improve instance boot time": [
+            "111745"
+        ], 
+        "Refuse to resize instances to flavors with less disk space": [
+            "100953"
+        ], 
+        "Support USB hot plug": [
+            "89842"
+        ], 
+        "Support deletion of volumes when an instance terminates": [
+            "89777"
+        ], 
+        "Support snapshots of ephemeral root volumes": [
+            "101295"
+        ], 
+        "Support specifying the USB controller for USB passthrough": [
+            "88337"
+        ]
+    }, 
+    "Networking": {
+        "Associate the least recently used fixed IP address": [
+            "102688"
+        ], 
+        "Reconcile how DNS resolution works between Nova and Neutron": [
+            "90150"
+        ], 
+        "Refactor nova-network to be maintainable on freebsd": [
+            "95328"
+        ], 
+        "nova-network to Neutron migration planning": [
+            "101921"
+        ]
+    }, 
+    "Notifications": {
+        "Add a message field to instance update notifications": [
+            "84526"
+        ]
+    }, 
+    "Performance": {
+        "Dynamically alter the interval nova polls components at based on load and expected time for an operation to complete": [
+            "122705"
+        ], 
+        "Provide a daemon to support rootwrap to improve performance": [
+            "105404"
+        ]
+    }, 
+    "Scheduler": {
+        "A proposed scheduler which doesn't use a SQL database": [
+            "92128"
+        ], 
+        "Add a new filter to implement project isolation features": [
+            "116280"
+        ], 
+        "Add additional monitors for utilisation based scheduling": [
+            "89766"
+        ], 
+        "Add an action type to the filter scheduler so it knows why a scheduling operation is occurring": [
+            "97103"
+        ], 
+        "Add utilisation based weighers": [
+            "90647"
+        ], 
+        "Implement percentage based weighers": [
+            "105410"
+        ], 
+        "Normalize weights": [
+            "82456"
+        ], 
+        "Use the scheduler to more strongly validate the destination hypervisor node for live migration of instances": [
+            "89502"
+        ]
+    }, 
+    "Security": {
+        "Strongly validate the tenant and user for quota consuming requests with keystone": [
+            "92507"
+        ], 
+        "Use the keystone v3 API": [
+            "103617"
+        ]
+    }, 
+    "VMWare specific features": {
+        "Add support for the Glance VMWare image store support": [
+            "84281"
+        ], 
+        "Allow Nova to access a VMWare image store over NFS": [
+            "104211"
+        ], 
+        "Expose vCenter resource pools": [
+            "84629"
+        ], 
+        "Image cache improvements": [
+            "84662"
+        ], 
+        "Provide an alternative place to store vCenter usernames and passwords instead of nova.conf": [
+            "85502", 
+            "85510"
+        ], 
+        "Refactor utility classes": [
+            "84535"
+        ]
+    }, 
+    "__ignore__": {
+        "__ignore__": [
+            "101460", 
+            "102383", 
+            "102444", 
+            "111308", 
+            "120130"
+        ]
+    }
+}
