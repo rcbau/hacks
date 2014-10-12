@@ -19,6 +19,9 @@ else:
 
 patches = []
 for topic in data:
+    if topic == '__previously_approved__':
+        continue
+
     for title in data[topic]:
         patches.extend(data[topic][title])
 print 'Already seen patches: %s (%d in total)' %(patches, len(patches))

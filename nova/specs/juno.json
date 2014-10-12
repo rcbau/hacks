@@ -47,6 +47,9 @@
         "Add additional database indexes to help address slow SQL queries": [
             "97520"
         ], 
+        "Add log translation hints": [
+            "104509"
+        ], 
         "Add support for monitoring the number of free IPs in a given fixed-ip block": [
             "94299"
         ], 
@@ -58,6 +61,9 @@
         ], 
         "Allow ephemeral instance storage to be served by cinder": [
             "91321"
+        ], 
+        "Allow more than one hypervisor driver to be used per nova-compute process": [
+            "103054"
         ], 
         "Allow quotas to be defined in terms of multiples of a specified flavor": [
             "84432"
@@ -77,8 +83,11 @@
         "Enable the nova metadata cache to be a shared resource to improve the hit rate": [
             "121646"
         ], 
+        "Implement a heartbeat for nova services": [
+            "102540"
+        ], 
         "Implement support for nested quotas": [
-            "110639"
+            "102201"
         ], 
         "Make TCP keepalive tunable": [
             "87427"
@@ -91,18 +100,6 @@
         ], 
         "Tweak the output of \"nova hypervisor-state\" to show the number of free vcpus after the cpu_allocation_ratio is taken into account": [
             "98058"
-        ],
-        "Add log translation hints": [
-            "104509"
-        ], 
-        "Allow more than one hypervisor driver to be used per nova-compute process": [
-            "103054"
-        ], 
-        "Implement a heartbeat for nova services": [
-            "102540"
-        ], 
-        "Implement support for nested quotas": [
-            "102201"
         ]
     }, 
     "Hypervisor: Docker": {
@@ -141,6 +138,27 @@
         ], 
         "Support for selecting ironic nodes based on boot mode": [
             "108582"
+        ]
+    }, 
+    "Hypervisor: VMWare": {
+        "Add support for the Glance VMWare image store support": [
+            "84281"
+        ], 
+        "Allow Nova to access a VMWare image store over NFS": [
+            "104211"
+        ], 
+        "Expose vCenter resource pools": [
+            "84629"
+        ], 
+        "Image cache improvements": [
+            "84662"
+        ], 
+        "Provide an alternative place to store vCenter usernames and passwords instead of nova.conf": [
+            "85502", 
+            "85510"
+        ], 
+        "Refactor utility classes": [
+            "84535"
         ]
     }, 
     "Hypervisor: libvirt": {
@@ -324,34 +342,14 @@
             "103617"
         ]
     }, 
-    "Hypervisor: VMWare": {
-        "Add support for the Glance VMWare image store support": [
-            "84281"
-        ], 
-        "Allow Nova to access a VMWare image store over NFS": [
-            "104211"
-        ], 
-        "Expose vCenter resource pools": [
-            "84629"
-        ], 
-        "Image cache improvements": [
-            "84662"
-        ], 
-        "Provide an alternative place to store vCenter usernames and passwords instead of nova.conf": [
-            "85502", 
-            "85510"
-        ], 
-        "Refactor utility classes": [
-            "84535"
-        ]
-    }, 
     "__ignore__": {
         "__ignore__": [
             "101460", 
             "102383", 
             "102444", 
             "111308", 
-            "120130"
+            "120130", 
+            "124930"
         ]
     }
 }

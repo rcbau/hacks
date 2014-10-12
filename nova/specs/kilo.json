@@ -15,6 +15,9 @@
         "Microversion support": [
             "127127"
         ], 
+        "Move policy validation to just the API layer": [
+            "127160"
+        ], 
         "Support X509 keypairs": [
             "105034"
         ]
@@ -46,6 +49,9 @@
         ], 
         "Support libvirt storage pools": [
             "126978"
+        ], 
+        "Support quiesce filesystems during snapshot": [
+            "126966"
         ]
     }, 
     "Instance features": {
@@ -65,8 +71,12 @@
         "Allow limiting the flavors that can be scheduled on certain host aggregates": [
             "122530"
         ], 
+        "Implement resource objects in the resource tracker": [
+            "127609"
+        ], 
         "Move select_destinations() to using a request object": [
-            "127612"
+            "127612", 
+            "127610"
         ]
     }, 
     "Security": {
@@ -79,6 +89,7 @@
         "126978", 
         "97520", 
         "127281", 
-        "126958"
+        "126958", 
+        "126966"
     ]
 }
