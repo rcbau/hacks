@@ -1,0 +1,157 @@
+From 24eb126a1287281dcdd8e08f9cfaff8d75d3c150 Mon Sep 17 00:00:00 2001
+From: "boh.ricky" <boh.ricky@gmail.com>
+Date: Sat, 26 Apr 2014 23:46:05 +0800
+Subject: [PATCH] servers list API support specify multi-status
+
+Support to specify multiple status values concurrently in servers list API.
+
+blueprint servers-list-support-multi-status
+
+Change-Id: I75ee46d1fd2f165c58380b6f3c3bf9e376ae9d79
+---
+ specs/juno/servers-list-support-multi-status.rst | 133 +++++++++++++++++++++++
+ 1 file changed, 133 insertions(+)
+ create mode 100644 specs/juno/servers-list-support-multi-status.rst
+
+diff --git a/specs/juno/servers-list-support-multi-status.rst b/specs/juno/servers-list-support-multi-status.rst
+new file mode 100644
+index 0000000..193741d
+--- /dev/null
++++ b/specs/juno/servers-list-support-multi-status.rst
+@@ -0,0 +1,133 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++==============================================
++servers list API support specify multi-status
++==============================================
++
++https://blueprints.launchpad.net/nova/+spec/servers-list-support-multi-status
++
++Allow to specify multiple status value concurrently in the servers list API.
++
++Problem description
++===================
++
++Currently the service list API allows the user to specify an optional status
++value to use as a filter - for example to limit the list to only servers with
++a status of Active.
++
++However often the user wants to filter the list by a set of status values,
++for example list servers with a status of Active or Error,
++which requires two separate API calls.
++
++Allowing the API to accept a list of status values would reduce this to a
++single API call.
++
++Proposed change
++===============
++
++Enable servers list API to support to specify multiple status values
++concurrently.
++
++
++Alternatives
++------------
++
++None
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++Allow to specify status value for many times in a request.
++
++For example::
++
++    GET /v2/{tenant_id}/servers?status=ACTIVE&status=ERROR
++    GET /v3/servers?status=ACTIVE&status=ERROR
++
++V2 API extension::
++
++    {
++        "alias": "os-server-list-multi-status",
++        "description": "Allow to filter the
++            servers by a set of status values.",
++        "links": [],
++        "name": "ServerListMultiStatus",
++        "namespace": "http://docs.openstack.org/compute/ext/
++            os-server-list-multi-status/api/v2",
++        "updated": "2014-05-11T00:00:00Z"
++    }
++
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++None
++
++Performance Impact
++------------------
++
++None
++
++Other deployer impact
++---------------------
++
++None
++
++Developer impact
++----------------
++
++None
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  boh.ricky
++
++Work Items
++----------
++
++Implement the support for servers list API to specify multiple status values
++concurrently.
++
++Dependencies
++============
++
++None
++
++Testing
++=======
++
++None
++
++Documentation Impact
++====================
++
++Need to document in the API document.
++
++References
++==========
++
++None
+-- 
+1.9.1
+

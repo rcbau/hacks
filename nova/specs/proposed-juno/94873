@@ -1,0 +1,57 @@
+From 6637e00eab507a43a0b963de9dedfc4f0fcd336d Mon Sep 17 00:00:00 2001
+From: Aneesh Puliyedath Udumbath <aneesh.udumbath@RACKSPACE.COM>
+Date: Thu, 22 May 2014 09:02:55 -0500
+Subject: [PATCH] Trailing white space check.
+
+Added a test that checks for trailing white spaces at the end of
+every line in the spec files.
+
+Removed trailing whitespaces from extensible-resource-tracking.rst as it
+was failing the tests.
+
+Change-Id: I758102612a1b594178b3b22a228d2116f0a079e6
+---
+ specs/juno/extensible-resource-tracking.rst | 2 +-
+ tests/test_titles.py                        | 9 +++++++++
+ 2 files changed, 10 insertions(+), 1 deletion(-)
+
+diff --git a/specs/juno/extensible-resource-tracking.rst b/specs/juno/extensible-resource-tracking.rst
+index e7556c3..cebc92d 100644
+--- a/specs/juno/extensible-resource-tracking.rst
++++ b/specs/juno/extensible-resource-tracking.rst
+@@ -235,7 +235,7 @@ Other contributors:
+ Work Items
+ ----------
+ 
+-see: 
++see:
+ https://review.openstack.org/#q,topic:bp/extensible-resource-tracking,n,z
+ 
+ The first two work items have patches are ready for review:
+diff --git a/tests/test_titles.py b/tests/test_titles.py
+index e551339..013d57d 100644
+--- a/tests/test_titles.py
++++ b/tests/test_titles.py
+@@ -79,6 +79,14 @@ class TestTitles(testtools.TestCase):
+             "Found %s literal carriage returns in file %s" %
+             (len(matches), tpl))
+ 
++
++    def _check_trailing_spaces(self, tpl, raw):
++        for i, line in enumerate(raw.split("\n")):
++            trailing_spaces = re.findall(" +$", line)
++            self.assertEqual(len(trailing_spaces),0,
++                    "Found trailing spaces on line %s of %s" % (i+1, tpl))
++
++
+     def test_template(self):
+         files = ['specs/template.rst'] + glob.glob('specs/*/*')
+         for filename in files:
+@@ -92,3 +100,4 @@ class TestTitles(testtools.TestCase):
+             self._check_titles(filename, titles)
+             self._check_lines_wrapping(filename, data)
+             self._check_no_cr(filename, data)
++            self._check_trailing_spaces(filename, data)
+-- 
+1.9.1
+

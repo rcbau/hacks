@@ -1,4 +1,4 @@
-From 0a3c0ddc0f0ff96703d981c77199d7d326adb9c9 Mon Sep 17 00:00:00 2001
+From bbc02a40bda979a282d77e093896db302574ced6 Mon Sep 17 00:00:00 2001
 From: Devananda van der Veen <devananda.vdv@gmail.com>
 Date: Thu, 22 May 2014 15:02:54 -0700
 Subject: [PATCH] Deprecation plan for nova-baremetal
@@ -11,15 +11,15 @@ blueprint deprecate-baremetal-driver
 
 Change-Id: I2a9e6ca2f19d5b0f80954cdec45a9eca17960fa1
 ---
- specs/juno/deprecate-baremetal-driver.rst | 229 ++++++++++++++++++++++++++++++
+ .../implemented/deprecate-baremetal-driver.rst     | 229 +++++++++++++++++++++
  1 file changed, 229 insertions(+)
- create mode 100644 specs/juno/deprecate-baremetal-driver.rst
+ create mode 100644 specs/juno/implemented/deprecate-baremetal-driver.rst
 
-diff --git a/specs/juno/deprecate-baremetal-driver.rst b/specs/juno/deprecate-baremetal-driver.rst
+diff --git a/specs/juno/implemented/deprecate-baremetal-driver.rst b/specs/juno/implemented/deprecate-baremetal-driver.rst
 new file mode 100644
 index 0000000..180fae8
 --- /dev/null
-+++ b/specs/juno/deprecate-baremetal-driver.rst
++++ b/specs/juno/implemented/deprecate-baremetal-driver.rst
 @@ -0,0 +1,229 @@
 +..
 + This work is licensed under a Creative Commons Attribution 3.0 Unported

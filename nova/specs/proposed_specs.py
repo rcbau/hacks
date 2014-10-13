@@ -9,7 +9,7 @@ import subprocess
 import sys
 
 
-RELEASE_TARGET = 'kilo'
+RELEASE_TARGET = 'juno'
 
 
 def runcmd(cmd):

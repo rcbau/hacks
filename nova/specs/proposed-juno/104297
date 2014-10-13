@@ -1,0 +1,152 @@
+From 048ee2db33e1e7036166ae6dbfa7b70099f9977e Mon Sep 17 00:00:00 2001
+From: Alessandro Pilotti <apilotti@cloudbasesolutions.com>
+Date: Wed, 2 Jul 2014 21:38:28 +0300
+Subject: [PATCH] Spec for Hyper-V serial console log
+
+This blueprint proposes the introduction of Hyper-V serial console log
+support in the Nova Hyper-V compute driver
+
+bp hyper-v-console-log
+
+Change-Id: I20bff09f6d833d0d16dbfd4ccba30922525c9075
+---
+ specs/juno/hyper-v-console-log.rst | 127 +++++++++++++++++++++++++++++++++++++
+ 1 file changed, 127 insertions(+)
+ create mode 100644 specs/juno/hyper-v-console-log.rst
+
+diff --git a/specs/juno/hyper-v-console-log.rst b/specs/juno/hyper-v-console-log.rst
+new file mode 100644
+index 0000000..237bea6
+--- /dev/null
++++ b/specs/juno/hyper-v-console-log.rst
+@@ -0,0 +1,127 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++==========================================
++Hyper-V serial console log
++==========================================
++
++https://blueprints.launchpad.net/nova/+spec/hyper-v-console-log
++
++This blueprint introduces serial console log in the Nova Hyper-V driver.
++
++Problem description
++===================
++
++The Hyper-V driver is currently not providing a serial console log unlike
++other compute drivers (e.g. libvirt). This feature is particularly useful
++for the troubleshooting of both Linux and Windows instances.
++
++Proposed change
++===============
++
++Console log support in the Hyper-V nova driver will be obtained by implementing
++the "get_console_output" method inherited from nova.virt.driver.ComputeDriver.
++
++Hyper-V supports virtual serial ports in the guests, which can be redirected
++to a dedicated named pipe on the host.
++
++The driver will setup and connect the pipe upon starting or resuming a VM and
++closing it when stopping, suspending or live migrating.
++
++Data read from the pipe will be written in a file placed in the instance
++directory, capped to a maximum size.
++
++In case of live migration the console file must be moved to the destination
++server.
++
++A call to "get_console_output" for a given instance will return the content of
++the file.
++
++Alternatives
++------------
++
++None
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++None
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++None
++
++Performance Impact
++------------------
++
++None
++
++Other deployer impact
++---------------------
++
++None
++
++Developer impact
++----------------
++
++None
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  petrutlucian94
++
++Other contributors:
++  alexpilotti
++
++Work Items
++----------
++
++* Hyper-V Nova driver feature implementation
++* Unit tests
++
++Dependencies
++============
++
++None
++
++Testing
++=======
++
++* Unit tests
++* Additional Tempest tests can be evaluated
++
++Documentation Impact
++====================
++
++None
++
++References
++==========
++
++* Initial discussion (Juno design summit):
++  https://etherpad.openstack.org/p/nova-hyperv-juno
+-- 
+1.9.1
+

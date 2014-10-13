@@ -1,0 +1,32 @@
+From 0901895f8fb6e152f2d9a370c94fabdac5ec4f5c Mon Sep 17 00:00:00 2001
+From: Joe Gordon <joe.gordon0@gmail.com>
+Date: Mon, 25 Aug 2014 10:41:39 -0700
+Subject: [PATCH] Make blueprint URL in all-in-list-operator render correctly
+
+Due to the 80 character line limit the original blueprint URL, was
+wrapped and didn't render properly.
+
+Change-Id: I7338e20decea674cebec2ccdf38ba6cc27bf9631
+---
+ specs/juno/approved/add-all-in-list-operator-to-extra-spec-ops.rst | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/specs/juno/approved/add-all-in-list-operator-to-extra-spec-ops.rst b/specs/juno/approved/add-all-in-list-operator-to-extra-spec-ops.rst
+index 040c5ec..fec40e4 100644
+--- a/specs/juno/approved/add-all-in-list-operator-to-extra-spec-ops.rst
++++ b/specs/juno/approved/add-all-in-list-operator-to-extra-spec-ops.rst
+@@ -8,8 +8,10 @@
+ Add ALL-IN operator to extra spec ops
+ ======================================
+ 
+-https://blueprints.launchpad.net/nova/+spec/add-all-in-list-
++`https://blueprints.launchpad.net/nova/+spec/add-all-in-list-
+ operator-to-extra-spec-ops
++<https://blueprints.launchpad.net/nova/+spec/add-all-in-list-
++operator-to-extra-spec-ops>`_
+ 
+ Allow extra spec to match all values in a list by adding the ALL-IN operator.
+ 
+-- 
+1.9.1
+

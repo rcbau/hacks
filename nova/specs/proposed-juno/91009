@@ -1,0 +1,240 @@
+From 8d92c8425a6f487905d0605b03c193dc7056c3f5 Mon Sep 17 00:00:00 2001
+From: Sahid Orentino Ferdjaoui <sahid.ferdjaoui@cloudwatt.com>
+Date: Tue, 29 Apr 2014 15:15:43 +0200
+Subject: [PATCH] Check length of the lines to be less than 80 chars
+
+This commit adds a test to be sure the lines of specs
+are less than 80 characters.
+Also updates specs that needs to pass this test.
+
+Change-Id: Ie4c523f249d90bc2783534bf30a9f25cd3625303
+---
+ specs/juno/backportable-db-migrations-juno.rst |  6 +++---
+ specs/juno/cross-service-request-id.rst        | 17 ++++++++--------
+ specs/juno/support-console-log-migration.rst   | 24 +++++++++++------------
+ specs/template.rst                             | 27 ++++++++++++++------------
+ tests/test_titles.py                           | 11 +++++++++++
+ 5 files changed, 50 insertions(+), 35 deletions(-)
+
+diff --git a/specs/juno/backportable-db-migrations-juno.rst b/specs/juno/backportable-db-migrations-juno.rst
+index 3c4e835..175247b 100644
+--- a/specs/juno/backportable-db-migrations-juno.rst
++++ b/specs/juno/backportable-db-migrations-juno.rst
+@@ -27,9 +27,9 @@ as placeholders to allow for migration backports if needed.
+ Proposed change
+ ===============
+ 
+-The proposed change is to reserve 10 migrations for Icehouse backports.  These
+-migrations would be no-ops and would simply result in an increment of the schema
+-version.
++The proposed change is to reserve 10 migrations for Icehouse backports. These
++migrations would be no-ops and would simply result in an increment of the
++schema version.
+ 
+ Alternatives
+ ------------
+diff --git a/specs/juno/cross-service-request-id.rst b/specs/juno/cross-service-request-id.rst
+index aa82c4b..31165c9 100644
+--- a/specs/juno/cross-service-request-id.rst
++++ b/specs/juno/cross-service-request-id.rst
+@@ -24,8 +24,9 @@ glance, neutron) send x-openstack-request-id.
+ Proposed change
+ ===============
+ 
+-Use x-openstack-request-id when handling v3 requests for nova. There is existing
+-middleware in oslo to generate the ID and attach the header to the response.
++Use x-openstack-request-id when handling v3 requests for nova. There is
++existing middleware in oslo to generate the ID and attach the header to
++the response.
+ 
+ Alternatives
+ ------------
+@@ -34,8 +35,8 @@ The current approach -- keeping the existing header name -- is the alternative.
+ This will perpetuate header name discontinuity among OpenStack services.
+ 
+ Another alternative is to include the new header name for both v2 and v3. But
+-the benefits of doing so is not great enough to justify altering the behavior of
+-the existing API.
++the benefits of doing so is not great enough to justify altering the behavior
++of the existing API.
+ 
+ Data model impact
+ -----------------
+@@ -64,10 +65,10 @@ Other end user impact
+ ---------------------
+ 
+ Users making requests using the v3 API will only receive the new header,
+-x-openstack-request-id. python-novaclient uses x-compute-request-id (if present)
+-when reporting an HTTPError; this will need to be updated to use the new header
+-name when novaclient is using v3. Other clients moving from v2 to v3 will need
+-to consider the header name change.
++x-openstack-request-id. python-novaclient uses x-compute-request-id (if
++present) when reporting an HTTPError; this will need to be updated to use the
++new header name when novaclient is using v3. Other clients moving from v2 to v3
++will need to consider the header name change.
+ 
+ Performance Impact
+ ------------------
+diff --git a/specs/juno/support-console-log-migration.rst b/specs/juno/support-console-log-migration.rst
+index ebfb42f..867cd12 100644
+--- a/specs/juno/support-console-log-migration.rst
++++ b/specs/juno/support-console-log-migration.rst
+@@ -33,8 +33,8 @@ There are two issues which play a role in this.
+ Proposed change
+ ===============
+ 
+-We propose the following in this blueprint to solve this issue without depending
+-on kvm.
++We propose the following in this blueprint to solve this issue without
++depending on kvm.
+ 
+ * Require that VIR_MIGRATE_UNDEFINE_SOURCE is not set. Instead wait for the
+   condition that the instance is shutoff at the source.
+@@ -44,9 +44,9 @@ on kvm.
+   all the rotated files need to be rotated once.
+ 
+ * Change get-console-log function such that console.log and console.log.1 are
+-  merged in the response (within the MAX_CONSOLE_BYTES limit). It log rotation is
+-  implemented then the function needs to read as many files as it takes to fill up
+-  the MAX_CONSOLE_BYTES limit.
++  merged in the response (within the MAX_CONSOLE_BYTES limit). It log rotation
++  is implemented then the function needs to read as many files as it takes to
++  fill up the MAX_CONSOLE_BYTES limit.
+ 
+ * The source VM would get undefined by the periodic task once the database is
+   updated with the new hostname.
+@@ -83,16 +83,16 @@ None
+ Performance Impact
+ ------------------
+ 
+-* There's a brief window between the time the VM is activated in the destination
+-  and before post-live-migration is completed. Any nova console-log requests will
+-  return almost empty content during this window.
++* There's a brief window between the time the VM is activated in the
++  destination and before post-live-migration is completed. Any nova
++  console-log requests will return almost empty content during this window.
+ 
+ Other deployer impact
+ ---------------------
+ 
+ * If people are using VIR_MIGRATE_UNDEFINE_SOURCE then they need to remove this
+-  option to get this feature. If this flag exists we will fallback to not having
+-  the console log migrated.
++  option to get this feature. If this flag exists we will fallback to not
++  having the console log migrated.
+ 
+ Developer impact
+ ----------------
+@@ -131,8 +131,8 @@ Documentation Impact
+ We expect to have the following documentation changes:
+ 
+ * The migration flag changes to get console logs migrated
+-* Expected empty console log during the VM offline period in the final stages of
+-  the migration
++* Expected empty console log during the VM offline period in the final stages
++  of the migration
+ 
+ References
+ ==========
+diff --git a/specs/template.rst b/specs/template.rst
+index 427c908..1b6097d 100644
+--- a/specs/template.rst
++++ b/specs/template.rst
+@@ -37,8 +37,8 @@ Some notes about using this template:
+   required.  http://asciiflow.com/ is a very nice tool to assist with making
+   ascii diagrams.  The reason for this is that the tool used to review specs is
+   based purely on plain text.  Plain text will allow review to proceed without
+-  having to look at additional files which can not be viewed in gerrit.  It will
+-  also allow inline feedback on the diagram itself.
++  having to look at additional files which can not be viewed in gerrit.  It
++  will also allow inline feedback on the diagram itself.
+ 
+ Problem description
+ ===================
+@@ -79,7 +79,8 @@ proposed changes to the data model.
+ 
+ Questions which need to be addressed by this section include:
+ 
+-* What new data objects and/or database schema changes is this going to require?
++* What new data objects and/or database schema changes is this going to
++  require?
+ 
+ * What database migrations will accompany this change.
+ 
+@@ -174,7 +175,8 @@ changes to an existing notification, or removing a notification.
+ Other end user impact
+ ---------------------
+ 
+-Aside from the API, are there other ways a user will interact with this feature?
++Aside from the API, are there other ways a user will interact with this
++feature?
+ 
+ * Does this change have an impact on python-novaclient? What does the user
+   interface there look like?
+@@ -191,18 +193,18 @@ Examples of things to consider here include:
+ * A periodic task might look like a small addition but if it calls conductor or
+   another service the load is multiplied by the number of nodes in the system.
+ 
+-* Scheduler filters get called once per host for every instance being created, so
+-  any latency they introduce is linear with the size of the system.
++* Scheduler filters get called once per host for every instance being created,
++  so any latency they introduce is linear with the size of the system.
+ 
+ * A small change in a utility function or a commonly used decorator can have a
+   large impacts on performance.
+ 
+-* Calls which result in a database queries (whether direct or via conductor) can
+-  have a profound impact on performance when called in critical sections of the
+-  code.
++* Calls which result in a database queries (whether direct or via conductor)
++  can have a profound impact on performance when called in critical sections of
++  the code.
+ 
+-* Will the change include any locking, and if so what considerations are there on
+-  holding the lock?
++* Will the change include any locking, and if so what considerations are there
++  on holding the lock?
+ 
+ Other deployer impact
+ ---------------------
+@@ -313,6 +315,7 @@ references are unavailable. Examples of what you could include are:
+ 
+ * Links to relevant research, if appropriate
+ 
+-* Related specifications as appropriate (e.g.  if it's an EC2 thing, link the EC2 docs)
++* Related specifications as appropriate (e.g.  if it's an EC2 thing, link the
++  EC2 docs)
+ 
+ * Anything else you feel it is worthwhile to refer to
+diff --git a/tests/test_titles.py b/tests/test_titles.py
+index 4b706ae..e04870f 100644
+--- a/tests/test_titles.py
++++ b/tests/test_titles.py
+@@ -79,6 +79,15 @@ class TestTitles(testtools.TestCase):
+         self.assertIn(refs, titles)
+         self.assertEqual(0, len(titles[refs]))
+ 
++    def _check_lines_wrapping(self, tpl, raw):
++        for i, line in enumerate(raw.split("\n")):
++            if "http://" in line or "https://" in line:
++                continue
++            self.assertTrue(
++                len(line) < 80,
++                msg="%s:%d: Line limited to a maximum of 79 characters." %
++                (tpl, i+1))
++
+     def test_template(self):
+         files = ['specs/template.rst'] + glob.glob('specs/*/*')
+         for filename in files:
+@@ -86,6 +95,8 @@ class TestTitles(testtools.TestCase):
+                             "spec's file must uses 'rst' extension.")
+             with open(filename) as f:
+                 data = f.read()
++
+             spec = docutils.core.publish_doctree(data)
+             titles = self._get_titles(spec)
+             self._check_titles(titles)
++            self._check_lines_wrapping(filename, data)
+-- 
+1.9.1
+

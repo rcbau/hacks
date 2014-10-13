@@ -1,0 +1,29 @@
+From 6e8af3452ef647c633282d4fb5658d519b1d52a2 Mon Sep 17 00:00:00 2001
+From: Ken'ichi Ohmichi <oomichi@mxs.nes.nec.co.jp>
+Date: Thu, 12 Jun 2014 10:51:10 +0900
+Subject: [PATCH] Fix a typo of os-hypervisor-status
+
+There is a typo about the extension alias of 'os-hypervisor-stats',
+and this patch fixes it.
+
+Change-Id: I7ef2fa2318baf676ba0bc17bd9042c070069d6c0
+---
+ specs/juno/return-status-for-hypervisor-node.rst | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/specs/juno/return-status-for-hypervisor-node.rst b/specs/juno/return-status-for-hypervisor-node.rst
+index 104b25c..98689e4 100644
+--- a/specs/juno/return-status-for-hypervisor-node.rst
++++ b/specs/juno/return-status-for-hypervisor-node.rst
+@@ -59,7 +59,7 @@ REST API impact
+   name: HypervisorStatus
+   namespace: http://docs.openstack.org/compute/ext/hypervisor_status/api/v1.1
+ 
+-  When the new extension "os-hypervisor-stats" is loaded, a new field 'status'
++  When the new extension "os-hypervisor-status" is loaded, a new field 'status'
+   will be added to the os-hypervisor API.
+ 
+ * For a later microversion of v2.1 API, no new extension needed, the
+-- 
+1.9.1
+

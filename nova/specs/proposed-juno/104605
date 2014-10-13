@@ -1,0 +1,140 @@
+From 6345ba5faa240c1f916b452f346206245c3adc09 Mon Sep 17 00:00:00 2001
+From: Alessandro Pilotti <apilotti@cloudbasesolutions.com>
+Date: Thu, 3 Jul 2014 19:21:16 +0300
+Subject: [PATCH] Spec for Hyper-V soft reboot
+
+This blueprint introduces soft reboot support in the Nova Hyper-V driver.
+
+bp hyper-v-soft-reboot
+
+Change-Id: I5e22bdacdfed2918a6e45fa0aafac1810150f2d9
+---
+ specs/juno/hyper-v-soft-reboot.rst | 116 +++++++++++++++++++++++++++++++++++++
+ 1 file changed, 116 insertions(+)
+ create mode 100644 specs/juno/hyper-v-soft-reboot.rst
+
+diff --git a/specs/juno/hyper-v-soft-reboot.rst b/specs/juno/hyper-v-soft-reboot.rst
+new file mode 100644
+index 0000000..5be3c5f
+--- /dev/null
++++ b/specs/juno/hyper-v-soft-reboot.rst
+@@ -0,0 +1,116 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++==========================================
++Hyper-V soft reboot
++==========================================
++
++https://blueprints.launchpad.net/nova/+spec/hyper-v-soft-reboot
++
++This blueprint introduces soft reboot support in the Nova Hyper-V driver.
++
++Problem description
++===================
++
++Currently both "nova reboot" and "nova reboot --hard" cause a hard reset on
++Hyper-V instances. The driver needs to perform a soft reboot in the former case
++for consistency with the API specifications.
++
++Proposed change
++===============
++
++This feature can be implemented by invoking the "InitiateShutdown" method of
++the "Msvm_ShutdownComponent" class, waiting for the VM to reach a powered off
++status and powering it on again.
++
++For consistency with the libvirt driver, if a soft reboot fails then a hard
++reboot is attempted.
++
++Hyper-V provides an API to execute a soft shutdown but not a direct API to
++execute a soft reboot, hence the need to wait for the shutdown to be completed.
++
++Alternatives
++------------
++
++None
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++None
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++None
++
++Performance Impact
++------------------
++
++None
++
++Other deployer impact
++---------------------
++
++None
++
++Developer impact
++----------------
++
++None
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  alexpilotti
++
++Work Items
++----------
++
++* Hyper-V Nova driver feature implementation
++* Unit tests
++
++Dependencies
++============
++
++None
++
++Testing
++=======
++
++* Unit tests
++* Additional Tempest tests can be evaluated
++
++Documentation Impact
++====================
++
++None
++
++References
++==========
++
++* Initial discussion (Juno design summit):
++  https://etherpad.openstack.org/p/nova-hyperv-juno
+-- 
+1.9.1
+
