@@ -9,6 +9,9 @@ import subprocess
 import sys
 
 
+RELEASE_TARGET = 'kilo'
+
+
 def runcmd(cmd):
     sys.stderr.write('Executing command: %s\n' % cmd)
     obj = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
@@ -24,7 +27,7 @@ if __name__ == '__main__':
     kilo_spec_re = re.compile('.*specs/kilo/.*\.rst.*')
     kilo_impl_re = re.compile('.*specs/kilo/implemented/.*\.rst.*')
 
-
+    merged = []
     for line in runcmd('ssh review.openstack.org gerrit query '
                        '--format=json --current-patch-set '
                        'project:openstack/nova-specs').split('\n'):
@@ -34,8 +37,6 @@ if __name__ == '__main__':
         j = json.loads(line)
         if not 'project' in j:
             continue
-        #if j.get('status') == 'MERGED':
-        #    continue
 
         spec_match = []
         implemented = False
@@ -60,6 +61,12 @@ if __name__ == '__main__':
         if implemented:
             continue
 
-        if 'kilo' in spec_match:
+        if RELEASE_TARGET in spec_match:
             with open('/tmp/patches/%s' % j['number'], 'w') as f:
                 f.write(diff)
+
+            if j.get('status') == 'MERGED':
+                merged.append(j['number'])
+
+    with open('/tmp/patches/__merged__', 'w') as f:
+        f.write(json.dumps(merged))

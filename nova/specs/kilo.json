@@ -3,6 +3,9 @@
         "Add instance administrative lock status to the instance detail results": [
             "127139"
         ], 
+        "Add more detailed network information to the metadata server": [
+            "85673"
+        ], 
         "Add user limits to the limits API (as well as project limits)": [
             "127094"
         ], 
@@ -11,6 +14,12 @@
         ], 
         "Implement instance tagging": [
             "127281"
+        ], 
+        "Implement tags for volumes and snapshots with the EC2 API": [
+            "126553"
+        ], 
+        "Implement the v2.1 API": [
+            "126452"
         ], 
         "Microversion support": [
             "127127"
@@ -22,9 +31,19 @@
             "105034"
         ]
     }, 
+    "Administrative": {
+        "Enable the nova metadata cache to be a shared resource to improve the hit rate": [
+            "126705"
+        ]
+    }, 
     "Containers Service": {
         "Initial specification": [
             "114044"
+        ]
+    }, 
+    "Hypervisor: FreeBSD": {
+        "Implement support for FreeBSD networking in nova-network": [
+            "127827"
         ]
     }, 
     "Hypervisor: Hyper-V": {
@@ -33,11 +52,17 @@
         ]
     }, 
     "Hypervisor: VMWare": {
+        "Add ephemeral disk support to the VMware driver": [
+            "126527"
+        ], 
         "Add support for the HTML5 console": [
             "127283"
         ], 
         "Allow Nova to access a VMWare image store over NFS": [
             "126866"
+        ], 
+        "Enable administrators and tenants to take advantage of backend storage policies": [
+            "126547"
         ]
     }, 
     "Hypervisor: libvirt": {
@@ -59,6 +84,11 @@
             "127318"
         ]
     }, 
+    "Interal": {
+        "Move flavor data out of the system_metdata table in the SQL database": [
+            "126620"
+        ]
+    }, 
     "Internationalization": {
         "Enable lazy translations of strings": [
             "126717"
@@ -66,10 +96,13 @@
     }, 
     "Scheduler": {
         "Add an IOPS weigher": [
-            "97520"
+            "127123"
         ], 
         "Allow limiting the flavors that can be scheduled on certain host aggregates": [
             "122530"
+        ], 
+        "Decouple services and compute nodes in the SQL database": [
+            "126895"
         ], 
         "Implement resource objects in the resource tracker": [
             "127609"
@@ -82,6 +115,9 @@
     "Security": {
         "Provide a reference implementation for console proxies that uses TLS": [
             "126958"
+        ], 
+        "Strongly validate the tenant and user for quota consuming requests with keystone": [
+            "92507"
         ]
     }, 
     "__previously_approved__": [
@@ -90,6 +126,10 @@
         "97520", 
         "127281", 
         "126958", 
-        "126966"
+        "126966", 
+        "126452", 
+        "126527", 
+        "126547", 
+        "126553"
     ]
 }

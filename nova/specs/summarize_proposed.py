@@ -28,6 +28,9 @@ print 'Already seen patches: %s (%d in total)' %(patches, len(patches))
 
 
 for patch in os.listdir('proposed-%s' % release):
+    if patch == '__merged__':
+        continue
+    
     if not patch in patches:
         print '------------------------------------------------------------------------'
         print 'Patch: %s' % patch
