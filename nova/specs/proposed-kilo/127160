@@ -1,4 +1,4 @@
-From 6ac3636eaf4736d273b9ccc1bb80cbec99f5d899 Mon Sep 17 00:00:00 2001
+From 855ea619037b0fab5fb5853718853b897d96f71f Mon Sep 17 00:00:00 2001
 From: He Jie Xu <xuhj@linux.vnet.ibm.com>
 Date: Thu, 9 Oct 2014 13:12:23 +0800
 Subject: [PATCH] Implement policy should be enforced at REST API layer
@@ -10,16 +10,16 @@ Part of blueprint v3-api-policy
 
 Change-Id: I5bcb24346062219adae49ddafb5c1cd69b8e24b3
 ---
- specs/kilo/approved/nova-api-policy.rst | 236 ++++++++++++++++++++++++++++++++
- 1 file changed, 236 insertions(+)
+ specs/kilo/approved/nova-api-policy.rst | 257 ++++++++++++++++++++++++++++++++
+ 1 file changed, 257 insertions(+)
  create mode 100644 specs/kilo/approved/nova-api-policy.rst
 
 diff --git a/specs/kilo/approved/nova-api-policy.rst b/specs/kilo/approved/nova-api-policy.rst
 new file mode 100644
-index 0000000..884b669
+index 0000000..cc7333d
 --- /dev/null
 +++ b/specs/kilo/approved/nova-api-policy.rst
-@@ -0,0 +1,236 @@
+@@ -0,0 +1,257 @@
 +..
 + This work is licensed under a Creative Commons Attribution 3.0 Unported
 + License.
@@ -91,6 +91,23 @@ index 0000000..884b669
 +  This means it won't have any effect after you modify the policy at REST
 +  API layer, it always enforced as admin at db layer.
 +
++Use Cases
++---------
++
++1. Operator want to specified role can access service API, but it's hard-code
++as only admin can operator those API.
++
++2. As developer view, Only one rule for pause server API at REST API layer.
++Developer needn't confuse how to process permission checks in the nova.
++
++Project Priority
++----------------
++
++The kilo priorities list is currently not defined. However under the
++currently proposed list of priorities it would fall under "User
++Experience" as it significantly increases the ability for us to
++improve the Nova API.
++
 +Proposed change
 +===============
 +
@@ -115,18 +132,18 @@ index 0000000..884b669
 +    the compute API layer policy checking into REST API layer. We will set
 +    compute API's parameter skip_policy_check to False, that means still
 +    doing policy checking at compute API layer. It's because V2 API will be
-+    depreciated. Before V2 API removed, we needn't take risk of breaking existed
-+    code.
++    depreciated. Before V2 API removed, we needn't take risk of breaking
++    existed code.
 +
 +    https://review.openstack.org/#/c/100408/2/nova/compute/api.py
 +
 +* Remove hard-code permission check from db layer
 +
 +  * Example: https://review.openstack.org/#/c/73490/
-+  * For the v2.1 API, we remove all the hard-code permission check from DB layer.
-+    And we should ensure we have policy check at REST API layer.
-+  * For the v2 API, we remove all the hard-code permission check from DB layer.
-+    And with UpgradeImpact flags that notify deployer to update their
++  * For the v2.1 API, we remove all the hard-code permission check from DB
++    layer. And we should ensure we have policy check at REST API layer.
++  * For the v2 API, we remove all the hard-code permission check from DB
++    layer. And with UpgradeImpact flags that notify deployer to update their
 +    development configuration.
 +  * Update policy configuration file to match the existing behavior.
 +
@@ -147,6 +164,10 @@ index 0000000..884b669
 +
 +  For nova-network, move all the policy enforcement into REST API layer from
 +  network API, and remove the db layer hard-code permission checks.
++
++  For neutron, we didn't have too much can do, neutron have his own policy
++  enforcement. We just need ensure we have policy enforcement at nova REST
++  API layer.
 +
 +Alternatives
 +------------

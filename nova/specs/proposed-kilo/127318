@@ -1,219 +1,128 @@
-From 16e042a929fef040cab0fd281c020590149d14ac Mon Sep 17 00:00:00 2001
-From: Mitsuhiro Tanino <mitsuhiro.tanino@hds.com>
-Date: Thu, 9 Oct 2014 11:39:07 -0400
-Subject: [PATCH] LVM: Support a volume-group on shared storage
+From 30256e394bb95f8b0c88f8391a28259317676131 Mon Sep 17 00:00:00 2001
+From: kiwik-chenrui <chenrui.momo@gmail.com>
+Date: Thu, 9 Oct 2014 11:09:15 +0800
+Subject: [PATCH] Create Nova Scheduler IO Ops Weighter
 
-This proposal enables direct I/O path from VMs to storage using LVM driver
-with LVM on shared storage volume. By enabling direct I/O path provides
-stable I/O path for VMs and improve throughput to VMs.
+Add a new nova scheduler weighter, sort the filter
+hosts according to host io ops number, aims to
+booting instances on light workload hosts.
 
-In this feature, both Nova and Cinder pieces are necessary.
+blueprint io-ops-weight
+Previously-approved: juno
 
-Change-Id: I95fe79432a96496dbcd8b50fe8f906d52784adce
-Implements: blueprint lvm-driver-for-shared-storage
+Change-Id: Id283446718fe8390035fbff8c3a73b28f469ecc6
 ---
- .../approved/lvm-driver-for-shared-storage.rst     | 234 +++++++++++++++++++++
- 1 file changed, 234 insertions(+)
- create mode 100644 specs/kilo/approved/lvm-driver-for-shared-storage.rst
+ specs/kilo/approved/io-ops-weight.rst | 142 ++++++++++++++++++++++++++++++++++
+ 1 file changed, 142 insertions(+)
+ create mode 100644 specs/kilo/approved/io-ops-weight.rst
 
-diff --git a/specs/kilo/approved/lvm-driver-for-shared-storage.rst b/specs/kilo/approved/lvm-driver-for-shared-storage.rst
+diff --git a/specs/kilo/approved/io-ops-weight.rst b/specs/kilo/approved/io-ops-weight.rst
 new file mode 100644
-index 0000000..e513c48
+index 0000000..5f2d92f
 --- /dev/null
-+++ b/specs/kilo/approved/lvm-driver-for-shared-storage.rst
-@@ -0,0 +1,234 @@
++++ b/specs/kilo/approved/io-ops-weight.rst
+@@ -0,0 +1,142 @@
 +..
 + This work is licensed under a Creative Commons Attribution 3.0 Unported
 + License.
 +
 + http://creativecommons.org/licenses/by/3.0/legalcode
 +
-+==========================================
-+Support LVM on a shared storage volume
-+==========================================
++=====================================
++Create Nova Scheduler IO Ops Weighter
++=====================================
 +
-+https://blueprints.launchpad.net/nova/+spec/lvm-driver-for-shared-storage
++https://blueprints.launchpad.net/nova/+spec/io-ops-weight
 +
-+Based on the OpenStack Atlanta User Survey, many users are still using LVM
-+driver at their Dev/QA(30%), POC(26%) and Production(22%) environment,
-+LVM driver occupies an important place in Cinder driver.
-+http://www.slideshare.net/ryan-lane/openstack-atlanta-user-survey
++Add a new nova scheduler weighter, sort the filter hosts according to host io
++ops number, aims to booting instances on light workload hosts.
 +
-+This proposal enables direct I/O path from VMs to storage using LVM driver
-+with LVM on shared storage volume. By enabling direct I/O path provides
-+stable I/O path for VMs and improve throughput to VMs.
 +
 +Problem description
 +===================
-+Current LVM driver only supports I/O path from VMs to storage through
-+SCSI target such as tgtd or LIO. Using SCSI target has many benefits,
-+whereas there are some concerns as follows.
 +
-+1. VMs can't issue I/O to the storage directly.
-+   If the target stops accidentally, all I/O from VMs stops and VMs
-+   might be crashed.
-+
-+2. Total I/O bandwidth is limited to bandwidth of a node which has
-+   Cinder volume service because of SCSI target.
-+   ex. Total I/O bandwidth is, control node(10Ggps)
-+
-+This proposal adds support for a LVM(Volume Group) on a shared storage
-+volume to LVM driver.
-+Supporting shared VG between control node and compute nodes enables
-+following.
-+
-+1. Each node can access simultaneously a single VG on the shared storage
-+   directly from their own I/O path.
-+
-+2. Every LV(Logical Volume) on the VG is also visible with a own I/O
-+   path on each control and compute nodes by using LVM metadata.
-+
-+As a result, VMs which have Cinder volume can issue I/O directly to
-+backend storage via FC/iSCSI.
-+
-+These are benefits of shared LVM driver.
-+
-+1. Stability of I/O path will be improved, because this driver does
-+   not require SCSI target.
-+
-+2. Total I/O bandwidth will be improved, because each control and
-+   compute nodes can use own I/O path directly.
-+   ex. Total I/O bandwidth is, control node(10Ggps) + compute(10Gbps)xN.
-+
-+3. Reduce workloads of control node because tgtd or LIO Target are
-+   not necessary.
++Currently, Nova scheduler can use host ram or metrics as hosts weight to choice
++host to booting instance, but have a large free ram host maybe have this many
++or more instances currently in build, resize, snapshot, migrate, rescue or
++unshelve task states, especially in some cases of the ram resource of compute
++hosts is very uneven. For example, We had two compute hosts, they had large
++enough free ram(hostA:64G and hostB:10G) to booting instances, by default Nova
++scheduler always choose hostA to booting instance and don't consider the
++concurrent instance task. The io_ops_filter can filter out the heavy workload
++hosts, but it can't help us to choose a most free compute host to booting.
++Using CONF.scheduler_host_subset_size can spread instances on suitable randomly
++compute hosts, but we think it's better that consider instance io ops as weight
++value.
 +
 +Use Cases
-+---------
-+Here is a use case for this proposal.
++----------
 +
-+Commonly volume operations such as creation, deletion, snapshot etc. are
-+restricted to system administrators because volume operations might be
-+affects all storage user. Thus these operations used to handled system
-+administrator after carefully examining status of storage.
-+
-+However, in OpenStack cloud environment, every user has a permission
-+to run storage operations via Cinder. This causes increase of storage
-+workloads and it is difficult to manage the workloads because user does
-+not care storage status.
-+
-+In order to use expensive storage more efficiently, I think it is better
-+to reduce hardware based storage workload by offloading the workload to
-+software based volume operation on a case by case basis.
-+
-+If Cinder is available two drivers in regards to a storage, user can
-+choice appropriate volume type as the situation demands. For example,
-+
-+1. As for "Standard" type storage, use proposed software based LVM
-+   Cinder driver.
-+   ex. Quicker volume creation and snapshot are available.
-+
-+2. As for "High performance" type storage, use hardware based Cinder driver.
-+   Higher charge than "Standard" volume.
-+   ex. Efficient snapshot/clone/mirroring features are available.
++End users can boot instances on light workload compute hosts.
 +
 +Project Priority
-+----------------
++-----------------
 +
-+None
++The kilo priorities list is currently not defined. However under the currently
++proposed list of priorities it would fall under "User Experience".
 +
 +Proposed change
 +===============
-+Introduce LibvirtSharedLvmDriver class to virt.libvirt.volume and add the
-+class to list of volume_drivers to handle in case of "lvm".
 +
-+In this class, connect_volume() and disconnect_volume() will be implemented
-+to handle LVM on a shared storage volume.
-+
-+- connect_volume()
-+
-+  When a storage volume is shared to multiple nodes, volume activation to
-+  created logical volume(LV) is necessary before attaching a created volume
-+  to an instance.
-+  After volume creation at Cinder node, only Cinder node knows the volume and
-+  other compute nodes do not know about the created LV. Therefore, these two
-+  steps are necessary to attach the created volume.
-+
-+  - Update LV list and status using "lvs" at a compute node.
-+  - Activate LV using "lvchange -ay" is required at a compute node.
-+
-+  After volume activation, access device path /dev/VG1/LV1 is created at
-+  compute node. Libvirt and qemu can handle device path and attach a volume
-+  using this.
-+
-+- disconnect_volume()
-+  After detaching a Cinder volume from an instance, the compute node does
-+  not have to access a Cinder volume. In order to keep a consistency of
-+  Cinder volume, volume deactivation using "lvchange -an" is required at a
-+  compute node. This operation will remove access device path /dev/VG1/LV1
-+  so that the compute node can't access to the volume using the device
-+  path until the volume will be attached to an instance again.
-+  In this method, underlying connection to LVM on shared storage volume
-+  is continuously maintained.
++Create a new scheduler weighter class 'IoOpsWeigher', use host_state.num_io_ops
++as weigh_object. Add a new CONF.io_ops_weight_multiplier, default value is
++-1.0.
 +
 +Alternatives
 +------------
 +
-+None.
++None
 +
 +Data model impact
 +-----------------
 +
-+None.
++None
 +
 +REST API impact
 +---------------
 +
-+None.
++None
 +
 +Security impact
 +---------------
 +
-+None.
++None
 +
 +Notifications impact
 +--------------------
 +
-+None.
++None
 +
 +Other end user impact
 +---------------------
 +
-+None.
++None
 +
 +Performance Impact
 +------------------
 +
-+There is performance impact of IOPs by using LVM compared to using
-+a raw storage volume, but the impact is subtle.
++The new code itself will introduce some performance impact, new scheduler
++weighter 'IoOpsWeigher' add new calculation logic about hosts weight value.
++Direct use of the attribute 'num_io_ops' of HostState will not bring a big
++performance impact.
 +
 +Other deployer impact
 +---------------------
 +
-+To apply this feature to OpenStack environment, storage admin needs
-+following preparations.
-+
-+1. Prepare a storage volume which is shared between Cinder node and
-+   compute nodes. And also admin needs to create a volume group on top
-+   of the storage volume.
-+
-+2. Configure cinder.conf to use sharedLVM driver and the created storage
-+   volume as a Cinder backend-storage.
-+
-+Here is a sample of cinder.conf::
-+
-+ enabled_backends=SharedLVM
-+ [SharedLVM]
-+ volume_group=cinder-shared-volume
-+ volume_driver=cinder.volume.drivers.lvm.SharedLVMDriver
-+ volume_backend_name=SharedLVM
-+
-+Configuration of nova driver is not required in this feature.
++* Add a new weighter class 'IoOpsWeighter', it takes effect by default.
++* Add a new config option CONF.io_ops_weight_multiplier in nova.conf, default
++  value is -1.0, positive numbers mean to prior choose heavy workload compute
++  hosts.
 +
 +Developer impact
 +----------------
 +
-+None.
++None
++
 +
 +Implementation
 +==============
@@ -222,40 +131,39 @@ index 0000000..e513c48
 +-----------
 +
 +Primary assignee:
-+   mitsuhiro-tanino
++  <kiwik-chenrui>
 +
 +Work Items
 +----------
 +
-+None
++* Add new weighter class 'IoOpsWeighter'.
++* Add some unit tests and tempest.
++
 +
 +Dependencies
 +============
 +
-+This feature depends on following Cinder blueprint.
-+ https://blueprints.launchpad.net/cinder/+spec/lvm-driver-for-shared-storage
++None
 +
 +Testing
 +=======
 +
-+Unit tests will be added in nova.
++New unit tests and tempest about 'IoOpsWeighter' will be added.
++
 +
 +Documentation Impact
 +====================
 +
-+Cinder driver documentation will be added.
-+There is no impact to Nova documentation.
++The docs about 'IoOpsWeighter' need to be drafted and new config option
++'io_ops_weight_multiplier' in nova.conf should be introduced, default value is
++-1.0, negative numbers mean to preference choose light workload compute hosts,
++positive numbers mean to the opposite thing.
++
 +
 +References
 +==========
 +
-+Blueprints:
-+ https://blueprints.launchpad.net/nova/+spec/lvm-driver-for-shared-storage
-+ https://blueprints.launchpad.net/cinder/+spec/lvm-driver-for-shared-storage
-+
-+Review:
-+ nova:   https://review.openstack.org/#/c/92443/
-+ cinder: https://review.openstack.org/#/c/92479/
++None
 -- 
 1.9.1
 

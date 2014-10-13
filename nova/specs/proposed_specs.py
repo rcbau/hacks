@@ -13,7 +13,7 @@ RELEASE_TARGET = 'kilo'
 
 
 def runcmd(cmd):
-    sys.stderr.write('Executing command: %s\n' % cmd)
+    print 'Executing command: %s\n' % cmd
     obj = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                            stderr=subprocess.PIPE, shell=True)
     (stdout, stderr) = obj.communicate()
@@ -37,6 +37,9 @@ if __name__ == '__main__':
         j = json.loads(line)
         if not 'project' in j:
             continue
+
+        print 'Patch: %s' % j['number']
+        print 'Ref: %s' % j['currentPatchSet']['ref']
 
         spec_match = []
         implemented = False
@@ -62,11 +65,14 @@ if __name__ == '__main__':
             continue
 
         if RELEASE_TARGET in spec_match:
+            print 'Writing to /tmp/patches/%s' % j['number']
             with open('/tmp/patches/%s' % j['number'], 'w') as f:
                 f.write(diff)
 
             if j.get('status') == 'MERGED':
                 merged.append(j['number'])
+
+        print
 
     with open('/tmp/patches/__merged__', 'w') as f:
         f.write(json.dumps(merged))

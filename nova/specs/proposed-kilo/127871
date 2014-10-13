@@ -1,0 +1,151 @@
+From cdc5ffad6730b41a39a36e1d7a5a374942fb265e Mon Sep 17 00:00:00 2001
+From: jichenjc <jichenjc@cn.ibm.com>
+Date: Fri, 10 Oct 2014 08:30:13 +0800
+Subject: [PATCH] Add instance number as weight for scheduler
+
+Add instance number as weight for scheduler, so in some cases the
+scheduler will select a better host to spawn on it.
+
+Change-Id: I7879f4eb00485054a27915a496b521da2bc35d6e
+---
+ .../approved/add-instance-number-as-weight.rst     | 128 +++++++++++++++++++++
+ 1 file changed, 128 insertions(+)
+ create mode 100644 specs/kilo/approved/add-instance-number-as-weight.rst
+
+diff --git a/specs/kilo/approved/add-instance-number-as-weight.rst b/specs/kilo/approved/add-instance-number-as-weight.rst
+new file mode 100644
+index 0000000..edc6302
+--- /dev/null
++++ b/specs/kilo/approved/add-instance-number-as-weight.rst
+@@ -0,0 +1,128 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++==========================================
++Example Spec - The title of your blueprint
++==========================================
++
++Include the URL of your launchpad blueprint:
++
++https://blueprints.launchpad.net/nova/+spec/add-instance-number-as-weight
++
++
++Problem description
++===================
++
++Currently nova filter hosts by using given filters, then it will select
++the 'best' match host by sorting the hosts with its weight. Currently
++there are 2 weight object existing, one is metrics and the other is ram weight;
++metrics weight is mostly for monitor so ram is the only one widely used.
++If we have following scenarios: 1 host with 10G memory and already has 
++5 vms each has 1G virtual memory, another host has 2G memory without 
++any vm on it. Currently scheduler will select the first host because it 
++has more memory left but apparently it will increase the workload of the host
++e.g. I/O rate etc.
++
++Use Cases
++----------
++
++User who has different setting on physical host will benefit.
++
++Project Priority
++-----------------
++
++Low
++
++Proposed change
++===============
++
++Add a instance count weighter in scheduler, just like what we did for 
++ram weighter. Then adopt to existing scheduler weight method.
++
++Also we need to consider if admin don't want this feature, currently
++all classes will be selected automatically if it locates in the weight
++folder, give admin an option to avoid it.
++
++Alternatives
++------------
++
++Using existing way, Suffer for the case mentioned above.
++
++Data model impact
++-----------------
++
++No impact
++
++REST API impact
++---------------
++
++No impact
++
++Security impact
++---------------
++
++No impact
++
++Notifications impact
++--------------------
++
++No impact
++
++Other end user impact
++---------------------
++
++No impact
++
++Performance Impact
++------------------
++
++Will be helpful in the scenario talked above.
++
++Other deployer impact
++---------------------
++
++No impact
++
++Developer impact
++----------------
++
++No impact
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++jichenjc
++
++Work Items
++----------
++
++1) Add a method to avoid the specified weight class
++   if we have multiple weight class in weight folder.
++2) Add a num_instance_weight class.
++3) Adopt the weight class into schedule
++
++Dependencies
++============
++
++No dependency
++
++Testing
++=======
++
++unit test is enough.
++
++Documentation Impact
++====================
++
++An option num_instance_weight_multiplier will be introduced
++
++References
++==========
++
++None
+-- 
+1.9.1
+
