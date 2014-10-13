@@ -78,12 +78,7 @@
         "Support quiesce filesystems during snapshot": [
             "126966"
         ]
-    }, 
-    "Instance features": {
-        "Support direct LVM storage where the instance is using Cinder's LVM driver": [
-            "127318"
-        ]
-    }, 
+    },
     "Interal": {
         "Move flavor data out of the system_metdata table in the SQL database": [
             "126620"
@@ -108,8 +103,7 @@
             "127609"
         ], 
         "Move select_destinations() to using a request object": [
-            "127612", 
-            "127610"
+            "127612"
         ]
     }, 
     "Security": {

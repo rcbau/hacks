@@ -285,11 +285,11 @@ if __name__ == '__main__':
     with open(os.path.expanduser('~/.reviewtargets')) as f:
         CONFIG = json.loads(f.read())
 
-    print utils.runcmd('cd ~/src/openstack/nova-specs; '
+    print utils.runcmd('cd ~/cache/nova-specs; '
                        'git checkout master; '
                        'git pull')
 
-    for ent in os.listdir(os.path.expanduser('~/src/openstack/nova-specs'
+    for ent in os.listdir(os.path.expanduser('~/cache/nova-specs'
                                              '/specs/%s'
                                              % RELEASE)):
         if not ent.endswith('.rst'):

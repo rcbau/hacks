@@ -1,4 +1,4 @@
-From cdc5ffad6730b41a39a36e1d7a5a374942fb265e Mon Sep 17 00:00:00 2001
+From 966ab11c1fbddb746f502e934050329f2759ea6d Mon Sep 17 00:00:00 2001
 From: jichenjc <jichenjc@cn.ibm.com>
 Date: Fri, 10 Oct 2014 08:30:13 +0800
 Subject: [PATCH] Add instance number as weight for scheduler
@@ -14,7 +14,7 @@ Change-Id: I7879f4eb00485054a27915a496b521da2bc35d6e
 
 diff --git a/specs/kilo/approved/add-instance-number-as-weight.rst b/specs/kilo/approved/add-instance-number-as-weight.rst
 new file mode 100644
-index 0000000..edc6302
+index 0000000..a272bf8
 --- /dev/null
 +++ b/specs/kilo/approved/add-instance-number-as-weight.rst
 @@ -0,0 +1,128 @@
@@ -40,9 +40,9 @@ index 0000000..edc6302
 +the 'best' match host by sorting the hosts with its weight. Currently
 +there are 2 weight object existing, one is metrics and the other is ram weight;
 +metrics weight is mostly for monitor so ram is the only one widely used.
-+If we have following scenarios: 1 host with 10G memory and already has 
-+5 vms each has 1G virtual memory, another host has 2G memory without 
-+any vm on it. Currently scheduler will select the first host because it 
++If we have following scenarios: 1 host with 10G memory and already has
++5 vms each has 1G virtual memory, another host has 2G memory without
++any vm on it. Currently scheduler will select the first host because it
 +has more memory left but apparently it will increase the workload of the host
 +e.g. I/O rate etc.
 +
@@ -59,7 +59,7 @@ index 0000000..edc6302
 +Proposed change
 +===============
 +
-+Add a instance count weighter in scheduler, just like what we did for 
++Add a instance count weighter in scheduler, just like what we did for
 +ram weighter. Then adopt to existing scheduler weight method.
 +
 +Also we need to consider if admin don't want this feature, currently
