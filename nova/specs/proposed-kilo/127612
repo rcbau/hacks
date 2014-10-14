@@ -1,4 +1,4 @@
-From dd46ae0b384f3ac0e1c7cbbe7eae20e4abd5f5c2 Mon Sep 17 00:00:00 2001
+From 9368a7dd89404b6821b672520ed6078137077da0 Mon Sep 17 00:00:00 2001
 From: Jay Pipes <jaypipes@gmail.com>
 Date: Fri, 10 Oct 2014 14:13:24 -0400
 Subject: [PATCH] Change select_destinations() to use request spec
@@ -10,25 +10,25 @@ of a nested dict.
 Change-Id: I9f9a5d48b1203c619b2e9033a9b65934811c996f
 Blueprint: sched-select-destinations-use-request-spec-object
 ---
- ...select-destinations-use-request-spec-object.rst | 190 +++++++++++++++++++++
- 1 file changed, 190 insertions(+)
- create mode 100644 specs/kilo/sched-select-destinations-use-request-spec-object.rst
+ ...select-destinations-use-request-spec-object.rst | 189 +++++++++++++++++++++
+ 1 file changed, 189 insertions(+)
+ create mode 100644 specs/kilo/approved/sched-select-destinations-use-request-spec-object.rst
 
-diff --git a/specs/kilo/sched-select-destinations-use-request-spec-object.rst b/specs/kilo/sched-select-destinations-use-request-spec-object.rst
+diff --git a/specs/kilo/approved/sched-select-destinations-use-request-spec-object.rst b/specs/kilo/approved/sched-select-destinations-use-request-spec-object.rst
 new file mode 100644
-index 0000000..49ff605
+index 0000000..7818ae7
 --- /dev/null
-+++ b/specs/kilo/sched-select-destinations-use-request-spec-object.rst
-@@ -0,0 +1,190 @@
++++ b/specs/kilo/approved/sched-select-destinations-use-request-spec-object.rst
+@@ -0,0 +1,189 @@
 +..
 + This work is licensed under a Creative Commons Attribution 3.0 Unported
 + License.
 +
 + http://creativecommons.org/licenses/by/3.0/legalcode
 +
-+================================================================================
-+Change select_destinations() scheduler RPC API method to pass RequestSpec object
-+================================================================================
++=========================================================================
++select_destinations() scheduler RPC API method to pass RequestSpec object
++=========================================================================
 +
 +Include the URL of your launchpad blueprint:
 +
@@ -49,7 +49,9 @@ index 0000000..49ff605
 +Previous blueprints have introduced a `nova.objects.request_spec.RequestSpec`
 +object that can model the entire request for multiple instance launches.
 +However, the scheduler RPC API has not been changed to use this new object.
-+Instead, nova-scheduler constructs the `RequestSpec` object 
++Instead, nova-scheduler constructs the `RequestSpec` object in its
++`_schedule()` method, populating the request spec attributes manually by
++looking at the `request_spec` dictionary parameter.
 +
 +Use Cases
 +----------
@@ -67,17 +69,11 @@ index 0000000..49ff605
 +Proposed change
 +===============
 +
-+A new class called `RequestSpec` will be created that models a request to
-+launch multiple virtual machine instances. The first version of the
-+`RequestSpec` object will simply be an objectified version of the current
-+dictionary parameter. The scheduler will construct this `RequestSpec` object
-+from the `request_spec` dictionary itself.
-+
-+The existing
-+`nova.scheduler.utils.build_request_spec` method will be removed in favor of a
-+factory method on `nova.scheduler.request_spec.RequestSpec` that will construct
-+a `RequestSpec` from the existing key/value pairs in the `request_spec`
-+parameter supplied to `select_destinations`.
++The `select_destinations()` scheduler RPC API method will be changed to consume
++a `nova.objects.request_spec.RequestSpec` object instead of a nested
++dictionary. The RPC API will be incremented and translation code blocks will be
++added to allow older nova-conductor workers to continue to transmit the
++dictionary `request_spec` parameter.
 +
 +Alternatives
 +------------
@@ -157,6 +153,9 @@ index 0000000..49ff605
 +
 +Primary assignee:
 +  jaypipes
++
++Other contributors:
++  bauzas
 +
 +Work Items
 +----------

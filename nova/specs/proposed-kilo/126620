@@ -1,4 +1,4 @@
-From 08fafe5a4d182d88570a7615c175c4a66d833582 Mon Sep 17 00:00:00 2001
+From 33d759263c4f3018c7287eab9396aaeb80e423e0 Mon Sep 17 00:00:00 2001
 From: Dan Smith <dansmith@redhat.com>
 Date: Tue, 7 Oct 2014 09:40:20 -0700
 Subject: [PATCH] Add flavor-from-sysmeta-to-blob spec
@@ -10,16 +10,16 @@ that we badly need, such as extra_specs.
 
 Change-Id: I4a06d6c0ff3b9db0b3bde17e78afad1a4de1457a
 ---
- .../kilo/approved/flavor-from-sysmeta-to-blob.rst  | 221 +++++++++++++++++++++
- 1 file changed, 221 insertions(+)
+ .../kilo/approved/flavor-from-sysmeta-to-blob.rst  | 223 +++++++++++++++++++++
+ 1 file changed, 223 insertions(+)
  create mode 100644 specs/kilo/approved/flavor-from-sysmeta-to-blob.rst
 
 diff --git a/specs/kilo/approved/flavor-from-sysmeta-to-blob.rst b/specs/kilo/approved/flavor-from-sysmeta-to-blob.rst
 new file mode 100644
-index 0000000..26225cf
+index 0000000..d657c27
 --- /dev/null
 +++ b/specs/kilo/approved/flavor-from-sysmeta-to-blob.rst
-@@ -0,0 +1,221 @@
+@@ -0,0 +1,223 @@
 +..
 + This work is licensed under a Creative Commons Attribution 3.0 Unported
 + License.
@@ -211,6 +211,8 @@ index 0000000..26225cf
 +* Modify the Instance object and instance_* DB API functions to handle
 +  compatibility with and migration away from flavors being stored in
 +  system_metadata
++* Write a tool to migrate inactive instances in the background, to live
++  in the nova/tools directory
 +
 +Dependencies
 +============

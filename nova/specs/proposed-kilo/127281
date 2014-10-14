@@ -1,4 +1,4 @@
-From 9d1bab033a6694d1f45158d4573e080fc7056faf Mon Sep 17 00:00:00 2001
+From 8171a9c68849c06bac4be89a03e7ddb6b92f3741 Mon Sep 17 00:00:00 2001
 From: Jay Pipes <jaypipes@gmail.com>
 Date: Thu, 9 Oct 2014 12:02:57 -0400
 Subject: [PATCH] Implement server instance tagging
@@ -10,16 +10,16 @@ Change-Id: I93a064a1f7a61f42a086273a8cd0a8c5ae5f8d7c
 Previously-approved: juno
 Blueprint: tag-instances
 ---
- specs/kilo/approved/tag-instances.rst | 317 ++++++++++++++++++++++++++++++++++
- 1 file changed, 317 insertions(+)
+ specs/kilo/approved/tag-instances.rst | 322 ++++++++++++++++++++++++++++++++++
+ 1 file changed, 322 insertions(+)
  create mode 100644 specs/kilo/approved/tag-instances.rst
 
 diff --git a/specs/kilo/approved/tag-instances.rst b/specs/kilo/approved/tag-instances.rst
 new file mode 100644
-index 0000000..96190db
+index 0000000..6f9a336
 --- /dev/null
 +++ b/specs/kilo/approved/tag-instances.rst
-@@ -0,0 +1,317 @@
+@@ -0,0 +1,322 @@
 +..
 + This work is licensed under a Creative Commons Attribution 3.0 Unported
 + License.
@@ -54,6 +54,11 @@ index 0000000..96190db
 +A typical end-user would like to attach a set of strings to an instance. The
 +user does not wish to use key/value pairs to tag the instance with some
 +simple strings.
++
++Project Priority
++-----------------
++
++Partly falls under the cross project API consistency category.
 +
 +Proposed change
 +===============

@@ -1,4 +1,4 @@
-From 7501844038e431b4ad0c5781f9612d293051f331 Mon Sep 17 00:00:00 2001
+From 6059f1009366aea292ecde653f3cfc4a564af3cc Mon Sep 17 00:00:00 2001
 From: Jay Pipes <jaypipes@gmail.com>
 Date: Fri, 10 Oct 2014 14:08:33 -0400
 Subject: [PATCH] Adds RequestSpec object model
@@ -9,16 +9,16 @@ to launch one or more instances in the cloud.
 Change-Id: I5d580c98d98d6899ce46b892d64b21c8dd8abe69
 Blueprint: request-spec-object
 ---
- specs/kilo/request-spec-object.rst | 288 +++++++++++++++++++++++++++++++++++++
- 1 file changed, 288 insertions(+)
- create mode 100644 specs/kilo/request-spec-object.rst
+ specs/kilo/approved/request-spec-object.rst | 291 ++++++++++++++++++++++++++++
+ 1 file changed, 291 insertions(+)
+ create mode 100644 specs/kilo/approved/request-spec-object.rst
 
-diff --git a/specs/kilo/request-spec-object.rst b/specs/kilo/request-spec-object.rst
+diff --git a/specs/kilo/approved/request-spec-object.rst b/specs/kilo/approved/request-spec-object.rst
 new file mode 100644
-index 0000000..cb9f5ad
+index 0000000..61c3e1b
 --- /dev/null
-+++ b/specs/kilo/request-spec-object.rst
-@@ -0,0 +1,288 @@
++++ b/specs/kilo/approved/request-spec-object.rst
+@@ -0,0 +1,291 @@
 +..
 + This work is licensed under a Creative Commons Attribution 3.0 Unported
 + License.
@@ -252,6 +252,9 @@ index 0000000..cb9f5ad
 +
 +Primary assignee:
 +  jaypipes
++
++Other contributors:
++  bauzas
 +
 +Work Items
 +----------

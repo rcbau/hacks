@@ -1,4 +1,4 @@
-From 8ae234221bbc2b6ec2da7aba9dfe111c0736af6e Mon Sep 17 00:00:00 2001
+From 3ad27f8554edb87573606f0fce1a7221a13cfbe4 Mon Sep 17 00:00:00 2001
 From: Tomoki Sekiyama <tomoki.sekiyama@hds.com>
 Date: Tue, 7 Oct 2014 19:33:57 -0400
 Subject: [PATCH] Quiesce filesystems with QEMU guest agent during image
@@ -6,22 +6,22 @@ Subject: [PATCH] Quiesce filesystems with QEMU guest agent during image
 
 Currently we need to quiesce filesystems (fsfreeze) manually before
 snapshotting an image of active instances to create consistent backups.
-This proposal is to automate the fsfreeze when QEMU Guest Agent is enabled.
+This proposal is to automate the fsfreeze using QEMU Guest Agent.
 
 Previously-approved: juno
 Part of blueprint quiesced-image-snapshots-with-qemu-guest-agent
 Change-Id: Ifb77d202e7578b4a379f2894c630bbdda7e9a6a7
 ---
- ...esced-image-snapshots-with-qemu-guest-agent.rst | 149 +++++++++++++++++++++
- 1 file changed, 149 insertions(+)
+ ...esced-image-snapshots-with-qemu-guest-agent.rst | 150 +++++++++++++++++++++
+ 1 file changed, 150 insertions(+)
  create mode 100644 specs/kilo/approved/quiesced-image-snapshots-with-qemu-guest-agent.rst
 
 diff --git a/specs/kilo/approved/quiesced-image-snapshots-with-qemu-guest-agent.rst b/specs/kilo/approved/quiesced-image-snapshots-with-qemu-guest-agent.rst
 new file mode 100644
-index 0000000..b20cbee
+index 0000000..574549d
 --- /dev/null
 +++ b/specs/kilo/approved/quiesced-image-snapshots-with-qemu-guest-agent.rst
-@@ -0,0 +1,149 @@
+@@ -0,0 +1,150 @@
 +..
 + This work is licensed under a Creative Commons Attribution 3.0 Unported
 + License.
@@ -78,7 +78,8 @@ index 0000000..b20cbee
 +2. libvirt >= 1.2.5 (which has fsFreeze/fsThaw API) is installed in the
 +   hypervisor
 +
-+3. 'hw_qemu_guest_agent=yes' property in the image metadata is set to 'yes'
++3. 'hw_qemu_guest_agent=yes' property and 'hw_require_fsfreeze=yes' property
++   is set on the image metadata,
 +   and QEMU Guest Agent is installed and enabled in the instance
 +
 +When quiesce is failed even though these conditions are satisfied

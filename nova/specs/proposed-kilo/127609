@@ -1,4 +1,4 @@
-From 1024282bf59f7cc6c338cb37ea1e95ce29c2e278 Mon Sep 17 00:00:00 2001
+From b64348b8707208454bddf69219cfa4879c184017 Mon Sep 17 00:00:00 2001
 From: Jay Pipes <jaypipes@gmail.com>
 Date: Fri, 10 Oct 2014 14:01:53 -0400
 Subject: [PATCH] Add resource object models
@@ -9,15 +9,15 @@ generalized class interface.
 Change-Id: I37b8a1c8b0bbf73bbcf2ee2c2d29018039eb1a9a
 Blueprint: resource-objects
 ---
- specs/kilo/resource-objects.rst | 343 ++++++++++++++++++++++++++++++++++++++++
+ specs/kilo/approved/resource-objects.rst | 343 +++++++++++++++++++++++++++++++
  1 file changed, 343 insertions(+)
- create mode 100644 specs/kilo/resource-objects.rst
+ create mode 100644 specs/kilo/approved/resource-objects.rst
 
-diff --git a/specs/kilo/resource-objects.rst b/specs/kilo/resource-objects.rst
+diff --git a/specs/kilo/approved/resource-objects.rst b/specs/kilo/approved/resource-objects.rst
 new file mode 100644
-index 0000000..0db0732
+index 0000000..21d3baa
 --- /dev/null
-+++ b/specs/kilo/resource-objects.rst
++++ b/specs/kilo/approved/resource-objects.rst
 @@ -0,0 +1,343 @@
 +..
 + This work is licensed under a Creative Commons Attribution 3.0 Unported
@@ -258,7 +258,7 @@ index 0000000..0db0732
 +There will be a generalized usage spec class interface that looks like this:
 +
 +.. code:: python
-+ 
++
 + class UsageSpec(object):
 +
 +    """Represents the used amount of a particular type of resource."""

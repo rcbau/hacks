@@ -6,6 +6,9 @@
         "Add more detailed network information to the metadata server": [
             "85673"
         ], 
+        "Add separated policy rule for each v2.1 api": [
+            "127863"
+        ], 
         "Add user limits to the limits API (as well as project limits)": [
             "127094"
         ], 
@@ -34,6 +37,9 @@
     "Administrative": {
         "Enable the nova metadata cache to be a shared resource to improve the hit rate": [
             "126705"
+        ], 
+        "Enforce instance uuid uniqueness in the SQL database": [
+            "128097"
         ]
     }, 
     "Containers Service": {
@@ -63,6 +69,9 @@
         ], 
         "Enable administrators and tenants to take advantage of backend storage policies": [
             "126547"
+        ], 
+        "Support the OVA image format": [
+            "127054"
         ]
     }, 
     "Hypervisor: libvirt": {
@@ -72,13 +81,21 @@
         "Add support for SMBFS as a image storage backend": [
             "103203"
         ], 
+        "Convert to using built in libvirt disk copy mechanisms for cold migrations on non-shared storage": [
+            "126979"
+        ], 
         "Support libvirt storage pools": [
             "126978"
         ], 
         "Support quiesce filesystems during snapshot": [
             "126966"
         ]
-    },
+    }, 
+    "Instance features": {
+        "Allow direct access to LVM volumes if supported by Cinder": [
+            "127318"
+        ]
+    }, 
     "Interal": {
         "Move flavor data out of the system_metdata table in the SQL database": [
             "126620"
@@ -96,6 +113,9 @@
         "Allow limiting the flavors that can be scheduled on certain host aggregates": [
             "122530"
         ], 
+        "Create an object model to represent a request to boot an instance": [
+            "127610"
+        ], 
         "Decouple services and compute nodes in the SQL database": [
             "126895"
         ], 
@@ -104,6 +124,11 @@
         ], 
         "Move select_destinations() to using a request object": [
             "127612"
+        ]
+    }, 
+    "Scheduling": {
+        "Add instance count on the hypervisor as a weight": [
+            "127871"
         ]
     }, 
     "Security": {
@@ -124,6 +149,9 @@
         "126452", 
         "126527", 
         "126547", 
-        "126553"
+        "126553", 
+        "126979", 
+        "127054", 
+        "128097"
     ]
 }
