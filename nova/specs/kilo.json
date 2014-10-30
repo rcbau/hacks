@@ -1,8 +1,5 @@
 {
     "API": {
-        "Add instance administrative lock status to the instance detail results": [
-            "127139"
-        ], 
         "Add more detailed network information to the metadata server": [
             "85673"
         ], 
@@ -14,6 +11,9 @@
         ], 
         "Allow all printable characters in resource names": [
             "126696"
+        ], 
+        "Expose the lock status of an instance as a queryable item": [
+            "85928", "127139"
         ], 
         "Implement instance tagging": [
             "127281"
@@ -29,6 +29,9 @@
         ], 
         "Move policy validation to just the API layer": [
             "127160"
+        ], 
+        "Provide a policy statement on the goals of our API policies": [
+            "128560"
         ], 
         "Support X509 keypairs": [
             "105034"
@@ -47,6 +50,11 @@
             "114044"
         ]
     }, 
+    "Hypervisor: Docker": {
+        "Migrate the Docker Driver into Nova": [
+            "128753"
+        ]
+    }, 
     "Hypervisor: FreeBSD": {
         "Implement support for FreeBSD networking in nova-network": [
             "127827"
@@ -55,6 +63,11 @@
     "Hypervisor: Hyper-V": {
         "Allow volumes to be stored on SMB shares instead of just iSCSI": [
             "102190"
+        ]
+    }, 
+    "Hypervisor: Ironic": {
+        "Add config drive support": [
+            "98930"
         ]
     }, 
     "Hypervisor: VMWare": {
@@ -70,6 +83,15 @@
         "Enable administrators and tenants to take advantage of backend storage policies": [
             "126547"
         ], 
+        "Enable the mapping of raw cinder devices to instances": [
+            "128697"
+        ], 
+        "Implement vSAN support": [
+            "128600"
+        ], 
+        "Support multiple disks inside a single OVA file": [
+            "128691"
+        ], 
         "Support the OVA image format": [
             "127054"
         ]
@@ -78,11 +100,47 @@
         "Add a new linuxbridge VIF type, macvtap": [
             "117465"
         ], 
+        "Add finetunable configuration settings for virtio-scsi": [
+            "103797"
+        ], 
+        "Add large page support": [
+            "129608"
+        ], 
         "Add support for SMBFS as a image storage backend": [
             "103203"
         ], 
+        "Allow scheduling of instances such that PCI passthrough devices are co-located on the same NUMA node as other instance resources": [
+            "128344"
+        ], 
         "Convert to using built in libvirt disk copy mechanisms for cold migrations on non-shared storage": [
             "126979"
+        ], 
+        "Implement COW volumes via VMThunder to allow fast boot of large numbers of instances": [
+            "128845", 
+            "129093", 
+            "128830", 
+            "129113", 
+            "129108", 
+            "128813", 
+            "129110", 
+            "128810", 
+            "129116"
+        ], 
+        "Implement configurable policy over where virtual CPUs should be placed on physical CPUs": [
+            "129606"
+        ], 
+        "Implement support for Parallels Cloud Server": [
+            "111335", 
+            "128990"
+        ], 
+        "Implement support for zkvm as a libvirt hypervisor": [
+            "130447"
+        ], 
+        "Improve total network throughput by supporting virtio-net multiqueue": [
+            "128825"
+        ], 
+        "Quiesce instance disks during snapshot": [
+            "128112"
         ], 
         "Support libvirt storage pools": [
             "126978"
@@ -94,16 +152,30 @@
     "Instance features": {
         "Allow direct access to LVM volumes if supported by Cinder": [
             "127318"
+        ], 
+        "Allow portions of an instance's uuid to be configurable": [
+            "130451"
+        ],
+	"Dynamic server groups": [
+            "130005"
         ]
     }, 
-    "Interal": {
+    "Internal": {
         "Move flavor data out of the system_metdata table in the SQL database": [
             "126620"
+        ], 
+        "Transition Nova to using the Glance v2 API": [
+            "84887"
         ]
     }, 
     "Internationalization": {
         "Enable lazy translations of strings": [
             "126717"
+        ]
+    }, 
+    "Performance": {
+        "Dynamically alter the interval nova polls components at based on load and expected time for an operation to complete": [
+            "122705"
         ]
     }, 
     "Scheduler": {
@@ -112,6 +184,9 @@
         ], 
         "Allow limiting the flavors that can be scheduled on certain host aggregates": [
             "122530"
+        ], 
+        "Convert the resource tracker to objects": [
+            "128964"
         ], 
         "Create an object model to represent a request to boot an instance": [
             "127610"
@@ -122,11 +197,12 @@
         "Implement resource objects in the resource tracker": [
             "127609"
         ], 
+        "Isolate the scheduler's use of the Nova SQL database": [
+            "89893"
+        ], 
         "Move select_destinations() to using a request object": [
             "127612"
-        ]
-    }, 
-    "Scheduling": {
+        ],
         "Add instance count on the hypervisor as a weight": [
             "127871"
         ]
@@ -137,6 +213,14 @@
         ], 
         "Strongly validate the tenant and user for quota consuming requests with keystone": [
             "92507"
+        ]
+    }, 
+    "__ignore__": {
+        "__ignore__": [
+            "130482", 
+            "129000", 
+            "128824", 
+            "128304"
         ]
     }, 
     "__previously_approved__": [
@@ -152,6 +236,9 @@
         "126553", 
         "126979", 
         "127054", 
-        "128097"
+        "128097", 
+        "128344", 
+        "128964", 
+        "128600"
     ]
 }

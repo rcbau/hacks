@@ -1,4 +1,4 @@
-From 855ea619037b0fab5fb5853718853b897d96f71f Mon Sep 17 00:00:00 2001
+From d96738c5d02795325702814cfbd28c878faf2983 Mon Sep 17 00:00:00 2001
 From: He Jie Xu <xuhj@linux.vnet.ibm.com>
 Date: Thu, 9 Oct 2014 13:12:23 +0800
 Subject: [PATCH] Implement policy should be enforced at REST API layer
@@ -10,16 +10,16 @@ Part of blueprint v3-api-policy
 
 Change-Id: I5bcb24346062219adae49ddafb5c1cd69b8e24b3
 ---
- specs/kilo/approved/nova-api-policy.rst | 257 ++++++++++++++++++++++++++++++++
- 1 file changed, 257 insertions(+)
+ specs/kilo/approved/nova-api-policy.rst | 281 ++++++++++++++++++++++++++++++++
+ 1 file changed, 281 insertions(+)
  create mode 100644 specs/kilo/approved/nova-api-policy.rst
 
 diff --git a/specs/kilo/approved/nova-api-policy.rst b/specs/kilo/approved/nova-api-policy.rst
 new file mode 100644
-index 0000000..cc7333d
+index 0000000..dbb9a79
 --- /dev/null
 +++ b/specs/kilo/approved/nova-api-policy.rst
-@@ -0,0 +1,257 @@
+@@ -0,0 +1,281 @@
 +..
 + This work is licensed under a Creative Commons Attribution 3.0 Unported
 + License.
@@ -147,10 +147,11 @@ index 0000000..cc7333d
 +    development configuration.
 +  * Update policy configuration file to match the existing behavior.
 +
-+* Correct the policy rule name specification for the v2.1 api
++* Correct the policy rule name specification for the v2.1 api and ec2 api
 +
 +  The policy naming style as below:
-+    api:[extension_alias]:[action]
++    For V2.1: api:[extension_alias]:[action]
++    For ec2: ec2_api:[action]
 +
 +  * We won't use 'compute' and 'compute_extension' to distingish the core and
 +    extension API. Because the core API may be changed in the future.
@@ -212,10 +213,33 @@ index 0000000..cc7333d
 +---------------------
 +
 +Every effort will be made to keep all existing policy permission
-+settings backwards compatible. Where this is not possible or too
-+impractical the policy file changes required to keep the existing
-+behaviour will be very clearly documented in upgrade documentation.
++settings backwards compatible for v2 API, except the db hard-code permission
++checks.
 +
++The extension will be affect by remove db layer hard-code permission checks
++as below:
++
++services
++certificates
++floating_ips
++floating_ips_bulk
++floating_ip_dns
++fixed_ips
++os-network
++network_associate
++quotas
++quota_classes
++security_group
++security_group_default_rule
++migrations
++flavor_manage
++flavor_access
++cell
++agent
++pci
++
++For v2.1 and ec2 api, the policy rule name prefix is changed. So it need
++Deployer update their policy config.
 +
 +Developer impact
 +----------------

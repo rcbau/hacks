@@ -1,4 +1,4 @@
-From 7ad95e78b067b5ae3baa83e0501ba68e56c0d648 Mon Sep 17 00:00:00 2001
+From ccd3c1ff184fae8721065b4a558858310105e3bc Mon Sep 17 00:00:00 2001
 From: Solly Ross <sross@redhat.com>
 Date: Wed, 8 Oct 2014 15:29:49 -0400
 Subject: [PATCH] Blueprint to use libvirt storage pools
@@ -11,16 +11,16 @@ Spec for blueprint use-libvirt-storage-pools
 Change-Id: I30b26ff0bc591f7d9a80b835098386b74a5570ac
 Previously-approved: juno
 ---
- specs/kilo/approved/use-libvirt-storage-pools.rst | 326 ++++++++++++++++++++++
- 1 file changed, 326 insertions(+)
+ specs/kilo/approved/use-libvirt-storage-pools.rst | 324 ++++++++++++++++++++++
+ 1 file changed, 324 insertions(+)
  create mode 100644 specs/kilo/approved/use-libvirt-storage-pools.rst
 
 diff --git a/specs/kilo/approved/use-libvirt-storage-pools.rst b/specs/kilo/approved/use-libvirt-storage-pools.rst
 new file mode 100644
-index 0000000..3fd859e
+index 0000000..9abe53e
 --- /dev/null
 +++ b/specs/kilo/approved/use-libvirt-storage-pools.rst
-@@ -0,0 +1,326 @@
+@@ -0,0 +1,324 @@
 +..
 + This work is licensed under a Creative Commons Attribution 3.0 Unported
 + License.
@@ -57,22 +57,20 @@ index 0000000..3fd859e
 +Use Cases
 +-----------
 +
-+First, this will facilitate removing SSH from resize/migrate, as it will allow
-+us to use virStorageVolUpload and virStorageVolDownload to migrate storage
-+(see `Project Priority`_).
++Developer: This will facilitate removing SSH from resize/migrate, as it will
++allow us to use virStorageVolUpload and virStorageVolDownload to migrate
++storage.
 +
-+Second, this will simplify adding in support for pool types that are supported
-+by libvirt but not supported by Nova (such as Sheepdog).
++Developer: Second, this will simplify adding in support for pool types that
++are supported by libvirt but not supported by Nova (such as Sheepdog).
 +
-+Third, this will (in the long run) simplify the imagebackend code, making it
-+easier to maintain.
++Developer: this will (in the long run) simplify the imagebackend code, making
++it easier to maintain.
 +
 +Project Priority
 +----------------
 +
-+This indirectly falls under the "clean up resize/migrate" priority, since the
-+follow-up spec, migrate-libvirt-volumes, will facilitate the removal of SSH
-+from resize/migrate.
++None
 +
 +Proposed change
 +===============

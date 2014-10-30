@@ -1,0 +1,39 @@
+From f5212b6ed0267a07ec480c79c87b7e417ef30ace Mon Sep 17 00:00:00 2001
+From: Dan Smith <dansmith@redhat.com>
+Date: Tue, 14 Oct 2014 07:28:28 -0700
+Subject: [PATCH] Clarify the format of the Flavor content stored in the
+ database
+
+This clarifies some verbiage in the flavor-from-sysmeta-to-blob
+spec, which didn't make it in before the spec was approved.
+
+Change-Id: I423d6741720cf9d04f7c2c9030bb49386e05c5b4
+---
+ specs/kilo/approved/flavor-from-sysmeta-to-blob.rst | 7 ++++++-
+ 1 file changed, 6 insertions(+), 1 deletion(-)
+
+diff --git a/specs/kilo/approved/flavor-from-sysmeta-to-blob.rst b/specs/kilo/approved/flavor-from-sysmeta-to-blob.rst
+index d657c27..dd8978d 100644
+--- a/specs/kilo/approved/flavor-from-sysmeta-to-blob.rst
++++ b/specs/kilo/approved/flavor-from-sysmeta-to-blob.rst
+@@ -79,11 +79,16 @@ we will store a JSONified copy of the flavor on initial boot. Further,
+ we will provide for storage of an 'old' and 'new' flavor to facilitate
+ resize operations. The top-level structure will look like this::
+ 
+- {'cur': {'flavorid': 'foo', 'memory_mb': 1024, ...},
++ {'cur': { ... serialized Flavor object ... }
+   'new': None,
+   'old': None,
+  }
+ 
++When a flavor is stored in one of the three slots above, the form used
++will be the serialized NovaObject result. This means that the content
++in the database will be versioned and deserializing it from the
++database will work just like receiving one over RPC.
++
+ The database migration for this change will simply add the new column,
+ but not perform a data migration. Instead, the migration from
+ system_metadata to instance_extra will be managed by the objects
+-- 
+1.9.1
+

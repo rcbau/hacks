@@ -1,4 +1,4 @@
-From 7af6bfd7692f3d41bc5f55d21e48e7f8a10669e0 Mon Sep 17 00:00:00 2001
+From 057d14504a02a8e70d4cab72219b520ec774933e Mon Sep 17 00:00:00 2001
 From: Arnaud Legendre <arnaudleg@gmail.com>
 Date: Wed, 8 Oct 2014 15:28:42 -0700
 Subject: [PATCH] VMware: Support OVA container format
@@ -11,16 +11,16 @@ Previously-approved: juno
 
 Change-Id: I8704c697cafbe7f17cde6a3eadcad5e9d21e35b3
 ---
- specs/kilo/approved/vmware-driver-ova-support.rst | 196 ++++++++++++++++++++++
- 1 file changed, 196 insertions(+)
+ specs/kilo/approved/vmware-driver-ova-support.rst | 198 ++++++++++++++++++++++
+ 1 file changed, 198 insertions(+)
  create mode 100644 specs/kilo/approved/vmware-driver-ova-support.rst
 
 diff --git a/specs/kilo/approved/vmware-driver-ova-support.rst b/specs/kilo/approved/vmware-driver-ova-support.rst
 new file mode 100644
-index 0000000..0d99457
+index 0000000..23cfb9f
 --- /dev/null
 +++ b/specs/kilo/approved/vmware-driver-ova-support.rst
-@@ -0,0 +1,196 @@
+@@ -0,0 +1,198 @@
 +..
 + This work is licensed under a Creative Commons Attribution 3.0 Unported
 + License.
@@ -34,21 +34,20 @@ index 0000000..0d99457
 +https://blueprints.launchpad.net/nova/+spec/vmware-driver-ova-support
 +
 +This blueprint proposes to add support of spawning an instance from the disk
-+embedded in an OVA (Open Virtualization Application) glance image.
++embedded in an OVA (`Open Virtualization Application <http://www.dmtf.org/standards/ovf>`_) glance image.
 +
 +Problem description
 +===================
 +
 +Given that the best practice for obtaining a compact, portable template of a
 +virtual machine in the vSphere platform is to export it into an OVF folder or
-+an OVA file (http://www.dmtf.org/standards/ovf), a frequent customer ask is to
++an OVA file, a frequent customer ask is to
 +be able to deploy them in OpenStack as Glance images and spawn new instances
 +with them.
 +
 +In addition, OVF/OVA contains virtual disks that are converted to the
 +streamOptimized format, and streamOptimized disks are the only disk type
-+deployable on vSAN datastores (see
-+https://blueprints.launchpad.net/nova/+spec/vmware-vsan-support)
++deployable on vSAN datastores (see blueprint `vmware-vsan-support <https://blueprints.launchpad.net/nova/+spec/vmware-vsan-support>`_)
 +Since exporting a virtual machine to OVA/OVF remains one of the most convenient
 +means to obtain streamOptimized disks, providing support for spawning using OVA
 +glance images will streamline the process of providing images for vSAN use.
@@ -120,6 +119,9 @@ index 0000000..0d99457
 +  these type while still adopting the best practice of exporting virtual
 +  machines first, this leads a separate, lengthier and more error-prone
 +  workflow for preparing images for OpenStack use.
++
++* Add logic in the client code to extract the content of the OVA and upload the
++  VMDK content rather than than the entire OVA.
 +
 +Data model impact
 +-----------------
@@ -195,8 +197,8 @@ index 0000000..0d99457
 +=======
 +
 +Since Tempest in general does not support driver-specific tests, the proposal
-+is to update the VMware NSX CI
-+(https://wiki.openstack.org/wiki/NovaVMware/Minesweeper) with additional tests
++is to update the `VMware NSX CI <https://wiki.openstack.org/wiki/NovaVMware/Minesweeper>`_
++with additional tests
 +to verify spawning of instances using OVA images uploaded to glance with the
 +'ova' container format.
 +

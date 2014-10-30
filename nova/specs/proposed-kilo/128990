@@ -1,0 +1,166 @@
+From cbecc00548553b12d71e57734c84903f863003d2 Mon Sep 17 00:00:00 2001
+From: Dmitry Guryanov <dguryanov@parallels.com>
+Date: Thu, 16 Oct 2014 20:23:10 +0400
+Subject: [PATCH] Add Parallels Cloud Server support into virt/libvirt driver
+
+This specification proposes to implement modification in
+virt/libvirt driver to support Parallels Cloud Server
+(http://www.parallels.com/products/pcs/).
+
+Change-Id: I82bb43b33aa65ccccaa58cd0429160b27559fdbd
+---
+ specs/kilo/pcs-support.rst | 142 +++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 142 insertions(+)
+ create mode 100644 specs/kilo/pcs-support.rst
+
+diff --git a/specs/kilo/pcs-support.rst b/specs/kilo/pcs-support.rst
+new file mode 100644
+index 0000000..d3c4d03
+--- /dev/null
++++ b/specs/kilo/pcs-support.rst
+@@ -0,0 +1,142 @@
++=====================================================
++Parallels Cloud Server support in nova/libvirt driver
++=====================================================
++
++https://blueprints.launchpad.net/nova/+spec/pcs-support
++
++This specification is intended to describe process of extending nova/libvirt
++driver in order to support Parallels Cloud Server [1]
++
++Problem description
++===================
++
++Parallels Cloud Server (PCS) is a virtualization solution product, which
++enables service providers to use container and hypervisor virtualization
++technology via the same management tools and API.
++Though PCS is supported by libvirt it is absent in OpenStack for now due to
++not only specific demand related to compute node deployment but also
++different disk image format implied by usage of Parallels disk loopback block
++device [2], domains configuration and supported features.
++
++Proposed change
++===============
++
++To make PCS be supported by OpenStack we need to modify a bit
++nova/libvirt driver mostly regarding a new type of virtualization processing.
++The end user will be able to configure nova to use PCS by setting
++libvirt.virt_type option to either to "vzct" - for containers or "vzhyp" for
++hypervisor based instances. Also as a native disk format for both VMs and
++containers in PCS is ploop [2] to get best performance user will need to
++configure glance-api configuration to support PCS ploop format.
++
++nova.conf extract example:
++[libvirt]
++...
++virt_type = vzct
++images_type = ploop
++...
++
++glance-api.conf extract example:
++...
++disk_formats=ami,ari,aki,vhd,vmdk,raw,qcow2,vdi,iso,ploop
++...
++
++
++Alternatives
++------------
++
++The alternate way is to implement a separate PCS nova driver like this one[3],
++which was implemented in terms of PCS + OpenStack proof of concept.
++
++pros:
++* There is no middle layer between OpenStack and PCS as pcs-nova-driver uses
++native PCS's python API.
++* Changes in pcs-nova-driver will not affect nova/libvirt's code.
++
++cons:
++* Yet another nova driver
++* It is out-of-tree driver
++
++Data model impact
++-----------------
++
++None.
++
++REST API impact
++---------------
++
++None.
++
++Security impact
++---------------
++
++None.
++
++Notifications impact
++--------------------
++
++None.
++
++Other end user impact
++---------------------
++
++None.
++
++Performance Impact
++------------------
++
++None.
++
++Other deployer impact
++---------------------
++
++Compute nodes available for "vzct" or "vzhyp" type of instances have to be
++deployed with the help of PCS installer.
++
++Developer impact
++----------------
++
++None.
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  dguryanov
++
++Other contributors:
++  burluka
++  mnestratov
++
++Work Items
++----------
++* Enhance libvirt driver to support new virt_type value.
++* Add support of new disk image format in glance
++* Implement all the functionality necessary to support PCS in libvirt driver
++* To be specified
++
++Dependencies
++============
++
++None
++
++Testing
++=======
++Testing in the gate will be provided by currently being established Parallels
++CI testing system.
++
++Documentation Impact
++====================
++
++New type of virtualization provider should be noticed and host deployment
++pre-requisites such as the need to have PCS installed on compute nodes.
++
++References
++==========
++
++[1] Parallels Cloud Server http://www.parallels.com/products/pcs
++[2] Ploop block device http://openvz.org/Ploop
++[3] PCS nova driver https://github.com/parallels/pcs-nova-driver
+-- 
+1.9.1
+

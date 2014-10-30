@@ -28,6 +28,8 @@ if __name__ == '__main__':
     kilo_impl_re = re.compile('.*specs/kilo/implemented/.*\.rst.*')
 
     merged = []
+    abandoned = []
+
     for line in runcmd('ssh review.openstack.org gerrit query '
                        '--format=json --current-patch-set '
                        'project:openstack/nova-specs').split('\n'):
@@ -40,6 +42,8 @@ if __name__ == '__main__':
 
         print 'Patch: %s' % j['number']
         print 'Ref: %s' % j['currentPatchSet']['ref']
+        print json.dumps(j, indent=4, sort_keys=True)
+        print
 
         spec_match = []
         implemented = False
@@ -71,8 +75,12 @@ if __name__ == '__main__':
 
             if j.get('status') == 'MERGED':
                 merged.append(j['number'])
+            if j.get('status') == 'ABANDONED':
+                abandoned.append(j['number'])
 
         print
 
     with open('/tmp/patches/__merged__', 'w') as f:
         f.write(json.dumps(merged))
+    with open('/tmp/patches/__abandoned__', 'w') as f:
+        f.write(json.dumps(abandoned))

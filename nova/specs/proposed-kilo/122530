@@ -1,4 +1,4 @@
-From 10fdb5138a6eb88ffd4e8d71824fa1a9d4f83942 Mon Sep 17 00:00:00 2001
+From 381dd89abaca9ed3a9955053714a508558d6cc15 Mon Sep 17 00:00:00 2001
 From: "Jesse J. Cook" <jesse.cook@rackspace.com>
 Date: Thu, 18 Sep 2014 16:09:58 -0500
 Subject: [PATCH] Spec for restricting certain image types
@@ -8,17 +8,17 @@ bp restrict-image-types
 Change-Id: Ie47816956a4a92d158c593495de6a92822d338bb
 ---
  doc/source/index.rst                |   8 ++
- specs/kilo/restrict-image-types.rst | 155 ++++++++++++++++++++++++++++++++++++
- 2 files changed, 163 insertions(+)
+ specs/kilo/restrict-image-types.rst | 156 ++++++++++++++++++++++++++++++++++++
+ 2 files changed, 164 insertions(+)
  create mode 100644 specs/kilo/restrict-image-types.rst
 
 diff --git a/doc/source/index.rst b/doc/source/index.rst
-index 2cad6f2..8493989 100644
+index 38bfcc4..6a43f82 100644
 --- a/doc/source/index.rst
 +++ b/doc/source/index.rst
-@@ -21,6 +21,14 @@ Juno approved specs:
+@@ -46,6 +46,14 @@ Kilo approved (but not implemented) specs:
  
-    specs/juno/*
+    specs/kilo/approved/*
  
 +Kilo approved specs:
 +
@@ -33,10 +33,10 @@ index 2cad6f2..8493989 100644
  ==================
 diff --git a/specs/kilo/restrict-image-types.rst b/specs/kilo/restrict-image-types.rst
 new file mode 100644
-index 0000000..d69d939
+index 0000000..116ee4e
 --- /dev/null
 +++ b/specs/kilo/restrict-image-types.rst
-@@ -0,0 +1,155 @@
+@@ -0,0 +1,156 @@
 +..
 + This work is licensed under a Creative Commons Attribution 3.0 Unported
 + License.
@@ -192,6 +192,7 @@ index 0000000..d69d939
 +==========
 +
 +https://review.openstack.org/#/c/119945/
++https://review.openstack.org/#/c/92508/3
 -- 
 1.9.1
 

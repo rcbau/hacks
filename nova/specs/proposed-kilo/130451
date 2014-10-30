@@ -1,0 +1,341 @@
+From a05f8e7a9e2733b1f5605f711c0c6ef0dec471e5 Mon Sep 17 00:00:00 2001
+From: Pasquale Porreca <pasquale.porreca@dektech.com.au>
+Date: Wed, 22 Oct 2014 18:43:09 +0200
+Subject: [PATCH] use-uuid-v1 spec
+
+Change-Id: I69aa10c4a2a3a70155066adc4731ffc696eb7328
+APIImpact
+Implements: blueprint use-uuid-v1
+---
+ specs/kilo/approved/use-uuid-v1.rst | 319 ++++++++++++++++++++++++++++++++++++
+ 1 file changed, 319 insertions(+)
+ create mode 100644 specs/kilo/approved/use-uuid-v1.rst
+
+diff --git a/specs/kilo/approved/use-uuid-v1.rst b/specs/kilo/approved/use-uuid-v1.rst
+new file mode 100644
+index 0000000..bfbb008
+--- /dev/null
++++ b/specs/kilo/approved/use-uuid-v1.rst
+@@ -0,0 +1,319 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++==========================================
++Use UUID version 1 for new instances
++==========================================
++
++https://blueprints.launchpad.net/nova/+spec/use-uuid-v1
++
++This specification proposes an alternative way to generate the UUID for a new
++instance, giving the user the possibility to specify part of it.
++
++
++Problem description
++===================
++
++Currently the UUID for a newly created instance is generated with a
++(pseudo)random algorithm, according to version 4 described in RFC 4122.
++
++Using a random UUID it is not possible to identify a specific instance or a
++class of instances, therefore by being able to choose part of the UUID, this
++could be used as a recognizable tag. The choice of UUID over any other tagging
++method is a consequence of the fact that UUID is a parameter included in
++Bootstrap Protocol [2]_ requests. 
++
++The porting of legacy environments in OpenStack may require the necessity to
++adopt boot from network, using a PXE server that provides DHCP and TFTP
++services to other instances.
++
++Having the possibility to set a field of the UUID will allow to use it to
++define different classes of instances and to configure the DHCP/TFTP server to
++filter what boot file to provide to these different classes of instances 
++booting from network.
++
++This specification proposes the possibility to generate an UUID
++for new instances using version 1 algorithm as described in RFC 4122 [1]_ and
++giving the user the possibility to set the "node" field of the UUID.
++
++In the RFC4122 an UUID is described with this form:
++
+++------------------------+---------------------------------------------------+
++| UUID                   | time-low "-" time-mid "-" time-high-and-version   |
++|                        | "-" clock-seq-and-reserved clock-seq-low "-" node |
+++========================+===================================================+
++| time-low               | 4hexOctet                                         |
+++------------------------+---------------------------------------------------+
++| time-mid               | 2hexOctet                                         |
+++------------------------+---------------------------------------------------+
++| time-high-and-version  | 2hexOctet                                         |
+++------------------------+---------------------------------------------------+
++| clock-seq-and-reserved | hexOctet                                          |
+++------------------------+---------------------------------------------------+
++| clock-seq-low          | hexOctet                                          |
+++------------------------+---------------------------------------------------+
++| node                   | 4hexOctet                                         |
+++------------------------+---------------------------------------------------+
++| hexOctet               | hexDigit hexDigit                                 |
+++------------------------+---------------------------------------------------+
++| hexDigit               | "0" / "1" / "2" / "3" / "4" / "5" / "6" / "7" /   |
++|                        | "8" / "9" / "a" / "b" / "c" / "d" / "e" / "f" /   |
++|                        | "A" / "B" / "C" / "D" / "E" / "F"                 |
+++------------------------+---------------------------------------------------+
++
++In version 1 UUID the "time" part represent a time stamp, the clock sequence
++is to help to avoid duplicate (can be randomly generated) and the node is a
++sequence in the form of an IEEE 802 MAC address.
++
++This specification proposal is to add an optional "node_uuid" parameter to the
++"Create server" request and use the value of this parameter as the node field
++of the UUID assigned to the server; if the parameter "node_uuid" is not
++present, the UUID will be generated normally with the version 4 algorithm.
++
++Use Cases
++----------
++
++A possible use case is described in the Problem description section and is
++related to the use of node field of UUID to define different classes of
++instances and to configure a DHCP/TFTP server to filter what boot file to
++provide to these different classes of instances booting from network.
++It has to be noted that network boot is not available at the moment in
++OpenStack, anyway it is possible to enable it using some workarounds (e.g.
++using an ipxe client image file as booting image), moreover there  is a
++blueprint to add this feature [3]_.
++
++Another possible use case is for companies which have assigned a separate block
++of addresses from IEEE registration authority, to use the node field of the
++UUID as a "signature". Note that some vendors do something like this for UUID
++of real machine e.g. DELL use the time-low field for an hexadecimal sequence
++that translated in text is "dell".
++
++Project Priority
++-----------------
++
++None.
++
++
++Proposed change
++===============
++
++Currently the UUID of an instance is generated in the function
++_populate_instance_for_create of the class nova.compute.api, using the function
++uuid4 of the module uuid.py [4]_.
++
++uuid.py is a module, included in standard python distribution, that implements
++all the algorithms defined in RFC 4122 to generate an UUID.
++
++In particular the function uuid1 accepts as optional parameters "node" and
++"clock_seq"; if clock_seq parameter is missing the clock-seq field of the UUID
++is randomly generated, if also node parameter is missing the node field is
++populated with the hardware address as a 48-bit positive integer, or randomly
++generated if all attempts to obtain the hardware address fail.
++
++In this proposal the function uuid1 will generate the instance UUID
++if a node_uuid parameter is passed via the REST api, while the function uuid4
++will still be used if the parameter is missing.
++
++The node_uuid will be an optional parameter of the "Create server" POST
++request.
++
++Alternatives
++------------
++
++This proposal does not consider the possibility to pass also the clock_seq as
++possible parameter for the function uuid1, because it does not seem to add any
++advantage, while increasing the possibility to generate identical UUIDs (even
++if still highly remote). For same reason it is not considered to use the
++function uuid1 if no parameter is passed.
++
++A possible alternative is to pass as optional parameter a dictionary
++"uuid_version" with a mandatory "version" key (with 1 or 4 as possible values)
++and optional key/value pairs "node" and "clockseq" (only in case of version 1).
++
++With this implementation it would be easy to extend the support for UUID
++version 3 and 5 too.
++
++Data model impact
++-----------------
++
++None.
++
++REST API impact
++---------------
++
++The affected method is Create server to which an optional node_uuid parameter
++will be added.
++Method description, method type, normal http response code(s), expected error
++http response code(s), URL for the resource will not change.
++
++**Additional parameter passed via the url**
++
+++---------------+-----------+------------+-----------------------------------+
++| **Parameter** | **Style** | **Type**   | **Description**                   |
+++---------------+-----------+------------+-----------------------------------+
++| node_uuid     | plain     | xsd:string | Specify the last 8 hexadecimal    |
++| (Optional)    |           |            | digit of the server UUID          |
+++---------------+-----------+------------+-----------------------------------+
++
++**JSON schema definition of the parameter**
++
++ | server_create = {
++ |  	'node_uuid': {
++ |	'type': 'string',
++ |	'pattern': '^[0-9A-Fa-f]{12}$'
++ |	}
++ | }
++
++**Example use case: JSON Request**
++
++ | {
++ |    "server": {
++ |        "name": "server-test-1",
++ |        "imageRef": "b5660a6e-4b46-4be3-9707-6b47221b454f",
++ |        "flavorRef": "2",
++ |        "max_count": 1,
++ |        "min_count": 1,
++ |        **"node_uuid": "a1b2c3d4e5f6",**
++ |        "networks": [
++ |            {
++ |                "uuid": "d32019d3-bc6e-4319-9c1d-6722fc136a22"
++ |            }
++ |        ],
++ |        "security_groups": [
++ |            {
++ |                "name": "default"
++ |            },
++ |            {
++ |                "name": "another-secgroup-name"
++ |            }
++ |        ]
++ |    }
++ | }
++
++**Example use case: JSON Response**
++
++ | {
++ |    "server": {
++ |         "security_groups": [
++ |             {
++ |                 "name": "default"
++ |             }
++ |         ],
++ |         "OS-DCF:diskConfig": "MANUAL",
++ |         "id": "c6d04159-9bfc-4ab8-823d-**a1b2c3d4e5f6**",
++ |         "links": [
++ |             {
++ |                 "href":
++ |                 "http://166.78.46.130:8774/v2/
++                   4fd44f30292945e481c7b8a0c8908869/servers/
++		   c6d04159-9bfc-4ab8-823d-**a1b2c3d4e5f6**",
++ |                 "rel": "self"
++ |             },
++ |             {
++ |                "href":
++ |                "http://166.78.46.130:8774/
++                  4fd44f30292945e481c7b8a0c8908869/servers/
++		  c6d04159-9bfc-4ab8-823d-**a1b2c3d4e5f6**",
++ |                "rel": "bookmark"
++ |             }
++ |        ],
++ |        "adminPass": "aabbccddeeff"
++ |    }
++ | }
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++A new option "--node-uuid" will be introduced for nova boot command  in
++python-novaclient module to pass the node_uuid parameter to the Create server
++request.
++
++Performance Impact
++------------------
++
++None
++
++Other deployer impact
++---------------------
++
++None
++
++Developer impact
++----------------
++
++None
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  pasquale-porreca
++
++Other contributors:
++  trung-t-trinh
++  matarazzoangelo
++  marco-romano-6
++  daniele-casini
++
++Work Items
++----------
++
++* Define api extension and/or v3 json schema for parameter node_uuid.
++* Modify v2 API server.py to manage the new parameter and pass it to compute
++  api.
++* Modify compute api.py to manage the new parameter and generate the UUID using
++  uuid1 function.
++* Modify python-novaclient to add a --node-uuid option to set node_uuid
++  parameter
++
++
++Dependencies
++============
++
++None.
++
++
++Testing
++=======
++
++Tempest tests will be necessary for this functionality.
++
++
++Documentation Impact
++====================
++
++It will be necessary to add a specification in the Compute API document for the
++new parameter and modify the Compute command-line client guide to the new
++command option.
++
++
++References
++==========
++
++.. [1] http://www.ietf.org/rfc/rfc4122.txt
++
++.. [2] http://www.iana.org/assignments/bootp-dhcp-parameters/bootp-dhcp-parameters.xhtml
++
++.. [3] https://blueprints.launchpad.net/nova/+spec/boot-order-for-instance
++
++.. [4] https://docs.python.org/2/library/uuid.html
++
++.. [5] http://lists.openstack.org/pipermail/openstack-dev/2014-September/046979.html
++
+-- 
+1.9.1
+

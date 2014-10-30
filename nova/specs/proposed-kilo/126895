@@ -1,4 +1,4 @@
-From 8189af1f11125dbd1edff3e049af31fdc198097b Mon Sep 17 00:00:00 2001
+From db1d51caa4a0ac825d45bbd6a849b433db38d926 Mon Sep 17 00:00:00 2001
 From: Sylvain Bauza <sbauza@redhat.com>
 Date: Wed, 8 Oct 2014 15:13:29 +0200
 Subject: [PATCH] Propose Detach Service from ComputeNode
@@ -7,16 +7,16 @@ As this patch series requires DB migrations, a spec is proposed.
 
 Change-Id: Ia261e9e15ac5596a1d0d5057ba5efbb0bab66833
 ---
- .../approved/detach-service-from-computenode.rst   | 153 +++++++++++++++++++++
- 1 file changed, 153 insertions(+)
+ .../approved/detach-service-from-computenode.rst   | 169 +++++++++++++++++++++
+ 1 file changed, 169 insertions(+)
  create mode 100644 specs/kilo/approved/detach-service-from-computenode.rst
 
 diff --git a/specs/kilo/approved/detach-service-from-computenode.rst b/specs/kilo/approved/detach-service-from-computenode.rst
 new file mode 100644
-index 0000000..e2db13e
+index 0000000..8cffafb
 --- /dev/null
 +++ b/specs/kilo/approved/detach-service-from-computenode.rst
-@@ -0,0 +1,153 @@
+@@ -0,0 +1,169 @@
 +..
 + This work is licensed under a Creative Commons Attribution 3.0 Unported
 + License.
@@ -51,8 +51,7 @@ index 0000000..e2db13e
 +Project Priority
 +----------------
 +
-+Priorities not yet set, but this work is related to the effort of reducing
-+technical debt.
++This work is related to the effort of reducing technical debt.
 +
 +Proposed change
 +===============
@@ -60,14 +59,15 @@ index 0000000..e2db13e
 +Instead of having a relationship using a foreign key, the proposal will consist
 +of adding a new field called 'host' for compute_nodes and a unique constraint
 +on (host, hypervisor_hostname). Also, service_id field will be removed from
-+compute_nodes table and object, SQLA relationship on service will be deleted
-+and Service object will no longer have a compute_node field.
++compute_nodes table and ComputeNode object field service_id will be left unset.
++SQLA relationship on service will be deleted and Service object will keep a
++compute_node field but will actually not use this relationship.
 +
 +Alternatives
 +------------
 +
-+Leave the data model unchanged but act only at Object model could be possible,
-+but would mean that Objects fields and DB fields are not identical.
++Only change DB API to remove the relationship without changing callers but
++it would create some confusion and obfuscate the need of modifying accessors.
 +
 +Data model impact
 +-----------------
@@ -79,17 +79,34 @@ index 0000000..e2db13e
 +DB migrations will ensure that :
 +
 + - host will be populated at upgrade using Service.host table thanks to
-+   existing service_id
++   existing service_id and a unique key will be set on
++   (host, hypervisor_hostname)
 +
 + - service_id will be populated at downgrade using host information that
 +   matches Service.host
 +
++There is no sense to keep a specific ID while the tuple (host, node) is
++identified as the source of truth for idenfifying compute nodes.
++
++When implementing these migrations [1], TurboHipster (aka. DB DataSet migration
++check) showed no problems with these upgrade and downgrade paths in terms of
++delay.
++
++ComputeNode object will still continue to have a service field but it will
++no longer use the relationship to get that info. In parallel, Service object
++will continue to have a nested ComputeNode object for backwards compatibility
++but won't also use the relationship to get that object.
++
++
 +REST API impact
 +---------------
 +
-+In order to preserve API stability, extra calls will be made at the API level
-+for querying service state and adding it to the response model when asking
-+for compute_nodes or querying compute_nodes when asking for service.
++In order to preserve API stability, we will still provide service information
++when querying compute nodes but this extra information will be on a
++case-by-case basis thanks to an extra flag passed to the DB API asking to join
++service and compute_nodes tables on service.host == compute_nodes.host.
++We expect no performance penalty as it is already done this way in
++db.compute_node_get_all() with an INTEGER matching instead of a VARCHAR(255).
 +
 +No changes in the API model.
 +
@@ -111,9 +128,7 @@ index 0000000..e2db13e
 +Performance Impact
 +------------------
 +
-+Extra calls will be made when querying specific API endpoints (hypervisors and
-+services) when wanting to get the list, but these endpoints are admin-only and
-+not really used for production workloads or management.
++None
 +
 +Other deployer impact
 +---------------------
@@ -144,8 +159,9 @@ index 0000000..e2db13e
 +* Add host field to compute_nodes table
 +* Add extra methods for querying this new field
 +* Use these extra methods instead of querying Service for getting the node(s)
-+* Modify calls for getting service info instead of looking at the compute
-+  object directly
++* Make service info optional when querying compute nodes
++* Remove query by service_id on compute_nodes
++* Do not provide by default service info when querying compute nodes
 +* Remove service_id field from compute_nodes and service relationship
 +
 +Dependencies

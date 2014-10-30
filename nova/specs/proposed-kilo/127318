@@ -1,4 +1,4 @@
-From 16e042a929fef040cab0fd281c020590149d14ac Mon Sep 17 00:00:00 2001
+From 96f4a09e810485a779c82fea0d55f6c7347bbdbe Mon Sep 17 00:00:00 2001
 From: Mitsuhiro Tanino <mitsuhiro.tanino@hds.com>
 Date: Thu, 9 Oct 2014 11:39:07 -0400
 Subject: [PATCH] LVM: Support a volume-group on shared storage
@@ -12,16 +12,16 @@ In this feature, both Nova and Cinder pieces are necessary.
 Change-Id: I95fe79432a96496dbcd8b50fe8f906d52784adce
 Implements: blueprint lvm-driver-for-shared-storage
 ---
- .../approved/lvm-driver-for-shared-storage.rst     | 234 +++++++++++++++++++++
- 1 file changed, 234 insertions(+)
+ .../approved/lvm-driver-for-shared-storage.rst     | 250 +++++++++++++++++++++
+ 1 file changed, 250 insertions(+)
  create mode 100644 specs/kilo/approved/lvm-driver-for-shared-storage.rst
 
 diff --git a/specs/kilo/approved/lvm-driver-for-shared-storage.rst b/specs/kilo/approved/lvm-driver-for-shared-storage.rst
 new file mode 100644
-index 0000000..e513c48
+index 0000000..ba17e03
 --- /dev/null
 +++ b/specs/kilo/approved/lvm-driver-for-shared-storage.rst
-@@ -0,0 +1,234 @@
+@@ -0,0 +1,250 @@
 +..
 + This work is licensed under a Creative Commons Attribution 3.0 Unported
 + License.
@@ -34,10 +34,11 @@ index 0000000..e513c48
 +
 +https://blueprints.launchpad.net/nova/+spec/lvm-driver-for-shared-storage
 +
-+Based on the OpenStack Atlanta User Survey, many users are still using LVM
++Based on the OpenStack-Atlanta-User-Survey_, many users are still using LVM
 +driver at their Dev/QA(30%), POC(26%) and Production(22%) environment,
 +LVM driver occupies an important place in Cinder driver.
-+http://www.slideshare.net/ryan-lane/openstack-atlanta-user-survey
++
++.. _Openstack-Atlanta-User-Survey: http://www.slideshare.net/ryan-lane/openstack-atlanta-user-survey
 +
 +This proposal enables direct I/O path from VMs to storage using LVM driver
 +with LVM on shared storage volume. By enabling direct I/O path provides
@@ -106,10 +107,12 @@ index 0000000..e513c48
 +
 +1. As for "Standard" type storage, use proposed software based LVM
 +   Cinder driver.
++
 +   ex. Quicker volume creation and snapshot are available.
 +
 +2. As for "High performance" type storage, use hardware based Cinder driver.
 +   Higher charge than "Standard" volume.
++
 +   ex. Efficient snapshot/clone/mirroring features are available.
 +
 +Project Priority
@@ -119,37 +122,47 @@ index 0000000..e513c48
 +
 +Proposed change
 +===============
-+Introduce LibvirtSharedLvmDriver class to virt.libvirt.volume and add the
-+class to list of volume_drivers to handle in case of "lvm".
++1. Introduce LibvirtSharedLvmDriver class to virt.libvirt.volume and add
++   the class to list of volume_drivers to handle in case of "lvm".
 +
-+In this class, connect_volume() and disconnect_volume() will be implemented
-+to handle LVM on a shared storage volume.
++   In this class, connect_volume() and disconnect_volume() will be
++   implemented to handle LVM on a shared storage volume.
 +
-+- connect_volume()
++  (a) connect_volume()
 +
-+  When a storage volume is shared to multiple nodes, volume activation to
-+  created logical volume(LV) is necessary before attaching a created volume
-+  to an instance.
-+  After volume creation at Cinder node, only Cinder node knows the volume and
-+  other compute nodes do not know about the created LV. Therefore, these two
-+  steps are necessary to attach the created volume.
++    When a storage volume is shared to multiple nodes, volume activation to
++    created logical volume(LV) is necessary before attaching a created volume
++    to an instance.
++    After volume creation at Cinder node, only Cinder node knows the volume and
++    other compute nodes do not know about the created LV. Therefore, these two
++    steps are necessary to attach the created volume.
 +
-+  - Update LV list and status using "lvs" at a compute node.
-+  - Activate LV using "lvchange -ay" is required at a compute node.
++    - Update LV list and status using "lvs" at a compute node.
++    - Activate LV using "lvchange -ay" is required at a compute node.
 +
-+  After volume activation, access device path /dev/VG1/LV1 is created at
-+  compute node. Libvirt and qemu can handle device path and attach a volume
-+  using this.
++    After volume activation, access device path /dev/VG1/LV1 is created at
++    compute node. Libvirt and qemu can handle device path and attach a volume
++    using this.
 +
-+- disconnect_volume()
-+  After detaching a Cinder volume from an instance, the compute node does
-+  not have to access a Cinder volume. In order to keep a consistency of
-+  Cinder volume, volume deactivation using "lvchange -an" is required at a
-+  compute node. This operation will remove access device path /dev/VG1/LV1
-+  so that the compute node can't access to the volume using the device
-+  path until the volume will be attached to an instance again.
-+  In this method, underlying connection to LVM on shared storage volume
-+  is continuously maintained.
++  (b) disconnect_volume()
++
++    After detaching a Cinder volume from an instance, the compute node does
++    not have to access a Cinder volume. In order to keep a consistency of
++    Cinder volume, volume deactivation using "lvchange -an" is required at a
++    compute node. This operation will remove access device path /dev/VG1/LV1
++    so that the compute node can't access to the volume using the device
++    path until the volume will be attached to an instance again.
++    In this method, underlying connection to LVM on shared storage volume
++    is continuously maintained.
++
++2. Introduce LVM snapshot creation feature using Assisted snapshot
++
++  In order to take an online snapshot for Cinder volume using this driver,
++  assisted snapshot is necessary because LVM snapshot must be taken a node
++  which issues I/O to original volume. Also online snapshot delete
++  is necessary using assisted snapshot.
++  Currently, assisted snapshot is already supported by gluster but supported
++  type is only qcow2. This proposal adds to support LVM type.
 +
 +Alternatives
 +------------
@@ -233,6 +246,7 @@ index 0000000..e513c48
 +============
 +
 +This feature depends on following Cinder blueprint.
++
 + https://blueprints.launchpad.net/cinder/+spec/lvm-driver-for-shared-storage
 +
 +Testing
@@ -251,10 +265,12 @@ index 0000000..e513c48
 +
 +Blueprints:
 + https://blueprints.launchpad.net/nova/+spec/lvm-driver-for-shared-storage
++
 + https://blueprints.launchpad.net/cinder/+spec/lvm-driver-for-shared-storage
 +
 +Review:
 + nova:   https://review.openstack.org/#/c/92443/
++
 + cinder: https://review.openstack.org/#/c/92479/
 -- 
 1.9.1

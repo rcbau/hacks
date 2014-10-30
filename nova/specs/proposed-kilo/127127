@@ -1,22 +1,24 @@
-From 0f42e0acd76108c1d5e58cbff52698a15aa9e461 Mon Sep 17 00:00:00 2001
+From 4728370c030337c327a290d61bdd42eacfa0aec1 Mon Sep 17 00:00:00 2001
 From: Christopher Yeoh <cyeoh@au1.ibm.com>
 Date: Thu, 9 Oct 2014 14:05:10 +1030
-Subject: [PATCH] WIP: REST API Microversions
+Subject: [PATCH] REST API Microversions
 
 Proposal to support microversions for the Nova REST API
 
+APIImpact
+
 Change-Id: I49c3d590d087f9cd3c2d1898455aa296721a4f6e
 ---
- specs/kilo/approved/api-microversions.rst | 358 ++++++++++++++++++++++++++++++
- 1 file changed, 358 insertions(+)
+ specs/kilo/approved/api-microversions.rst | 423 ++++++++++++++++++++++++++++++
+ 1 file changed, 423 insertions(+)
  create mode 100644 specs/kilo/approved/api-microversions.rst
 
 diff --git a/specs/kilo/approved/api-microversions.rst b/specs/kilo/approved/api-microversions.rst
 new file mode 100644
-index 0000000..0417bdf
+index 0000000..4f0b0ff
 --- /dev/null
 +++ b/specs/kilo/approved/api-microversions.rst
-@@ -0,0 +1,358 @@
+@@ -0,0 +1,423 @@
 +..
 + This work is licensed under a Creative Commons Attribution 3.0 Unported
 + License.
@@ -42,7 +44,7 @@ index 0000000..0417bdf
 +constantly growing through new extensions, that it's not likely to be
 +able to ever do a new major version of the API because of the impact
 +on users and overhead for developers of supporting multiple
-+implementations .
++implementations.
 +
 +At the same time the current situation where we allow innovation in
 +the API through adding extensions, has grown to the point where we now
@@ -75,16 +77,13 @@ index 0000000..0417bdf
 +* Allows developers to modify the Nova API in a non backwards
 +  compatible way whilst still supporting the old behaviour. Users of
 +  the REST API are able to decide if they want the Nova API to behave
-+  in the new or old manner on a per request basis.
++  in the new or old manner on a per request basis. Deployers
++  are able to make new backwards incompatible features available
++  without removing support for prior behaviour.
 +
 +* Users of the REST API are able to, on a per request basis, decide
 +  which version of the API they want to use (assuming the deployer
 +  supports the version they want).
-+
-+* Deployers of Nova are able to support new features which cause
-+  backwards incompatible changes to the Nova API without forcing all
-+  users to modify the way they interact with the API, only those who
-+  want the new feature.
 +
 +Project Priority
 +-----------------
@@ -113,21 +112,20 @@ index 0000000..0417bdf
 +  what limits does that impose.
 +
 +Versioning
-+--------------
++----------
 +
 +For the purposes of this discussion, "the API" is all core and
 +optional extensions in the Nova tree.
 +
 +Versioning of the API should be a single monotonic counter. It will be
-+of the form X.Y.Z where it follows the Semantic Versioning 2.0.0
++of the form X.Y where it follows the Semantic Versioning 2.0.0
 +specification (http://semver.org). Eg. you increment
 +
 +* X when you make incompatible API changes
 +* Y when you make backwards compatible changes
-+* Z when you make backwards compatible bug fixes
 +
 +A backwards compatible change is defined as one which would be allowed
-+under the OpenstAck API Change Guidelines
++under the OpenStack API Change Guidelines
 +
 +http://wiki.openstack.org/wiki/APIChangeGuidelines
 +
@@ -139,7 +137,7 @@ index 0000000..0417bdf
 +    {
 +         "versions": [
 +            {
-+                "id": "v2.0",
++                "id": "v2.1",
 +                "links": [
 +                      {
 +                        "href": "http://localhost:8774/v2/",
@@ -147,8 +145,8 @@ index 0000000..0417bdf
 +                    }
 +                ],
 +                "status": "CURRENT",
-+                "version": "5.2.0"
-+                "min_version": "2.0"
++                "version": "5.2"
++                "min_version": "2.1"
 +            },
 +       ]
 +    }
@@ -165,7 +163,7 @@ index 0000000..0417bdf
 +A client specifies the version of the API they want via the following
 +approach, a new header::
 +
-+  X-OS-Compute-Version: 2.114, experimental, vendor:rax
++  X-OpenStack-Compute-API-Version: 2.114, experimental, vendor:rax
 +
 +This conceptually acts like the accept header.  We introduce 3
 +concepts here, global API version, experimental flag, and vendor
@@ -173,15 +171,15 @@ index 0000000..0417bdf
 +
 +Semantically this means:
 +
-+* If X-OS-Compute-Version is not provided, act as if min_version was
++* If X-OpenStack-Compute-API-Version is not provided, act as if min_version was
 +  sent.
 +
-+* If X-OS-Compute-Version is sent, respond with the API at that
++* If X-OpenStack-Compute-API-Version is sent, respond with the API at that
 +  version. If that's outside of the range of versions supported,
 +  return 406 Not Acceptable.
 +
-+* If X-OS-Compute-Version: latest (special keyword) return max_version
-+  of the API.
++* If X-OpenStack-Compute-API-Version: latest (special keyword) return
++  max_version of the API.
 +
 +* If experimental is sent, return results with *all* experimental
 +  extensions enabled.
@@ -194,29 +192,19 @@ index 0000000..0417bdf
 +or SDK will have to ask for something different in order to get new
 +features.
 +
-+Experimental and vendor, by being virtue of out of tree, do not
++Experimental and vendor, by virtue of being out of tree, do not
 +benefit from versioning. It's an all or nothing affair. There are less
 +unique snowflakes in the world than people think, and we actually want
 +these things back in tree.
 +
-+Here is where you cover the change you propose to make in detail. How do you
-+propose to solve this problem?
-+
-+If this is one part of a larger effort make it clear where this piece ends. In
-+other words, what's the scope of this effort?
-+
 +Implementation design details
 +-----------------------------
 +
-+On each request the X-OS-Computer-Version header string will be
++On each request the X-OpenStack-Compute-API-Version header string will be
 +converted to an APIVersionRequest object in the wsgi code. Routing
 +will occur in the usual manner with the version object attached to the
 +request object (which all API methods expect). The API methods can
 +then use this to determine their behaviour to the incoming request.
-+
-+What other ways could we do this thing? Why aren't we using those? This doesn't
-+have to be a full literature review, but it should demonstrate that thought has
-+been put into why the proposed solution is an appropriate one.
 +
 +Types of changes we will need to support::
 +
@@ -225,15 +213,92 @@ index 0000000..0417bdf
 +* Allowable url parameters
 +* General semantic changes
 +* Data returned in response
-+* ???
++* Removal of resources in the API
++* Removal of fields in a response object or changing the layout of the response
 +
-+THIS SECTION IS NOT COMPLETE
++Note: This list is not meant to be an exhaustive list
++
++Within a controller case, methods can be marked with a decorator
++to indicate what API versions they implement. For example::
++
++::
++
++>  @api_version(min_version='2.1', max_version='2.9')
++>  def show(self, req, id):
++>     pass
++>
++>  @api_version(min_version='3.0')
++>  def show(self, req, id):
++>     pass
++
++An incoming request for version 2.2.0 of the API would end up
++executing the first method, whilst an incoming request for version
++3.1.0 of the API would result in the second being executed.
++
++For cases where the method implementations are very similar with just
++minor differences a lot of duplicated code can be avoided by versioning
++internal methods intead. For example::
++
++
++>   @api_version(min_version='2.1')
++>   def _version_specific_func(self, req, arg1):
++>      pass
++>
++>   @api_version(min_version='2.5')
++>   def _version_specific_func(self, req, arg1):
++>      pass
++>
++>   def show(self, req, id):
++>      .... common stuff ....
++>      self._version_specific_func(req, "foo")
++>       .... common stuff ....
++
++
++Reducing the duplicated code to a minimum minimises maintenance
++overhead. So the technique we use would depend on individual
++circumstances of what code is common/different and where in the method
++it is.
++
++A version object is passed down to the method attached to the request
++object so it is also possible to do very specific checks in a
++method. For example::
++
++> def show(self, req, id):
++>    .... stuff ....
++>
++>    if req.ver_obj.matches(start_version, end_version):
++>      .... Do version specific stuff ....
++>
++>    ....  stuff ....
++
++
++To mark a method implementation as only available when experimental or
++vendor specific it can be marked with:
++
++@api_exp()
++@api_vendor("vendor_string")
++
++Note that you cannot combine these with the api_version decorator or
++with each other.
++
++Some prototype code which explains how this work is available here:
++
++https://github.com/cyeoh/microversions_poc
++
++The validation schema decorator would also need to be extended to support
++versioning
++
++@validation.schema(schema_definition, min_version, max_version)
 +
 +
 +Alternatives
 +------------
 +
-+
++One alternative is to make all the backwards incompatible changes at
++once and do a major API release. For example, change the url prefix to
++/v3 instead of /v2. And then support both implementations for a long
++period of time. This approach has been rejected in the past because of
++concerns around maintance overhead.
 +
 +Data model impact
 +-----------------
@@ -265,7 +330,7 @@ index 0000000..0417bdf
 +Other end user impact
 +---------------------
 +
-+SDK authors will need to start using the X-OS-Compute-Version header
++SDK authors will need to start using the X-OpenStack-Compute-API-Version header
 +to get access to new features. The fact that new features will only be
 +added in new versions will encourage them to do so.
 +
@@ -299,6 +364,13 @@ index 0000000..0417bdf
 +
 +* Do we bump a version number when error status codes change?
 +
++  No. At least while we consider error status code changes a backwards
++  compatible minor one which clients aren't really interested or
++  dependent on (who actually checks error code?). Strictly speaking it
++  is a backwards incompatible change but until the API Change
++  guidelines change we will stick to this fiction. And debate this
++  elsewhere :-)
++
 +
 +
 +Implementation
@@ -317,53 +389,48 @@ index 0000000..0417bdf
 +Work Items
 +----------
 +
-+Work items or tasks -- break the feature up into the things that need to be
-+done to implement it. Those parts might end up being done by different people,
-+but we're mostly trying to understand the timeline for implementation.
++* Implement APIVersions class
++* Implement handling of X-OpenStack-Compute-API-Version header
++* Implement routing of methods called based on version header.
++* Find and implement first API change requiring a microversion bump.
 +
 +
 +Dependencies
 +============
 +
-+* Include specific references to specs and/or blueprints in nova, or in other
-+  projects, that this one either depends on or is related to.
++* This is dependent on v2.1 v2-on-v3-api spec being completed.
 +
-+* If this requires functionality of another project that is not currently used
-+  by Nova (such as the glance v2 API when we previously only required v1),
-+  document that fact.
++* Any nova spec which wants to make backwards compatible changes
++  to the API (such as the tasks api specification) is dependent on
++  on this change. As is any spec that wants to make any API change
++  to the v2.1 API without having to add a dummy extension.
 +
-+* Does this feature require any new library dependencies or code otherwise not
-+  included in OpenStack? Or does it depend on a specific version of library?
-+
++* JSON-Home is related to this though they provide different
++  services. Microversions allows clients to control which version of
++  the API they are exposed to and JSON-Home describes that API
++  allowing for resource discovery.
 +
 +Testing
 +=======
 +
-+Please discuss how the change will be tested. We especially want to know what
-+tempest tests will be added. It is assumed that unit test coverage will be
-+added so that doesn't need to be mentioned explicitly, but discussion of why
-+you think unit tests are sufficient and we don't need to add more tempest
-+tests would need to be included.
-+
-+Is this untestable in gate given current limitations (specific hardware /
-+software configurations available)? If so, are there mitigation plans (3rd
-+party testing, gate enhancements, etc).
-+
++It is not feasible for tempest to test all possible combinations
++of the API supported by microversions. We will have to pick specific
++versions which are representative of what is implemented. The existing
++Nova tempest tests will be used as the baseline for future API
++version testing.
 +
 +Documentation Impact
 +====================
 +
-+What is the impact on the docs team of this change? Some changes might require
-+donating resources to the docs team to have the documentation updated. Don't
-+repeat details discussed above, but please reference them here.
-+
++The long term aim is to produce API documentation at least partially
++automated using the current json schema support and future JSON-Home
++support. This problem is fairly orthogonal to this specification
++though.
 +
 +References
 +==========
 +
-+Please add any useful references here. You are not required to have any
-+reference. Moreover, this specification should still make sense when your
-+references are unavailable. Examples of what you could include are:
++* Semver http://semver.org
 +
 +* Links to mailing list or IRC discussions
 +

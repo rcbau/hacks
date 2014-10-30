@@ -1,0 +1,232 @@
+From fa0a39db108c4c7d2ff4ab532abc69b676e896dc Mon Sep 17 00:00:00 2001
+From: Ian Main <imain@redhat.com>
+Date: Wed, 15 Oct 2014 13:11:19 -0700
+Subject: [PATCH] Add the docker hypervisor plugin to Nova
+
+By adding this plugin back to the Nova source tree, we will enable
+operators to use docker containers in OpenStack with full scheduling.
+
+As of the Icehouse release, the nova-docker hypervisor plugin was
+removed as many of the Tempest tests were failing. Many of the tests
+were failing due to missing APIs in docker and subsequently missing
+functionality in the plugin.  There has been significant progress
+implementing those missing features and fixing various bugs associated
+with the already existing features. As a result we now have extensive
+Tempest test coverage.
+
+Change-Id: I420bfa6740a2fb1e2b7bfb976975387e3ea57992
+---
+ specs/kilo/approved/docker-hypervisor-plugin.rst | 201 +++++++++++++++++++++++
+ 1 file changed, 201 insertions(+)
+ create mode 100644 specs/kilo/approved/docker-hypervisor-plugin.rst
+
+diff --git a/specs/kilo/approved/docker-hypervisor-plugin.rst b/specs/kilo/approved/docker-hypervisor-plugin.rst
+new file mode 100644
+index 0000000..2df3a71
+--- /dev/null
++++ b/specs/kilo/approved/docker-hypervisor-plugin.rst
+@@ -0,0 +1,201 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++==========================================
++Add the docker hypervisor plugin to Nova
++==========================================
++
++https://blueprints.launchpad.net/nova/+spec/docker-hypervisor-plugin
++
++By adding this plugin back to the Nova source tree, we will enable operators to
++use docker containers in OpenStack with full scheduling.
++
++As of the Icehouse release, the nova-docker hypervisor plugin was removed as
++many of the Tempest tests were failing. Many of the tests were failing due
++to missing APIs in docker and subsequently missing functionality in the plugin.
++There has been significant progress implementing those missing features and
++fixing various bugs associated with the already existing features. As a result
++we now have extensive Tempest test coverage.
++
++Problem description
++===================
++
++A detailed description of the problem:
++
++Docker hypervisor plugin is useful to OpenStack operators in that it plugs into
++the compute design quite nicely. Implementing container management as a
++hypervisor plugin allows the use of container placement via the scheduler. It
++also allows the implementation of many Nova APIs without having a separate set
++of command line tools or APIs.
++
++Docker has features which don't make obvious sense to expose via the Nova API.
++These include resizing images, suspend/resume, rescue, and migrations.
++
++Docker (and containers in general) also have features which we may wish to
++consider supporting by creating a specialized container service.  However, this
++is not within the scope of this proposal.
++
++Proposed change
++===============
++
++The proposal is that we move the stackforge/nova-docker directory, which
++contains all the code for the docker hypervisor plugin into the
++openstack/nova/nova/virt source directory along side the rest of the hypervisor
++plugins shipped with Nova.
++
++Alternatives
++------------
++
++Several alternatives exist to work around not having native Docker container
++management in OpenStack. They are as follows:
++
++* Get the nova-docker hypervisor plugin from stackforge and configure Nova to
++  use it.
++
++* Introduce a new container service in OpenStack that is completely independent
++  of Nova APIs and is soley focused on container capabilities.
++
++* Disregard the capabilities added to OpenStack via docker support with scheduler
++  support.
++
++* Not include Docker container management in OpenStack at all.
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++None
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++* The user (Operator) will be able to use the standard Nova APIs and command
++  line tools to manage docker containers.
++
++Performance Impact
++------------------
++
++* Containers allow lightweight instances to be started very fast.  They also
++  consume fewer resources on the host machine.
++
++Other deployer impact
++---------------------
++
++* The Docker hypervisor plugin will become easier to configure. The
++  configuration settings already exist in nova.conf to use the Docker
++  hypervisor plugin, the only change here is that the plugin code would be
++  installed with the rest of the hypervisor plugins.
++
++* The Docker plugin will be better maintained and integration testing can
++  be run on all nova changes ensuring ongoing functionality and development.
++
++* One could deploy nova compute instances within VMs allowing you to
++  distribute containers across a multitude of VMs and scale accordingly.
++
++Developer impact
++----------------
++
++* There would be added consideration in future development to support
++  containers.
++
++Implementation
++==============
++
++* The stackforge code needs to be placed in the Nova source tree
++
++* Volume Attach and Detach - The API for adding and removing a device to Docker
++  is missing. There is currently a patch set posted for review, which adds
++  the capability to attach and detach a host device to a running docker
++  container. Additionally, the implementation in the hypervisor plugin has
++  been added to call the Docker API to add/remove a device to/from a container.
++  This will be merged once the Docker API has been merged.
++
++* Security considerations - Some operations within containers are considered
++  potentially threatening to the host machine.  Container technology itself is
++  not considered entirely secure and having multiple tenants operating on the
++  same hardware may be a potential security issue.
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  <ewindisch>
++
++Other contributors:
++  <calfonso>
++  <imain>
++
++Work Items
++----------
++
++* Copy the stackforge/nova-docker source code into nova/nova/virt.
++* Continue adding the ability to support more Openstack features, including
++  volume support etc.
++
++Dependencies
++============
++
++Testing
++=======
++
++* There are unit tests in place in the code base.
++
++* We currently run full integration tests on both Ubuntu and Fedora with each
++  commit.  The Tempest configuration has a number of tests that don't apply to
++  containers that need to be turned off. The settings we are currently turning
++  off are: volume, resize, suspend, swift, rescue, cinder, and migrate.  Volume
++  support is being actively worked on.
++
++* A recent run of our Tempest coverage resulted in the following statistics:
++        Run: 1726 in 2750.246079 sec.
++        Passed: 1530
++        Skipped: 196
++        Failed: 0
++
++Documentation Impact
++====================
++
++The docs team would need to add the Docker hypervisor plugin details back to
++the docs, listing the availability of the driver and the module name to set as
++the compute_driver value to have Nova load the driver.
++
++References
++==========
++
++[1]Docker hypervisor plugin source:
++https://github.com/stackforge/nova-docker
++
++Status of Tempest CI before making our improvements:
++http://lists.openstack.org/pipermail/openstack-dev/2014-February/028471.html
++
++Information on bringing Docker hypervisor plugin support into the Nova tree:
++http://openstack.etherpad.corp.redhat.com/NovaDockerUpstream
++
++Containers Service Thread:
++http://lists.openstack.org/pipermail/openstack-dev/2013-November/thread.html#19637
++
++Design session in Hong Kong on to support this work:
++https://etherpad.openstack.org/p/docker-nova-hkg
++
++Discussion regarding block storage support in containers:
++https://etherpad.openstack.org/p/container-block-storage
++
++Openstack container meetings:
++https://wiki.openstack.org/wiki/Meetings/Containers
+-- 
+1.9.1
+

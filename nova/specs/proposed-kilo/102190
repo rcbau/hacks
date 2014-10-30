@@ -1,4 +1,4 @@
-From dac326e3344e64d0e39efb8e7195ff88493caaa2 Mon Sep 17 00:00:00 2001
+From 55c34222006ce7cd80df587a683e998d1036b02e Mon Sep 17 00:00:00 2001
 From: Lucian Petrut <lpetrut@cloudbasesolutions.com>
 Date: Tue, 24 Jun 2014 14:20:47 +0300
 Subject: [PATCH] Hyper-V: add support for attaching volumes via SMB
@@ -10,16 +10,16 @@ hosted on a SMB share.
 bp hyper-v-smbfs-volume-support
 Change-Id: If1d6a1b724e1dee705e964cdb86cd2a69d73d7df
 ---
- .../kilo/approved/hyper-v-smbfs-volume-support.rst | 159 +++++++++++++++++++++
- 1 file changed, 159 insertions(+)
+ .../kilo/approved/hyper-v-smbfs-volume-support.rst | 158 +++++++++++++++++++++
+ 1 file changed, 158 insertions(+)
  create mode 100644 specs/kilo/approved/hyper-v-smbfs-volume-support.rst
 
 diff --git a/specs/kilo/approved/hyper-v-smbfs-volume-support.rst b/specs/kilo/approved/hyper-v-smbfs-volume-support.rst
 new file mode 100644
-index 0000000..9484478
+index 0000000..3e3400c
 --- /dev/null
 +++ b/specs/kilo/approved/hyper-v-smbfs-volume-support.rst
-@@ -0,0 +1,159 @@
+@@ -0,0 +1,158 @@
 +..
 + This work is licensed under a Creative Commons Attribution 3.0 Unported
 + License.
@@ -53,11 +53,11 @@ index 0000000..9484478
 +This feature will be backwards compatible, supporting older versions of SMB
 +for simple tasks. It will support using any type of SMB share, including:
 +
-+	- from Scale-Out file servers to basic Windows shares;
++- from Scale-Out file servers to basic Windows shares;
 +
-+	- Linux SMB shares using Samba;
++- Linux SMB shares using Samba;
 +
-+	- vendor specific hardware exporting SMB shares.
++- vendor specific hardware exporting SMB shares.
 +
 +Use Cases
 +----------
@@ -177,8 +177,7 @@ index 0000000..9484478
 +==========
 +
 +Cinder SMB Driver blueprint:
-+https://blueprints.launchpad.net/cinder/+spec/smbfs-driver
-+
++https://blueprints.launchpad.net/cinder/+spec/smbfs-volume-driver
 -- 
 1.9.1
 

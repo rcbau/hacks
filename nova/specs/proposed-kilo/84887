@@ -1,0 +1,193 @@
+From 34517803f571ac7c9388fb1a133da41ece3328bf Mon Sep 17 00:00:00 2001
+From: Arnaud Legendre <arnaudleg@gmail.com>
+Date: Wed, 2 Apr 2014 15:46:02 -0700
+Subject: [PATCH] Propose: Allow Nova to use either Glance V1 or V2
+
+Nova should be configurable via a configuration parameter to use either
+Glance V1 or V2 API. Due to differences in the workflow exposed by the
+API, the image service layer will need to be able to present a
+consistent interface to Nova while performing necessary translations to
+interact with the configured Glance API version.
+
+Change-Id: I8ba44561824eb6634239b006f0e600daa0be6f1f
+---
+ specs/kilo/use-glance-v2-api.rst | 167 +++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 167 insertions(+)
+ create mode 100644 specs/kilo/use-glance-v2-api.rst
+
+diff --git a/specs/kilo/use-glance-v2-api.rst b/specs/kilo/use-glance-v2-api.rst
+new file mode 100644
+index 0000000..8ace162
+--- /dev/null
++++ b/specs/kilo/use-glance-v2-api.rst
+@@ -0,0 +1,167 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++=====================================
++Allow Nova to use Glance V1 or V2 API
++=====================================
++
++https://blueprints.launchpad.net/nova/+spec/use-glance-v2-api
++
++This blueprint adds support for Glance V2 API, while keeping support for the V1
++API. While this adds no extra functionality, it will allow the deprecation of
++Glance V1.
++
++Problem description
++===================
++
++Due to the fact that Nova is currently using Glance V1 API, Nova cannot take
++advantages of features available in Glance V2 API: for example, to get direct
++access to the image locations regarding backend storage.
++Also, Glance is planning to deprecate V1 API: so it becomes critical to make
++Nova working with Glance V2.
++This blueprint will make Nova configurable via a configuration parameter to use
++either Glance V1 or V2 API. Due to differences in the workflow exposed by the
++API, the image service layer will need to be able to present a consistent
++interface to Nova while performing necessary translations to interact with the
++configured Glance API version.
++
++Proposed change
++===============
++
++This approach proposed here is to have a configuration option giving the
++ability to select if Nova uses Glance V1 or V2 API.
++This ability involves some refactoring to have glance drivers for each version
++of the API in Nova.
++If V1 is selected, then the Glance driver V1 is used (similarly for V2).
++
++Alternatives
++------------
++
++- Have a discovery mechanism of the version of the endpoints available:
++  the main problem with that is that the operator might want to keep using a
++  previous version of the API that is trusted and slowly move to the new
++  version of the API. Also, the behavior of features has changed in V2 and is
++  not completely compatible with current one: image properties in V2 can have
++  schema restrictions placed by the deployer but V1 ignore these restrictions.
++  Auto-negotiating could potentially result in undesired changes.
++- Have some part of Glance (client, stores) becoming a transfer service that
++  has the capability of providing to Nova what is needed to get the disk image
++  on the hypervisor and being version agnostic.
++  This would require several key architectural changes both in Glance and Nova:
++  both are not ready for that at this point.
++
++Data model impact
++-----------------
++
++From the Nova perspective, there should not be any impact on Nova's
++functionality. All the differences in the Glance API should be encapsulated
++within the Glance V1 and V2 drivers.
++All the metadata created using V1 API could also be created using V2 API.
++
++REST API impact
++---------------
++
++None.
++
++Security impact
++---------------
++
++None.
++
++Notifications impact
++--------------------
++
++None.
++
++Other end user impact
++---------------------
++
++None.
++
++Performance Impact
++------------------
++
++None.
++
++Other deployer impact
++---------------------
++
++A configuration section will need to be added in the configuration [glance]
++with a config parameter 'api_version' in it. Its default value is 1 meaning
++that by default Nova will be using Glance API V1. The upgrade impact should
++warn about the need for Glance V2: the deployer either needs to deploy a new
++glance-api node and enable V2 API or needs to configure Nova to use Glance V2
++API. The default version will be V1 for Juno and we plan to use V2 as default
++in the K release.
++It might be risky to expose an OpenStack cloud mixing Nova compute nodes using
++V1 and V2 Glance API at the same time: especially due to the fact that V1 and
++V2 are not fully compatible, ex: schema restrictions in V2 but not in V1.
++The existing features required to communicate with Glance will still work: the
++workflow changes will be totally transparent for the deployer.
++
++Developer impact
++----------------
++
++None.
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++    Eddie Sheffield (esheffield)
++
++Other contributors:
++    Zhi Yan Liu (zhiyan)
++    Arnaud Legendre (arnaud)
++    Vincent Hou
++
++Work Items
++----------
++
++- Refactor the image layer to support Glance V2 support
++- Add Glance driver for V1
++- Add Glance driver for V2
++- Enable V1 and V2 driver for Nova
++- Update drivers using Glance directly (such as XenServer)
++
++Dependencies
++============
++
++None.
++
++Testing
++=======
++
++Tempest tests should be added to make sure that V2 API features are fully
++workable with Nova exercised.
++We could make one of the devstack gate job use Glance V1 and one Glance V2.
++
++Documentation Impact
++====================
++
++The new configuration variable 'api_version' in the [glance] section needs to
++be mentioned in the reference documentation. Also, the Cloud Admin Guide needs
++to be updated to let people know how to configure Nova to use one version or
++the other.
++Also, it will important to stress in the release notes, docs, etc. that the
++behavior of Glance features have changed between V1 and V2 and consequently
++are not wholly compatible: for example image properties in V2 can have schema
++restrictions placed by the deployer but V1 ignore these restrictions.
++
++References
++==========
++
++Mailing list discussion:
++http://www.mail-archive.com/openstack-dev%40lists.openstack.org/msg06385.html
++
++Discussed at the Glance Mini-summit in Washington DC (see Takeaways):
++https://etherpad.openstack.org/p/glance-client-common-api
++
++Icehouse summit images V1 API design session:
++https://etherpad.openstack.org/p/icehouse-summit-images-v1-api
+-- 
+1.9.1
+

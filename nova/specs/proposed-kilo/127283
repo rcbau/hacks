@@ -1,4 +1,4 @@
-From f0f810f44be36ee551c9dc7e70e7fdcf3410058b Mon Sep 17 00:00:00 2001
+From 1f220e5e8c15725b1cbd5a2fe2b7bf06f8f7faed Mon Sep 17 00:00:00 2001
 From: Radoslav Gerganov <rgerganov@vmware.com>
 Date: Thu, 9 Oct 2014 19:03:42 +0300
 Subject: [PATCH] VMware: Native HTML5 consoles for VMware
@@ -9,18 +9,20 @@ current problems that we have with VNC consoles with respect to deployment,
 scalability and security. The existing support for VNC consoles will remain but
 users will be encouraged to use WebMKS when possible.
 
+blueprint vmware-webmks-console
+
 Change-Id: Ie8e4d6f1091e2e48848952d6e0018e20990188aa
 ---
- specs/kilo/approved/vmware-webmks-console.rst | 172 ++++++++++++++++++++++++++
- 1 file changed, 172 insertions(+)
+ specs/kilo/approved/vmware-webmks-console.rst | 175 ++++++++++++++++++++++++++
+ 1 file changed, 175 insertions(+)
  create mode 100644 specs/kilo/approved/vmware-webmks-console.rst
 
 diff --git a/specs/kilo/approved/vmware-webmks-console.rst b/specs/kilo/approved/vmware-webmks-console.rst
 new file mode 100644
-index 0000000..3660cbd
+index 0000000..c0b1747
 --- /dev/null
 +++ b/specs/kilo/approved/vmware-webmks-console.rst
-@@ -0,0 +1,172 @@
+@@ -0,0 +1,175 @@
 +..
 + This work is licensed under a Creative Commons Attribution 3.0 Unported
 + License.
@@ -107,14 +109,17 @@ index 0000000..3660cbd
 +REST API impact
 +---------------
 +
-+There will be a new server action that will return the WebMKS connect
-+information.
++There will be a new server action that will return WebMKS console.
 +
 +Sample request:
 +{ "os-getWebMKSConsole": { "type": "webmks" } }
 +
 +Sample response:
 +{ "console": { "type": "webmks", "url": "http://example.com:6090/?token=c88be357-0992-40e8-8dd7-afc918ad34d5" } }
++
++The URL in the response points to a WebMKS proxy which authorizes the given
++token by calling nova-consoleauth and then starts proxying between the client
++and the corresponding vCenter server where the instance runs.
 +
 +Security impact
 +---------------

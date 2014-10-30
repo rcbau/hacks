@@ -1,0 +1,168 @@
+From 3d17919b16d0bb285dab2662b95be74ffde1b2bd Mon Sep 17 00:00:00 2001
+From: Radu Mateescu <mateescu@ca.ibm.com>
+Date: Wed, 15 Oct 2014 12:24:14 -0400
+Subject: [PATCH] Using cinder volumes backed by VMware raw devices
+
+OpenStack currently lacks support for attaching VMware
+raw devices to Virtual machines. This blueprint allows
+users to attach and detach cinder volumes backed by
+VMware raw devices.
+
+Change-Id: Icc63454cbd38d12442c48b554aba06e7c7034b58
+Implements: blueprint vmware-raw-device
+---
+ specs/kilo/approved/vmware-raw-device-volumes.rst | 142 ++++++++++++++++++++++
+ 1 file changed, 142 insertions(+)
+ create mode 100644 specs/kilo/approved/vmware-raw-device-volumes.rst
+
+diff --git a/specs/kilo/approved/vmware-raw-device-volumes.rst b/specs/kilo/approved/vmware-raw-device-volumes.rst
+new file mode 100644
+index 0000000..a9a6b69
+--- /dev/null
++++ b/specs/kilo/approved/vmware-raw-device-volumes.rst
+@@ -0,0 +1,142 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++===================================================================
++Attaching and detaching cinder volumes backed by VMware raw devices
++===================================================================
++
++https://blueprints.launchpad.net/nova/+spec/vmware-raw-device
++
++In VMware, Raw Device Mapping(RDM) is a method to provide direct access to a
++LUN on a iscsi or fibre channel storage system for a virtual machine.
++OpenStack currently lacks support for attaching VMware raw devices to virtual
++machines. This blueprint allows users to use these cinder volumes backed by
++VMware raw devices. The volumes created through the VMware RDM cinder driver
++are only available in a VMware VCenter environment and can only be attached
++to VMware virtual machines. The proposed extension is limited to the VMware
++hypervisor driver only.
++
++Problem description
++===================
++
++RDM is a mapping file in a separate VMFS volume that acts as a proxy for
++a raw physical storage device. The RDM allows a virtual machine to directly
++access and use the storage device. The RDM contains metadata for managing
++and redirecting disk access to the physical device. A cinder driver for
++VMware volumes backed by raw devices provides basic volume management
++operations. This blueprint proposes a extensions to the nova VMware driver
++to allow users to attach and detach those volumes.
++
++Use Cases
++----------
++
++The EndUser will be able to attach and detach VMware cinder volumes backed by
++raw devices
++
++Project Priority
++-----------------
++
++None
++
++Proposed change
++===============
++
++Extend the nova VMware driver to support the following operations with cinder
++VMware volumes backed by raw devices:
++* attach volume to an instance
++* detach volume from an instance
++
++The first time a volume is attached to a virtual machine using
++"nova volume-attach" an available device is selected and the volume
++is decorated with the LUN UUID of the selected device. When the volume
++is detached from a virtual machine, the LUN UUID will be preserved,
++so that the next attachment involving the volume will use the same device.
++
++Alternatives
++------------
++
++None
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++None
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++None
++
++Performance Impact
++------------------
++
++None
++
++Other deployer impact
++---------------------
++
++None
++
++Developer impact
++----------------
++
++None
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  mateescu <mateescu@ca.ibm.com>
++
++Other contributors:
++  None
++
++Work Items
++----------
++
++ * extend attach_volume function in the nova/virt/vmwareapi/volumeops module
++ * extend detach_volume function in the nova/virt/vmwareapi/volumeops module
++
++
++Dependencies
++============
++
++https://blueprints.launchpad.net/cinder/+spec/vmware-raw-device-cinder-driver
++
++
++Testing
++=======
++
++None
++
++
++Documentation Impact
++====================
++
++None
++
++
++References
++==========
++None
+-- 
+1.9.1
+

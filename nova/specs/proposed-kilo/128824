@@ -1,0 +1,712 @@
+From 26cb15df34169114992750dbad7c97c1b9358bd5 Mon Sep 17 00:00:00 2001
+From: Christian Berendt <berendt@b1-systems.de>
+Date: Tue, 9 Sep 2014 17:50:50 +0200
+Subject: [PATCH] Use 'flavor' instead of 'flavour'
+
+Change-Id: I9fee18359dcbc7c71054154e08e559d504139ca2
+
+add specs of thunder-boost
+Implements: blueprint thunder-boost
+
+Change-Id: Iae52c2e273d7a4980aae0f3415f89b0ad3530315
+---
+ specs/juno/approved/virt-driver-cpu-pinning.rst    |  18 +-
+ specs/juno/approved/virt-driver-large-pages.rst    |  24 +--
+ specs/juno/approved/xenapi-vcpu-topology.rst       |  10 +-
+ .../implemented/libvirt-driver-domain-metadata.rst |   2 +-
+ .../implemented/virt-driver-numa-placement.rst     |  30 ++--
+ .../juno/implemented/virt-driver-vcpu-topology.rst |  36 ++--
+ specs/kilo/thunderboost.rst                        | 189 +++++++++++++++++++++
+ 7 files changed, 249 insertions(+), 60 deletions(-)
+ create mode 100644 specs/kilo/thunderboost.rst
+
+diff --git a/specs/juno/approved/virt-driver-cpu-pinning.rst b/specs/juno/approved/virt-driver-cpu-pinning.rst
+index 24890f0..24a0269 100644
+--- a/specs/juno/approved/virt-driver-cpu-pinning.rst
++++ b/specs/juno/approved/virt-driver-cpu-pinning.rst
+@@ -32,7 +32,7 @@ or even avoid hosts with threads entirely.
+ Proposed change
+ ===============
+ 
+-The flavour extra specs will be enhanced to support two new parameters
++The flavor extra specs will be enhanced to support two new parameters
+ 
+ * hw:cpu_policy=shared|dedicated
+ * hw:cpu_threads_policy=avoid|separate|isolate|prefer
+@@ -67,7 +67,7 @@ threads policy
+ 
+ * hw_cpu_threads_policy=avoid|separate|isolate|prefer
+ 
+-This will only be honoured if the flavour does not already have a threads
++This will only be honoured if the flavor does not already have a threads
+ policy set. This ensures the cloud administrator can have absolute control
+ over threads policy if desired.
+ 
+@@ -116,7 +116,7 @@ Data model impact
+ 
+ No impact.
+ 
+-The new data items are stored in the existing flavour extra specs data model
++The new data items are stored in the existing flavor extra specs data model
+ and in the host state metadata model.
+ 
+ REST API impact
+@@ -124,7 +124,7 @@ REST API impact
+ 
+ No impact.
+ 
+-The existing APIs already support arbitrary data in the flavour extra specs.
++The existing APIs already support arbitrary data in the flavor extra specs.
+ 
+ Security impact
+ ---------------
+@@ -148,7 +148,7 @@ Performance Impact
+ ------------------
+ 
+ The schedular will incur small further overhead if a threads policy is set
+-on the image or flavour. This overhead will be negligible compared to that
++on the image or flavor. This overhead will be negligible compared to that
+ implied by the enhancements to support NUMA policy and huge pages. It is
+ anticipated that dedicated CPU guests will typically be used in conjunction
+ with huge pages.
+@@ -156,7 +156,7 @@ with huge pages.
+ Other deployer impact
+ ---------------------
+ 
+-The cloud administrator will gain the ability to define flavours which offer
++The cloud administrator will gain the ability to define flavors which offer
+ dedicated CPU resources. The administrator will have to place hosts into groups
+ using aggregates such that the schedular can separate placement of guests with
+ dedicated vs shared CPUs. Although not required by this design, it is expected
+@@ -169,7 +169,7 @@ Developer impact
+ ----------------
+ 
+ It is expected that most hypervisors will have the ability to setup dedicated
+-pCPUs for guests vs shared pCPUs. The flavour parameter is simple enough that
++pCPUs for guests vs shared pCPUs. The flavor parameter is simple enough that
+ any Nova driver would be able to support it.
+ 
+ Implementation
+@@ -188,7 +188,7 @@ Work Items
+ ----------
+ 
+ * Enhance libvirt to support setup of strict CPU pinning for guests when the
+-  appropriate policy is set in the flavour
++  appropriate policy is set in the flavor
+ 
+ * Enhance the schedular to take account of threads policy when choosing
+   which host to place the guest on.
+@@ -209,7 +209,7 @@ to allow this feature to be effectively tested by tempest.
+ Documentation Impact
+ ====================
+ 
+-The new flavour parameter available to the cloud administrator needs to be
++The new flavor parameter available to the cloud administrator needs to be
+ documented along with recommendations about effective usage. The docs will
+ also need to mention the compute host deployment pre-requisites such as the
+ need to setup aggregates.
+diff --git a/specs/juno/approved/virt-driver-large-pages.rst b/specs/juno/approved/virt-driver-large-pages.rst
+index f549067..bfecf01 100644
+--- a/specs/juno/approved/virt-driver-large-pages.rst
++++ b/specs/juno/approved/virt-driver-large-pages.rst
+@@ -50,11 +50,11 @@ would be a one-time setup task done when deploying new compute node hosts.
+ Proposed change
+ ===============
+ 
+-The flavour extra specs will be enhanced to support a new parameter
++The flavor extra specs will be enhanced to support a new parameter
+ 
+ * hw:mem_page_size=large|small|any|2MB|1GB
+ 
+-In absence of any page size setting in the flavour, the current behaviour of
++In absence of any page size setting in the flavor, the current behaviour of
+ using the small, default, page size will continue. A setting of 'large' says
+ to only use larger page sizes for guest RAM, eg either 2MB or 1GB on x86;
+ 'small' says to only use the small page sizes, eg 4k on x86, and is the
+@@ -67,9 +67,9 @@ common case would be to use page_size=large or page_size=any. The
+ specification of explicit page sizes would be something that NFV workloads
+ would require.
+ 
+-The property defined for the flavour can also be set against the image, but
+-the use of large pages would only be honoured if the flavour already had a
+-policy or 'large' or 'any'. ie if the flavour said 'small', or a specific
++The property defined for the flavor can also be set against the image, but
++the use of large pages would only be honoured if the flavor already had a
++policy or 'large' or 'any'. ie if the flavor said 'small', or a specific
+ numeric page size, the image would not be permitted to override this to access
+ other large page sizes. Such invalid override in the image would result in
+ an exception being raised and the attempt to boot the instance resulting in
+@@ -94,7 +94,7 @@ The libvirt driver will be enhanced to report on large page availability per
+ NUMA node, building on previously added NUMA topology reporting.
+ 
+ The scheduler will be enhanced to take account of the page size setting on the
+-flavour and pick hosts which have sufficient large pages available when
++flavor and pick hosts which have sufficient large pages available when
+ scheduling the instance. Conversely if large pages are not requested, then the
+ scheduler needs to avoid placing the instance on a host which has pre-reserved
+ large pages. The enhancements for the scheduler will be done as part of the
+@@ -222,7 +222,7 @@ REST API impact
+ 
+ No impact.
+ 
+-The existing APIs already support arbitrary data in the flavour extra specs.
++The existing APIs already support arbitrary data in the flavor extra specs.
+ 
+ Security impact
+ ---------------
+@@ -255,7 +255,7 @@ Other deployer impact
+ ---------------------
+ 
+ The cloud administrator will gain the ability to set large page policy on the
+-flavours they configured. The administrator will also have to configure their
++flavors they configured. The administrator will also have to configure their
+ compute hosts to reserve large pages at boot time, and place those hosts into a
+ group using aggregates.
+ 
+@@ -267,9 +267,9 @@ Developer impact
+ ----------------
+ 
+ If other hypervisors allow the control over large page usage, they could be
+-enhanced to support the same flavour extra specs settings. If the hypervisor
++enhanced to support the same flavor extra specs settings. If the hypervisor
+ has self-determined control over large page usage, then it is valid to simply
+-ignore this new flavour setting. ie do nothing.
++ignore this new flavor setting. ie do nothing.
+ 
+ Implementation
+ ==============
+@@ -288,7 +288,7 @@ Work Items
+ 
+ * Enhance libvirt driver to report available large pages per NUMA node in the
+   host state data
+-* Enhance libvirt driver to configure guests based on the flavour parameter
++* Enhance libvirt driver to configure guests based on the flavor parameter
+   for page sizes
+ * Add support to scheduler to place instances on hosts according to the
+   availability of required large pages
+@@ -325,7 +325,7 @@ guests that do not want to use large pages.
+ Documentation Impact
+ ====================
+ 
+-The new flavour parameter available to the cloud administrator needs to be
++The new flavor parameter available to the cloud administrator needs to be
+ documented along with recommendations about effective usage. The docs will
+ also need to mention the compute host deployment pre-requisites such as the
+ need to pre-allocate large pages at boot time and setup aggregates.
+diff --git a/specs/juno/approved/xenapi-vcpu-topology.rst b/specs/juno/approved/xenapi-vcpu-topology.rst
+index e50a219..69029c0 100644
+--- a/specs/juno/approved/xenapi-vcpu-topology.rst
++++ b/specs/juno/approved/xenapi-vcpu-topology.rst
+@@ -54,7 +54,7 @@ Data model impact
+ 
+ No impact.
+ 
+-The new properties will use the existing flavour extra specs and image
++The new properties will use the existing flavor extra specs and image
+ property storage models.
+ 
+ REST API impact
+@@ -62,7 +62,7 @@ REST API impact
+ 
+ No impact.
+ 
+-The new properties will use the existing flavour extra specs and image
++The new properties will use the existing flavor extra specs and image
+ property API facilities.
+ 
+ Security impact
+@@ -71,7 +71,7 @@ Security impact
+ The choice of sockets vs cores can have an impact on host resource utilization
+ when NUMA is involved, since over use of cores will prevent a guest being
+ split across multiple NUMA nodes. This feature addresses this by allowing the
+-flavour administrator to define hard caps, and ensuring the flavour will
++flavor administrator to define hard caps, and ensuring the flavor will
+ always take priority over the image settings.
+ 
+ Notifications impact
+@@ -99,7 +99,7 @@ will be considered there.
+ Other deployer impact
+ ---------------------
+ 
+-The flavour extra specs will gain new parameters in extra specs which a
++The flavor extra specs will gain new parameters in extra specs which a
+ cloud administrator can choose to use. If none are set then the default
+ behaviour is unchanged from previous releases.
+ 
+@@ -137,7 +137,7 @@ Testing of this feature will be covered by the XenServer CI.
+ Documentation Impact
+ ====================
+ 
+-The new flavour extra specs and image properties will need to be documented.
++The new flavor extra specs and image properties will need to be documented.
+ Guidance should be given to cloud administrators on how to make most
+ effective use of the new features. Guidance should be given to the end user
+ on how to use the new features to address their use cases.
+diff --git a/specs/juno/implemented/libvirt-driver-domain-metadata.rst b/specs/juno/implemented/libvirt-driver-domain-metadata.rst
+index 45e7c64..6533f0e 100644
+--- a/specs/juno/implemented/libvirt-driver-domain-metadata.rst
++++ b/specs/juno/implemented/libvirt-driver-domain-metadata.rst
+@@ -24,7 +24,7 @@ domains which were not launched by Nova, for example, utility guests run by
+ libguestfs for file injection. The libvirt domain uuid will match that of the
+ Nova instance, but there is more information about a Nova instance that could
+ usefully be provided to administrators. For example, the identity of the
+-tenant who launched it, the original flavour name and/or settings, the time at
++tenant who launched it, the original flavor name and/or settings, the time at
+ which the domain was launched, and the version number of the Nova instance that
+ launched it (can be relevant if Nova is upgraded while a VM is running).
+ 
+diff --git a/specs/juno/implemented/virt-driver-numa-placement.rst b/specs/juno/implemented/virt-driver-numa-placement.rst
+index 6ba3239..92c8b7d 100644
+--- a/specs/juno/implemented/virt-driver-numa-placement.rst
++++ b/specs/juno/implemented/virt-driver-numa-placement.rst
+@@ -33,7 +33,7 @@ are free to float across any host pCPUs and their RAM is allocated from any
+ NUMA node. This is very wasteful of compute resources and increases memory
+ access latency which is harmful for NFV use cases.
+ 
+-If the RAM/vCPUs associated with a flavour are larger than any single NUMA
++If the RAM/vCPUs associated with a flavor are larger than any single NUMA
+ node, it is important to expose NUMA topology to the guest so that the OS in
+ the guest can intelligently schedule workloads it runs. For this to work the
+ guest NUMA nodes must be directly associated with host NUMA nodes.
+@@ -73,8 +73,8 @@ will involve the creation of a new scheduler filter to match the flavor/image
+ config specification against the NUMA resource availability reported by the
+ compute hosts.
+ 
+-The flavour extra specs will support the specification of guest NUMA topology.
+-This is important when the RAM / vCPU count associated with a flavour is larger
++The flavor extra specs will support the specification of guest NUMA topology.
++This is important when the RAM / vCPU count associated with a flavor is larger
+ than any single NUMA node in compute hosts, by making it possible to have guest
+ instances that span NUMA nodes. The compute driver will ensure that guest NUMA
+ nodes are directly mapped to host NUMA nodes. It is expected that the default
+@@ -91,7 +91,7 @@ control over the NUMA topology / fit characteristics.
+ * hw:numa_mem.1=<ram-size> - mapping N GB of RAM to NUMA node 1
+ 
+ The most common case will be that the admin only sets 'hw:numa_nodes' and then
+-the flavour vCPUs and RAM will be divided equally across the NUMA nodes.
++the flavor vCPUs and RAM will be divided equally across the NUMA nodes.
+ 
+ The 'hw:numa_mempolicy' option allows specification of whether it is mandatory
+ for the instance's RAM allocations to come from the NUMA nodes to which it is
+@@ -115,7 +115,7 @@ the main development effort.
+ 
+ When scheduling, if only the hw:numa_nodes=NNN property is set the scheduler
+ will synthesize hw:numa_cpus.NN and hw:numa_mem.NN properties such that the
+-flavour allocation is equally spread across the desired number of NUMA nodes.
++flavor allocation is equally spread across the desired number of NUMA nodes.
+ It will then look consider the available NUMA resources on hosts to find one
+ that exactly matches the requirements of the guest. So, given an example
+ config:
+@@ -134,7 +134,7 @@ If a host has a single NUMA node with capability to run 8 CPUs and 4 GB of
+ RAM it will not be considered a valid match. The same logic will be applied
+ in the scheduler regardless of the hw:numa_mempolicy option setting.
+ 
+-All of the properties described against the flavour could also be set against
++All of the properties described against the flavor could also be set against
+ the image, with the leading ':' replaced by '_', as is normal for image
+ property naming conventions:
+ 
+@@ -150,7 +150,7 @@ topology characteristics, which is expected to be used frequently with NFV
+ images. The properties can only be set against the image, however, if they
+ are not already set against the flavor. So for example, if the flavor sets
+ 'hw:numa_nodes=2' but does not set any 'hw:numa_cpus' / 'hw:numa_mem' values
+-then the image can optionally set those. If the flavour has, however, set a
++then the image can optionally set those. If the flavor has, however, set a
+ specific property the image cannot override that. This allows the flavor
+ admin to strictly lock down what is permitted if desired. They can force a
+ non-NUMA topology by setting hw:numa_nodes=1 against the flavor.
+@@ -252,35 +252,35 @@ There is no need for any use fo the notification system.
+ Other end user impact
+ ---------------------
+ 
+-Depending on the flavour chosen, the guest OS may see NUMA nodes backing its
++Depending on the flavor chosen, the guest OS may see NUMA nodes backing its
+ RAM allocation.
+ 
+ There is no end user interaction in setting up NUMA policies of usage.
+ 
+-The cloud administrator will gain the ability to set policies on flavours.
++The cloud administrator will gain the ability to set policies on flavors.
+ 
+ Performance Impact
+ ------------------
+ 
+ The new scheduler features will imply increased performance overhead when
+ determining whether a host is able to fit the memory and vCPU needs of the
+-flavour. ie the current logic which just checks the vCPU count and RAM
++flavor. ie the current logic which just checks the vCPU count and RAM
+ requirement against the host free memory will need to take account of the
+ availability of resources in specific NUMA nodes.
+ 
+ Other deployer impact
+ ---------------------
+ 
+-If the deployment has flavours whose RAM + vCPU allocations are larger than
++If the deployment has flavors whose RAM + vCPU allocations are larger than
+ the size of the NUMA nodes in the compute hosts, the cloud administrator
+-should strongly consider defining guest NUMA nodes in the flavour. This will
++should strongly consider defining guest NUMA nodes in the flavor. This will
+ enable the compute hosts to have better NUMA utilization and improve perf of
+ the guest OS.
+ 
+ Developer impact
+ ----------------
+ 
+-The new flavour attributes could be used by any full machine virtualization
++The new flavor attributes could be used by any full machine virtualization
+ hypervisor, however, it is not mandatory that they do so.
+ 
+ Implementation
+@@ -341,10 +341,10 @@ ie a scale beyond that which tempest sets up.
+ Documentation Impact
+ ====================
+ 
+-The cloud administrator docs need to describe the new flavour parameters
++The cloud administrator docs need to describe the new flavor parameters
+ and make recommendations on how to effectively use them.
+ 
+-The end user needs to be made aware of the fact that some flavours will cause
++The end user needs to be made aware of the fact that some flavors will cause
+ the guest OS to see NUMA topology.
+ 
+ References
+diff --git a/specs/juno/implemented/virt-driver-vcpu-topology.rst b/specs/juno/implemented/virt-driver-vcpu-topology.rst
+index f1f4110..0ad2b1f 100644
+--- a/specs/juno/implemented/virt-driver-vcpu-topology.rst
++++ b/specs/juno/implemented/virt-driver-vcpu-topology.rst
+@@ -25,7 +25,7 @@ as 2 sockets with 4 cores each. If the vCPUs were exposed as 8 sockets
+ with 1 core each, some of the vCPUs will be inaccessible to the guest.
+ It is thus desirable to be able to control the mixture of cores and
+ sockets exposed to the guest. The cloud administrator needs to be able
+-to define topologies for flavours, to override the hypervisor defaults,
++to define topologies for flavors, to override the hypervisor defaults,
+ such that commonly used OS' will not encounter their socket count limits.
+ The end user also needs to be able to express preferences for topologies
+ to use with their images.
+@@ -39,7 +39,7 @@ are thread siblings. While this blueprint will describe how to set the
+ threads count, it will only make sense to set this to a value > 1 once
+ the CPU pinning feature is integrated in Nova.
+ 
+-If the flavour admin wishes to define flavours which avoid scheduling on
++If the flavor admin wishes to define flavors which avoid scheduling on
+ hosts which have pCPUs with threads > 1, then can use scheduler aggregates
+ to setup host groups.
+ 
+@@ -49,8 +49,8 @@ Proposed change
+ The proposal is to add support for configuration of aspects of vCPU topology
+ at multiple levels.
+ 
+-At the flavour there will be the ability to define default parameters for the
+-vCPU topology using flavour extra specs
++At the flavor there will be the ability to define default parameters for the
++vCPU topology using flavor extra specs
+ 
+ * hw:cpu_sockets=NN - preferred number of sockets to expose to the guest
+ * hw:cpu_cores=NN - preferred number of cores to expose to the guest
+@@ -60,10 +60,10 @@ vCPU topology using flavour extra specs
+ * hw:cpu_max_threads=NN - maximum number of threads to expose to the guest
+ 
+ It is not expected that administrators will set all these parameters against
+-every flavour. The simplest expected use case will be for the cloud admin to
+-set "hw:cpu_max_sockets=2" to prevent the flavour exceeding 2 sockets. The
++every flavor. The simplest expected use case will be for the cloud admin to
++set "hw:cpu_max_sockets=2" to prevent the flavor exceeding 2 sockets. The
+ virtualization driver will calculate the exact number of cores/sockets/threads
+-based on the flavour vCPU count and this maximum sockets constraint.
++based on the flavor vCPU count and this maximum sockets constraint.
+ 
+ For larger vCPU counts there may be many possible configurations, so the
+ "hw:cpu_sockets", "hw:cpu_cores", "hw:cpu_threads" parameters enable the
+@@ -90,18 +90,18 @@ instead of an initial colon.
+ 
+ If the user sets "hw_cpu_max_sockets", "hw_cpu_max_cores", or
+ "hw_cpu_max_threads", these must be strictly lower than the values
+-already set against the flavour. The purpose of this is to allow the
++already set against the flavor. The purpose of this is to allow the
+ user to further restrict the range of possible topologies that the compute
+ host will consider using for the instance.
+ 
+ The "hw_cpu_sockets", "hw_cpu_cores" & "hw_cpu_threads" values
+ against the image may not exceed the "hw_cpu_max_sockets", "hw_cpu_max_cores"
+-& "hw_cpu_max_threads" values set against the flavour or image. If the
++& "hw_cpu_max_threads" values set against the flavor or image. If the
+ upper bounds are exceeded, this will be considered a configuration error
+ and the instance will go into an error state and not boot.
+ 
+ If there are multiple possible topology solutions implied by the set of
+-parameters defined against the flavour or image, then the hypervisor will
++parameters defined against the flavor or image, then the hypervisor will
+ prefer the solution that uses a greater number of sockets. This preference
+ will likely be further refined when integrating support for NUMA placement
+ in a later blueprint.
+@@ -114,7 +114,7 @@ specified topology.
+ 
+ Note that there is no requirement in this design or implementation for
+ the compute host topologies to match what is being exposed to the guest.
+-ie this will allow a flavour to be given sockets=2,cores=2 and still
++ie this will allow a flavor to be given sockets=2,cores=2 and still
+ be used to launch instances on a host with sockets=16,cores=1. If the
+ admin wishes to optionally control this, they will be able todo so by
+ setting up host aggregates.
+@@ -142,7 +142,7 @@ restrictions. The over-use of cores will limit the ability to do an effective
+ job at NUMA placement, so it is desirable to use cores as little as possible.
+ 
+ The settings could be defined exclusively against the images, and not make
+-any use of flavour extra specs. This is undesirable because to have best
++any use of flavor extra specs. This is undesirable because to have best
+ NUMA utilization, the cloud administrator will need to be able to constrain
+ what topologies the user is allowed to use. The administrator would also
+ like to have the ability to set up define behaviour so that guest can get
+@@ -165,7 +165,7 @@ Data model impact
+ 
+ No impact.
+ 
+-The new properties will use the existing flavour extra specs and image
++The new properties will use the existing flavor extra specs and image
+ property storage models.
+ 
+ REST API impact
+@@ -173,7 +173,7 @@ REST API impact
+ 
+ No impact.
+ 
+-The new properties will use the existing flavour extra specs and image
++The new properties will use the existing flavor extra specs and image
+ property API facilities.
+ 
+ Security impact
+@@ -182,7 +182,7 @@ Security impact
+ The choice of sockets vs cores can have an impact on host resource utilization
+ when NUMA is involved, since over use of cores will prevent a guest being
+ split across multiple NUMA nodes. This feature addresses this by allowing the
+-flavour administrator to define hard caps, and ensuring the flavour will
++flavor administrator to define hard caps, and ensuring the flavor will
+ always take priority over the image settings.
+ 
+ Notifications impact
+@@ -210,7 +210,7 @@ will be considered there.
+ Other deployer impact
+ ---------------------
+ 
+-The flavour extra specs will gain new parameters in extra specs which a
++The flavor extra specs will gain new parameters in extra specs which a
+ cloud administrator can choose to use. If none are set then the default
+ behaviour is unchanged from previous releases.
+ 
+@@ -250,7 +250,7 @@ Testing
+ No tempest changes.
+ 
+ The mechanisms for the cloud administrator and end user to set parameters
+-against the flavour and/or image are already well tested. The new
++against the flavor and/or image are already well tested. The new
+ functionality focuses on interpreting the parameters and setting corresponding
+ libvirt XML parameters. This is something that is effectively covered by the
+ unit testing framework.
+@@ -258,7 +258,7 @@ unit testing framework.
+ Documentation Impact
+ ====================
+ 
+-The new flavour extra specs and image properties will need to be documented.
++The new flavor extra specs and image properties will need to be documented.
+ Guidance should be given to cloud administrators on how to make most
+ effective use of the new features. Guidance should be given to the end user
+ on how to use the new features to address their use cases.
+diff --git a/specs/kilo/thunderboost.rst b/specs/kilo/thunderboost.rst
+new file mode 100644
+index 0000000..00f544b
+--- /dev/null
++++ b/specs/kilo/thunderboost.rst
+@@ -0,0 +1,189 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++=========================================================================
++A Lightweight Proposal for Fast Booting Many Homogeneous Virtual Machines
++=========================================================================
++
++https://blueprints.launchpad.net/nova/+spec/thunderboost
++
++
++Nova supports to boot virtual machines (VMs) atop the Cinder volumes. However,
++in the current implementation (version j), booting up a large number of
++homogeneous VMs is time-consuming. To overcome this drawback, we propose a
++lightweight patch for Nova, which adopts a third-party library, called
++VMThunder, for fast booting homogeneous VMs. VMThunder accelerates the booting
++process through on-demand data transfer in a P2P manner.
++
++Problem description
++===================
++
++Currently, Openstack provides two categories of methods for booting a virtual
++machine: (i) booting from a local image or (ii) booting from a remote Cinder
++volume.
++
++The first category needs to copy the entire image to a compute node, making it
++suffer from a long transfer delay for large images. The second category
++remotely attaches a volume to a VM and transfers only the necessary data from
++the volume, thus having better performance. However, this approach only allows
++booting a single VM from a volume at a time. Moreover, preparing a volume for
++each VM requires a long time. As a result, it is currently inevitable to take a
++long time for booting a large number of homogeneous VMs in Openstack.
++
++Proposed change
++===============
++
++We propose to add a new method, named "Boot from VMThunder", for fast booting
++multiple homogeneous VMs. This method uses a third-party library (VMThunder) to
++support simultaneous booting of a large number of VMs.
++
++VMThunder configures each VM with two volumes (the figure can be found here
++http://www.kylinx.com/vmthunder/vmthunder.png): a (read-only) template volume
++exactly the same as the pre-created original volume and a (writable) snapshot
++volume storing each VM's difference to the template. The original volume is the
++root of a template volume relay tree, and each VM fetches only the necessary
++data from its parent over the multi-path iSCSI protocol. In addition, VMThunder
++makes use of a compute node's local storage as a cache to accelerate the image
++transferring process and avoid a repetitive data transfer. The P2P-style,
++on-demand data transfer dramatically accelerates VMs' booting process.
++
++Our modification to Nova is light-weighted (about 80 lines of insertions and
++deletions). Two major functions, i.e., the creation and deletion of the
++template and snapshot volumes, are implemented as following: (i) creation: We
++add a volume-driver class (about 50 lines, depends on VMThunder's API) in file
++"nova/virt/block_device.py" to prepare the template and snapshot volumes.
++(ii) deletion: We add a delete method (about 20 lines, depends on VMThunder's
++API) in file "nova/compute/manager.py' to destroy the unused template and
++snapshot volumes.
++
++More details of the implementation can be found in the following links:
++Paper, http://www.computer.org/csdl/trans/td/preprint/06719385.pdf
++Modification diff file, http://www.kylinx.com/vmthunder/diff2.txt
++VMThunder demo videos,
++http://www.kylinx.com/vmthunder/boot_vmthunder_win7_success-V2.mp4
++Image booting demo videos,
++http://www.kylinx.com/vmthunder/boot_image_test_win7_success-V2.mp4
++
++Alternatives
++------------
++
++(1)Image cache:
++Nova's image-caching facility reduces the start-up time for creating
++homogeneous virtual machines on one nova-compute node. However, it helps
++neither the first-time provisioning nor the Cinder-based booting process.
++
++(2)P2P transferring:
++The P2P protocol can increase the speed of the file distribution. For example,
++the glance-bittorrent-delivery proposal transfers the image templates from the
++glance storage to Nova-compute servers. This approach, however, needs to
++transfer the entire image to all peers.
++
++(3)Backend storage optimization:
++The distributed storages like NFS, cluster FS, distributed FS or SAN can
++decrease the size of transferred volumes. However, the I/O pressure on the
++storage servers increases dramatically when powering on a large number of
++homogeneous VMs, since there may not be enough replicas on the storage servers
++for offloading the I/O demands.
++
++(4)Multi-attach volume:
++(https://wiki.openstack.org/wiki/Cinder/blueprints/multi-attach-volume)
++This approach allows a volume to be attached to more than one instance
++simultaneously. As a result, volumes can be shared among multiple guests when
++the instances are already available. Besides, these volumes can also be used
++for booting a number of VMs by enforcing the multi-attach volumes as read-only
++image disks. Unfortunately, this approach does not scale well because of the
++star-structured topology in the data dissemination process.
++
++(5)Direct image access:
++(https://blueprints.launchpad.net/nova/+spec/nova-image-zero-copy).
++This approach uses the direct_url of the Glance v2 API, such that the number of
++needed hops to transfer an image to a Nova-compute node is decreased. When
++images are stored at multiple backend locations, the Nova-compute servers can
++select a proper image storage for speeding up the downloading process.
++
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++None
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++None
++
++Performance Impact
++------------------
++
++We will significantly decrease the delay of booting up large numbers of
++Cinder-volume-based VMs.
++
++Other deployer impact
++---------------------
++
++None
++
++Developer impact
++----------------
++
++None
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee: vmThunderGroup (vmthunder)
++
++Work Items
++----------
++
++We only add one lightweight patch for Nova.
++
++Dependencies
++============
++
++The patch depends on the VMThunder project
++(https://launchpad.net/VMThunder).
++
++Testing
++=======
++
++We will add necessary tests into nova's test framework, in order to show the
++effectiveness of VMThunder. The unit tests and integrated tests will be added
++to the component.
++
++Documentation Impact
++====================
++
++We need to document how to create many homogeneous virtual machines though our
++new option.
++
++References
++==========
++
++VMThunder: http://www.VMThunder.org/
++
++Mailing list:
++http://lists.openstack.org/pipermail/openstack-dev/2014-April/032883.html
++
++VMThunder Publication:http://www.VMThunder.org/blog/2014/03/02/publication/
+\ No newline at end of file
+-- 
+1.9.1
+

@@ -1,4 +1,4 @@
-From 76c26a0736e4e2fad8b94e197fe7c17db15955fb Mon Sep 17 00:00:00 2001
+From a02bb646f15cca26bee36d1b6bf98d1c9036d4d5 Mon Sep 17 00:00:00 2001
 From: James Carey <jecarey@us.ibm.com>
 Date: Tue, 7 Oct 2014 20:15:23 +0000
 Subject: [PATCH] i18n lazy translation enablement
@@ -11,16 +11,16 @@ Part of blueprint i18n-enablement
 
 Change-Id: I17002abf79157d108b649b6e0a58c4b50ea9ebae
 ---
- specs/kilo/approved/i18n-enablement.rst | 188 ++++++++++++++++++++++++++++++++
- 1 file changed, 188 insertions(+)
+ specs/kilo/approved/i18n-enablement.rst | 230 ++++++++++++++++++++++++++++++++
+ 1 file changed, 230 insertions(+)
  create mode 100644 specs/kilo/approved/i18n-enablement.rst
 
 diff --git a/specs/kilo/approved/i18n-enablement.rst b/specs/kilo/approved/i18n-enablement.rst
 new file mode 100644
-index 0000000..4c73d0e
+index 0000000..98ff980
 --- /dev/null
 +++ b/specs/kilo/approved/i18n-enablement.rst
-@@ -0,0 +1,188 @@
+@@ -0,0 +1,230 @@
 +..
 + This work is licensed under a Creative Commons Attribution 3.0 Unported
 + License.
@@ -28,15 +28,15 @@ index 0000000..4c73d0e
 + http://creativecommons.org/licenses/by/3.0/legalcode
 +
 +==========================================
-+i18n Enablement for Nova
++i18n Lazy Translation Enablement for Nova
 +==========================================
 +
 +https://blueprints.launchpad.net/nova/+spec/i18n-enablement
 +
 +This BluePrint/Spec proposes completing the enablement of i18n
 +(internationalization) support for Nova by turning on the "lazy" translation
-+support from the oslo.i18n library and updating Nova to adhere to the
-+restrictions this adds to translatable strings.
++support from the oslo.i18n library and completion of updating Nova to adhere
++to the restrictions this adds to translatable strings.
 +
 +Internationalization implementation has been an on-going effort in OpenStack
 +during recent releases.  The original blueprint for the Oslo support was
@@ -53,7 +53,7 @@ index 0000000..4c73d0e
 +During the Juno release, hacking checks were added to restrict how
 +translatable messasges are used in Nova.  In particular, ensuring that
 +translatable messges are not concatenated and that str() is not used on
-+exceptions.
++exceptions.  Also Nova moved to using the oslo.i18n library.
 +
 +To finalize this work in Kilo we need to enable the "lazy" translation
 +provided in the oslo.i18n library and fix a few cases where str()
@@ -73,15 +73,14 @@ index 0000000..4c73d0e
 +There is a need for different Nova users to be able to use different
 +translations simultaneously.
 +
++A user expects to be able to use Accept-Language in the header of a REST
++API request to specify the locale they want responses translated and when
++it does not match the locale used on the server.
++
 +Use Cases
 +---------
-+A user calls Nova via the REST API and specifies a value for Accept-Language
-+in the Header that does not match the locale being used by the server.
-+Instead of the messages being returned in the locale specified by the user,
-+the messages are returned translated to the server's locale.  With this
-+change the messages are translated prior to being returned by the server
-+using the locale specified by the user, and if the translation is available
-+the message is translated to that locale and returned.
++As a non-English speaking user, I'd like to make nova-api requests and get
++the responses back in my native language.
 +
 +Project Priority
 +----------------
@@ -100,11 +99,24 @@ index 0000000..4c73d0e
 +using the locale associated with the Accept-Language Header from the
 +user request.
 +
-+The code changes will be done as a single patch that adds an enable_lazy()
-+helper method (that calls oslo.i18n's enable_lazy()) to nova/i18n.py and
-+adds a call to this new helper in nova/cmd/__init__.py.  It will also
-+include removal of a couple of cases where str() is being called on
++The code changes will be done as a series of patches.
++
++The first patch will add an enable_lazy() helper method (which calls
++oslo.i18n's enable_lazy()) to nova/i18n.py that is controlled by a
++temporary Nova configuration option 'i18n_enable_lazy' which is defaulted
++to False.  A call to this new helper in nova/cmd/__init__.py.  Also
++removal of the two remaining cases where str() is being called on
 +translatable messages.
++
++The second patch will be to add an non-voting experimental case which
++sets this new configuration value to True and runs the tests.
++
++The third patch will be to add a specific tempest test that validates
++that lazy enablement is working for Nova.
++
++The fourth patch, would change the default value for the
++configuration to True.   We would not remove the configuration
++support until the next release.
 +
 +Alternatives
 +------------
@@ -156,6 +168,22 @@ index 0000000..4c73d0e
 +The developer impacts have already been in place for some time.  Developers
 +have been using _() around messages that need translation.
 +
++Since Juno developers have to adhere to the following hacking checks to ensure
++enabling lazy translation will not cause failures:
++
++* str() cannot be used on exceptions
++
++* translatable strings cannot be concatenated
++
++* replacement text cannot be specified using just locals()
++
++* replacement text cannot be specified using just self.__dict__
++
++A new hacking check in Kilo added and need to be adhered to to ensure that
++incorrect translations don't occur:
++
++* unicode() cannot be used on exceptions being used as replacement text
++
 +
 +Implementation
 +==============
@@ -169,13 +197,26 @@ index 0000000..4c73d0e
 +Work Items
 +----------
 +
-+I am planning to implement this as one patch:
++Patch one
 +
-+* Add enable_lazy() helper to nova/i18n.py
++* Add enable_lazy() helper to nova/i18n.py with configuration control
++  and defaulted to False (not using lazy translation)
 +
 +* Add call to helper in nova/cmd/__init__.py
 +
 +* Remove use of str() on translatable messages
++
++Patch two
++
++* Add experimental non-voting test case using lazy translation
++
++Patch three
++
++* Add tempest test of Nova lazy enablement
++
++Patch four
++
++* Change configuration control default to True (use lazy translation)
 +
 +
 +Dependencies
@@ -185,6 +226,11 @@ index 0000000..4c73d0e
 +https://review.openstack.org/#/c/122193/
 +which fixes lazy enablement support.
 +
++In order to prevent incorrect translations when lazy translation is
++enabled, this spec depends on removing use of unicode() on exceptions
++used as replacement text which is being fixed under bug
++https://bugs.launchpad.net/nova/+bug/1380806.
++
 +
 +Testing
 +=======
@@ -192,11 +238,7 @@ index 0000000..4c73d0e
 +* There will be a tempest test added for Nova that will ensure that
 +  lazy translation is working properly.
 +
-+* Hacking checks were added in Juno for:
-+
-+  * Concatenation of translatable messages
-+
-+  * Use of str() on exceptions
++* The hacking checks listed under Developer Impacts above.
 +
 +
 +Documentation Impact

@@ -1,0 +1,140 @@
+From 84c3bf765e9d95069273c59cf87e6aaa4cbad07e Mon Sep 17 00:00:00 2001
+From: jichenjc <jichenjc@cn.ibm.com>
+Date: Tue, 28 Oct 2014 05:15:10 +0800
+Subject: [PATCH] Add blueprint for make swap disk use ram
+
+use ram disk instead of hard disk as swap disk.
+
+Change-Id: I14193b3be2dcad14f0cd4ffede720b44a8629877
+---
+ specs/kilo/approved/make-swap-disk-use-ram.rst | 118 +++++++++++++++++++++++++
+ 1 file changed, 118 insertions(+)
+ create mode 100644 specs/kilo/approved/make-swap-disk-use-ram.rst
+
+diff --git a/specs/kilo/approved/make-swap-disk-use-ram.rst b/specs/kilo/approved/make-swap-disk-use-ram.rst
+new file mode 100644
+index 0000000..1267493
+--- /dev/null
++++ b/specs/kilo/approved/make-swap-disk-use-ram.rst
+@@ -0,0 +1,118 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++==================================================
++Query lock status of instance
++==================================================
++
++https://blueprints.launchpad.net/nova/+spec/make-swap-disk-use-ram
++
++Make hypervisor able to use ram disk as swap disk.
++
++Problem description
++===================
++
++Currently the guest can only use disks as their swap devices.
++However, under some circumstance, the swap disk in RAM will make the 
++performance better.  
++
++Use Cases
++---------
++Guest under high I/O workload can utilize ram as their swap disk.
++
++Project Priority
++-----------------
++Low
++
++Proposed change
++===============
++
++
++
++Alternatives
++------------
++
++Keep existing solution, only store swap disk to hard disk.
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++Add an option to boot command like --swap-use-ram.
++
++Security impact
++---------------
++
++None.
++
++Notifications impact
++--------------------
++
++None.
++
++Other end user impact
++---------------------
++
++None
++
++Performance Impact
++------------------
++
++Guest under high I/O will benfit.
++
++Other deployer impact
++---------------------
++
++None.
++
++Developer impact
++----------------
++
++None
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  jichenjc
++
++Work Items
++----------
++
++* change API layer to add supported interface listed above.
++* change compute layer to check whether a flavor with 'swap-use-ram'
++  extra key is there or the boot option has 'swap-use-ram'
++* change low lower virt driver (libvirt planned) to create ram disk
++  instead of create disk
++* considering the ram usage's side effect to host ram calculation
++
++Dependencies
++============
++
++None
++
++
++Testing
++=======
++
++None
++
++Documentation Impact
++====================
++
++API document will be updated in order to support 'swap-use-ram' option
++
++References
++==========
++
++None
+-- 
+1.9.1
+

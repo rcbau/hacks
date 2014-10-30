@@ -1,0 +1,156 @@
+From 679a16b7edbc96d03e7e4310915c5ec68733513b Mon Sep 17 00:00:00 2001
+From: Irena Berezovsky <irenab@mellanox.com>
+Date: Wed, 22 Oct 2014 09:39:08 +0300
+Subject: [PATCH] Add spec for VIF Driver for SR-IOV InfiniBand
+
+Change-Id: I5673b2abeb21d16ed7fde553896ac8a32ed3881c
+---
+ specs/kilo/approved/vif-driver-ib-passthrough.rst | 136 ++++++++++++++++++++++
+ 1 file changed, 136 insertions(+)
+ create mode 100644 specs/kilo/approved/vif-driver-ib-passthrough.rst
+
+diff --git a/specs/kilo/approved/vif-driver-ib-passthrough.rst b/specs/kilo/approved/vif-driver-ib-passthrough.rst
+new file mode 100644
+index 0000000..d70d830
+--- /dev/null
++++ b/specs/kilo/approved/vif-driver-ib-passthrough.rst
+@@ -0,0 +1,136 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++=============================================
++Add support for InfiniBand SR-IOV VIF Driver
++=============================================
++
++https://blueprints.launchpad.net/nova/+spec/vif-driver-ib-passthrough
++
++Adding support for InfiniBand SR-IOV vif type allows Virtual PCI device (VF)
++to be directly mapped to the guest, allowing higher performance
++and advanced features such as RDMA (remote direct memory access).
++
++Problem description
++===================
++
++Till Juno Release (including) InfiniBand SR-IOV networking was possible via
++out of the tree nova vif driver with neutron Mellanox Ml2 Mechanism Driver.
++Due to Juno efforts to integrate SR-IOV as part of the nova, it is possible
++to add Infiniband SR-IOV vif plugging to LibvirtGenericVIFDriver.
++
++Use Cases
++----------
++
++InfiniBand (IB) is popular, open standard, high performance and
++extreme efficiency interconnect protocol. To enable Big Data, High Performance
++Computing (HPC) and other similar use cases the guest requires direct access
++to IB NIC device.
++
++Project Priority
++-----------------
++
++Under proposed list of priorities it would fall under "Performance".
++
++Proposed change
++===============
++
++This change adds support for vif_type  VIF_TYPE_IB_HOSTDEV as part of the
++GenericLibvirtVifDriver.
++The VIF_TYPE_HOSTDEV is already supported by ML2 Mellanox Mechanism Driver
++and enables networking configuration of SR-IOV Virtual Functions on IB Fabric.
++The vif_type name should be renamed to VIF_TYPE_IB_HOSTDEV to indicate specific
++InfiniBand vif_type.
++Currently, there is no standard API to set InfiniBand vGuid (equivalent for
++Ethernet mac address), therefor special utility will be invoked to set this.
++This utility is already used in case of mlnx_direct vif_type.
++
++Alternatives
++------------
++
++Currently there is no valid alternative.
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++None
++
++Security impact
++---------------
++
++Execution of the dedicated 'ebrctl' utility requires the use of sudo.
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++This blueprint adds no other end user impact.
++
++Performance Impact
++------------------
++
++None
++
++Other deployer impact
++---------------------
++
++To use this feature the deployer must use Infiniband enabled network adapters.
++Infiniband Subnet Manager should be running to enable IB Fabric.
++The 'ebrctl' utility library should be installed on compute nodes.
++
++Developer impact
++----------------
++
++This blueprint will have no developer impact.
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++    Gil Meir
++
++Other contributors:
++  Irena Berezovsky
++
++Work Items
++----------
++
++* Add vif_type ib_hostdev support to LibvirtGenericVIFDriver
++
++Dependencies
++============
++
++*  ebrctl library is required.
++
++Testing
++=======
++
++Unit tests will be added to validate these modifications.
++Third party testing is already in place to verify the complete solution.
++
++Documentation Impact
++====================
++
++No documentation changes for Nova are anticipated.
++VIF_TYPE_IB_HOSTEV will be automatically enabled by Neutron where appropriate.
++
++References
++==========
++
++* Infiniband openstack solution documentation:
++  https://wiki.openstack.org/wiki/Mellanox-Neutron-Icehouse-Redhat#InfiniBand_Network
+-- 
+1.9.1
+

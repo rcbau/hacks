@@ -67,8 +67,8 @@ if __name__ == '__main__':
                         help='The username (if any) to filter by')
     ARGS = parser.parse_args()
     
-    # reviews = component_reviews('openstack/nova', reviewer=ARGS.username)
-    reviews = author_reviews('mikalstill')
+    reviews = component_reviews('openstack/nova', reviewer=ARGS.username)
+    # reviews = author_reviews('mikalstill')
     print '%s reviews found' % len(reviews)
 
     for review in reviews:

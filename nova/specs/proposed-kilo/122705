@@ -1,0 +1,213 @@
+From 72ec3f533a34b69ebc7390a9492ceae78dfd8970 Mon Sep 17 00:00:00 2001
+From: eliymen <liyi.meng@ericsson.com>
+Date: Wed, 17 Sep 2014 15:51:17 +0200
+Subject: [PATCH] adaptive status polling
+
+This change is to introduce adaptive status polling into nova
+design, which make nova more efficent and robust. It also ams
+to unify polling implementation in nova.
+
+Related to blueprint adaptive-status-polling
+
+Change-Id: I551f01f56072d49ab1f69fc2ad32510f3e7ebca6
+---
+ specs/kilo/approved/adaptive-status-polling.rst | 187 ++++++++++++++++++++++++
+ 1 file changed, 187 insertions(+)
+ create mode 100644 specs/kilo/approved/adaptive-status-polling.rst
+
+diff --git a/specs/kilo/approved/adaptive-status-polling.rst b/specs/kilo/approved/adaptive-status-polling.rst
+new file mode 100644
+index 0000000..232e0db
+--- /dev/null
++++ b/specs/kilo/approved/adaptive-status-polling.rst
+@@ -0,0 +1,187 @@
++
++=======================
++Adaptive status polling
++=======================
++
++Launchpad blueprint:
++
++https://blueprints.launchpad.net/nova/+spec/adaptive-status-polling
++
++In this blueprint, we propose nova should try to predicate a expected
++time to finish an operation, with taking input load into account, adapt
++ polling interval based on expected completion time and min/max_timeout.
++which will:
++* ensure system functions as designed in most of the time
++* reduce the RESTful communication in between sub-systems
++* keep consistent end user experience
++* overcome the shortcomings in RESTful system, while still keep system
++architecture intact
++
++The same idea could spread over all OpenStack components, but lets start from
++nova.
++
++Problem description
++===================
++
++OpenStack is combined from a couple of sub-systems, which are typically
++communicates to each other through RESTFul API. In this client-server setup,
++if client issue a request toward server and trigger a long execution operation,
++client either need to query the progress of the operation with issueing new
++requests or get ready to receive a notification sending back from server, i,e.
++reversing the client/server role. The previous solution is known as poll based
++design, and the second one is known as push based design. Each has its own
++advantages and disadvantages, and they are used depending on the situation.
++
++Poll based design is used in OpenStack today, but many of the implementations
++keep polling with a fixed interval regardless how long the operation will be
++completed in server side, which results in:
++* a too short interval increases unnecessary load on system, while a too long
++  one decreases user experience.
++* impossible to set a timeout that fixes all cases since a higher load
++  input will take longer time to execute.
++
++Proposed change
++===============
++
++Our proposal is to introduce a mechanism that perform adaptive status polling
++for OpenStack. Below is how the mechanism works.
++
++For any long running task, which client needs to poll server to learn
++about the result/status/progress, we assume there are:
++ - a max_time, which represents the maximum time to complete the operation in
++   an extreme situation.
++ - a min_time, which represents the minimum time to complete the operation in
++   very lucky situation.
++ - expected_time, which represents the average time to complete the operation
++   in normal situation.
++
++Assume the total polling re-try N=100, applying the well-known 20-80 rules,
++we decide the polling interval as bellow:
++- interval0 = min_time. (from 0 - min_time)
++- interval1 = (expected_time – min_time) /20, (from min_time to expected_time)
++- interval2 = (max_time - expected_time) /80, (from expected_time to max_time)
++
++The max/min/expected_time, they could be set by human being at design time or
++through configuration, or they could even be learned with machine learning
++plugin module for OpenStack system. For this blueprint, we will go with the
++first option. Most of the time, it is not very hard to set these three values.
++We'll take an example here to explain our algorithm above.
++
++Creating a bootable volume in OpenStack which needs to write an image file
++into disk, the operation time is more or less depending on the writing speed of
++the harddisk. The most common harddisk we see is mechanical rotating harddisk,
++which has a writing speed about 50MB/s; but if you are trying with a poor-man
++solution, backing your system with USB 1.1, the speed is about 1MB/s; or you
++are running a high performance server, the speed might be up to 500MB/s, lets
++say the image file to write is 1GB, so:
++- max_time = 1GB/1MB/s = 1024s
++- min_time = 1GB/500MB/s = 2s
++- expected_time = 1GB/50MB/s = 20s
++
++with our algorithm above,
++- the first polling request with happen at 2th seconds.
++- from 2th - 20th second, polling request is issued every 0.9 seconds
++- from 20th - 1024th second, polling request is issued every 12.5 seconds
++
++Today nova has about 8 separate but slightly different ways of doing polling.
++This blueprint will go through each of them, tries to appy similar algorithm
++that is presented here on them is possible.
++
++In addition to that, this blueprint also aims to unify the polling implment-
++ation with using library like https://pypi.python.org/pypi/retrying, which
++is hopefully to clean up nova source code. An example for such kind
++of change is available at https://review.openstack.org/#/c/104876/
++
++Alternatives
++------------
++
++* The existing solution.
++* Push based design as proposed by Nikola Dipanov in:
++  https://review.openstack.org/#/c/87546/
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++None
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++This should expect to improve user experience with OpenStack.
++
++Performance Impact
++------------------
++
++This should improve system efficiency with reducing in-necessary traffics, and system robust.
++
++Other deployer impact
++---------------------
++
++This might reduce the need of system configuration for deployer.
++
++Developer impact
++----------------
++
++None
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++  Liyi Meng(liyi.meng@ericsson.com)
++
++Work Items
++----------
++
++* Implement polling in a common way with using retry libray or creating
++  something similar when retry library is not possible.
++* Optimize polling with adaptive algorithm
++
++The finally delivery should be possible to deliver as a couple changes like
++ a serie of bugfix, which hopefully facilitates code review.
++
++Dependencies
++============
++
++None
++
++Testing
++=======
++
++New unit test for each change might needed.
++
++Documentation Impact
++====================
++
++One of the ambition of this proposal is to eliminate the configuration work for
++administrator because we take into account the extreme situation: the lowest/
++highest speed. However, this probably is not always feasible, therefore two
++new configuration options could be considered to add, e.g.
++"volume.min_write_mb_per_second"  and "volume.max_write_mb_per_second" for the
++change we have submit in https://review.openstack.org/#/c/104876/
++
++References
++==========
++
++* Our example implementation: https://review.openstack.org/#/c/104876/
++* Nikola Dipanov push based solution: https://review.openstack.org/#/c/87546/
++* Mailing list discussion:
++  http://lists.openstack.org/pipermail/openstack-dev/2014-August/042106.html
++* https://pypi.python.org/pypi/retrying
+-- 
+1.9.1
+

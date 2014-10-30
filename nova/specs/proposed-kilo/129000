@@ -1,0 +1,46 @@
+From eefd5220a71cf1a529c2a02c7f4a320e3005830f Mon Sep 17 00:00:00 2001
+From: Joe Gordon <joe.gordon0@gmail.com>
+Date: Thu, 16 Oct 2014 10:13:06 -0700
+Subject: [PATCH] Project Priorities still undefined
+
+Project Priorities have not been finalized yet, that will happen at the
+summit. Update two specs that were using the 'Project priorities'
+sections incorrectly.
+
+Change-Id: I5c85a6f4e9da38b296a600002f7df69f336ab6f9
+---
+ specs/kilo/approved/get-lock-status-of-instance.rst | 2 +-
+ specs/kilo/approved/tag-instances.rst               | 4 +++-
+ 2 files changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/specs/kilo/approved/get-lock-status-of-instance.rst b/specs/kilo/approved/get-lock-status-of-instance.rst
+index ec3df22..47e812e 100644
+--- a/specs/kilo/approved/get-lock-status-of-instance.rst
++++ b/specs/kilo/approved/get-lock-status-of-instance.rst
+@@ -26,7 +26,7 @@ This is useful when user to know status of an instance
+ 
+ Project Priority
+ -----------------
+-Low
++None
+ 
+ Proposed change
+ ===============
+diff --git a/specs/kilo/approved/tag-instances.rst b/specs/kilo/approved/tag-instances.rst
+index 6f9a336..5cdfbd5 100644
+--- a/specs/kilo/approved/tag-instances.rst
++++ b/specs/kilo/approved/tag-instances.rst
+@@ -36,7 +36,9 @@ simple strings.
+ Project Priority
+ -----------------
+ 
+-Partly falls under the cross project API consistency category.
++The kilo priorities list is currently undefined, But this partly falls under
++the cross project API consistency category.
++
+ 
+ Proposed change
+ ===============
+-- 
+1.9.1
+

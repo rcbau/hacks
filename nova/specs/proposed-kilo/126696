@@ -1,4 +1,4 @@
-From d09b1982fc0fb29f2dc57e13b12fc7797f839737 Mon Sep 17 00:00:00 2001
+From 7e8f48df2f8fcc63bbe0cb5427bf885cb2c3b60e Mon Sep 17 00:00:00 2001
 From: "Chris St. Pierre" <stpierre@metacloud.com>
 Date: Tue, 7 Oct 2014 14:29:05 -0500
 Subject: [PATCH] Relax resource name restrictions
@@ -6,18 +6,19 @@ Subject: [PATCH] Relax resource name restrictions
 This proposes to relax the artificial naming restrictions currently in
 place for resource (instance, flavor, etc.) names.
 
+APIImpact
 Change-Id: Idd6c56d1ba131f7ac6abaecbf2afc68483b320c8
 ---
- .../approved/relax-resource-name-restrictions.rst  | 149 +++++++++++++++++++++
- 1 file changed, 149 insertions(+)
+ .../approved/relax-resource-name-restrictions.rst  | 160 +++++++++++++++++++++
+ 1 file changed, 160 insertions(+)
  create mode 100644 specs/kilo/approved/relax-resource-name-restrictions.rst
 
 diff --git a/specs/kilo/approved/relax-resource-name-restrictions.rst b/specs/kilo/approved/relax-resource-name-restrictions.rst
 new file mode 100644
-index 0000000..effc081
+index 0000000..6a346f3
 --- /dev/null
 +++ b/specs/kilo/approved/relax-resource-name-restrictions.rst
-@@ -0,0 +1,149 @@
+@@ -0,0 +1,160 @@
 +..
 + This work is licensed under a Creative Commons Attribution 3.0 Unported
 + License.
@@ -59,8 +60,8 @@ index 0000000..effc081
 +===============
 +
 +Instead of a strict whitelist of alphanumerics, space, and ``[.-_]``,
-+we propose to allow all printable Unicode characters and horizontal
-+spaces. With reference to `Unicode character categories
++we propose to allow all printable three-byte Unicode characters and
++horizontal spaces. With reference to `Unicode character categories
 +<http://www.fileformat.info/info/unicode/category/index.htm>`_, the
 +allowed characters will be:
 +
@@ -71,15 +72,24 @@ index 0000000..effc081
 +Alternatives
 +------------
 +
-+There are many other possible restrictions, but all of them are
-+arbitrary in some way.
++Full four-byte support is problematic due to limitations in MySQL. The
++``utf8`` character set only supports three-byte Unicode, while
++``utf8mb4`` supports full four-byte Unicode. But MySQL limits key
++length to 765 bytes, which fits a 255-character three-byte string, but
++only a 190-character four-byte string. So, in order to provide full
++four-byte Unicode support in MySQL, we'd have to reduce the length of
++any key fields, which is distinctly undesirable.
 +
-+Perhaps the most reasonable alternative would be to allow the Unicode
-+subset that MySQL supports as ``utf8mb4``, which excludes four-byte
-+Unicode characters, but this should be left as an implementation
-+detail, and Nova itself shouldn't introduce its own additional
-+restrictions, since it may be backended by other databases, or MySQL
-+with wide character support.
++Making the allowable Unicode character width configurable (e.g., for
++installations using PostgreSQL) is difficult since
++``nova.api.validation.parameter_types``, the primary module that
++implements the naming restrictions, defines all of its types as
++module-level variables; making these configurable would be
++unnecessarily difficult and fraught.
++
++Moreover, no interest has been expressed in using full four-byte
++Unicode support; if someone would like to implement that later,
++nothing in this feature will preclude that option.
 +
 +Data model impact
 +-----------------
@@ -139,14 +149,16 @@ index 0000000..effc081
 +----------
 +
 +#. Create a new name validation regex that allows all printable
-+   Unicode characters and horizontal spaces.
++   three-byte Unicode characters and horizontal spaces.
 +#. Make all JSON Schema documents use the new regex for resource name
 +   validation.
 +
 +Dependencies
 +============
 +
-+None.
++In order to make this change discoverable by the API user, it depends
++on API microversions:
++https://blueprints.launchpad.net/nova/+spec/api-microversions
 +
 +Testing
 +=======

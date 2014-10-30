@@ -1,0 +1,301 @@
+From 6e7dfc166a0322792445daa3b1d011f90ed77afd Mon Sep 17 00:00:00 2001
+From: Neil Jerram <Neil.Jerram@metaswitch.com>
+Date: Fri, 24 Oct 2014 11:27:31 +0100
+Subject: [PATCH] New VIF type for routing VM data instead of bridging it
+
+Change-Id: I7bd6e07b8e4e1279e2c4098d2c75896a470dcfef
+---
+ specs/kilo/approved/vif-type-routed.rst | 281 ++++++++++++++++++++++++++++++++
+ 1 file changed, 281 insertions(+)
+ create mode 100644 specs/kilo/approved/vif-type-routed.rst
+
+diff --git a/specs/kilo/approved/vif-type-routed.rst b/specs/kilo/approved/vif-type-routed.rst
+new file mode 100644
+index 0000000..25f4b8d
+--- /dev/null
++++ b/specs/kilo/approved/vif-type-routed.rst
+@@ -0,0 +1,281 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++=======================================================
++New VIF type for routing VM data instead of bridging it
++=======================================================
++
++https://blueprints.launchpad.net/nova/+spec/vif-type-routed
++
++We propose to add a new VIF type, VIF_TYPE_ROUTED, whose meaning is
++that data to/from VMs will be routed by their immediate compute host
++instead of being bridged.  This approach enables various alternative
++approaches to providing connectivity between VMs - particularly in
++deployments where those VMs only require services at layer 3 (IP) and
++above - and it is still possible to implement, through iptables and
++route distribution filters, all of the detailed connectivity and
++security policies that are implied by any given set of OpenStack's
++networking, security group and router configurations.
++
++
++Problem description
++===================
++
++Current OpenStack networking mechanisms are more complex and less
++scalable than they need to be in scenarios where VMs only require IP
++connectivity.
++
++For example the data path from a VM to the external network, in a
++typical bridged setup, passes through two bridges and three other
++virtual network devices:
++
++::
++
++                  VM
++                   |
++                tapXXXX
++                   |
++                 br-int (Open vSwitch bridge)
++                   |
++                qr-XXXX
++                   |
++            Linux IP routing
++                   |
++                qg-XXXX
++                   |
++                 br-ex (Open vSwitch bridge)
++                   |
++       external network interface
++
++Such systems can become complex to configure, understand, debug and
++scale.  In deployments where VMs only require services at layer 3 (IP)
++and above, it is possible to implement a simpler form of connectivity,
++and that is what this Nova change allows.
++
++Use Cases
++---------
++
++VIF_TYPE_ROUTED is used in an alternative networking model in which
++each compute node routes the data to/from its VMs, instead of bridging
++it:
++
++::
++
++                  VM
++                   |
++                tapXXXX
++                   |
++     Linux IP routing, iptables etc.
++                   |
++       external network interface
++
++The detailed connectivity is then controlled by how routing and
++iptables are set up (by an agent) on each compute node.
++
++For example, in the open source Project Calico
++(http://www.projectcalico.org/), the agent then arranges that:
++
++* The compute node's routing table includes a route for each local VM
++  IP address, which directs traffic via the relevant TAP interface.
++
++* Each VM is configured (by DHCP) to have the compute node as its
++  default gateway.
++
++* Proxy ARP is enabled on all VM TAP interfaces on the compute host,
++  so that VMs on multiple compute hosts can belong to the same IP
++  subnet.
++
++* Manipulation of the L-bit for IPv6 address assignment provides the
++  same function as Proxy ARP does for IPv4
++
++* BGP operates between all the compute nodes, so as to propagate VM
++  routes from one compute node to all the other nodes.
++
++* Configured connectivity and security restrictions are implemented
++  through a combination of iptables and route filters on the compute
++  nodes.
++
++While Project Calico is one implementation of a routed network which
++makes use of this interface type, the expectation is that this
++extension can be used by other implementations.
++
++Project Priority
++----------------
++
++This proposal does not directly support any of the priorities
++currently listed at
++http://docs.openstack.org/developer/nova/devref/kilo.blueprints.html#project-priorities.
++
++
++Proposed change
++===============
++
++To demonstrate the above approach within OpenStack, we need a simple
++Nova extension, namely to provide and implement VIF_TYPE_ROUTED.
++VIF_TYPE_ROUTED is a new virtual interface type which means that data
++to/from a VM's TAP interface will be routed by the compute host, and
++therefore that the TAP interface should not be plugged into any kind
++of bridge.
++
++In detail, this means:
++
++* adding VIF_TYPE_ROUTED in nova/network/model.py
++
++* adding get_config_routed, plug_routed and unplug_routed methods in
++  nova/virt/libvirt/vif.py, with implementations that simply
++  configure, create and delete a TAP device.
++
++Alternatives
++------------
++
++None.  All existing VIF_TYPEs whose plugging is implemented in
++nova/virt/libvirt/vif.py are bridged in some way, and so unsuitable
++for exploring routed approaches.  Pre-Juno it was possible to
++configure use of an out-of-tree VIF driver (with the virt_driver
++setting), but this was deprecated and has now been removed.
++
++Data model impact
++-----------------
++
++None.
++
++REST API impact
++---------------
++
++None.
++
++Security impact
++---------------
++
++None.
++
++Notifications impact
++--------------------
++
++None.
++
++Other end user impact
++---------------------
++
++None.
++
++Performance Impact
++------------------
++
++Unless the VIF_TYPE_ROUTED vif type is explicitly requested (e.g. by a
++Neutron/ML2 mechanism driver class), there is no possible performance
++impact on a standard OpenStack system.
++
++Other deployer impact
++---------------------
++
++The Nova extension proposed here will have no effect on existing or
++newly deployed OpenStack systems, unless the VIF_TYPE_ROUTED vif type
++is explicitly requested somewhere (e.g. by a Neutron/ML2 mechanism
++driver class).
++
++Developer impact
++----------------
++
++None.
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  neil-jerram
++
++Other contributors:
++  lukasaoz
++  cliljenstolpe
++
++Work Items
++----------
++
++The changes required for this spec have already been implemented by
++us, based on the Icehouse release code, and fairly extensively
++tested.
++
++An up to date base is of course appropriate for this spec, so the
++changes rebased onto the current proposed/juno branch can be seen at
++the following URL:
++
++* https://github.com/Metaswitch/calico-nova/commit/bde91e1afd32c4c033c527e078ec4e5c721302c5
++
++Remaining work items are as follows:
++
++* Implement unit and 3rd party CI tests as described below.
++* Verify that proposed changes pass all existing tests (including code
++  style), as well as new tests.
++* Submit changes formally for review.
++* Participate in resulting discussions, mark up and re-review
++  processes.
++* Repeat until done!
++
++
++Dependencies
++============
++
++There are two Neutron specs that are closely related to this one.
++
++* https://blueprints.launchpad.net/neutron/+spec/dhcp-for-routed-ifs
++  enhances the Neutron DHCP agent code to handle DHCP for routed TAP
++  interfaces.
++
++* https://blueprints.launchpad.net/neutron/+spec/calico-mechanism-driver
++  provides a Neutron/ML2 mechanism driver that implements routed
++  networking by using VIF_TYPE_ROUTED
++
++Strictly speaking only the second of these is technically dependent on
++the current spec.  In a broader sense, however - i.e. for successful
++routed network connectivity in an OpenStack cloud - all three are
++needed together.
++
++
++Testing
++=======
++
++This change will be tested in three ways.
++
++1. At unit-test level, by adding a test case to
++nova/tests/virt/libvirt/test_vif.py, that creates and verifies a
++virtual interface with type VIF_TYPE_ROUTED.
++
++2. By a third-party CI system, to be set up and operated as described
++at https://wiki.openstack.org/wiki/NeutronThirdPartyTesting, that
++tests the combination of (i) this spec, (ii) a related Neutron spec
++[A] to enable DHCP agent function for VIF_TYPE_ROUTED interfaces, and
++(iii) a Neutron/ML2 mechanism driver [B] that implements networking
++based on VIF_TYPE_ROUTED interfaces.
++
++3. By continuing related development and testing at Project Calico
++(http://www.projectcalico.org/).
++
++[A] https://blueprints.launchpad.net/neutron/+spec/dhcp-for-routed-ifs
++
++[B] https://blueprints.launchpad.net/neutron/+spec/calico-mechanism-driver
++
++
++Documentation Impact
++====================
++
++No documentation changes for Nova are anticipated.  VIF_TYPE_ROUTED
++will be automatically enabled by a related Neutron/ML2 driver, where
++appropriate.
++
++
++References
++==========
++
++http://www.projectcalico.org/
++
++https://github.com/Metaswitch/calico-nova
++
++https://github.com/Metaswitch/calico-neutron
+-- 
+1.9.1
+

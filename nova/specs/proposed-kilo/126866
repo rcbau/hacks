@@ -1,4 +1,4 @@
-From cec912a5a27b2ce3eeda854db7174cb358677921 Mon Sep 17 00:00:00 2001
+From 93b2cae2227a30301e703e62670cc19a0ef7c503 Mon Sep 17 00:00:00 2001
 From: Kanagaraj Manickam <kanagaraj.manickam@hp.com>
 Date: Wed, 2 Jul 2014 20:14:02 +0530
 Subject: [PATCH] vmware: Enable VCDriver with NFS glance source datastore
@@ -10,16 +10,16 @@ mount it on the vCenter cluster as NFS datastore
 
 Change-Id: Ia9244cd53dd43af7b7777aa994a4e99b5ca95150
 ---
- .../nova-vmware-vcdriver-nfs-image-copy.rst        | 155 +++++++++++++++++++++
- 1 file changed, 155 insertions(+)
+ .../nova-vmware-vcdriver-nfs-image-copy.rst        | 160 +++++++++++++++++++++
+ 1 file changed, 160 insertions(+)
  create mode 100644 specs/kilo/approved/nova-vmware-vcdriver-nfs-image-copy.rst
 
 diff --git a/specs/kilo/approved/nova-vmware-vcdriver-nfs-image-copy.rst b/specs/kilo/approved/nova-vmware-vcdriver-nfs-image-copy.rst
 new file mode 100644
-index 0000000..88f3193
+index 0000000..27d4fad
 --- /dev/null
 +++ b/specs/kilo/approved/nova-vmware-vcdriver-nfs-image-copy.rst
-@@ -0,0 +1,155 @@
+@@ -0,0 +1,160 @@
 +..
 + This work is licensed under a Creative Commons Attribution 3.0 Unported
 + License.
@@ -39,13 +39,18 @@ index 0000000..88f3193
 +Problem description
 +===================
 +
-+Use Cases
-+---------
-+While instance is booted from an image, the VmwareVCDriver copies the image
++When instance is booted from an image, the VmwareVCDriver copies the image
 +from glance into 'vmware_temp' caching by means of glance REST API. It makes
 +image copying process to be slower and consumes the nova-compute CPU and
 +memory resource. This can be improved by using NFS image store on the glance as
 +mentioned in below section.
++
++Use Cases
++---------
++
++* Performance improvement: Cloud providers wants to improve the boot process
++  by configuring NFS appropriately
++
 +
 +Project Priority
 +----------------
@@ -163,7 +168,7 @@ index 0000000..88f3193
 +  nfs_glance_datastore in place
 +* add required tempest test cases.
 +* Vmware minesweeper to be updated with required NFS setup in place in
-+  both glance and vCenter.
++  both glance and vCenter. The same should be tested without using NFS.
 +
 +
 +Documentation Impact

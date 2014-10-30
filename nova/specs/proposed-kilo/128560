@@ -1,0 +1,276 @@
+From f6a9f63a2a825ad37db3132034622942368c56c1 Mon Sep 17 00:00:00 2001
+From: He Jie Xu <xuhj@linux.vnet.ibm.com>
+Date: Wed, 15 Oct 2014 13:27:15 +0800
+Subject: [PATCH] The end goal of Nova API policy improvement
+
+This spec provide a full view of the end goal for nova API policy
+improvement.
+
+Part of blueprint v3-api-policy
+Part of blueprint separated-policy-rule-v3-api
+
+Change-Id: If26bd38a1130494015d4d4fbbbd83db7a5ce781f
+---
+ specs/kilo/approved/the-end-goal-of-api-policy.rst | 250 +++++++++++++++++++++
+ 1 file changed, 250 insertions(+)
+ create mode 100644 specs/kilo/approved/the-end-goal-of-api-policy.rst
+
+diff --git a/specs/kilo/approved/the-end-goal-of-api-policy.rst b/specs/kilo/approved/the-end-goal-of-api-policy.rst
+new file mode 100644
+index 0000000..b94cb97
+--- /dev/null
++++ b/specs/kilo/approved/the-end-goal-of-api-policy.rst
+@@ -0,0 +1,250 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++===============================
++The End Goal of Nova API Policy
++===============================
++
++https://blueprints.launchpad.net/nova/+spec/v3-api-policy
++https://blueprints.launchpad.net/openstack/?searchtext=separated-policy-rule-v3-api
++
++There are some of ideas and requirements from Icehouse summit to improve
++the current nova API policy. This spec aims to provide a full view for the
++improvement of nova API policy to ensure the final goal is on the right way.
++
++There are two sub-specs for more detail:
++https://review.openstack.org/127160
++https://review.openstack.org/127863
++
++Problem description
++===================
++
++There are several problems for current API policy.
++
++* The permission checking is spread through the various levels of the nova
++  code, also have some hard-code permission checking that make some polcy
++  rules didn't work.
++
++* API policy rules need better granularity. Some of extensions just use one
++  rule for all the APIs. Deployer can't get better granularity control for
++  the APIs.
++
++* More easy way to override default policy settings for deployer. And
++  Currently all the API(EC2, V2, V2.1) rules mix in one policy.conf file.
++
++Use Cases
++---------
++
++1. Operator want to specified role can access service API, but it's hard-code
++as only admin can operator those API.
++
++2. One policy rule for one API at REST API layer. Multiple rules in different
++layer really confuse the developer and deployer.
++
++3. Deployer can specified separated rule for each API in one extension.
++
++4. Deployer can override the default policy rule easily without mix his own
++config and default config in one policy.conf file.
++
++Project Priority
++----------------
++
++The kilo priorities list is currently not defined. However under the
++currently proposed list of priorities it would fall under "User
++Experience" as it significantly increases the ability for us to
++improve the Nova API.
++
++Proposed change
++===============
++
++The generic rule for all the improvement is keep V2 API back-compatible. The
++improvement just for EC2 and V2.1 API. Because V2 API may be depreciated after
++V2.1 parity with V2. And reduce the risk of broken what we have for now.
++
++* Enforcement policy at REST API layer and remove hard-code permission
++  checks.
++
++  Remove the permission checking from low layers of nova. This make
++  better usability for API policy. The detail describes at:
++  https://review.openstack.org/127160
++
++* Use different prefix in policy rule name for EC2/V2/V2.1 API.
++
++  After move all the policy into REST API layer, then all the API won't
++  share some policy enforcement in the compute API layer. So it's time
++  group them. We can provide different prefix in rule name for each API.
++
++  * EC2 API: We name the policy rule as "ec2_api:[action]"
++
++  * Nova V2 API: After we move to V2.1, we needn't spend time to change V2
++    api rule, and needn't to bother deployer upgrade their policy config. So
++    just keep V2 API poicy rule named as before.
++
++  * Nova V2.1 API: We name the policy rule as
++    "os_compute_api:[extension]:[action]". The core API may be changed in
++    the future, so we needn't name them as "compute" or "compute_extension"
++    to distinguish the core or extension API.
++
++* Port policy.d from oslo-incubator into nova.
++
++  The policy.d already implement at oslo-incubator:
++      https://review.openstack.org/#/c/105362/
++
++  This feature make deployer can override default policy rule easily. And
++  When nova default policy config changed, deployer only need replace default
++  policy config files with new one. It won't affect his own policy config in
++  other files.
++
++* Group the policy rules into different policy files.
++
++  After support policy.d we can separated the policy rules as separated
++  files, then deployer will more clear for which rule he can set for specified
++  API. The rules can be grouped as below:
++
++  * policy.conf: It only contains the generic rule, like:
++
++::
++    "context_is_admin":  "role:admin",
++    "admin_or_owner":  "is_admin:True or project_id:%(project_id)s",
++    "default": "rule:admin_or_owner",
++
++  * policy.d/00-ec2-api.conf: It contains all the policy rules for EC2 API.
++
++  * policy.d/00-v2-api.conf: It contains all the policy rules for nova V2 API.
++
++  * policy.d/00-v2.1-api.conf: It contains all the policy rules for nova v2.1
++    API.
++
++* Add separated rule for each API in extension.
++
++  This is for provider better granularity for policy rules. The detail at:
++  https://review.openstack.org/127863
++
++Alternatives
++------------
++The alternative is the status quo which is confusing for both deployers as
++well as developers having to maintain the current implementation
++
++Data model impact
++-----------------
++None
++
++REST API impact
++---------------
++None
++
++Security impact
++---------------
++
++All of those improvement aims to provide more clear and easier way to config
++API policy, that reduce the mistake happened when change policy config.
++
++There are more detail for separated propose at:
++https://review.openstack.org/127160
++https://review.openstack.org/127863
++
++These improvements will require very rigorous double checking and high
++quality reviews to ensure that security bugs are not introduced as the
++nova internal calls can be called from quite a few different code
++paths (Ec2, V2 API, V2.1 API and other internals).
++
++Notifications impact
++--------------------
++None
++
++Other end user impact
++---------------------
++None
++
++Performance Impact
++------------------
++
++There are more detail for separated propose at:
++https://review.openstack.org/127160
++https://review.openstack.org/127863
++
++Other deployer impact
++---------------------
++
++* Enforcement policy at REST API layer and remove hard-code permission
++  checks.
++
++  There is affect after remove hard-code permission checks. The deployer
++  need update their policy config file, to add permission checks for API
++  that db layer hard-code was removed.
++
++* Use different prefix in policy rule name for EC2/V2/V2.1 API.
++
++  There isn't any affect for V2 API. For EC2 API, it need deployer update
++  their policy config. For V2.1 API, there isn't any user yet, so there
++  won't any effect.
++
++* Port policy.d from oslo-incubator into nova.
++
++  There isn't any affect for this.
++
++* Group the policy rules into different policy files.
++
++  Deployer can put his old policy config file into policy directory also.
++  Then their old config can override the default config.
++
++* Add separated rule for each API in extension.
++
++  This need user to move the policy rule into separated rule for each API.
++
++
++Developer impact
++----------------
++
++After those improvement, nova will have more clear way to add permission
++checks.
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  Alex Xu <xuhj@linux.vnet.ibm.com>
++
++Work Items
++----------
++
++* Porting policy.d into nova from oslo-incubator
++* Policy enforcement at REST API layer: https://review.openstack.org/127160
++* Group the policy rules.
++* Add separated policy rule for each API: https://review.openstack.org/127863
++
++Dependencies
++============
++
++None
++
++
++Testing
++=======
++
++There are more detail for separated propose at:
++https://review.openstack.org/127160
++https://review.openstack.org/127863
++
++Documentation Impact
++====================
++
++We should document the new policy config files structs in Cloud Admin
++Document.
++
++And we should doc all the changes for existed policy rule in upgrade
++document.
++
++There are more detail for separated propose at:
++https://review.openstack.org/127160
++https://review.openstack.org/127863
++
++References
++==========
++
+-- 
+1.9.1
+

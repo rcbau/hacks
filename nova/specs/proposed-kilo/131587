@@ -1,0 +1,543 @@
+From 61fe984fcb62ae0f5696632aba0e4f150f0b22f1 Mon Sep 17 00:00:00 2001
+From: Bryan Freeman <freemabr@us.ibm.com>
+Date: Mon, 30 Jun 2014 23:15:25 -0400
+Subject: [PATCH] Application Consistent Snapshot
+
+The main goal of this blueprint is to define a hypervisor-agnostic interface
+to notify applications of an impending snapshot and to perform any
+application-specific quiesce operations prior to a filesystem freeze and
+snapshot. A notification is also delivered when a snapshot and thaw have
+completed in order for the application to perform any post-thaw operations.
+
+Change-Id: Idbbdf759fd74c8300926dafb7d0817b64923bd4f
+---
+ .../kilo/application-consistent-snapshots-spec.rst | 517 +++++++++++++++++++++
+ 1 file changed, 517 insertions(+)
+ create mode 100644 specs/kilo/application-consistent-snapshots-spec.rst
+
+diff --git a/specs/kilo/application-consistent-snapshots-spec.rst b/specs/kilo/application-consistent-snapshots-spec.rst
+new file mode 100644
+index 0000000..4e1576f
+--- /dev/null
++++ b/specs/kilo/application-consistent-snapshots-spec.rst
+@@ -0,0 +1,517 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++================================
++Application Consistent Snapshots
++================================
++
++https://blueprints.launchpad.net/nova/+spec/application-consistent-snapshot
++
++The main goal of this blueprint is to define a hypervisor-agnostic interface 
++to notify applications of an impending snapshot and to perform any 
++application-specific quiesce operations prior to a filesystem freeze and 
++snapshot. A notification is also delivered when a snapshot and thaw have 
++completed in order for the application to perform any post-thaw operations.
++
++Various mechanisms exist to achieve consistency. All utilize a guest-agent
++running as a daemon within the instance to quiesce I/O prior to taking a 
++backup. Consistency is achieve by two mechanisms. First freeze and thaw 
++operations, ensures that file system consistency is achieved.  Secondly,
++pre-freeze and post-thaw scripts ensure that applications that are running
++in the instance are placed into consistent state prior to the freeze.
++
++Under Windows, Volume Shadow Services (VSS), is a well defined API and 
++provides the ability to broadcast notifications at pre-freeze and post-thaw
++times. In Linux, application specific scripts called by the guest-agent will
++be execute to achieve to notify applications. For example, a MySql DBMS 
++running on a Linux instance will need to flush buffers and acquire a global DB
++lock in the pre-freeze script ("FLUSH TABLES WITH READ LOCK "), and then 
++release the global lock in the post-thaw script ("UNLOCK TABLES").
++
++Problem description
++===================
++
++OpenStack snapshots of instances and volumes are at best file system 
++consistent, but more likely only crash consistent. Ensuring consistency
++of a snapshot requires quisecing of filesystem I/O activity and application
++activity prior to taking a snapshot for backup purposes.
++
++Restoring an instance or a volume from an inconsistent snapshot often results
++in a failed boot or requires filesystem and application recovery procedures
++to be executed (ex: fsck). 
++
++Use Cases
++---------
++
++This Blueprint focuses only on the narrow use-case of snapshot consistency
++for instances and attached volumes, and defines the interface necessary
++to ensure application consistency prior to, and after, taking a snapshot. 
++
++Several efforts have been documented in OpenStack Blueprints including those
++for guest agents running in KVM and Xen instances, and a unified guest-agent. 
++But these efforts either have focused narrowly on a specific hypervisor or 
++seek to achieve broad use-cases for hypervisor-agnostic guest-agents mainly
++for use in Trove, Heat, Sahara, and Murano projects.
++
++* Pre-snapshot notification could be used to coordinate snapshots accross 
++  instances belonging to an application (an application consistency group)
++* Other OpenStack components (such as cinder) could use this function to 
++  ensure application consistency prior to volume snapshots for one or more 
++  instances (volume consistency groups)
++* A decision whether to continue with a backup/snapshot could be made based 
++  on whether the pre-snapshot operation was successful
++
++Project Priority
++----------------
++
++None.
++
++Proposed change
++===============
++
++1. The two new Nova API calls and commands are introduced to quiesce an instance 
++prior to the calls for instance or volume snapshots. (Proposed in blueprint 
++`Quiesce admin action
++<https://blueprints.launchpad.net/nova/+spec/quiesce-admin-action>`_ )
++are extended to include new Request and Response parameters to indicate whether
++applications should be notified to quiesce themselves prior to fs freeze.
++
++2. Compute drivers implementing the application quiesce will execute pre-freeze
++and post-thaw scripts existing in the guest instance in a pre-determined 
++location and return the results (SUCCESS/FAILURE) of the operations. This location
++may vary based on guest OS and/or compute driver but it will be need to be 
++documented. 
++
++QEMU Guest Agent qemu-ga sets a nice precedence using the UNIX init.d-style
++of sending "freeze" "thaw" parms to scripts in a well known location to
++trigger pre-freeze/post-thaw operations. 
++
++3. For this effort, only the KVM/QEMU driver will be changed, along with the base
++code for all hypervisors to introduce the Freeze and Thaw as none-operational
++services (501 not implemented for this hypervisor). 
++
++Alternatives
++------------
++
++Additional changes may be implemented to the extend the freeze and thaw
++logic as automatic features of existing snapshot service calls.
++
++Data model impact
++-----------------
++
++None.
++
++REST API impact
++---------------
++
++* URL:
++    * /v2/{tenant_id}/servers/{server_id}/action:
++    * /v2.1/servers/{server_id}/action/{server_id}/action:
++
++* Request method:
++    * POST
++
++* JSON request body for 'quiesce'::
++ 
++       {
++           "quiesce":
++           {
++               "quiesce_application": "True",
++               "quiesce_filesystems": "True"  
++           }
++       } 
++ 
++* Request parameters for 'quiesce'
++    * quiesce_application   xsd:boolean  Indicate whether application(s) should 
++                                         be notified to quiesce prior to fs 
++                                         quiesce. Default==True.
++    * quiesce_filesystems   xsd:boolean  Indicate whether filesystems should be
++                                         quiesced. Default==True.
++    * metadata (optional)   xsd:string   Key/Value pairs to be made available to
++                                         applications during quiesce.
++
++* JSON response body for 'quiesce'::
++
++    {
++        "quiesce":
++        {
++            "quiesce_application_status": "SUCCESS",
++            "quiesce_filesystems_status": "SUCCESS"  
++        }
++    }
++ 
++* Response parameters for 'quiesce'
++    * quiesce_application_status   xsd:string  Indicates whether the quiesce 
++                                               application operation was successful.
++    * quiesce_filesystems_status   xsd:string  Indicates whether the quiesce 
++                                               filesystems operation was successful.
++    * metadata                     xsd:string  Key/Value pairs returned from 
++                                               applications during quiesce.
++    * quiesce_application_fault    xsd:string  Fault object containing error 
++                                               code + message providing information 
++                                               about why application quiesce failed
++    * quiesce_filesystem_fault     xsd:string  Fault object containing error code + 
++                                               message providing information about
++                                               why filesystem quiesce failed
++ 
++* JSON request body for 'unquiesce' ::
++
++    {
++        "unquiesce":
++        {
++            "quiesce_application": "True",
++            "quiesce_filesystems": "True"  
++        }
++    }
++ 
++* Request parameters for 'unquiesce'
++    * quiesce_application   xsd:boolean  Indicate whether application(s) should 
++                                         be notified to unquiesce following fs 
++                                         quiesce. Default==True.
++    * quiesce_filesystems   xsd:boolean  Indicate whether filesystems should be
++                                         unquiesced. Default==True.
++    * metadata (optional)   xsd:string   Key/Value pairs to be made available to
++                                         applications during unquiesce.
++ 
++* Response parameters for 'unquiesce'
++    * unquiesce_application_status   xsd:string  Indicates whether the unquiesce
++                                                 application operation was successful.
++    * unquiesce_filesystems_status   xsd:string  Indicates whether the unquiesce 
++                                                 filesystems operation was successful.
++    * metadata                       xsd:string  Key/Value pairs returned from 
++                                                 applications during unquiesce.
++    * unquiesce_application_fault    xsd:string  Fault object containing error 
++                                                 code + message providing information 
++                                                 about why application unquiesce failed
++    * unquiesce_filesystem_fault     xsd:string  Fault object containing error 
++                                                 code + message providing information 
++                                                 about why filesystem unquiesce failed
++
++* Normal response code:
++    * `200 OK`: Returned after the instances' applications and filesystems were successfully
++                quiesced/unquiesced. 
++
++* Error response codes:
++    * `500 Internal Server Error`: Returned if the driver fails to quiesce/
++                                   unquiesce; further information about the 
++                                   failures will be contained withing the request
++                                   body.
++    * `501 Not Implemented`: Returned if compute driver does not support this 
++                             quiesce/unquiesce functionality
++    * For malformed requests, other error codes may be returned like the other
++      server admin actions.
++
++Security impact
++---------------
++
++The new Freeze and Thaw service calls should have the same security 
++authorization model as the existing nova create-image and cinder 
++volume-snapshot service calls. 
++
++In order to maintain security, the freeze/thaw application instruction will be
++passed to the instance, causing scripts in a pre-determined location within the
++guest to be run. No arbitrary code will be passed to the guest to be run.
++
++Notifications impact
++--------------------
++
++The following timing diagrams depict the asynchronous notification phases 
++involved between the Compute Node, the hypervisor, the guest-agent, and 
++the instance.
++
++Freeze/Thaw Timing Diagram::
++
++ +----------------------+------------------+-----------+----------------------+
++ |OpenStack API call    |Compute Node      |Guest-agent|Instance Action       |
++ +======================+==================+===========+======================+
++ |nova freeze==========>|Guest-agent freeze|Freeze====>|Fork pre-freeze script|
++ |status return<========|<=================|<==========|<return script status |
++ |                      |                  |           |Fork FSFreeze command |
++ |                      |Update instance   |<==========|<return Freeze status |
++ |                      | state="Frozen"   |           |                      |
++ +----------------------+------------------+-----------+----------------------+
++ |Query Instance State  |~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~|
++ |                      |~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~|
++ |cinder create-snapshot|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~|
++ |cinder backup-create, |~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~|
++ |       or             |~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~|
++ |nova create-image     |~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~|
++ |                      |~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~|
++ |status return <=======|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~|
++ |                      +------------------+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~|
++ |                      |Update snapshot or|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~|
++ |                      |backup state      |~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~|
++ |Query snapshot state  |                  |~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~|
++ +----------------------+------------------+-----------+----------------------+
++ |Thaw=================>|Guest-agent thaw=>|Thaw======>|Call FSThaw command   |
++ | status return <======|<=================|<==========|<return FSThaw status |
++ |                      |                  |           |Fork post-thaw script |
++ |                      |Update instance   |<==========|<return script status |
++ |                      | state="Running"  |           |                      |
++ +----------------------+------------------+-----------+----------------------+
++
++
++Alternative Implementation (Automatic Freeze/Thaw) Timing Diagram::
++
++ +-----------------------+------------------+-----------+---------------------+
++ |OpenStack API call     |Compute Node      |Guest-agent|Instance Action      | 
++ +=======================+==================+===========+=====================+
++ |cinder create-snapshot,|If State="Running"|           |                     |
++ |cinder backup-create,  |{                 |           |                     |
++ |       or              | Save="Running"   |           |                     |
++ |nova create-image      | nova freeze=====>|Freeze     |Fork pre-freeze scrpt|
++ |                       | <================|<==========|<return script status|
++ |                       |                  |           |Fork FSFreeze command|
++ |                       | Update instance  |<==========|<return Freeze status|
++ |                       |  state="Frozen"  |           |                     |
++ |                       |}                 |           |                     |
++ +-----------------------+------------------+-----------+---------------------+
++ |                       |Execute Snapshot  |~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~|
++ +-----------------------+------------------+-----------+---------------------+
++ |                       |If Save="Running" |           |                     |
++ |                       |{                 |           |                     |
++ |                       | nova thaw=======>|Thaw======>|Call FSThaw command  |
++ | status return<========| <================|<==========|<return FSThaw status|
++ |                       |                  |           |Fork post-thaw script|
++ |                       | Update instance  |<==========|<return script status|
++ |                       |  state="Running" |           |                     |
++ |                       |}                 |           |                     |
++ +-----------------------+------------------+-----------+---------------------+
++
++
++Other end user impact
++---------------------
++
++Aside from the API and command line addition for Freeze and Thaw service
++calls, no other end-user impact is envisioned.  
++
++The end-user must provide the pre- and post- scripts to exploit the
++application consistency feature, otherwise a only filesystem consistent
++snapshots are provided.
++
++Performance Impact
++------------------
++
++TBD
++
++Other deployer impact
++---------------------
++
++Most of the configuration issues are related to the installation of the 
++pre- and post- scripts and the configuration of the guest-agent. 
++
++Input and output from scripts. Specifying the parms passed to the pre- and 
++post- scripts, if possible.  How is status returned to the guest-agent and
++propagated back to the Compute Node?
++
++Installing the pre and post scripts.  For this release, we expect the 
++scripts to be in place with the image
++(i.e. no injection. Probably a future blueprint.)
++
++Installing of the guest-agent.  For Linux, the guest-agent will need to be
++installed and pre-configured in the image 
++(no injection and/or Heat orchestration for a future blueprint.)
++
++Developer impact
++----------------
++
++Other compute-drivers will be free to implement the Freeze and Thaw services
++in concert with this effort. Much of the design will depend on whether
++the other hypervisor and supported instance types can fully support the 
++features of this effort. In other cases, other hypervisors may be
++capable of extensions to the basic features delivered in by this effort. 
++
++We have identified common mechanisms that already exist for KVM/QEMU, VMware,
++and HyperV hypervisors, along with Linux and Windows instances running in each
++hypervisor type.  The first spec for this blueprint needs to be an interface
++specification based on KVM/QEMU, running Linux and Windows guests.  We expect
++VMware and HyperV, and possibly an SSH spec needs to be developed after common
++interface spec is in place with KVM/QEMU.
++
++As previously mentioned, QEMU Guest Agent qemu-ga sets a nice precedence using
++the UNIX init.d-style of sending "freeze" "thaw" parms to scripts in a well 
++known location to trigger pre-freeze/post-thaw operations. While VMware tools 
++does provide a similar mechanism by running batch files within the guest prior
++to, and following freeze, the results of these operations do not appear to be
++fed back to the initiator. 
++
++We also recognize that a unified guest-agent has been previously proposed, using a 
++secure, tenant isolated communication channel. We anticipate that this 
++implementation will be reworked when the unified guest-agent is solidified.
++
++The use of existing hypervisor facilities and guest-agents makes use of proven
++technologies, with secure communication channels, and packaged tools which in
++some cases are built-in to guest operating systems or packaged in recent Linux
++distributions. A survey of existing mechanisms cross-referenced by 
++hypervisors are shown in the table below. The challenge will be to develop an
++interface that will work within all of these existing frameworks. An 
++alternative implementation using SSH is also included to enable other 
++hypervisors, other instance operating systems, Ironic, and container 
++instances.
++
++Survey of existing hypervisors::
++
++ +-----------+-----------------+---------------------------------------------+
++ +Hypervisor | Host API        |Guest-Agent API                              |
++ +===========+=================+=============================================+
++ |KVM        |QEMU guest-agent |Linux QEMU guest-agent (Linux kernel)        |
++ |           |                 +---------------------------------------------+
++ |           |                 |Windows VSS                                  |
++ +-----------+-----------------+---------------------------------------------+
++ |VMware     |VMware Tools     |Linux QEMU guest-agent (Linux kernel)        |
++ |           |                 +---------------------------------------------+
++ |           |                 |Windows VSS                                  |
++ +-----------+-----------------+---------------------------------------------+
++ |HyperV     |HyperV           |Linux (Linux Integration Services)           |
++ |           |                 +---------------------------------------------+
++ |           |                 |Windows VSS                                  |
++ +-----------+-----------------+---------------------------------------------+
++ |other      |SSH              |SSH daemon with freeze and thaw scripts      |
++ +-----------+-----------------+---------------------------------------------+
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  <freemabr>
++
++Other contributors:
++  <joshiro>
++
++Work Items
++----------
++
++Work items or tasks -- break the feature up into the things that need to be
++done to implement it. Those parts might end up being done by different people,
++but we're mostly trying to understand the timeline for implementation.
++
++
++Dependencies
++============
++
++`Quiesced image snapshots with qemu guest 
++<https://blueprints.launchpad.net/nova/+spec/quiesced-image-snapshots-with-qemu-guest-agent>`_
++
++`Quiesce admin action 
++<https://blueprints.launchpad.net/nova/+spec/quiesce-admin-action>`_
++
++Testing
++=======
++
++A Tempest test case to issue Freeze and Thaw services prior to nova and cinder
++snapshots on a live instance will be included. The test case must also verify
++that the restore from the snapshots results in and instance or a volume
++that requires no other recovery procedures following the restart of the 
++instance or attach of the volume. 
++
++The basic skeleton of the test case should include:
++
++1. Create a new instance containing a high I/O activity workload
++
++2. Issue the Freeze service call
++
++3. Verify proper status of the Freeze service was returned
++
++4. Verify proper status of the instance was set ("Frozen")
++
++5. Issue nova create-image for an instance snapshot
++
++6. Issue cinder volume-snapshot with --force=True for a volume snapshot
++
++7. Issue the Thaw service call
++
++8. Verify proper status of the Thaw service was returned
++
++9. Verify proper status of the instance was set ("Running")
++
++
++Documentation Impact
++====================
++
++Much of the effort for this initiative will be to document the behaviour 
++of the instance and application during the freeze and thaw operations. 
++
++Some of the issues to be covered are:
++
++1. Differentiating between Linux vs. Windows instances. VSS with the default
++   provider works differently from the Linux guest-agent. Most of this is 
++   documenting what is delivered in QEMU and Windows VSS and we can reference
++   the existing doc, especially for VSS. The Linux guest-agent is a bit more 
++   wobbly.
++
++2. Specifying the path of the pre- and post- scripts under Linux. Can the path
++   be specified on the Freeze and Thaw API?  If not, then the fixed path must
++   be documented.
++
++3. Specifying the behaviour of the scripts during error conditions.  
++   If pre-freeze scripts fail, how is the status reported to abort the Freeze,
++   return the error status, write log messages?
++
++4. If an error occurs, what assumptions are made about recovery? 
++   Pre-freeze failures must release locks and restore the state of the instance
++   and application to normal state. Post-thaw failures still need to resume 
++   operations and return error. Manual intervention if script errors occur need
++   to be noted. 
++
++5. Input and output from scripts. Specifying the parms passed to the pre- and 
++   post- scripts, if possible.  How is status returned to the guest-agent and
++   propagated back to the Compute Node?
++
++6. Installing the pre and post scripts.  For this release, we expect the 
++   scripts to be in place with the image
++   (i.e. no injection. Probably a future blueprint.)
++
++7. Installing of the guest-agent.  For Linux, the guest-agent will need to be
++   installed and pre-configured in the image 
++   (injection and/or Heat orchestration for a future blueprint.)
++
++8. Exceptions to this behaviour based on what is supported by the hypervisor 
++   and instance guest-agent (ex: LIS is different under HyperV)
++
++References
++==========
++
++`Add qemu-guest-agent support for kvm instance 
++<https://blueprints.launchpad.net/nova/+spec/qemu-guest-agent-support>`_
++
++`Quiescing filesystems with QEMU guest agent during image snapshotting 
++<https://blueprints.launchpad.net/nova/+spec/quiesced-image-snapshots-with-qemu-guest-agent>`_
++
++`Quiesce admin action 
++<https://blueprints.launchpad.net/nova/+spec/quiesce-admin-action>`_
++
++`Cinder quiesced Snapshot with QEMU guest-agent
++<https://wiki.openstack.org/wiki/Cinder/QuiescedSnapshotWithQemuGuestAgent>`_
++
++`Xen/Rackspace guest-agent
++<https://wiki.openstack.org/wiki/GuestAgent>`_
++
++`Trove guest-agent
++<https://wiki.openstack.org/wiki/Trove/guest_agent_communication>`_
++
++`Unified guest-agent
++<https://wiki.openstack.org/wiki/UnifiedGuestAgent>`_
++`Etherpad discussion of unified guest-agent
++<https://etherpad.openstack.org/p/UnifiedGuestAgent>`_
++
++`Guest agent using Zaqar
++<https://blueprints.launchpad.net/sahara/+spec/guest-agent-marconi>`_
++
++`Guest agent message queue
++<https://blueprints.launchpad.net/sahara/+spec/guest-agent-mq>`_
++
++`Guest agent rpc
++<https://blueprints.launchpad.net/trove/+spec/guest-rpc-ping-pong>`_
++
++`Taking snapshots in Nova:
++<http://docs.openstack.org/openstack-ops/content/snapshots.html>`_
++
++`Taking snapshots in Cinder of attached volume requires --force=True:
++<http://docs.openstack.org/cli-reference/content/cinderclient_commands.html#cinderclient_subcommand_snapshot-create_v2>`_
++
+-- 
+1.9.1
+

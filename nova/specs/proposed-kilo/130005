@@ -1,0 +1,349 @@
+From 4035c57ef28ca83016d89d1b33a5223db1e62538 Mon Sep 17 00:00:00 2001
+From: Jennifer Mulsow <jmulsow@us.ibm.com>
+Date: Tue, 21 Oct 2014 13:50:27 -0500
+Subject: [PATCH] Nova specs doc for dynamic server groups
+
+This is the documentation for
+https://blueprints.launchpad.net/nova/+spec/dynamic-server-groups
+
+Change-Id: I58de5b61b1db05b1392b6a5ea54e37d43e2b867e
+---
+ specs/kilo/approved/dynamic-server-groups.rst | 326 ++++++++++++++++++++++++++
+ 1 file changed, 326 insertions(+)
+ create mode 100644 specs/kilo/approved/dynamic-server-groups.rst
+
+diff --git a/specs/kilo/approved/dynamic-server-groups.rst b/specs/kilo/approved/dynamic-server-groups.rst
+new file mode 100644
+index 0000000..d49dcf4
+--- /dev/null
++++ b/specs/kilo/approved/dynamic-server-groups.rst
+@@ -0,0 +1,326 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++==========================================
++Dynamic Management of Server Groups
++==========================================
++
++https://blueprints.launchpad.net/nova/+spec/dynamic-server-groups
++
++This blueprint extends the functionality of "Server Groups" such that the
++virtual machines in the group can be added or removed at any time (i.e.,
++instead of limiting it to at boot time only). By providing this added bit of
++functionality, server groups become orders of magnitude more operator-friendly
++and usable in many real-world scenarios.
++
++
++Problem description
++===================
++
++Primary Use Cases:
++
++* As a cloud operator, I want to add an existing VM to a server group, so that
++  I can have more flexibility with respect to defining what VMs will have
++  affinity rules since I may not necessarily know these rules at VM creation
++  time.
++
++* As a cloud operator, I want to remove a VM from a server group (i.e., without
++  having to delete the VM), so that I can update my groups as affinity rules
++  change over time.
++
++
++Proposed change
++===============
++
++Two new actions to be performed on server groups will be added. One to add an
++existing VM to a server group, and another to remove a VM from a server group.
++These will be added in the form of 2 new Nova APIs and 2 new Nova CLIs.
++
++The two new APIs will be added to
++nova/api/openstack/compute/contrib/server_groups.py. The new method to add a
++VM to a server group will use the existing add_members() method in
++nova/objects/instance_group.py:InstanceGroup. This method calls the Nova
++database API method instance_group_members_add() to add servers to a server
++group. A new remove_member() method will need to be added to the
++nova/objects/instance_group.py:InstanceGroup class that will call the existing
++Nova database API method instance_group_member_delete().
++
++Special care will need to be taken to ensure that adding a VM to a server group
++does not violate any policies on the server group. For example, a user may try
++to add a VM on Host A to a server group with an anti-affinity policy that
++already has a VM residing on Host A. This will be blocked from occurring by
++adding a validation check before adding the VM to the server group to compare
++the host of the VM in question with the hosts of the other VMs in the server
++group, and ensure that the policy would not be violated by adding the VM in
++question.
++
++In addition to this check, the API to add a VM to a server group will need to
++ensure that servers could not be added in parallel to the same group that could
++cause a policy of the group to be violated. For example, the new API to add a
++VM to a server group could be called in parallel to when a new VM is being
++created and added into the same server group. If the policy on this server
++group is anti-affinity, and both of those VMs have the same host,
++the policy would be violated.
++
++To avoid the previously mentioned race conditions, the appropriate locking
++mechanisms will be used (e.g., database locking or some other construct).
++
++When adding a VM from a server group, validation will need to be performed on
++the server_group_members quota value. The addition of that VM into the server
++group will be blocked if it exceeds the quota.
++
++The server_group_members quota value will need to be incremented by one
++when a VM is added to a server group and decremented by one when a VM is
++removed from a server group.
++
++Alternatives
++------------
++
++None
++
++Data model impact
++-----------------
++
++None. The existing instance group data models can be used. No additions needed.
++
++REST API impact
++---------------
++
++Two new APIs will be added for Server Groups.
++
++* Specification for the method
++
++  * Adds a server to a server group
++
++  * Method type: POST
++
++  * Normal http response code: 200
++
++  * Expected error http response code:
++
++    * 400 - invalid request::
++
++          This response code will be returned if the addition of this server
++          would violate a policy of the server group, exceed the server group
++          members quota value, or if a required parameter is missing from the
++          request.
++
++    * 404 - not found::
++
++          This response code will be returned if the server group or server
++          passed in does not exist.
++
++  * URL: /v2/{tenant_id}/os-server-groups/{ServerGroup_id}/action
++
++  * Parameters:
++
++    +----------------+-------+------------+-----------------------------------+
++    |  Parameter     | Style |   Type     |  Description                      |
++    +================+=======+============+===================================+
++    | tenant_id      | URI   | xsd:string | The ID for the tenant or          |
++    |                |       |            | account in a multi-tenancy cloud. |
++    +----------------+-------+------------+-----------------------------------+
++    | ServerGroup_id | URI   | String     | The server group ID.              |
++    +----------------+-------+------------+-----------------------------------+
++    | server_id      | URI   | capsi:UUID | The UUID for the server to add to |
++    |                |       |            | the server group.                 |
++    +----------------+-------+------------+-----------------------------------+
++
++  * JSON schema definition for the body data::
++
++           {
++               "add_server": {
++               "server_id": "324dfb7d-f4a9-419a-9a19-237df04b443b"
++               }
++           }
++
++  * JSON schema definition for the response data::
++
++            {
++                "server_group": {
++                    "id": "5bbcc3c4-1da2-4437-a48a-66f15b1b13f9",
++                    "name": "test",
++                    "policies": [
++                        "anti-affinity"
++                    ],
++                    "members": [
++                        "324dfb7d-f4a9-419a-9a19-237df04b443b"
++                    ],
++                    "metadata": {}
++                }
++            }
++
++* Specification for the method
++
++  * Removes a server from a server group
++
++  * Method type: POST
++
++  * Normal http response code: 200
++
++  * Expected error http response codes:
++
++    * 400 - invalid request::
++
++          This response code will be returned if a required parameter is missing
++          from the request.
++
++    * 404 - not found::
++
++          This response code will be returned if the server group or server
++          passed in does not exist.
++
++  * URL: /v2/{tenant_id}/os-server-groups/{ServerGroup_id}/action
++
++  * Parameters:
++
++    +----------------+-------+------------+-----------------------------------+
++    |  Parameter     | Style |   Type     |  Description                      |
++    +================+=======+============+===================================+
++    | tenant_id      | URI   | xsd:string | The ID for the tenant or          |
++    |                |       |            | account in a multi-tenancy cloud. |
++    +----------------+-------+------------+-----------------------------------+
++    | ServerGroup_id | URI   | String     | The server group ID.              |
++    +----------------+-------+------------+-----------------------------------+
++    | server_id      | URI   | capsi:UUID | The UUID for the server to remove |
++    |                |       |            | from the server group.            |
++    +----------------+-------+------------+-----------------------------------+
++
++  * JSON schema definition for the body data::
++
++            {
++                "remove_server": {
++                    "server_id": "324dfb7d-f4a9-419a-9a19-237df04b443b"
++                }
++            }
++
++  * JSON schema definition for the response data::
++
++            {
++                "server_group": {
++                    "id": "5bbcc3c4-1da2-4437-a48a-66f15b1b13f9",
++                    "name": "test",
++                    "policies": [
++                        "anti-affinity"
++                    ],
++                    "members": [],
++                    "metadata": {}
++                }
++           }
++
++* Policy Changes: Right now, the server group APIs only apply role checking
++  at the compute_extension:server_groups level. Two new action-level
++  authorizations will be added so that the Nova policy.json file has the
++  ability to distinctly enumerate what roles can add or remove servers from
++  a server group. The following will be added:
++
++  * compute_extension:server_groups:add_server
++  * compute_extension:server_groups:remove_server
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++Nova notifications will be added for the following events:
++
++* A server being added to a server group
++
++* A server being removed from a server group
++
++Other end user impact
++---------------------
++
++In addition to the API, the user will be able to use the Nova CLI to add and
++remove instances to and from a server group, respectively. The CLIs will be
++of the form:
++
++* nova server-group-add-server <id> <server>
++
++* nova server-group-delete-server <id> <server>
++
++Where <id> represents the server group's identifier and <server> represents
++an instance's uuid or name. The uuid will be required in cases in which the
++name does not unambiguously identify a server.
++
++Performance Impact
++------------------
++
++* Will the change include any locking, and if so what considerations are there
++  on holding the lock?
++
++  As mentioned in the Proposed Change section above, locking will need to be
++  added to adding a server to a server group. The lock would be on the server
++  group, using either the uuid or name of the server group. This would prevent
++  race conditions where two servers could be added to the same server group,
++  but violate the policy of affinity or anti-affinity.
++
++Other deployer impact
++---------------------
++
++None
++
++Developer impact
++----------------
++
++None
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  jmulsow
++
++Other contributors:
++  jwcroppe
++
++Work Items
++----------
++
++Work items or tasks:
++
++* Add the API framework for adding or removing a server from a server group.
++* Add validation checking and quota management to the add/remove server flow.
++* Add locking mechanisms to the add server flow to avoid race conditions that
++  could violate the policy of the server group.
++* Add Nova CLIs for adding or removing a server from a server group.
++
++Dependencies
++============
++
++None
++
++Testing
++=======
++
++Testing will follow suit in terms of unit test best practices for the other
++API testing. Complete code coverage can be achieved via unit tests.
++
++Documentation Impact
++====================
++
++Documentation will be needed to the Nova APIs and Nova CLIs for the two new
++actions being added for server groups.
++
++References
++==========
++
++This topic has come up sporadically on the mailing lists, but usually ends
++without any final conclusive directions. It's been mentioned that
++"instance tagging" may also be a viable alternative to server groups, but as it
++stands, server groups have been discussed at great lengths at previous summits
++and were ultimately favorable enough to make their way into Nova. This is a
++relatively minor functional enhancement that will make server groups immensely
++more usable over the long haul and allows us (i.e., the community) to
++capitalize on all the great work already done in this space in terms of server
++groups' infrastructure and scheduler presence. As such, we're truly hopeful
++this enhancement can become approved for inclusion into the Kilo release cycle.
+-- 
+1.9.1
+

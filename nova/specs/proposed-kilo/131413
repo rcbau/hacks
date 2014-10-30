@@ -1,0 +1,297 @@
+From 18e8e3d50a0565b0cb18b068c878321574a30de3 Mon Sep 17 00:00:00 2001
+From: Brent Eagles <beagles@redhat.com>
+Date: Mon, 27 Oct 2014 19:36:39 -0230
+Subject: [PATCH] Refactor of the Neutron network adapter
+
+Refactor the network API-neutron adapter to improve neutron API usage,
+reduce complexity of critical, frequently used methods and align with
+current data practices in nova.
+
+Change-Id: If98aa01031fcdfa46fd59a511f16175892a9baea
+Blueprint: nova-neutron-refactor
+---
+ specs/kilo/approved/nova-neutron-refactor.rst | 272 ++++++++++++++++++++++++++
+ 1 file changed, 272 insertions(+)
+ create mode 100644 specs/kilo/approved/nova-neutron-refactor.rst
+
+diff --git a/specs/kilo/approved/nova-neutron-refactor.rst b/specs/kilo/approved/nova-neutron-refactor.rst
+new file mode 100644
+index 0000000..0cc3f12
+--- /dev/null
++++ b/specs/kilo/approved/nova-neutron-refactor.rst
+@@ -0,0 +1,272 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++==========================================
++Refactor of the Neutron network adapter
++==========================================
++
++Include the URL of your launchpad blueprint:
++
++https://blueprints.launchpad.net/nova/+spec/nova-neutron-refactor
++
++Through accretion, the Network API adapter for Neutron has become
++prohibitively difficult to maintain, debug and extend. In order to
++improve interoperability of Nova and Neutron, this code must be
++refactored to:
++
++* Make it easier to understand.
++
++* Make it easier to test effectively.
++
++* Encourage extension through acceptable coding and design practices and
++  idioms.
++
++
++Problem description
++===================
++
++The majority of Network API adapter is currently contained in
++nova/network/neutronv2/api.py. The principle implementation class is API
++and is direct descendant of `nova.network.base_api.NetworkAPI`. The
++implementation code has some issues:
++
++* The implementation of critical principle methods are large and
++  monolithic including a large number of potential code paths. Besides
++  implementation, this makes it very difficult to create and maintain
++  effective unit tests.
++
++* Data type and organization were simply extended to accommodate new
++  requirements as opposed to transforming to more appropriate types.
++
++* Neutron client API calls are accompanied by try/catch blocks that must
++  be translated to Nova exceptions. As features have been added, this
++  code has been duplicated over several methods, increasing the risk
++  that a translation will be missed.
++
++* Certain APIs methods have become entry points for logically divergent
++  operations (i.e. candy machine interfaces). This is easily
++  identifiable by the complexity and size of their implementation.
++
++* JSON request bodies for the Neutron REST API tend to be constructed
++  in-place and repeatedly throughout the code. This is error prone,
++  difficult and labor intensive to maintain and test. It is also
++  difficult for developers with only passing familiar with the Neutron
++  API to identify errors and modify code.
++
++.. note::
++
++  Efforts to modify or extend the python neutron client to create a
++  higher level facade to hide REST request body formatting are under
++  discussion.
++
++Use Cases
++----------
++
++None.
++
++Project Priority
++-----------------
++
++This effort falls under the stability category.
++
++
++Proposed change
++===============
++
++Resolving the issues requires a major refactoring of the existing
++Neutron implementation of Nova's Network API. The scale and scope of the
++refactoring is large and pervasive and can be interpreted as a
++rewrite. However, the existing implementation and API definition serve
++as a starting point and requirements reference. To avoid obstacles
++endemic to refactoring the current implementation in-place, this
++refactor will be appear as a forked re-implementation that replaces the
++current version through configuration.
++
++This refactor internally separates operations that are logically quite
++different but accessed through a single API method
++(e.g. allocate_for_instance).
++
++This refactor wraps Neutron client methods in a higher layer abstraction
++to allow API implementation to focus on logic instead of details of the
++Neutron REST API. The refactor will also address remaining mismatches
++between current Nova practices (e.g. using objects instead of
++dictionaries) reducing the number of Neutron specific cases in Nova.
++
++The refactor also introduces data model changes to support Nova/Neutron
++interoperability and future networking features. Changes to the Network
++API run-time signatures are expected and are to be incrementally
++introduced.
++
++Consideration will be given to extending the functionality of the
++existing Neutron API methods and, if necessary, adding new methods.
++
++Alternatives
++------------
++
++The main alternate approach considered is an ordered, step-wise
++refactoring spread across multiple phases. For example,
++
++* Phase 1: Code cleanup and reorganization and use the Neutron API more
++  efficiently.
++
++* Phase 2: Apply patterns and improve implementation.
++
++* Phase 3: Introduce data model changes and make the API implementation
++  compatible with the existing Nova-Network version.
++
++This is a more classic approach to refactoring and was the approach
++initially considered. After discussion and investigation, any potential
++merits of this approach are outweighed by current realities of
++development on Nova:
++
++* The amount of labor involved in simple refactorings such as "extract
++  method" is dramatically increased by the state of the existing unit
++  tests. The size of a single patch for a single refactor operation
++  (e.g. extract method) would consequently be large. Large changes to
++  the test suite increase the risk of broken tests, increase developer
++  and reviewer burden without reducing risks of new bugs. To mitigate
++  this, larger blocks of code might be modified at a time with a
++  corresponding rewrite of entire blocks of tests - effectively blurring
++  the lines between rewriting and refactoring. This is not without a
++  cost however when considering the factors below.
++
++* An expected benefit of the phased approach are immediate gains in
++  quality. This is primarily in reference to code quality, a developer
++  facing concern, but also general stability and maintainability, which
++  is a more widespread benefit. However, neither the code under
++  modification nor the dependencies are static and there are typically
++  several patches "in-flight" at a given moment. The risks of
++  regressions, source code conflicts, and complexity of tracking down
++  issues balances the benefits of refactoring critical pieces of code.
++
++* Without the larger context of the expected end result, patches are
++  difficult to evaluate. Knowledge of both Nova and Neutron is not
++  commonplace, implying a subset of available for reviewers. The
++  cross-component nature of the code is also an obstacle to "getting
++  good reviews". Patches that include all of the relevant context would
++  be easier to digest and review effectively.
++
++* The phased approach introduces a targeting problem for changes that
++  are currently in-flight or come up during a cycle. Are they introduced
++  as patches against the current code, the refactoring-in-progress code
++  or deferred to post refactoring? The decision would be case specific
++  but any course of action comes with a certain degree of risk. The
++  suggested approach would expect that changes are simply applied to the
++  existing code and have to be ported to the in-flight refactoring. In
++  essence, the changes affect on those working on the refactor.
++
++
++Data model impact
++-----------------
++
++There are no planned data model or remotable objects changes at this time and,
++for the sake of this effort, should be avoided. The intent is to provide a drop
++in replacement for the existing implementation. Implementation specific
++alterations to the data model and remotable objects increase the risk and
++complexity of switching between implementations.
++
++REST API impact
++---------------
++
++It is not expected that the REST API will be changed in this
++process. Future changes may be proposed however. The implementation of
++the Compute REST API is expected to change as special cases for Neutron
++configurations will become obsolete.
++
++Security impact
++---------------
++
++None.
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++Users will need to explicitly configure the new implementation in Nova in
++order to use it.
++
++Performance Impact
++------------------
++
++The refactoring includes profiling and rationalizing of Nova/Neutron
++interaction and reduction in redundant calls. Performance is not
++adversely affected and should be improved in some cases.
++
++Other deployer impact
++---------------------
++
++It is expected that additional source files will be created. Deployment
++tools that are not wild card based in file selection will need to be
++modified to include the new files.
++
++
++Developer impact
++----------------
++
++Developers working with the existing code will be lightly impacted by
++incremental patches that land during the refactoring process. These
++patches primarily impact the Network API, the related data model and the
++consumers of both. The existing Neutron implementation will be adapted
++to supply implementations for these changes as much as possible to avoid
++loss of functionality.
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Brent Eagles (beagles@redhat.com) is leading the refactoring of this
++code in this phase.
++
++One or more sponsors from the core teams should have direct involvement
++in an, at minimum, advisory capacity. Particularly:
++
++* Dan Smith - Nova: objects, data model and migration.
++* (interested neutron cores?)
++
++
++Primary assignee:
++* Brent Eagles  beagles@redhat.com
++
++
++Work Items
++----------
++
++1. Create repeatable profiling test cases for common use cases.
++2. Verify and extend Nova network API functional tests.
++3. Construct and verify new API implementation
++
++
++Dependencies
++============
++
++The relative stability of the networking API, as well as well as
++internal APIs of adjacent code (e.g. objects) as well as the neutron
++REST APIs.
++
++Testing
++=======
++
++Additional functional tests may be required to provide sufficient rigor
++for validating the new implementation.
++
++Documentation Impact
++====================
++
++The refactored implementation will appear as an additional network
++back-end API until such time that it can replace the current API
++implementation. A configuration to select the alternate implementation
++will need documentation.
++
++
++References
++==========
+-- 
+1.9.1
+

@@ -1,0 +1,179 @@
+From 3f020562484dd01a33095231bdbdce46ac93b8ae Mon Sep 17 00:00:00 2001
+From: Eli Qiao <taget@linux.vnet.ibm.com>
+Date: Wed, 29 Oct 2014 12:34:35 +0800
+Subject: [PATCH] Judge the service state when perform a deleting on it
+
+Proposal to add state checking before delete a service.
+
+APIImpact
+Implements: blueprint judge-service-state-when-deleting
+Change-Id: I4dfa38d3432cb4516fd93e386f288412d78ec5c6
+---
+ .../approved/judge-service-state-when-deleting.rst | 155 +++++++++++++++++++++
+ 1 file changed, 155 insertions(+)
+ create mode 100644 specs/kilo/approved/judge-service-state-when-deleting.rst
+
+diff --git a/specs/kilo/approved/judge-service-state-when-deleting.rst b/specs/kilo/approved/judge-service-state-when-deleting.rst
+new file mode 100644
+index 0000000..f1120d6
+--- /dev/null
++++ b/specs/kilo/approved/judge-service-state-when-deleting.rst
+@@ -0,0 +1,155 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++=====================================================
++judge the service state when perform a deleting on it
++=====================================================
++
++https://blueprints.launchpad.net/nova/+spec/judge-service-state-when-deleting
++
++
++Currently, when performing a delete operation on a service, nova will not
++check the state if a service is running or not, nova destroy the service
++directly.
++
++This will be very dangerous for the admin to do this in a product enviroment.
++It's better to have this checking before we perform deleting a service.
++
++Problem description
++===================
++
++User can now  delete a running service from nova-api, we need to prevent user
++delete a running service.
++
++Use Cases
++----------
++
++Protect the running service.
++User can't delete a service which is in 'UP' state.
++
++Project Priority
++-----------------
++
++Priority is not defined yet, but it would be better if we can finished this
++in kilo, this will help to improve the security.
++
++Proposed change
++===============
++
++Raise HTTPBadRequest if deleting a service is in 'UP' state.
++Add a new option 'force' to indicate if we want to delete the service no
++matter what the state of a service is.
++
++Alternatives
++------------
++
++None
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++DELETE/os-serivce/<id>
++
++Will return HTTPBadRequest if the service we want to delete is in 'UP' state.
++
++Also add a new option force=True/true or False/false to indicate we want to
++delete the service no matter what the state is.
++
++A request example will be:
++http://cloudcontroller:8774/v2/<id>/os-services/1?force=False
++http://cloudcontroller:8774/v2/<id>/os-services/1?force=True
++
++The default vaule of force is False, and if pass a bad value to 'force'
++will raise a HTTPBadRequest.
++
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++Privous, python-novaclient will only get HTTPNotFound when deleting a service
++which is not found.
++
++Now, python-novaclient will get a HTTPBadRequest if the deleting service is
++in 'UP' status, and python-novaclient need to support add a new option when
++doing 'nova service-delete <id>'
++'nova service-delete <id> --force' to force delete a running service.
++
++Performance Impact
++------------------
++
++None
++
++Other deployer impact
++---------------------
++
++None
++
++Developer impact
++----------------
++
++None
++
++Implementation
++==============
++
++Add a nova-compute api service_get_by_id(), this api will return a service
++object by a given id.
++And in nova-api, delete function will first call service_get_by_id() to get
++a service object and then check this service state to determing if it can be
++deleted.
++
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  Eli Qiao
++
++Work Items
++----------
++
++None
++
++Dependencies
++============
++
++None
++
++Testing
++=======
++
++Add new test cases to service deleting api to test if a service can be deleted
++if it's state is 'UP'
++Add new test cases to service deleting api to test if passing 'force' when
++doing delete.
++
++Documentation Impact
++====================
++
++User can not delete a service which is in 'UP' state directly.
++Require add additional option when calling service deleting.
++Nova will raise HTTPBadRequest when deleting a service in 'UP' state.
++
++
++References
++==========
++
++https://bugs.launchpad.net/nova/+bug/1386535
+-- 
+1.9.1
+

@@ -1,0 +1,231 @@
+From 1820099bdcb7096489e40db40db4548f160d32d9 Mon Sep 17 00:00:00 2001
+From: Matthew Treinish <mtreinish@kortar.org>
+Date: Fri, 24 Oct 2014 12:38:45 -0400
+Subject: [PATCH] Blueprint for re-adding the coverage extension
+
+This spec proposes reviving the previously removed coverage extension.
+This will allow for collecting coverage from tempest runs or any other
+api consumer.
+
+Spec for blueprint coverage-extension
+Previously-approved and implemented: Grizzly
+
+Change-Id: I2bf0e3294bd30645f60b72481b55fbb1a131a3b2
+---
+ specs/kilo/approved/coverage-extension.rst | 204 +++++++++++++++++++++++++++++
+ 1 file changed, 204 insertions(+)
+ create mode 100644 specs/kilo/approved/coverage-extension.rst
+
+diff --git a/specs/kilo/approved/coverage-extension.rst b/specs/kilo/approved/coverage-extension.rst
+new file mode 100644
+index 0000000..0065b36
+--- /dev/null
++++ b/specs/kilo/approved/coverage-extension.rst
+@@ -0,0 +1,204 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++==================
++Coverage Extension
++==================
++
++https://blueprints.launchpad.net/nova/+spec/coverage-extension
++
++During the grizzly cycle the coverage extension was developed to solve the
++problem of figuring out code coverage from a tempest run or any other api
++consumer. However, during the icehouse cycle we removed the extension due to
++a number of issues which limited it's usefulness. The primary issue was a
++limitation with the python coverage module's inability to function properly
++with eventlet. This caused the generated reports to be very confusing as
++lines were randomly shown as not being executed. This bug was the only reason
++the extension was deemed removable despite the api stability guidelines.
++However, as of the upcoming coverage release this has been addressed, so the
++extension can be added back into nova.
++
++The original extension's use was also limited to a single host due to using
++eventlet backdoors, which are tied to the loopback interface, as the mechanism
++for cross-service coverage. This made it not useful for non-devstack
++deployments which normally involve more than one host.
++
++
++Problem description
++===================
++
++Since it's removal in Icehouse there hasn't been a method of measuring code
++coverage from an api consumer. Right now it is very difficult for tempest or
++any other program to identify which parts of nova get tickled by running them.
++This is the same problem that existed back during grizzly which was the
++justification for creating the extension originally.
++
++Use Cases
++----------
++
++The primary use case is for testing. The api allows an external consumer of the
++rest api to start, stop, and report coverage.
++
++Project Priority
++-----------------
++
++This is a testing improvement which probably fits under debugging. Although it
++probably won't be used directly used in debugging failures.
++
++Proposed change
++===============
++
++To reintroduce the coverage extension to nova. The first step would be to
++re-add the extension and make it functional again with the current nova. The
++second step is to change the backend implementation to just use RPC to trigger
++coverage actions in all the services instead of using backdoor ports. This
++should be done in a manner that allows keeping the same basic rest api
++semantics as before but allowing it to be used on any deployment.
++
++Alternatives
++------------
++
++The obvious alternative would be just to bring back the original coverage
++extension which used backdoor ports and not change it after that, which would
++keep the single host limitation.
++
++Additionally, there is some overlap with the stackforge osprofiler project
++which would allow for dynamic tracing for individual api calls. However, this
++is trying to solve a different problem and would actually be far more complex
++for trying to extract overall coverage information from a total test run.
++
++Data model impact
++-----------------
++
++The data model should not have to be changed since nothing will be stored in
++the database.
++
++REST API impact
++---------------
++
++This adds an api extension for coverage collection. However, the api has
++already been implemented once before and all the api samples and documentation
++for it can be dug up. See the references section for the patches which removed
++the api. The API samples can be found in the v2 extension removal patch:
++
++https://review.openstack.org/#/c/56818/
++
++
++Security impact
++---------------
++
++The security impact should be pretty limited. The extension will add a way for
++using the coverage module on running nova services. If there are security
++issues associated with coverage that would be exposed. Additionally, the
++coverage reports, while not containing runtime data do show what parts of nova
++are being executed, which could arguably be considered private. These files
++will be stored on the local disk of the api node which received the coverage
++request.
++
++
++Notifications impact
++--------------------
++
++There will be no new notifications added.
++
++Other end user impact
++---------------------
++
++The coverage extension support for python-novaclient would have to be added
++back.
++
++
++Performance Impact
++------------------
++
++If the extension is enabled and coverage is set to be running the coverage
++module does add some overhead to running code which will likely impact
++performance, although to what degree is unclear. However, if coverage is
++enabled but no user has set coverage to be collected nothing will change so
++there won't be any penalty
++
++Other deployer impact
++---------------------
++
++The new api extension will only be for admin usage. The coverage reports
++generated will be stored on the api server and the extension will be set as
++requiring an admin role in the policy file. But it is not something that will
++likely be useful in a production system. Since it is unlikely that a deployer
++will care which lines of nova are being executed. So it would probably be
++useful to signal that this should be disabled in production systems.
++
++Developer impact
++----------------
++
++There shouldn't be any impact for the day to day development in Nova
++by adding the extension back.
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++ Matt Riedemann <mriedem@linux.vnet.ibm.com>
++
++Other contributors:
++ Matthew Treinish <mtreinish@kortar.org>
++ Joe Gordon <joe.gordon0@gmail.com>
++
++
++Work Items
++----------
++
++* Restore removed coverage extension and update it to work with the current
++  nova and add a version min on the coverage extension
++* Add an rpc mechanism to the services to deal with coverage operations.
++* Switch the coverage extension to use the rpc mechanism instead of backdoor
++  ports
++
++
++Dependencies
++============
++
++This is dependent on the coverage module release >=4.0 which has yet to be
++published to pypi. It is currently still in alpha as of October, 24th.
++
++
++Testing
++=======
++
++The coverage extension will be used by nightly tempest runs like it was prior
++to it's removal during icehouse. These reports were useful in figuring out
++code coverage from tests. Additionally, when nova functional test suite is
++added a similar job can be configured for that.
++
++
++Documentation Impact
++====================
++
++This will add a new api extension, and require all the necessary documentation
++for that. Luckily most of the original documentation of the extension still
++exists. For example, there is a wiki page for it here:
++https://wiki.openstack.org/wiki/Nova/CoverageExtension
++
++or was part of the removed code. There will likely be gaps since the
++documentation has evolved since Icehouse and these will have to be addressed.
++
++
++References
++==========
++
++* Coverage extension removal patches:
++  https://review.openstack.org/#/c/56818/
++  https://review.openstack.org/#/c/55766/
++  https://review.openstack.org/#/c/65847/
++
++* Icehouse coverage session etherpad:
++  https://etherpad.openstack.org/p/icehouse-summit-qa-coverage-tooling
++
++* Original meeting discussion around the extension:
++  http://eavesdrop.openstack.org/meetings/nova/2012/nova.2012-11-01-21.02.log.html
+-- 
+1.9.1
+

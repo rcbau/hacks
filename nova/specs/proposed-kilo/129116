@@ -1,0 +1,222 @@
+From e52d8595e60b013964135883dacfff9b27eefcb0 Mon Sep 17 00:00:00 2001
+From: zhang john <zhang.john.vmthunder@gmail.com>
+Date: Thu, 16 Oct 2014 21:59:14 -0400
+Subject: [PATCH] Fixed dead links of thunder-boost Implements: blueprint
+ thunder-boost
+
+Change-Id: Ibfdfb0ba432cc201598454c690a9db5ceecae363
+---
+ specs/kilo/approved/thunder-boost.rst | 201 ++++++++++++++++++++++++++++++++++
+ 1 file changed, 201 insertions(+)
+ create mode 100644 specs/kilo/approved/thunder-boost.rst
+
+diff --git a/specs/kilo/approved/thunder-boost.rst b/specs/kilo/approved/thunder-boost.rst
+new file mode 100644
+index 0000000..5e9bb96
+--- /dev/null
++++ b/specs/kilo/approved/thunder-boost.rst
+@@ -0,0 +1,201 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++=========================================================================
++A Lightweight Proposal for Fast Booting Many Homogeneous Virtual Machines
++=========================================================================
++
++https://blueprints.launchpad.net/nova/+spec/thunder-boost
++
++
++Nova supports to boot virtual machines (VMs) atop the Cinder volumes. However,
++in the current implementation (version j), booting up a large number of
++homogeneous VMs is time-consuming. To overcome this drawback, we propose a
++lightweight patch for Nova, which adopts a third-party library, called
++VMThunder, for fast booting homogeneous VMs. VMThunder accelerates the booting
++process through on-demand data transfer in a P2P manner.
++
++Problem description
++===================
++
++Currently, Openstack provides two categories of methods for booting a virtual
++machine: (i) booting from a local image or (ii) booting from a remote Cinder
++volume.
++
++The first category needs to copy the entire image to a compute node, making it
++suffer from a long transfer delay for large images. The second category
++remotely attaches a volume to a VM and transfers only the necessary data from
++the volume, thus having better performance. However, this approach only allows
++booting a single VM from a volume at a time. Moreover, preparing a volume for
++each VM requires a long time. As a result, it is currently inevitable to take a
++long time for booting a large number of homogeneous VMs in Openstack.
++
++Use Cases
++----------
++For users who want to fast boot multiple homogeneous VMs, choose "Boot from
++VMThunder" in horizon and select the template volume(which contains image)
++that you want to boot from, click "launch" button, then you can launch vms.
++More details of use cases you can find in the demo video:
++http://www.kylinx.com/vmthunder/boot_vmthunder_win7_success-V2.mp4
++
++Project Priority
++-----------------
++undefined
++
++Proposed change
++===============
++
++We propose to add a new method, named "Boot from VMThunder", for fast booting
++multiple homogeneous VMs. This method uses a third-party library (VMThunder) to
++support simultaneous booting of a large number of VMs.
++
++VMThunder configures each VM with two volumes (the figure can be found here
++http://www.kylinx.com/vmthunder/vmthunder.png): a (read-only) template volume
++exactly the same as the pre-created original volume and a (writable) snapshot
++volume storing each VM's difference to the template. The original volume is the
++root of a template volume relay tree, and each VM fetches only the necessary
++data from its parent over the multi-path iSCSI protocol. In addition, VMThunder
++makes use of a compute node's local storage as a cache to accelerate the image
++transferring process and avoid a repetitive data transfer. The P2P-style,
++on-demand data transfer dramatically accelerates VMs' booting process.
++
++Our modification to Nova is light-weighted (about 80 lines of insertions and
++deletions). Two major functions, i.e., the creation and deletion of the
++template and snapshot volumes, are implemented as following: (i) creation: We
++add a volume-driver class (about 50 lines, depends on VMThunder's API) in file
++"nova/virt/block_device.py" to prepare the template and snapshot volumes.
++(ii) deletion: We add a delete method (about 20 lines, depends on VMThunder's
++API) in file "nova/compute/manager.py' to destroy the unused template and
++snapshot volumes.
++
++More details of the implementation can be found in the following links:
++Paper, http://www.computer.org/csdl/trans/td/preprint/06719385.pdf
++Modification diff file, http://www.kylinx.com/vmthunder/diff2.txt
++VMThunder demo videos,
++http://www.kylinx.com/vmthunder/boot_vmthunder_win7_success-V2.mp4
++Image booting demo videos,
++http://www.kylinx.com/vmthunder/boot_image_test_win7_success-V2.mp4
++
++Alternatives
++------------
++
++(1)Image cache:
++Nova's image-caching facility reduces the start-up time for creating
++homogeneous virtual machines on one nova-compute node. However, it helps
++neither the first-time provisioning nor the Cinder-based booting process.
++
++(2)P2P transferring:
++The P2P protocol can increase the speed of the file distribution. For example,
++the glance-bittorrent-delivery proposal transfers the image templates from the
++glance storage to Nova-compute servers. This approach, however, needs to
++transfer the entire image to all peers.
++
++(3)Backend storage optimization:
++The distributed storages like NFS, cluster FS, distributed FS or SAN can
++decrease the size of transferred volumes. However, the I/O pressure on the
++storage servers increases dramatically when powering on a large number of
++homogeneous VMs, since there may not be enough replicas on the storage servers
++for offloading the I/O demands.
++
++(4)Multi-attach volume:
++(https://wiki.openstack.org/wiki/Cinder/blueprints/multi-attach-volume)
++This approach allows a volume to be attached to more than one instance
++simultaneously. As a result, volumes can be shared among multiple guests when
++the instances are already available. Besides, these volumes can also be used
++for booting a number of VMs by enforcing the multi-attach volumes as read-only
++image disks. Unfortunately, this approach does not scale well because of the
++star-structured topology in the data dissemination process.
++
++(5)Direct image access:
++(https://blueprints.launchpad.net/nova/+spec/nova-image-zero-copy).
++This approach uses the direct_url of the Glance v2 API, such that the number of
++needed hops to transfer an image to a Nova-compute node is decreased. When
++images are stored at multiple backend locations, the Nova-compute servers can
++select a proper image storage for speeding up the downloading process.
++
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++None
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++None
++
++Performance Impact
++------------------
++
++We will significantly decrease the delay of booting up large numbers of
++Cinder-volume-based VMs.
++
++Other deployer impact
++---------------------
++
++None
++
++Developer impact
++----------------
++
++None
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee: vmThunderGroup (vmthunder)
++
++Work Items
++----------
++
++We only add one lightweight patch for Nova.
++
++Dependencies
++============
++
++The patch depends on the VMThunder project
++(https://github.com/vmthunder/virtman).
++
++Testing
++=======
++
++We will add necessary tests into nova's test framework, in order to show the
++effectiveness of VMThunder. The unit tests and integrated tests will be added
++to the component.
++
++Documentation Impact
++====================
++
++We need to document how to create many homogeneous virtual machines though our
++new option.
++
++References
++==========
++
++VMThunder: http://vmthunder.github.io/
++
++Mailing list:
++http://lists.openstack.org/pipermail/openstack-dev/2014-April/032883.html
++
++VMThunder Publication:http://www.VMThunder.org/blog/2014/03/02/publication/
+-- 
+1.9.1
+

@@ -1,4 +1,4 @@
-From 87f355d445bfc23705d7549762fa94cfdc465507 Mon Sep 17 00:00:00 2001
+From 118e949c066016a4c323a827bde1dd7e347658d5 Mon Sep 17 00:00:00 2001
 From: Solly Ross <sross@redhat.com>
 Date: Wed, 8 Oct 2014 13:43:03 -0400
 Subject: [PATCH] Blueprint for Websockify security proxy framework
@@ -14,16 +14,16 @@ Spec for blueprint websocket-proxy-to-host-security
 Change-Id: I23c5a43788afcb705b0d879cf5df4b49f0aa7a67
 Previously-approved: juno
 ---
- .../approved/websocket-proxy-to-host-security.rst  | 239 +++++++++++++++++++++
- 1 file changed, 239 insertions(+)
+ .../approved/websocket-proxy-to-host-security.rst  | 244 +++++++++++++++++++++
+ 1 file changed, 244 insertions(+)
  create mode 100644 specs/kilo/approved/websocket-proxy-to-host-security.rst
 
 diff --git a/specs/kilo/approved/websocket-proxy-to-host-security.rst b/specs/kilo/approved/websocket-proxy-to-host-security.rst
 new file mode 100644
-index 0000000..b1847b7
+index 0000000..5d4c076
 --- /dev/null
 +++ b/specs/kilo/approved/websocket-proxy-to-host-security.rst
-@@ -0,0 +1,239 @@
+@@ -0,0 +1,244 @@
 +..
 + This work is licensed under a Creative Commons Attribution 3.0 Unported
 + License.
@@ -233,16 +233,21 @@ index 0000000..b1847b7
 +============
 +
 +While individual drivers might introduce new dependencies (e.g. a GSSAPI
-+library for SASL/GSSAPI), the actual framework would not.
++library for SASL/GSSAPI), the actual framework would not.  Additionally,
++the driver proposed in this spec (the TLS driver) would use the Python
++standard library's SSL module, so no external dependencies would
++be needed.
 +
 +
 +Testing
 +=======
 +
 +We should test that the framework is callable correctly.  Additionally,
-+it will be necessary to work with infra to ensure that we can test the actual
-+drivers (for instance, for x509/TLS, we will need to generate certificates,
-+etc).
++we should implement logic in devstack to generate the requisite
++certificates, place them in the correct places, and configure libvirt
++correctly for the TLS driver.  The TLS driver should be enabled by
++default on Nova so that our standard testing of noVNC will cover
++this.
 +
 +
 +Documentation Impact

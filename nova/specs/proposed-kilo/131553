@@ -1,0 +1,197 @@
+From 5f8d2b130a1f7f100f8ffc03fc152020e80f5314 Mon Sep 17 00:00:00 2001
+From: EdLeafe <ed@leafe.com>
+Date: Tue, 28 Oct 2014 20:09:15 +0000
+Subject: [PATCH] Isolate scheduler DB for Instance Groups
+
+Identifies work needed in the scheduler and nova code to eliminate DB
+access by scheduler when filtering on instance group hints. This is one
+part of preparing for the scheduler forklift.
+
+Change-Id: Ie8dc237274a6891e353703efeaa6f4ab79bc6360
+Implements: blueprint isolate-scheduler-db
+---
+ .../isolate-scheduler-db-instance-groups.rst       | 172 +++++++++++++++++++++
+ 1 file changed, 172 insertions(+)
+ create mode 100644 specs/kilo/approved/isolate-scheduler-db-instance-groups.rst
+
+diff --git a/specs/kilo/approved/isolate-scheduler-db-instance-groups.rst b/specs/kilo/approved/isolate-scheduler-db-instance-groups.rst
+new file mode 100644
+index 0000000..e7ced86
+--- /dev/null
++++ b/specs/kilo/approved/isolate-scheduler-db-instance-groups.rst
+@@ -0,0 +1,172 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++============================================
++Isolate Scheduler Database - Instance Groups
++============================================
++
++https://blueprints.launchpad.net/nova/+spec/isolate-scheduler-db
++
++We want to split out nova-scheduler into  a separate service named 'gantt'. To
++do this, this blueprint is the second stage after scheduler-lib split. These
++two blueprints are independent however.
++
++In this blueprint, we propose passing all of the information regarding instance
++groups to the scheduling request so that the scheduler doesn't have to access
++the database.
++
++
++Problem description
++===================
++
++Currently the scheduler only receives the name of an instance group in the form
++of a scheduler hint. It must then get the corresponding InstanceGroup object in
++order to get the hosts in that group and its affinity/anti-affinity policy, and
++that involves DB calls. We propose having Nova pass the necessary information
++about the InstanceGroup directly in the request if it is needed, rather than
++just the name.
++
++
++Use Cases
++----------
++
++N/A, this is a refactoring effort.
++
++Project Priority
++-----------------
++
++The kilo priorities list is currently not defined. However under the currently
++proposed list of priorities it would fall under "Scheduler split" and
++"Technical Debt".
++
++
++Proposed change
++===============
++
++In order to remove the necessity for the scheduler to access the db to make
++filtering decisions, nova would update the scheduler regularly with Instance
++Group information, which would be stored by the scheduler. This information
++would have to also include the policy (affinity, anti-affinity, etc.), so that
++the scheduler could filter appropriately based on the type of request.
++
++
++Alternatives
++------------
++
++The above proposal requires changes to nova and scheduler to initially populate
++and regularly maintain the information about Instance Groups in the scheduler.
++Another approach would be for nova to ensure that the request passes in all the
++information about Instance Groups that the scheduler would need. This would
++include:
++
++  * The Instance Group UUID
++  * A list of acceptable host UUIDs
++
++The scheduler can then filter based on the list of hosts without having to make
++any calls to the db.
++
++
++Data model impact
++-----------------
++
++None. There is no extra information to persist, as we will provide extra
++required data for filters either in request_spec or filter_properties, or
++direcly update HostState.
++
++
++REST API impact
++---------------
++
++None
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++
++Other end user impact
++---------------------
++
++None
++
++Performance Impact
++------------------
++
++Possibly some small increase in performance due to fewer db calls, but this
++should be minimal.
++
++
++Other deployer impact
++---------------------
++
++None
++
++Developer impact
++----------------
++
++Ideally:
++
++* Filters should no longer place calls to other bits of code except Scheduler.
++  This will be done by modifying Scheduler component to proxy conductor calls
++  to a Singleton which will refuse anything but scheduler-related objects.
++  See footnote [1] as example. As said above, we will still provide a failback
++  mode for Kilo release in order to have compatibility with N-1 release.
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  ed-leafe
++
++Other contributors:
++  sylvain-bauza
++
++
++Work Items
++----------
++
++* Update nova to send Instance Group information to the scheduler
++
++* Update scheduler code to use the in-memory Instance Group data instead of
++  making db calls
++
++
++Dependencies
++============
++
++None
++
++
++Testing
++=======
++
++Covered by existing tempest tests and CIs.
++
++
++Documentation Impact
++====================
++
++None
++
++
++References
++==========
++
++* https://etherpad.openstack.org/p/icehouse-external-scheduler
++
++* http://eavesdrop.openstack.org/meetings/gantt/2014/gantt.2014-03-18-15.00.html
++
++[1] http://git.openstack.org/cgit/openstack/nova/commit/?id=e5cbbcfc6a5fa31565d21e6c0ea260faca3b253d
+-- 
+1.9.1
+

@@ -1,4 +1,4 @@
-From 12a7ceffa4feb7b01fbd26eeb78daf4d5aba7479 Mon Sep 17 00:00:00 2001
+From de1a93351d3c4ecec839dc2f1de7969063e90935 Mon Sep 17 00:00:00 2001
 From: Thang Pham <thang.g.pham@gmail.com>
 Date: Wed, 8 Oct 2014 14:45:21 -0400
 Subject: [PATCH] Display user and project limits
@@ -13,16 +13,16 @@ bp user-project-limits
 
 Change-Id: Ie2e4fa294eced7ce1147dbe377e59101af8d99f8
 ---
- specs/kilo/approved/user-project-limits.rst | 319 ++++++++++++++++++++++++++++
- 1 file changed, 319 insertions(+)
+ specs/kilo/approved/user-project-limits.rst | 312 ++++++++++++++++++++++++++++
+ 1 file changed, 312 insertions(+)
  create mode 100644 specs/kilo/approved/user-project-limits.rst
 
 diff --git a/specs/kilo/approved/user-project-limits.rst b/specs/kilo/approved/user-project-limits.rst
 new file mode 100644
-index 0000000..2ecb233
+index 0000000..feccc23
 --- /dev/null
 +++ b/specs/kilo/approved/user-project-limits.rst
-@@ -0,0 +1,319 @@
+@@ -0,0 +1,312 @@
 +..
 + This work is licensed under a Creative Commons Attribution 3.0 Unported
 + License.
@@ -99,34 +99,24 @@ index 0000000..2ecb233
 +REST API impact
 +---------------
 +
-+Previously, a GET request to limits would return the project limits as
-+follows ::
++A new v2 API extension will be created to show both user and project limits.
++If the extension is not enabled, then only project limits will be shown. For
++later microversion of v2.1 API, both user and project limits should be shown.
 +
-+    {"limits": {
-+      "absolute": {
-+        "maxServerMeta": 128,
-+        "maxPersonality": 5,
-+        "totalServerGroupsUsed": 0,
-+        "maxImageMeta": 128,
-+        "maxPersonalitySize": 10240,
-+        "maxTotalRAMSize": 51200,
-+        "maxTotalKeypairs": 100,
-+        "maxSecurityGroupRules": 20,
-+        "maxServerGroups": 10,
-+        "totalCoresUsed": 0,
-+        "totalRAMUsed": 0,
-+        "maxSecurityGroups": 10,
-+        "totalFloatingIpsUsed": 0,
-+        "totalInstancesUsed": 0,
-+        "totalSecurityGroupsUsed": 1,
-+        "maxTotalFloatingIps": 10,
-+        "maxTotalInstances": 10,
-+        "maxTotalCores": 20,
-+        "maxServerGroupMembers": 10
-+      }
-+    }}
++The v2 extension is as follows ::
 +
-+This change adds user_absolute key/value pairs to represent the user limits ::
++    {
++        "alias": "os-aggregate-limits",
++        "description": "Provide data on resource limits that are imposed on "
++            "both the project and user.",
++        "links": [],
++        "name": "AggregateLimits",
++        "namespace": "http://docs.openstack.org/compute/ext/"
++            "aggregate_limits/api/v1.1"
++    }
++
++When the new extension "os-aggregate-limits" is loaded, a new field
++'user_absolute' will be added to the limits API as follows ::
 +
 +    {"limits": {
 +      "absolute": {
@@ -172,6 +162,8 @@ index 0000000..2ecb233
 +        "maxServerGroupMembers": 10
 +      }
 +    }}
++
++The user_absolute will be obtained by making a call to QUOTAS.get_user_quotas.
 +
 +Security impact
 +---------------
@@ -284,7 +276,7 @@ index 0000000..2ecb233
 +Other deployer impact
 +---------------------
 +
-+None
++For v2 API, the extension should be added.
 +
 +Developer impact
 +----------------
@@ -309,8 +301,9 @@ index 0000000..2ecb233
 +
 +* Modify python-novaclient to print out the new user limit column
 +
-+* Modify LimitsController in nova/api/openstack/compute/limits.py to
-+  call QUOTAS.get_user_quotas and add the user limits to the output
++* Create v2 API extension and modify LimitsController in
++  nova/api/openstack/compute/limits.py to call QUOTAS.get_user_quotas
++  (if the extension is loaded) to add the user limits to the output
 +
 +* Add tempest test cases to verify that the user and project quotas are
 +  included in the response to the limits API
@@ -335,7 +328,7 @@ index 0000000..2ecb233
 +This will change the output of the limits API.  If the end user is using the
 +python-novaclient, they will see a new column added to show the user limits.
 +If the end user is using the REST API, they will notice the user_absolute
-+key/value pair added to the GET response.
++field added to the GET response.
 +
 +
 +References

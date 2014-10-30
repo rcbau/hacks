@@ -1,0 +1,2295 @@
+Executing command: ssh review.openstack.org gerrit query --format=json --current-patch-set project:openstack/nova-specs
+
+Patch: 127871
+Ref: refs/changes/71/127871/2
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/71/127871/2 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 127160
+Ref: refs/changes/60/127160/4
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/60/127160/4 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 127863
+Ref: refs/changes/63/127863/3
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/63/127863/3 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 127281
+Ref: refs/changes/81/127281/1
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/81/127281/1 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 117465
+Ref: refs/changes/65/117465/1
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/65/117465/1 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 127283
+Ref: refs/changes/83/127283/3
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/83/127283/3 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 127827
+Ref: refs/changes/27/127827/1
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/27/127827/1 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 127127
+Ref: refs/changes/27/127127/2
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/27/127127/2 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 85673
+Ref: refs/changes/73/85673/16
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/73/85673/16 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 126978
+Ref: refs/changes/78/126978/1
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/78/126978/1 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 127612
+Ref: refs/changes/12/127612/1
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/12/127612/1 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 127610
+Ref: refs/changes/10/127610/1
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/10/127610/1 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 127609
+Ref: refs/changes/09/127609/1
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/09/127609/1 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 103617
+Ref: refs/changes/17/103617/4
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/17/103617/4 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/103617
+
+Patch: 92507
+Ref: refs/changes/07/92507/13
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/07/92507/13 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 105034
+Ref: refs/changes/34/105034/7
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/34/105034/7 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 127139
+Ref: refs/changes/39/127139/6
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/39/127139/6 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 127123
+Ref: refs/changes/23/127123/2
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/23/127123/2 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 126705
+Ref: refs/changes/05/126705/3
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/05/126705/3 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 126966
+Ref: refs/changes/66/126966/2
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/66/126966/2 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 126620
+Ref: refs/changes/20/126620/1
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/20/126620/1 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 127318
+Ref: refs/changes/18/127318/1
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/18/127318/1 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 126553
+Ref: refs/changes/53/126553/3
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/53/126553/3 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 126958
+Ref: refs/changes/58/126958/1
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/58/126958/1 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 126895
+Ref: refs/changes/95/126895/2
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/95/126895/2 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 126866
+Ref: refs/changes/66/126866/3
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/66/126866/3 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 85928
+Ref: refs/changes/28/85928/26
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/28/85928/26 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/85928
+
+Patch: 117162
+Ref: refs/changes/62/117162/1
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/62/117162/1 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 121303
+Ref: refs/changes/03/121303/2
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/03/121303/2 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 127094
+Ref: refs/changes/94/127094/1
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/94/127094/1 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 127054
+Ref: refs/changes/54/127054/3
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/54/127054/3 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 126979
+Ref: refs/changes/79/126979/1
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/79/126979/1 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 126717
+Ref: refs/changes/17/126717/3
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/17/126717/3 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 103203
+Ref: refs/changes/03/103203/4
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/03/103203/4 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 102190
+Ref: refs/changes/90/102190/5
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/90/102190/5 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 126696
+Ref: refs/changes/96/126696/4
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/96/126696/4 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 120532
+Ref: refs/changes/32/120532/9
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/32/120532/9 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 120531
+Ref: refs/changes/31/120531/9
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/31/120531/9 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 126527
+Ref: refs/changes/27/126527/5
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/27/126527/5 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 120130
+Ref: refs/changes/30/120130/1
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/30/120130/1 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/120130
+
+Patch: 114044
+Ref: refs/changes/44/114044/5
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/44/114044/5 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 95025
+Ref: refs/changes/25/95025/14
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/25/95025/14 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/95025
+
+Patch: 126547
+Ref: refs/changes/47/126547/1
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/47/126547/1 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 126452
+Ref: refs/changes/52/126452/3
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/52/126452/3 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 126446
+Ref: refs/changes/46/126446/1
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/46/126446/1 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/126446
+
+Patch: 124930
+Ref: refs/changes/30/124930/3
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/30/124930/3 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/124930
+
+Patch: 116687
+Ref: refs/changes/87/116687/2
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/87/116687/2 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/116687
+
+Patch: 126436
+Ref: refs/changes/36/126436/1
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/36/126436/1 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 122109
+Ref: refs/changes/09/122109/13
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/09/122109/13 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/122109
+
+Patch: 125241
+Ref: refs/changes/41/125241/1
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/41/125241/1 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 125204
+Ref: refs/changes/04/125204/1
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/04/125204/1 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 125155
+Ref: refs/changes/55/125155/1
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/55/125155/1 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 125154
+Ref: refs/changes/54/125154/1
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/54/125154/1 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 84887
+Ref: refs/changes/87/84887/18
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/87/84887/18 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/84887
+
+Patch: 105229
+Ref: refs/changes/29/105229/1
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/29/105229/1 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 125153
+Ref: refs/changes/53/125153/1
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/53/125153/1 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 122530
+Ref: refs/changes/30/122530/2
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/30/122530/2 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 85510
+Ref: refs/changes/10/85510/5
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/10/85510/5 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/85510
+
+Patch: 122705
+Ref: refs/changes/05/122705/1
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/05/122705/1 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/122705
+
+Patch: 91446
+Ref: refs/changes/46/91446/4
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/46/91446/4 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/91446
+
+Patch: 121646
+Ref: refs/changes/46/121646/2
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/46/121646/2 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/121646
+
+Patch: 120530
+Ref: refs/changes/30/120530/2
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/30/120530/2 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 112685
+Ref: refs/changes/85/112685/1
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/85/112685/1 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 104509
+Ref: refs/changes/09/104509/2
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/09/104509/2 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/104509
+
+Patch: 118474
+Ref: refs/changes/74/118474/1
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/74/118474/1 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/118474
+
+Patch: 111745
+Ref: refs/changes/45/111745/3
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/45/111745/3 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/111745
+
+Patch: 85325
+Ref: refs/changes/25/85325/7
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/25/85325/7 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/85325
+
+Patch: 89893
+Ref: refs/changes/93/89893/11
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/93/89893/11 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/89893
+
+Patch: 101921
+Ref: refs/changes/21/101921/12
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/21/101921/12 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/101921
+
+Patch: 116280
+Ref: refs/changes/80/116280/2
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/80/116280/2 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/116280
+
+Patch: 115716
+Ref: refs/changes/16/115716/1
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/16/115716/1 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/115716
+
+Patch: 85379
+Ref: refs/changes/79/85379/9
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/79/85379/9 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/85379
+
+Patch: 84695
+Ref: refs/changes/95/84695/19
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/95/84695/19 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/84695
+
+Patch: 111726
+Ref: refs/changes/26/111726/8
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/26/111726/8 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/111726
+
+Patch: 103797
+Ref: refs/changes/97/103797/5
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/97/103797/5 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/103797
+
+Patch: 84906
+Ref: refs/changes/06/84906/19
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/06/84906/19 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/84906
+
+Patch: 110639
+Ref: refs/changes/39/110639/1
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/39/110639/1 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/110639
+
+Patch: 111762
+Ref: refs/changes/62/111762/2
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/62/111762/2 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 94060
+Ref: refs/changes/60/94060/4
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/60/94060/4 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/94060
+
+Patch: 108582
+Ref: refs/changes/82/108582/1
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/82/108582/1 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/108582
+
+Patch: 86938
+Ref: refs/changes/38/86938/12
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/38/86938/12 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/86938
+
+Patch: 111335
+Ref: refs/changes/35/111335/2
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/35/111335/2 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/111335
+
+Patch: 111308
+Ref: refs/changes/08/111308/1
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/08/111308/1 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/111308
+
+Patch: 111287
+Ref: refs/changes/87/111287/1
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/87/111287/1 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 95805
+Ref: refs/changes/05/95805/4
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/05/95805/4 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/95805
+
+Patch: 102201
+Ref: refs/changes/01/102201/7
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/01/102201/7 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/102201
+
+Patch: 89650
+Ref: refs/changes/50/89650/12
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/50/89650/12 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/89650
+
+Patch: 91328
+Ref: refs/changes/28/91328/6
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/28/91328/6 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/91328
+
+Patch: 102545
+Ref: refs/changes/45/102545/5
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/45/102545/5 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/102545
+
+Patch: 106306
+Ref: refs/changes/06/106306/2
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/06/106306/2 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/106306
+
+Patch: 91321
+Ref: refs/changes/21/91321/7
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/21/91321/7 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/91321
+
+Patch: 94835
+Ref: refs/changes/35/94835/5
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/35/94835/5 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/94835
+
+Patch: 107967
+Ref: refs/changes/67/107967/2
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/67/107967/2 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 109010
+Ref: refs/changes/10/109010/2
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/10/109010/2 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 96543
+Ref: refs/changes/43/96543/10
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/43/96543/10 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/96543
+
+Patch: 105042
+Ref: refs/changes/42/105042/2
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/42/105042/2 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/105042
+
+Patch: 105041
+Ref: refs/changes/41/105041/1
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/41/105041/1 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/105041
+
+Patch: 104630
+Ref: refs/changes/30/104630/2
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/30/104630/2 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/104630
+
+Patch: 91486
+Ref: refs/changes/86/91486/8
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/86/91486/8 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/91486
+
+Patch: 107834
+Ref: refs/changes/34/107834/2
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/34/107834/2 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 103945
+Ref: refs/changes/45/103945/3
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/45/103945/3 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/103945
+
+Patch: 108244
+Ref: refs/changes/44/108244/2
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/44/108244/2 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/108244
+
+Patch: 90647
+Ref: refs/changes/47/90647/4
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/47/90647/4 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/90647
+
+Patch: 98930
+Ref: refs/changes/30/98930/5
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/30/98930/5 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/98930
+
+Patch: 108241
+Ref: refs/changes/41/108241/1
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/41/108241/1 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/108241
+
+Patch: 80865
+Ref: refs/changes/65/80865/5
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/65/80865/5 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 84432
+Ref: refs/changes/32/84432/18
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/32/84432/18 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/84432
+
+Patch: 88334
+Ref: refs/changes/34/88334/6
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/34/88334/6 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/88334
+
+Patch: 97441
+Ref: refs/changes/41/97441/2
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/41/97441/2 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/97441
+
+Patch: 90150
+Ref: refs/changes/50/90150/12
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/50/90150/12 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/90150
+
+Patch: 89766
+Ref: refs/changes/66/89766/6
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/66/89766/6 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/89766
+
+Patch: 90239
+Ref: refs/changes/39/90239/4
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/39/90239/4 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/90239
+
+Patch: 103571
+Ref: refs/changes/71/103571/4
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/71/103571/4 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/103571
+
+Patch: 103348
+Ref: refs/changes/48/103348/2
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/48/103348/2 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 102540
+Ref: refs/changes/40/102540/1
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/40/102540/1 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/102540
+
+Patch: 98704
+Ref: refs/changes/04/98704/8
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/04/98704/8 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/98704
+
+Patch: 93016
+Ref: refs/changes/16/93016/7
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/16/93016/7 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/93016
+
+Patch: 89834
+Ref: refs/changes/34/89834/8
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/34/89834/8 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/89834
+
+Patch: 92326
+Ref: refs/changes/26/92326/5
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/26/92326/5 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/92326
+
+Patch: 104883
+Ref: refs/changes/83/104883/3
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/83/104883/3 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/104883
+
+Patch: 103054
+Ref: refs/changes/54/103054/8
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/54/103054/8 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/103054
+
+Patch: 93466
+Ref: refs/changes/66/93466/4
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/66/93466/4 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/93466
+
+Patch: 102444
+Ref: refs/changes/44/102444/3
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/44/102444/3 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/102444
+
+Patch: 105385
+Ref: refs/changes/85/105385/3
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/85/105385/3 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/105385
+
+Patch: 86583
+Ref: refs/changes/83/86583/13
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/83/86583/13 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/86583
+
+Patch: 86146
+Ref: refs/changes/46/86146/4
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/46/86146/4 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/86146
+
+Patch: 87500
+Ref: refs/changes/00/87500/7
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/00/87500/7 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/87500
+
+Patch: 105410
+Ref: refs/changes/10/105410/3
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/10/105410/3 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/105410
+
+Patch: 102688
+Ref: refs/changes/88/102688/2
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/88/102688/2 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/102688
+
+Patch: 105094
+Ref: refs/changes/94/105094/5
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/94/105094/5 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/105094
+
+Patch: 91957
+Ref: refs/changes/57/91957/1
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/57/91957/1 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/91957
+
+Patch: 101295
+Ref: refs/changes/95/101295/1
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/95/101295/1 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/101295
+
+Patch: 99615
+Ref: refs/changes/15/99615/3
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/15/99615/3 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/99615
+
+Patch: 92005
+Ref: refs/changes/05/92005/15
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/05/92005/15 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/92005
+
+Patch: 105466
+Ref: refs/changes/66/105466/1
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/66/105466/1 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/105466
+
+Patch: 97503
+Ref: refs/changes/03/97503/3
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/03/97503/3 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/97503
+
+Patch: 101026
+Ref: refs/changes/26/101026/3
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/26/101026/3 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/101026
+
+Patch: 97602
+Ref: refs/changes/02/97602/4
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/02/97602/4 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/97602
+
+Patch: 104402
+Ref: refs/changes/02/104402/2
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/02/104402/2 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/104402
+
+Patch: 97350
+Ref: refs/changes/50/97350/3
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/50/97350/3 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/97350
+
+Patch: 100953
+Ref: refs/changes/53/100953/2
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/53/100953/2 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/100953
+
+Patch: 97103
+Ref: refs/changes/03/97103/3
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/03/97103/3 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/97103
+
+Patch: 104450
+Ref: refs/changes/50/104450/7
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/50/104450/7 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/104450
+
+Patch: 102727
+Ref: refs/changes/27/102727/4
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/27/102727/4 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/102727
+
+Patch: 98955
+Ref: refs/changes/55/98955/4
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/55/98955/4 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/98955
+
+Patch: 89592
+Ref: refs/changes/92/89592/8
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/92/89592/8 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/89592
+
+Patch: 94299
+Ref: refs/changes/99/94299/7
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/99/94299/7 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/94299
+
+Patch: 105404
+Ref: refs/changes/04/105404/2
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/04/105404/2 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/105404
+
+Patch: 99576
+Ref: refs/changes/76/99576/8
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/76/99576/8 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/99576
+
+Patch: 95328
+Ref: refs/changes/28/95328/6
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/28/95328/6 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/95328
+
+Patch: 105367
+Ref: refs/changes/67/105367/10
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/67/105367/10 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/105367
+
+Patch: 85792
+Ref: refs/changes/92/85792/17
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/92/85792/17 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/85792
+
+Patch: 91697
+Ref: refs/changes/97/91697/6
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/97/91697/6 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/91697
+
+Patch: 99476
+Ref: refs/changes/76/99476/5
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/76/99476/5 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/99476
+
+Patch: 106330
+Ref: refs/changes/30/106330/3
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/30/106330/3 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/106330
+
+Patch: 104418
+Ref: refs/changes/18/104418/3
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/18/104418/3 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/104418
+
+Patch: 101648
+Ref: refs/changes/48/101648/2
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/48/101648/2 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/101648
+
+Patch: 104211
+Ref: refs/changes/11/104211/4
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/11/104211/4 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/104211
+
+Patch: 87978
+Ref: refs/changes/78/87978/3
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/78/87978/3 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/87978
+
+Patch: 87611
+Ref: refs/changes/11/87611/4
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/11/87611/4 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/87611
+
+Patch: 99006
+Ref: refs/changes/06/99006/3
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/06/99006/3 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/99006
+
+Patch: 99949
+Ref: refs/changes/49/99949/8
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/49/99949/8 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/99949
+
+Patch: 95408
+Ref: refs/changes/08/95408/1
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/08/95408/1 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/95408
+
+Patch: 102142
+Ref: refs/changes/42/102142/2
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/42/102142/2 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/102142
+
+Patch: 97520
+Ref: refs/changes/20/97520/3
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/20/97520/3 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/97520
+
+Patch: 84662
+Ref: refs/changes/62/84662/6
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/62/84662/6 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/84662
+
+Patch: 86637
+Ref: refs/changes/37/86637/4
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/37/86637/4 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/86637
+
+Patch: 97310
+Ref: refs/changes/10/97310/1
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/10/97310/1 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/97310
+
+Patch: 88983
+Ref: refs/changes/83/88983/17
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/83/88983/17 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/88983
+
+Patch: 95054
+Ref: refs/changes/54/95054/4
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/54/95054/4 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/95054
+
+Patch: 96455
+Ref: refs/changes/55/96455/2
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/55/96455/2 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/96455
+
+Patch: 88419
+Ref: refs/changes/19/88419/5
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/19/88419/5 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/88419
+
+Patch: 89574
+Ref: refs/changes/74/89574/1
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/74/89574/1 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/89574
+
+Patch: 89777
+Ref: refs/changes/77/89777/5
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/77/89777/5 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/89777
+
+Patch: 90678
+Ref: refs/changes/78/90678/2
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/78/90678/2 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/90678
+
+Patch: 87098
+Ref: refs/changes/98/87098/2
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/98/87098/2 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/87098
+
+Patch: 107244
+Ref: refs/changes/44/107244/4
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/44/107244/4 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/107244
+
+Patch: 98058
+Ref: refs/changes/58/98058/2
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/58/98058/2 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/98058
+
+Patch: 84629
+Ref: refs/changes/29/84629/12
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/29/84629/12 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/84629
+
+Patch: 104605
+Ref: refs/changes/05/104605/2
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/05/104605/2 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/104605
+
+Patch: 86418
+Ref: refs/changes/18/86418/7
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/18/86418/7 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/86418
+
+Patch: 101812
+Ref: refs/changes/12/101812/2
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/12/101812/2 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/101812
+
+Patch: 104297
+Ref: refs/changes/97/104297/1
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/97/104297/1 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/104297
+
+Patch: 93652
+Ref: refs/changes/52/93652/4
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/52/93652/4 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/93652
+
+Patch: 85877
+Ref: refs/changes/77/85877/14
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/77/85877/14 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/85877
+
+Patch: 86422
+Ref: refs/changes/22/86422/5
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/22/86422/5 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/86422
+
+Patch: 100936
+Ref: refs/changes/36/100936/5
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/36/100936/5 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/100936
+
+Patch: 92469
+Ref: refs/changes/69/92469/9
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/69/92469/9 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/92469
+
+Patch: 92508
+Ref: refs/changes/08/92508/3
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/08/92508/3 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/92508
+
+Patch: 104804
+Ref: refs/changes/04/104804/2
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/04/104804/2 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/104804
+
+Patch: 96138
+Ref: refs/changes/38/96138/8
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/38/96138/8 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/96138
+
+Patch: 99133
+Ref: refs/changes/33/99133/1
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/33/99133/1 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/99133
+
+Patch: 84652
+Ref: refs/changes/52/84652/13
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/52/84652/13 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/84652
+
+Patch: 103250
+Ref: refs/changes/50/103250/4
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/50/103250/4 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/103250
+
+Patch: 93721
+Ref: refs/changes/21/93721/3
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/21/93721/3 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/93721
+
+Patch: 96563
+Ref: refs/changes/63/96563/3
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/63/96563/3 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/96563
+
+Patch: 94916
+Ref: refs/changes/16/94916/8
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/16/94916/8 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/94916
+
+Patch: 94370
+Ref: refs/changes/70/94370/6
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/70/94370/6 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/94370
+
+Patch: 94445
+Ref: refs/changes/45/94445/7
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/45/94445/7 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/94445
+
+Patch: 105479
+Ref: refs/changes/79/105479/2
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/79/105479/2 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/105479
+
+Patch: 82456
+Ref: refs/changes/56/82456/9
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/56/82456/9 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/82456
+
+Patch: 101553
+Ref: refs/changes/53/101553/6
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/53/101553/6 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/101553
+
+Patch: 97716
+Ref: refs/changes/16/97716/5
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/16/97716/5 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/97716
+
+Patch: 101460
+Ref: refs/changes/60/101460/3
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/60/101460/3 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/101460
+
+Patch: 88515
+Ref: refs/changes/15/88515/15
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/15/88515/15 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/88515
+
+Patch: 93653
+Ref: refs/changes/53/93653/7
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/53/93653/7 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/93653
+
+Patch: 85556
+Ref: refs/changes/56/85556/15
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/56/85556/15 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/85556
+
+Patch: 87809
+Ref: refs/changes/09/87809/5
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/09/87809/5 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/87809
+
+Patch: 102383
+Ref: refs/changes/83/102383/3
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/83/102383/3 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/102383
+
+Patch: 97909
+Ref: refs/changes/09/97909/3
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/09/97909/3 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/97909
+
+Patch: 91907
+Ref: refs/changes/07/91907/3
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/07/91907/3 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/91907
+
+Patch: 102917
+Ref: refs/changes/17/102917/1
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/17/102917/1 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/102917
+
+Patch: 85726
+Ref: refs/changes/26/85726/11
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/26/85726/11 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/85726
+
+Patch: 91444
+Ref: refs/changes/44/91444/16
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/44/91444/16 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/91444
+
+Patch: 92325
+Ref: refs/changes/25/92325/3
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/25/92325/3 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/92325
+
+Patch: 89877
+Ref: refs/changes/77/89877/3
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/77/89877/3 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/89877
+
+Patch: 99780
+Ref: refs/changes/80/99780/3
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/80/99780/3 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/99780
+
+Patch: 91638
+Ref: refs/changes/38/91638/7
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/38/91638/7 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/91638
+
+Patch: 86357
+Ref: refs/changes/57/86357/8
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/57/86357/8 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/86357
+
+Patch: 85399
+Ref: refs/changes/99/85399/17
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/99/85399/17 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/85399
+
+Patch: 96139
+Ref: refs/changes/39/96139/11
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/39/96139/11 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/96139
+
+Patch: 95024
+Ref: refs/changes/24/95024/9
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/24/95024/9 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/95024
+
+Patch: 85048
+Ref: refs/changes/48/85048/5
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/48/85048/5 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/85048
+
+Patch: 98664
+Ref: refs/changes/64/98664/1
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/64/98664/1 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/98664
+
+Patch: 92506
+Ref: refs/changes/06/92506/6
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/06/92506/6 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/92506
+
+Patch: 91998
+Ref: refs/changes/98/91998/2
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/98/91998/2 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/91998
+
+Patch: 91620
+Ref: refs/changes/20/91620/9
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/20/91620/9 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 89696
+Ref: refs/changes/96/89696/16
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/96/89696/16 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/89696
+
+Patch: 97601
+Ref: refs/changes/01/97601/5
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/01/97601/5 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/97601
+
+Patch: 100871
+Ref: refs/changes/71/100871/3
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/71/100871/3 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/100871
+
+Patch: 98179
+Ref: refs/changes/79/98179/9
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/79/98179/9 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/98179
+
+Patch: 93038
+Ref: refs/changes/38/93038/4
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/38/93038/4 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/93038
+
+Patch: 102290
+Ref: refs/changes/90/102290/1
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/90/102290/1 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/102290
+
+Patch: 100930
+Ref: refs/changes/30/100930/2
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/30/100930/2 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/100930
+
+Patch: 92843
+Ref: refs/changes/43/92843/1
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/43/92843/1 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/92843
+
+Patch: 87213
+Ref: refs/changes/13/87213/6
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/13/87213/6 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/87213
+
+Patch: 89842
+Ref: refs/changes/42/89842/2
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/42/89842/2 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/89842
+
+Patch: 86118
+Ref: refs/changes/18/86118/7
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/18/86118/7 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/86118
+
+Patch: 85811
+Ref: refs/changes/11/85811/9
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/11/85811/9 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/85811
+
+Patch: 96821
+Ref: refs/changes/21/96821/2
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/21/96821/2 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/96821
+
+Patch: 91460
+Ref: refs/changes/60/91460/1
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/60/91460/1 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/91460
+
+Patch: 82088
+Ref: refs/changes/88/82088/5
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/88/82088/5 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 84972
+Ref: refs/changes/72/84972/3
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/72/84972/3 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/84972
+
+Patch: 86907
+Ref: refs/changes/07/86907/5
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/07/86907/5 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/86907
+
+Patch: 87546
+Ref: refs/changes/46/87546/10
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/46/87546/10 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/87546
+
+Patch: 87207
+Ref: refs/changes/07/87207/5
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/07/87207/5 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/87207
+
+Patch: 86959
+Ref: refs/changes/59/86959/22
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/59/86959/22 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/86959
+
+Patch: 84671
+Ref: refs/changes/71/84671/9
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/71/84671/9 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/84671
+
+Patch: 89570
+Ref: refs/changes/70/89570/2
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/70/89570/2 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/89570
+
+Patch: 88756
+Ref: refs/changes/56/88756/4
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/56/88756/4 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/88756
+
+Patch: 91311
+Ref: refs/changes/11/91311/2
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/11/91311/2 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 88286
+Ref: refs/changes/86/88286/2
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/86/88286/2 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/88286
+
+Patch: 88337
+Ref: refs/changes/37/88337/2
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/37/88337/2 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/88337
+
+Patch: 93353
+Ref: refs/changes/53/93353/3
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/53/93353/3 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/93353
+
+Patch: 84048
+Ref: refs/changes/48/84048/32
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/48/84048/32 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/84048
+
+Patch: 82584
+Ref: refs/changes/84/82584/8
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/84/82584/8 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/82584
+
+Patch: 92482
+Ref: refs/changes/82/92482/3
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/82/92482/3 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/92482
+
+Patch: 90721
+Ref: refs/changes/21/90721/1
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/21/90721/1 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/90721
+
+Patch: 88080
+Ref: refs/changes/80/88080/6
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/80/88080/6 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/88080
+
+Patch: 89006
+Ref: refs/changes/06/89006/2
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/06/89006/2 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/89006
+
+Patch: 84676
+Ref: refs/changes/76/84676/12
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/76/84676/12 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/84676
+
+Patch: 86901
+Ref: refs/changes/01/86901/1
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/01/86901/1 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/86901
+
+Patch: 93636
+Ref: refs/changes/36/93636/9
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/36/93636/9 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/93636
+
+Patch: 93510
+Ref: refs/changes/10/93510/7
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/10/93510/7 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/93510
+
+Patch: 84691
+Ref: refs/changes/91/84691/19
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/91/84691/19 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/84691
+
+Patch: 81828
+Ref: refs/changes/28/81828/16
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/28/81828/16 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/81828
+
+Patch: 88062
+Ref: refs/changes/62/88062/5
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/62/88062/5 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/88062
+
+Patch: 94381
+Ref: refs/changes/81/94381/2
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/81/94381/2 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 86606
+Ref: refs/changes/06/86606/25
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/06/86606/25 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/86606
+
+Patch: 94380
+Ref: refs/changes/80/94380/2
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/80/94380/2 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 89725
+Ref: refs/changes/25/89725/2
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/25/89725/2 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 99533
+Ref: refs/changes/33/99533/1
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/33/99533/1 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/99533
+
+Patch: 87096
+Ref: refs/changes/96/87096/6
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/96/87096/6 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/87096
+
+Patch: 85640
+Ref: refs/changes/40/85640/11
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/40/85640/11 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/85640
+
+Patch: 86947
+Ref: refs/changes/47/86947/7
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/47/86947/7 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/86947
+
+Patch: 88755
+Ref: refs/changes/55/88755/9
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/55/88755/9 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/88755
+
+Patch: 86074
+Ref: refs/changes/74/86074/5
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/74/86074/5 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/86074
+
+Patch: 90292
+Ref: refs/changes/92/90292/7
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/92/90292/7 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/90292
+
+Patch: 97903
+Ref: refs/changes/03/97903/3
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/03/97903/3 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/97903
+
+Patch: 98741
+Ref: refs/changes/41/98741/4
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/41/98741/4 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/98741
+
+Patch: 97300
+Ref: refs/changes/00/97300/2
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/00/97300/2 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/97300
+
+Patch: 94918
+Ref: refs/changes/18/94918/4
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/18/94918/4 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/94918
+
+Patch: 89468
+Ref: refs/changes/68/89468/7
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/68/89468/7 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/89468
+
+Patch: 92128
+Ref: refs/changes/28/92128/2
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/28/92128/2 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/92128
+
+Patch: 95724
+Ref: refs/changes/24/95724/2
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/24/95724/2 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 96350
+Ref: refs/changes/50/96350/1
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/50/96350/1 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/96350
+
+Patch: 96349
+Ref: refs/changes/49/96349/1
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/49/96349/1 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/96349
+
+Patch: 92054
+Ref: refs/changes/54/92054/2
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/54/92054/2 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/92054
+
+Patch: 94519
+Ref: refs/changes/19/94519/4
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/19/94519/4 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/94519
+
+Patch: 86273
+Ref: refs/changes/73/86273/23
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/73/86273/23 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/86273
+
+Patch: 90172
+Ref: refs/changes/72/90172/7
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/72/90172/7 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/90172
+
+Patch: 90546
+Ref: refs/changes/46/90546/8
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/46/90546/8 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/90546
+
+Patch: 90276
+Ref: refs/changes/76/90276/2
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/76/90276/2 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/90276
+
+Patch: 94873
+Ref: refs/changes/73/94873/2
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/73/94873/2 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/94873
+
+Patch: 92492
+Ref: refs/changes/92/92492/5
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/92/92492/5 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/92492
+
+Patch: 89502
+Ref: refs/changes/02/89502/5
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/02/89502/5 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/89502
+
+Patch: 85248
+Ref: refs/changes/48/85248/8
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/48/85248/8 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/85248
+
+Patch: 93989
+Ref: refs/changes/89/93989/1
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/89/93989/1 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 85635
+Ref: refs/changes/35/85635/4
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/35/85635/4 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/85635
+
+Patch: 92926
+Ref: refs/changes/26/92926/3
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/26/92926/3 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/92926
+
+Patch: 93093
+Ref: refs/changes/93/93093/9
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/93/93093/9 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/93093
+
+Patch: 94316
+Ref: refs/changes/16/94316/5
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/16/94316/5 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/94316
+
+Patch: 94536
+Ref: refs/changes/36/94536/1
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/36/94536/1 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/94536
+
+Patch: 93106
+Ref: refs/changes/06/93106/1
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/06/93106/1 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 84281
+Ref: refs/changes/81/84281/14
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/81/84281/14 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/84281
+
+Patch: 88703
+Ref: refs/changes/03/88703/2
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/03/88703/2 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/88703
+
+Patch: 82133
+Ref: refs/changes/33/82133/19
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/33/82133/19 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/82133
+
+Patch: 93024
+Ref: refs/changes/24/93024/2
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/24/93024/2 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/93024
+
+Patch: 86050
+Ref: refs/changes/50/86050/11
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/50/86050/11 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/86050
+
+Patch: 82139
+Ref: refs/changes/39/82139/6
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/39/82139/6 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/82139
+
+Patch: 91986
+Ref: refs/changes/86/91986/2
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/86/91986/2 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/91986
+
+Patch: 86395
+Ref: refs/changes/95/86395/2
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/95/86395/2 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/86395
+
+Patch: 87427
+Ref: refs/changes/27/87427/6
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/27/87427/6 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/87427
+
+Patch: 89936
+Ref: refs/changes/36/89936/3
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/36/89936/3 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/89936
+
+Patch: 84451
+Ref: refs/changes/51/84451/9
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/51/84451/9 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/84451
+
+Patch: 91617
+Ref: refs/changes/17/91617/1
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/17/91617/1 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 88500
+Ref: refs/changes/00/88500/8
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/00/88500/8 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/88500
+
+Patch: 91009
+Ref: refs/changes/09/91009/2
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/09/91009/2 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/91009
+
+Patch: 87814
+Ref: refs/changes/14/87814/3
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/14/87814/3 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 84947
+Ref: refs/changes/47/84947/5
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/47/84947/5 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/84947
+
+Patch: 86988
+Ref: refs/changes/88/86988/4
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/88/86988/4 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/86988
+
+Patch: 86600
+Ref: refs/changes/00/86600/2
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/00/86600/2 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/86600
+
+Patch: 88320
+Ref: refs/changes/20/88320/4
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/20/88320/4 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/88320
+
+Patch: 88047
+Ref: refs/changes/47/88047/1
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/47/88047/1 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 86838
+Ref: refs/changes/38/86838/3
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/38/86838/3 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/86838
+
+Patch: 86831
+Ref: refs/changes/31/86831/6
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/31/86831/6 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/86831
+
+Patch: 88028
+Ref: refs/changes/28/88028/4
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/28/88028/4 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 86403
+Ref: refs/changes/03/86403/5
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/03/86403/5 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/86403
+
+Patch: 85119
+Ref: refs/changes/19/85119/1
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/19/85119/1 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/85119
+
+Patch: 83727
+Ref: refs/changes/27/83727/7
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/27/83727/7 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/83727
+
+Patch: 85768
+Ref: refs/changes/68/85768/2
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/68/85768/2 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/85768
+
+Patch: 84895
+Ref: refs/changes/95/84895/2
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/95/84895/2 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/84895
+
+Patch: 86832
+Ref: refs/changes/32/86832/3
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/32/86832/3 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/86832
+
+Patch: 84526
+Ref: refs/changes/26/84526/3
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/26/84526/3 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/84526
+
+Patch: 87525
+Ref: refs/changes/25/87525/1
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/25/87525/1 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 84429
+Ref: refs/changes/29/84429/8
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/29/84429/8 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/84429
+
+Patch: 85558
+Ref: refs/changes/58/85558/3
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/58/85558/3 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/85558
+
+Patch: 84766
+Ref: refs/changes/66/84766/7
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/66/84766/7 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/84766
+
+Patch: 84494
+Ref: refs/changes/94/84494/4
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/94/84494/4 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/84494
+
+Patch: 85424
+Ref: refs/changes/24/85424/2
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/24/85424/2 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 85469
+Ref: refs/changes/69/85469/4
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/69/85469/4 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/85469
+
+Patch: 84727
+Ref: refs/changes/27/84727/4
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/27/84727/4 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/84727
+
+Patch: 84521
+Ref: refs/changes/21/84521/2
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/21/84521/2 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/84521
+
+Patch: 82598
+Ref: refs/changes/98/82598/1
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/98/82598/1 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 86404
+Ref: refs/changes/04/86404/1
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/04/86404/1 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/86404
+
+Patch: 84307
+Ref: refs/changes/07/84307/6
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/07/84307/6 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/84307
+
+Patch: 86055
+Ref: refs/changes/55/86055/3
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/55/86055/3 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/86055
+
+Patch: 86072
+Ref: refs/changes/72/86072/2
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/72/86072/2 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/86072
+
+Patch: 82600
+Ref: refs/changes/00/82600/1
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/00/82600/1 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 84535
+Ref: refs/changes/35/84535/1
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/35/84535/1 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/84535
+
+Patch: 85569
+Ref: refs/changes/69/85569/2
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/69/85569/2 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/85569
+
+Patch: 85806
+Ref: refs/changes/06/85806/3
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/06/85806/3 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/85806
+
+Patch: 85502
+Ref: refs/changes/02/85502/1
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/02/85502/1 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/85502
+
+Patch: 85422
+Ref: refs/changes/22/85422/1
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/22/85422/1 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 84843
+Ref: refs/changes/43/84843/4
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/43/84843/4 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/84843
+
+Patch: 82991
+Ref: refs/changes/91/82991/8
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/91/82991/8 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/82991
+
+Patch: 84729
+Ref: refs/changes/29/84729/1
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/29/84729/1 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 84559
+Ref: refs/changes/59/84559/5
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/59/84559/5 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 84268
+Ref: refs/changes/68/84268/4
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/68/84268/4 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/84268
+
+Patch: 83826
+Ref: refs/changes/26/83826/5
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/26/83826/5 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/83826
+
+Patch: 84161
+Ref: refs/changes/61/84161/1
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/61/84161/1 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 84130
+Ref: refs/changes/30/84130/3
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/30/84130/3 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 83934
+Ref: refs/changes/34/83934/5
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/34/83934/5 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 83613
+Ref: refs/changes/13/83613/5
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/13/83613/5 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 84157
+Ref: refs/changes/57/84157/1
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/57/84157/1 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 81986
+Ref: refs/changes/86/81986/1
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/86/81986/1 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 80866
+Ref: refs/changes/66/80866/1
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/66/80866/1 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 83849
+Ref: refs/changes/49/83849/1
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/49/83849/1 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 83701
+Ref: refs/changes/01/83701/3
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/01/83701/3 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 83700
+Ref: refs/changes/00/83700/2
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/00/83700/2 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 83698
+Ref: refs/changes/98/83698/2
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/98/83698/2 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 82811
+Ref: refs/changes/11/82811/5
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/11/82811/5 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 83612
+Ref: refs/changes/12/83612/1
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/12/83612/1 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 83617
+Ref: refs/changes/17/83617/1
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/17/83617/1 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 83611
+Ref: refs/changes/11/83611/1
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/11/83611/1 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 83600
+Ref: refs/changes/00/83600/1
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/00/83600/1 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 83597
+Ref: refs/changes/97/83597/1
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/97/83597/1 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 83467
+Ref: refs/changes/67/83467/2
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/67/83467/2 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 82790
+Ref: refs/changes/90/82790/2
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/90/82790/2 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 83621
+Ref: refs/changes/21/83621/1
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/21/83621/1 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 82212
+Ref: refs/changes/12/82212/4
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/12/82212/4 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 82799
+Ref: refs/changes/99/82799/2
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/99/82799/2 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 82797
+Ref: refs/changes/97/82797/2
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/97/82797/2 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 82166
+Ref: refs/changes/66/82166/5
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/66/82166/5 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 81932
+Ref: refs/changes/32/81932/1
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/32/81932/1 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 82800
+Ref: refs/changes/00/82800/2
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/00/82800/2 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 82812
+Ref: refs/changes/12/82812/1
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/12/82812/1 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 82609
+Ref: refs/changes/09/82609/1
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/09/82609/1 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 82608
+Ref: refs/changes/08/82608/1
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/08/82608/1 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 82574
+Ref: refs/changes/74/82574/3
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/74/82574/3 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 82564
+Ref: refs/changes/64/82564/6
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/64/82564/6 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 82586
+Ref: refs/changes/86/82586/2
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/86/82586/2 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 82085
+Ref: refs/changes/85/82085/3
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/85/82085/3 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 82295
+Ref: refs/changes/95/82295/2
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/95/82295/2 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 81931
+Ref: refs/changes/31/81931/4
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/31/81931/4 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 81845
+Ref: refs/changes/45/81845/1
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/45/81845/1 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 81534
+Ref: refs/changes/34/81534/2
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/34/81534/2 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 81381
+Ref: refs/changes/81/81381/1
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/81/81381/1 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 81787
+Ref: refs/changes/87/81787/3
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/87/81787/3 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 81581
+Ref: refs/changes/81/81581/7
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/81/81581/7 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 81441
+Ref: refs/changes/41/81441/4
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/41/81441/4 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 80785
+Ref: refs/changes/85/80785/3
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/85/80785/3 && git format-patch -1 --stdout FETCH_HEAD
+
+

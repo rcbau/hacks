@@ -1,4 +1,4 @@
-From 3ad27f8554edb87573606f0fce1a7221a13cfbe4 Mon Sep 17 00:00:00 2001
+From c234c2efdea1f871a6ab2a490b17e5254319721b Mon Sep 17 00:00:00 2001
 From: Tomoki Sekiyama <tomoki.sekiyama@hds.com>
 Date: Tue, 7 Oct 2014 19:33:57 -0400
 Subject: [PATCH] Quiesce filesystems with QEMU guest agent during image
@@ -12,16 +12,16 @@ Previously-approved: juno
 Part of blueprint quiesced-image-snapshots-with-qemu-guest-agent
 Change-Id: Ifb77d202e7578b4a379f2894c630bbdda7e9a6a7
 ---
- ...esced-image-snapshots-with-qemu-guest-agent.rst | 150 +++++++++++++++++++++
- 1 file changed, 150 insertions(+)
+ ...esced-image-snapshots-with-qemu-guest-agent.rst | 153 +++++++++++++++++++++
+ 1 file changed, 153 insertions(+)
  create mode 100644 specs/kilo/approved/quiesced-image-snapshots-with-qemu-guest-agent.rst
 
 diff --git a/specs/kilo/approved/quiesced-image-snapshots-with-qemu-guest-agent.rst b/specs/kilo/approved/quiesced-image-snapshots-with-qemu-guest-agent.rst
 new file mode 100644
-index 0000000..574549d
+index 0000000..19f516c
 --- /dev/null
 +++ b/specs/kilo/approved/quiesced-image-snapshots-with-qemu-guest-agent.rst
-@@ -0,0 +1,150 @@
+@@ -0,0 +1,153 @@
 +..
 + This work is licensed under a Creative Commons Attribution 3.0 Unported
 + License.
@@ -44,6 +44,8 @@ index 0000000..574549d
 +Currently we need to quiesce filesystems (fsfreeze) manually before
 +snapshotting an image of active instances to create consistent backups.
 +This should be automated when QEMU Guest Agent is enabled.
++
++(Quiescing for cinder volume snapshot is covered by another proposal [1]_)
 +
 +Use Cases
 +---------
@@ -171,7 +173,8 @@ index 0000000..574549d
 +References
 +==========
 +
-+None
++.. [1] Quiesce admin action ofr consistent snapshot:
++       https://review.openstack.org/#/c/128112/
 -- 
 1.9.1
 

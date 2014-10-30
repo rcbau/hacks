@@ -1,0 +1,185 @@
+From 967ec3b0e481ed793e5b74e8eebd6e12ebb95b31 Mon Sep 17 00:00:00 2001
+From: Tesshu Flower <tflower@ca.ibm.com>
+Date: Wed, 15 Oct 2014 12:00:53 -0400
+Subject: [PATCH] VMware:  Support multi disk images in OVA container format
+
+When OVA support for VMware is added, this spec proposes to follow on with
+adding the support for OVA images that contain multiple disk images.
+
+Change-Id: I86330550213ad1d9c7fb7bb5dbc624529cd989e4
+Implements: blueprint vmware-driver-ova-multidisk-support
+---
+ .../vmware-driver-ova-multidisk-support.rst        | 161 +++++++++++++++++++++
+ 1 file changed, 161 insertions(+)
+ create mode 100644 specs/kilo/approved/vmware-driver-ova-multidisk-support.rst
+
+diff --git a/specs/kilo/approved/vmware-driver-ova-multidisk-support.rst b/specs/kilo/approved/vmware-driver-ova-multidisk-support.rst
+new file mode 100644
+index 0000000..1745775
+--- /dev/null
++++ b/specs/kilo/approved/vmware-driver-ova-multidisk-support.rst
+@@ -0,0 +1,161 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++==========================================
++VMware OVA multidisk support
++==========================================
++
++Include the URL of your launchpad blueprint:
++
++https://blueprints.launchpad.net/nova/+spec/vmware-driver-ova-multidisk-support
++
++This blueprint proposes to follow on from the VMware OVA support blueprint
++(https://blueprints.launchpad.net/nova/+spec/vmware-driver-ova-support) and
++add support for multiple disks contained within the OVA.
++
++
++Problem description
++===================
++
++An OVA is a tar file that can contain multiple files.  Very often an OVA image
++can contain multiple disks (multiple .vmdk files contained in the OVA).
++
++The OVA support blueprint is assuming that each OVA will contain only 1 vmdk.
++This proposal is to extend the OVA support code by allowing support for
++multiple vmdk files in the OVA.
++
++Use Cases
++----------
++
++The end user will be able to import an OVA image into OpenStack as per the
++VMware OVA support blueprint, but now when the OVA image contains multiple
++disk images, the nova boot (spawn) will create a VMware VM that uses all the
++disks contained in the OVA file.
++
++Project Priority
++-----------------
++
++None
++
++Proposed change
++===============
++
++The VMware OVA support blueprint already will look at the OVF file in the OVA
++to do some minimal processing.  This will be extended if necessary to determine
++the order the disks will be attached to the VM.  This is required to ensure
++that the VM boots off the correct .vmdk contained in the OVA.
++
++Alternatives
++------------
++
++* It may be possible to modify the image itself within glance to support
++  multiple image files. This however would require a big change to the
++  glance model.
++
++  * Note that the VMware OVA support blueprint may address this which would
++    influence how this blueprint handles images that contain multiple files.
++
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++None
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++A user will be able to make use of OVA images that contain multiple disks
++so that virtual machines deployed from the image will make use of all disks
++contained in the OVA.
++
++Performance Impact
++------------------
++
++Note that multiple disk images mean that the image itself has more .vmdk files,
++so this will have an effect on initial virtual machine spawn time when
++vmdk files are copied.  The extra time required to attach more disks to a
++virtual machine will be minimal.
++
++Other deployer impact
++---------------------
++
++
++Developer impact
++----------------
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++
++Primary assignee:
++  tflower
++
++Other contributors:
++  arnaudleg
++
++Work Items
++----------
++
++* Instead of taking just the one vmdk from the image at spawn time, if there
++  are multile .vmdk files referenced in the OVF and present in the image,
++  each one will need to be copied into the datastore cache location.
++
++* At spawn time, loop through and attach each vmdk to the VM instead of just
++  one (OVF file may need to be referenced to determine order and number of
++  disks)
++
++* Optimization - If the image itself already exists in the datastore cache
++  location, it should be possible to copy the ovf file from the datastore cache
++  itself, rather than downloading the entire OPA from glance and extracting it.
++  This would speed up deploys greatly after the 1st deploy that uses a
++  particular datastore. Note this may require modifications to the code to
++  copy the ovf to the datastore cache location instead of just the disk file.
++
++
++Dependencies
++============
++
++* This blueprint will extend the work done by the VMware OVA support blueprint:
++  https://blueprints.launchpad.net/nova/+spec/vmware-driver-ova-support
++
++
++Testing
++=======
++
++
++
++Documentation Impact
++====================
++
++New information in the vmware driver sectino of the Nova documentation will
++need to be updated to document how to specify multiple disks in the .ovf file
++contained with in the OVA image, and to indicate that multidisk OVA images
++are supported.
++
++
++References
++==========
++
++* https://blueprints.launchpad.net/nova/+spec/vmware-driver-ova-support
+-- 
+1.9.1
+
