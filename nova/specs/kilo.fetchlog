@@ -1,5 +1,1814 @@
 Executing command: ssh review.openstack.org gerrit query --format=json --current-patch-set project:openstack/nova-specs
 
+Patch: 89893
+Ref: refs/changes/93/89893/12
+{
+    "branch": "master", 
+    "commitMessage": "Propose Isolate Scheduler DB\n\nIdentifies work to do on scheduler for reducing dependencies to other\nNova objects in order to prepare scheduler forklift.\n\nImplements: blueprint isolate-scheduler-db\n\nChange-Id: I489ab606341ed406024fff0c7e302fc158d20be2\n", 
+    "createdOn": 1398270590, 
+    "currentPatchSet": {
+        "approvals": [
+            {
+                "by": {
+                    "name": "Jenkins", 
+                    "username": "jenkins"
+                }, 
+                "description": "Verified", 
+                "grantedOn": 1413457342, 
+                "type": "Verified", 
+                "value": "1"
+            }, 
+            {
+                "by": {
+                    "email": "jaypipes@gmail.com", 
+                    "name": "Jay Pipes", 
+                    "username": "jaypipes"
+                }, 
+                "description": "Code-Review", 
+                "grantedOn": 1413480855, 
+                "type": "Code-Review", 
+                "value": "-1"
+            }, 
+            {
+                "by": {
+                    "email": "ed@leafe.com", 
+                    "name": "Ed Leafe", 
+                    "username": "ed-leafe"
+                }, 
+                "description": "Code-Review", 
+                "grantedOn": 1414527361, 
+                "type": "Code-Review", 
+                "value": "-1"
+            }, 
+            {
+                "by": {
+                    "email": "pmurray@hp.com", 
+                    "name": "Paul Murray", 
+                    "username": "ptm"
+                }, 
+                "description": "Code-Review", 
+                "grantedOn": 1414882206, 
+                "type": "Code-Review", 
+                "value": "-1"
+            }
+        ], 
+        "author": {
+            "email": "sbauza@redhat.com", 
+            "name": "Sylvain Bauza", 
+            "username": "sbauza"
+        }, 
+        "createdOn": 1413457126, 
+        "isDraft": false, 
+        "number": "12", 
+        "parents": [
+            "e90fbb84223bd502f482f468b5e66d2c6fcead50"
+        ], 
+        "ref": "refs/changes/93/89893/12", 
+        "revision": "81f8db68b1c1b900fecc2a2329d148af92f7182d", 
+        "sizeDeletions": 0, 
+        "sizeInsertions": 273, 
+        "uploader": {
+            "email": "sbauza@redhat.com", 
+            "name": "Sylvain Bauza", 
+            "username": "sbauza"
+        }
+    }, 
+    "id": "I489ab606341ed406024fff0c7e302fc158d20be2", 
+    "lastUpdated": 1414882206, 
+    "number": "89893", 
+    "open": true, 
+    "owner": {
+        "email": "sbauza@redhat.com", 
+        "name": "Sylvain Bauza", 
+        "username": "sbauza"
+    }, 
+    "project": "openstack/nova-specs", 
+    "sortKey": "0030d81a00015f25", 
+    "status": "NEW", 
+    "subject": "Propose Isolate Scheduler DB", 
+    "topic": "bp/isolate-scheduler-db", 
+    "url": "https://review.openstack.org/89893"
+}
+
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/93/89893/12 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/89893
+
+Patch: 122705
+Ref: refs/changes/05/122705/6
+{
+    "branch": "master", 
+    "commitMessage": "adaptive status polling\n\nThis change is to introduce adaptive status polling into nova\ndesign, which make nova more efficent and robust. It also ams\nto unify polling implementation in nova.\n\nRelated to blueprint adaptive-status-polling\n\nChange-Id: I551f01f56072d49ab1f69fc2ad32510f3e7ebca6\n", 
+    "createdOn": 1411125361, 
+    "currentPatchSet": {
+        "approvals": [
+            {
+                "by": {
+                    "email": "berrange@redhat.com", 
+                    "name": "Daniel Berrange", 
+                    "username": "berrange"
+                }, 
+                "description": "Code-Review", 
+                "grantedOn": 1414491308, 
+                "type": "Code-Review", 
+                "value": "-1"
+            }, 
+            {
+                "by": {
+                    "name": "Jenkins", 
+                    "username": "jenkins"
+                }, 
+                "description": "Verified", 
+                "grantedOn": 1414491363, 
+                "type": "Verified", 
+                "value": "-1"
+            }
+        ], 
+        "author": {
+            "email": "liyi.meng@ericsson.com", 
+            "name": "Liyi Meng", 
+            "username": "liyi"
+        }, 
+        "createdOn": 1414491104, 
+        "isDraft": false, 
+        "number": "6", 
+        "parents": [
+            "b408ca10aa13740dbb2d2a3eb23376c473393e56"
+        ], 
+        "ref": "refs/changes/05/122705/6", 
+        "revision": "72ec3f533a34b69ebc7390a9492ceae78dfd8970", 
+        "sizeDeletions": 0, 
+        "sizeInsertions": 187, 
+        "uploader": {
+            "email": "liyi.meng@ericsson.com", 
+            "name": "Liyi Meng", 
+            "username": "liyi"
+        }
+    }, 
+    "id": "I551f01f56072d49ab1f69fc2ad32510f3e7ebca6", 
+    "lastUpdated": 1414878582, 
+    "number": "122705", 
+    "open": true, 
+    "owner": {
+        "email": "liyi.meng@ericsson.com", 
+        "name": "Liyi Meng", 
+        "username": "liyi"
+    }, 
+    "project": "openstack/nova-specs", 
+    "sortKey": "0030d7dd0001df51", 
+    "status": "NEW", 
+    "subject": "adaptive status polling", 
+    "topic": "bp/adaptive-status-polling", 
+    "url": "https://review.openstack.org/122705"
+}
+
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/05/122705/6 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/122705
+
+Patch: 131729
+Ref: refs/changes/29/131729/2
+{
+    "branch": "master", 
+    "commitMessage": "Add spec for VIF Driver for SR-IOV InfiniBand\n\nChange-Id: I5673b2abeb21d16ed7fde553896ac8a32ed3881c\n", 
+    "createdOn": 1414585423, 
+    "currentPatchSet": {
+        "approvals": [
+            {
+                "by": {
+                    "name": "Jenkins", 
+                    "username": "jenkins"
+                }, 
+                "description": "Verified", 
+                "grantedOn": 1414678804, 
+                "type": "Verified", 
+                "value": "1"
+            }, 
+            {
+                "by": {
+                    "email": "joe.gordon0@gmail.com", 
+                    "name": "Joe Gordon", 
+                    "username": "jogo"
+                }, 
+                "description": "Code-Review", 
+                "grantedOn": 1414702904, 
+                "type": "Code-Review", 
+                "value": "-1"
+            }
+        ], 
+        "author": {
+            "email": "irenab@mellanox.com", 
+            "name": "Berezovsky Irena", 
+            "username": "irenab"
+        }, 
+        "createdOn": 1414678657, 
+        "isDraft": false, 
+        "number": "2", 
+        "parents": [
+            "08c972e0b5cc0991148d15508429103fd991de31"
+        ], 
+        "ref": "refs/changes/29/131729/2", 
+        "revision": "67144c2734998e54d8310ef07e1da44d3f28a705", 
+        "sizeDeletions": 0, 
+        "sizeInsertions": 138, 
+        "uploader": {
+            "email": "irenab@mellanox.com", 
+            "name": "Berezovsky Irena", 
+            "username": "irenab"
+        }
+    }, 
+    "id": "I5673b2abeb21d16ed7fde553896ac8a32ed3881c", 
+    "lastUpdated": 1414829431, 
+    "number": "131729", 
+    "open": true, 
+    "owner": {
+        "email": "irenab@mellanox.com", 
+        "name": "Berezovsky Irena", 
+        "username": "irenab"
+    }, 
+    "project": "openstack/nova-specs", 
+    "sortKey": "0030d4aa00020291", 
+    "status": "NEW", 
+    "subject": "Add spec for VIF Driver for SR-IOV InfiniBand", 
+    "topic": "bp/vif-driver-ib-passthrough", 
+    "url": "https://review.openstack.org/131729"
+}
+
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/29/131729/2 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/131729
+
+Patch: 126966
+Ref: refs/changes/66/126966/6
+{
+    "branch": "master", 
+    "commitMessage": "Quiesce filesystems with QEMU guest agent during image snapshot\n\nCurrently we need to quiesce filesystems (fsfreeze) manually before\nsnapshotting an image of active instances to create consistent backups.\nThis proposal is to automate the fsfreeze using QEMU Guest Agent.\n\nPreviously-approved: juno\nPart of blueprint quiesced-image-snapshots-with-qemu-guest-agent\nChange-Id: Ifb77d202e7578b4a379f2894c630bbdda7e9a6a7\n", 
+    "createdOn": 1412792688, 
+    "currentPatchSet": {
+        "approvals": [
+            {
+                "by": {
+                    "name": "Jenkins", 
+                    "username": "jenkins"
+                }, 
+                "description": "Verified", 
+                "grantedOn": 1414796808, 
+                "type": "Verified", 
+                "value": "1"
+            }
+        ], 
+        "author": {
+            "email": "tomoki.sekiyama@hds.com", 
+            "name": "Tomoki Sekiyama", 
+            "username": "tsekiyama"
+        }, 
+        "createdOn": 1414796707, 
+        "isDraft": false, 
+        "number": "6", 
+        "parents": [
+            "f5212b6ed0267a07ec480c79c87b7e417ef30ace"
+        ], 
+        "ref": "refs/changes/66/126966/6", 
+        "revision": "aee70e7792e75ffa9650cc1b010ee62bc78ca0bd", 
+        "sizeDeletions": 0, 
+        "sizeInsertions": 161, 
+        "uploader": {
+            "email": "tomoki.sekiyama@hds.com", 
+            "name": "Tomoki Sekiyama", 
+            "username": "tsekiyama"
+        }
+    }, 
+    "id": "Ifb77d202e7578b4a379f2894c630bbdda7e9a6a7", 
+    "lastUpdated": 1414796808, 
+    "number": "126966", 
+    "open": true, 
+    "owner": {
+        "email": "tomoki.sekiyama@hds.com", 
+        "name": "Tomoki Sekiyama", 
+        "username": "tsekiyama"
+    }, 
+    "project": "openstack/nova-specs", 
+    "sortKey": "0030d28a0001eff6", 
+    "status": "NEW", 
+    "subject": "Quiesce filesystems with QEMU guest agent during image snapshot", 
+    "topic": "bp/quiesced-image-snapshots-with-qemu-guest-agent", 
+    "url": "https://review.openstack.org/126966"
+}
+
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/66/126966/6 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/126966
+
+Patch: 128112
+Ref: refs/changes/12/128112/4
+{
+    "branch": "master", 
+    "commitMessage": "Quiesce admin action for consistent snapshot\n\nCurrently we need to quiesce filesystems (fsfreeze) manually before\nsnapshotting cinder volumes attached to active instances to create consistent\nbackups. This should be automated when QEMU Guest Agent is enabled.\nTo achieve the automated quiescing, Nova should expose an admin action to\nquiesce the guest file systems for Cinder.\n\nPart of blueprint quiesce-admin-action\nChange-Id: I191b5a52d4aa09216ebb54227a24ad34f668af25\n", 
+    "createdOn": 1413239992, 
+    "currentPatchSet": {
+        "approvals": [
+            {
+                "by": {
+                    "name": "Jenkins", 
+                    "username": "jenkins"
+                }, 
+                "description": "Verified", 
+                "grantedOn": 1414794321, 
+                "type": "Verified", 
+                "value": "1"
+            }
+        ], 
+        "author": {
+            "email": "tomoki.sekiyama@hds.com", 
+            "name": "Tomoki Sekiyama", 
+            "username": "tsekiyama"
+        }, 
+        "createdOn": 1414794196, 
+        "isDraft": false, 
+        "number": "4", 
+        "parents": [
+            "d8c3b33231df05dfc089fbfba1939ac804332093"
+        ], 
+        "ref": "refs/changes/12/128112/4", 
+        "revision": "dca7f6407e50a18e63ad9af8a75148e9ec88395b", 
+        "sizeDeletions": 0, 
+        "sizeInsertions": 192, 
+        "uploader": {
+            "email": "tomoki.sekiyama@hds.com", 
+            "name": "Tomoki Sekiyama", 
+            "username": "tsekiyama"
+        }
+    }, 
+    "id": "I191b5a52d4aa09216ebb54227a24ad34f668af25", 
+    "lastUpdated": 1414794321, 
+    "number": "128112", 
+    "open": true, 
+    "owner": {
+        "email": "tomoki.sekiyama@hds.com", 
+        "name": "Tomoki Sekiyama", 
+        "username": "tsekiyama"
+    }, 
+    "project": "openstack/nova-specs", 
+    "sortKey": "0030d2610001f470", 
+    "status": "NEW", 
+    "subject": "Quiesce admin action for consistent snapshot", 
+    "topic": "bp/quiesce-admin-action", 
+    "url": "https://review.openstack.org/128112"
+}
+
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/12/128112/4 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/128112
+
+Patch: 130005
+Ref: refs/changes/05/130005/2
+{
+    "branch": "master", 
+    "commitMessage": "Nova specs doc for dynamic server groups\n\nThis is the documentation for\nhttps://blueprints.launchpad.net/nova/+spec/dynamic-server-groups\n\nChange-Id: I58de5b61b1db05b1392b6a5ea54e37d43e2b867e\n", 
+    "createdOn": 1413917727, 
+    "currentPatchSet": {
+        "approvals": [
+            {
+                "by": {
+                    "name": "Jenkins", 
+                    "username": "jenkins"
+                }, 
+                "description": "Verified", 
+                "grantedOn": 1414783548, 
+                "type": "Verified", 
+                "value": "-1"
+            }
+        ], 
+        "author": {
+            "email": "jmulsow@us.ibm.com", 
+            "name": "Jennifer Mulsow", 
+            "username": "jmulsow"
+        }, 
+        "createdOn": 1414783358, 
+        "isDraft": false, 
+        "number": "2", 
+        "parents": [
+            "f3f289b1eef76a2571dda6976016ab309abad7e5"
+        ], 
+        "ref": "refs/changes/05/130005/2", 
+        "revision": "76decc6e794bfc94f82529c8e43f0b78c0633b12", 
+        "sizeDeletions": 0, 
+        "sizeInsertions": 457, 
+        "uploader": {
+            "email": "jmulsow@us.ibm.com", 
+            "name": "Jennifer Mulsow", 
+            "username": "jmulsow"
+        }
+    }, 
+    "id": "I58de5b61b1db05b1392b6a5ea54e37d43e2b867e", 
+    "lastUpdated": 1414783779, 
+    "number": "130005", 
+    "open": true, 
+    "owner": {
+        "email": "jmulsow@us.ibm.com", 
+        "name": "Jennifer Mulsow", 
+        "username": "jmulsow"
+    }, 
+    "project": "openstack/nova-specs", 
+    "sortKey": "0030d1b10001fbd5", 
+    "status": "NEW", 
+    "subject": "Nova specs doc for dynamic server groups", 
+    "topic": "bp/dynamic-server-groups", 
+    "url": "https://review.openstack.org/130005"
+}
+
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/05/130005/2 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/130005
+
+Patch: 132323
+Ref: refs/changes/23/132323/1
+{
+    "branch": "master", 
+    "commitMessage": "Support iSCSI live migration for different iSCSI target\n\nThis spec proposes to support live migration of instances with\nCinder volumes among compute nodes that need to log into different\niSCSI targets to access the volumes.\n\nChange-Id: I9f0212cb74804e0122200ff543c46f1a91a39921\n", 
+    "createdOn": 1414779564, 
+    "currentPatchSet": {
+        "approvals": [
+            {
+                "by": {
+                    "name": "Jenkins", 
+                    "username": "jenkins"
+                }, 
+                "description": "Verified", 
+                "grantedOn": 1414779959, 
+                "type": "Verified", 
+                "value": "1"
+            }
+        ], 
+        "author": {
+            "email": "mitsuhiro.tanino@hds.com", 
+            "name": "Mitsuhiro Tanino", 
+            "username": "mtanino"
+        }, 
+        "createdOn": 1414779564, 
+        "isDraft": false, 
+        "number": "1", 
+        "parents": [
+            "f3f289b1eef76a2571dda6976016ab309abad7e5"
+        ], 
+        "ref": "refs/changes/23/132323/1", 
+        "revision": "8d4f37a8827d18d95422018567702e3fc2a56ab5", 
+        "sizeDeletions": 0, 
+        "sizeInsertions": 201, 
+        "uploader": {
+            "email": "mitsuhiro.tanino@hds.com", 
+            "name": "Mitsuhiro Tanino", 
+            "username": "mtanino"
+        }
+    }, 
+    "id": "I9f0212cb74804e0122200ff543c46f1a91a39921", 
+    "lastUpdated": 1414779959, 
+    "number": "132323", 
+    "open": true, 
+    "owner": {
+        "email": "mitsuhiro.tanino@hds.com", 
+        "name": "Mitsuhiro Tanino", 
+        "username": "mtanino"
+    }, 
+    "project": "openstack/nova-specs", 
+    "sortKey": "0030d171000204e3", 
+    "status": "NEW", 
+    "subject": "Support iSCSI live migration for different iSCSI target", 
+    "topic": "bp/iscsi-live-migration-different-target", 
+    "url": "https://review.openstack.org/132323"
+}
+
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/23/132323/1 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/132323
+
+Patch: 129420
+Ref: refs/changes/20/129420/14
+{
+    "branch": "master", 
+    "commitMessage": "This bp is for quota management in nested projects\n\nChange-Id: I11f83d5da1f86a9d55e3b83495567b5e3cae483a\n", 
+    "createdOn": 1413611670, 
+    "currentPatchSet": {
+        "approvals": [
+            {
+                "by": {
+                    "name": "Jenkins", 
+                    "username": "jenkins"
+                }, 
+                "description": "Verified", 
+                "grantedOn": 1414777028, 
+                "type": "Verified", 
+                "value": "1"
+            }
+        ], 
+        "author": {
+            "email": "sajeesh.cs@cern.ch", 
+            "name": "sajeesh cs", 
+            "username": "sajeeshcs"
+        }, 
+        "createdOn": 1414776928, 
+        "isDraft": false, 
+        "number": "14", 
+        "parents": [
+            "2e3f8a525418e1748877eca6bf8898a13934656f"
+        ], 
+        "ref": "refs/changes/20/129420/14", 
+        "revision": "b019cae95ecdf917acccf77ff71cd395903733c9", 
+        "sizeDeletions": 0, 
+        "sizeInsertions": 289, 
+        "uploader": {
+            "email": "sajeesh.cs@cern.ch", 
+            "name": "sajeesh cs", 
+            "username": "sajeeshcs"
+        }
+    }, 
+    "id": "I11f83d5da1f86a9d55e3b83495567b5e3cae483a", 
+    "lastUpdated": 1414777028, 
+    "number": "129420", 
+    "open": true, 
+    "owner": {
+        "email": "sajeesh.cs@cern.ch", 
+        "name": "sajeesh cs", 
+        "username": "sajeeshcs"
+    }, 
+    "project": "openstack/nova-specs", 
+    "sortKey": "0030d1410001f98c", 
+    "status": "NEW", 
+    "subject": "This bp is for quota management in nested projects", 
+    "topic": "bp/nested-quota-driver-api", 
+    "url": "https://review.openstack.org/129420"
+}
+
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/20/129420/14 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 132065
+Ref: refs/changes/65/132065/1
+{
+    "branch": "master", 
+    "commitMessage": "Propose Isolate Scheduler DB Aggregates\n\nThis spec supports the move to split out the Nova scheduler. Aggregate\ninformation is used by several filters in the filter scheduler\nbut is populated and manipulated by the AggregateAPI sub-component of the\ncompute api. To facilitate the split the information needs to be communicated\nto the scheduler via an API.\n\nblueprint isolate-scheduler-db-aggregates\n\nChange-Id: Ib12b3ae2b59b6d3bf89a4500226da230f0112a45\n", 
+    "createdOn": 1414687363, 
+    "currentPatchSet": {
+        "approvals": [
+            {
+                "by": {
+                    "name": "Jenkins", 
+                    "username": "jenkins"
+                }, 
+                "description": "Verified", 
+                "grantedOn": 1414687668, 
+                "type": "Verified", 
+                "value": "1"
+            }, 
+            {
+                "by": {
+                    "email": "sbauza@redhat.com", 
+                    "name": "Sylvain Bauza", 
+                    "username": "sbauza"
+                }, 
+                "description": "Code-Review", 
+                "grantedOn": 1414767946, 
+                "type": "Code-Review", 
+                "value": "-1"
+            }
+        ], 
+        "author": {
+            "email": "pmurray@hp.com", 
+            "name": "Paul Murray", 
+            "username": "ptm"
+        }, 
+        "createdOn": 1414687363, 
+        "isDraft": false, 
+        "number": "1", 
+        "parents": [
+            "08c972e0b5cc0991148d15508429103fd991de31"
+        ], 
+        "ref": "refs/changes/65/132065/1", 
+        "revision": "5abd67d728a4731d8ba0bef05266a638a97fb0cb", 
+        "sizeDeletions": 0, 
+        "sizeInsertions": 200, 
+        "uploader": {
+            "email": "pmurray@hp.com", 
+            "name": "Paul Murray", 
+            "username": "ptm"
+        }
+    }, 
+    "id": "Ib12b3ae2b59b6d3bf89a4500226da230f0112a45", 
+    "lastUpdated": 1414770011, 
+    "number": "132065", 
+    "open": false, 
+    "owner": {
+        "email": "pmurray@hp.com", 
+        "name": "Paul Murray", 
+        "username": "ptm"
+    }, 
+    "project": "openstack/nova-specs", 
+    "sortKey": "0030d0cc000203e1", 
+    "status": "ABANDONED", 
+    "subject": "Propose Isolate Scheduler DB Aggregates", 
+    "topic": "bp/isolate-scheduler-db-aggregates", 
+    "url": "https://review.openstack.org/132065"
+}
+
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/65/132065/1 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/132065
+
+Patch: 130451
+Ref: refs/changes/51/130451/4
+{
+    "branch": "master", 
+    "commitMessage": "use-uuid-v1 spec\n\nChange-Id: I69aa10c4a2a3a70155066adc4731ffc696eb7328\nAPIImpact\nImplements: blueprint use-uuid-v1\n", 
+    "createdOn": 1414049792, 
+    "currentPatchSet": {
+        "approvals": [
+            {
+                "by": {
+                    "name": "Jenkins", 
+                    "username": "jenkins"
+                }, 
+                "description": "Verified", 
+                "grantedOn": 1414599042, 
+                "type": "Verified", 
+                "value": "-1"
+            }, 
+            {
+                "by": {
+                    "email": "joe.gordon0@gmail.com", 
+                    "name": "Joe Gordon", 
+                    "username": "jogo"
+                }, 
+                "description": "Code-Review", 
+                "grantedOn": 1414611329, 
+                "type": "Code-Review", 
+                "value": "-1"
+            }
+        ], 
+        "author": {
+            "email": "pasquale.porreca@dektech.com.au", 
+            "name": "Pasquale Porreca", 
+            "username": "pasquale-porreca"
+        }, 
+        "createdOn": 1414596674, 
+        "isDraft": false, 
+        "number": "4", 
+        "parents": [
+            "e744d5af92de4003edb78e256935e06b9b972172"
+        ], 
+        "ref": "refs/changes/51/130451/4", 
+        "revision": "a05f8e7a9e2733b1f5605f711c0c6ef0dec471e5", 
+        "sizeDeletions": 0, 
+        "sizeInsertions": 319, 
+        "uploader": {
+            "email": "pasquale.porreca@dektech.com.au", 
+            "name": "Pasquale Porreca", 
+            "username": "pasquale-porreca"
+        }
+    }, 
+    "id": "I69aa10c4a2a3a70155066adc4731ffc696eb7328", 
+    "lastUpdated": 1414764822, 
+    "number": "130451", 
+    "open": true, 
+    "owner": {
+        "email": "pasquale.porreca@dektech.com.au", 
+        "name": "Pasquale Porreca", 
+        "username": "pasquale-porreca"
+    }, 
+    "project": "openstack/nova-specs", 
+    "sortKey": "0030d0750001fd93", 
+    "status": "NEW", 
+    "subject": "use-uuid-v1 spec", 
+    "topic": "bp/use-uuid-v1", 
+    "url": "https://review.openstack.org/130451"
+}
+
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/51/130451/4 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/130451
+
+Patch: 130732
+Ref: refs/changes/32/130732/5
+{
+    "branch": "master", 
+    "commitMessage": "New VIF type to allow routing VM data instead of bridging it\n\nChange-Id: I7bd6e07b8e4e1279e2c4098d2c75896a470dcfef\n", 
+    "createdOn": 1414146800, 
+    "currentPatchSet": {
+        "approvals": [
+            {
+                "by": {
+                    "name": "Jenkins", 
+                    "username": "jenkins"
+                }, 
+                "description": "Verified", 
+                "grantedOn": 1414762684, 
+                "type": "Verified", 
+                "value": "1"
+            }
+        ], 
+        "author": {
+            "email": "Neil.Jerram@metaswitch.com", 
+            "name": "Neil Jerram", 
+            "username": "neiljerram"
+        }, 
+        "createdOn": 1414762464, 
+        "isDraft": false, 
+        "number": "5", 
+        "parents": [
+            "e744d5af92de4003edb78e256935e06b9b972172"
+        ], 
+        "ref": "refs/changes/32/130732/5", 
+        "revision": "66e40426a8e119e0bb2c6c0409a468d693040b5c", 
+        "sizeDeletions": 0, 
+        "sizeInsertions": 281, 
+        "uploader": {
+            "email": "Neil.Jerram@metaswitch.com", 
+            "name": "Neil Jerram", 
+            "username": "neiljerram"
+        }
+    }, 
+    "id": "I7bd6e07b8e4e1279e2c4098d2c75896a470dcfef", 
+    "lastUpdated": 1414762863, 
+    "number": "130732", 
+    "open": true, 
+    "owner": {
+        "email": "Neil.Jerram@metaswitch.com", 
+        "name": "Neil Jerram", 
+        "username": "neiljerram"
+    }, 
+    "project": "openstack/nova-specs", 
+    "sortKey": "0030d0550001feac", 
+    "status": "NEW", 
+    "subject": "New VIF type to allow routing VM data instead of bridging it", 
+    "topic": "bp/vif-type-tap", 
+    "url": "https://review.openstack.org/130732"
+}
+
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/32/130732/5 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/130732
+
+Patch: 130851
+Ref: refs/changes/51/130851/7
+{
+    "branch": "master", 
+    "commitMessage": "Volume host affinity based VM placement\n\nBlueprint: volume-host-affinity-based-vm-placement\n\nCinder scheduler schedules volume creation on certain host based on\nscheduler filters in case of multi-node setup. For local volume\nbackends like LVM, the volume resides locally on the host where\nvolume create was scheduled.\n\nFor clustered filesystems like IBM General Parallel File System\n(GPFS) which provides features like FPO (File Placement Optimizer),\nthe volume create command will be run on that host and volume will\nbe created locally if FPO is enabled. FPO is designed for efficiency\nin case of Hadoop and MapReduce workloads. IBM GPFS Volume Driver\ncan be used to configure backends that use FPO enabled GPFS storage\npools.\n\nThere can be various use cases that leverage the volume locality\ninformation, irrespective of cinder backend being used, and\ninstantiate the VM closer to where the volume resides.\n\nChange-Id: I53cc43f854e4004b21838b574221c7d154bdd154\n", 
+    "createdOn": 1414168914, 
+    "currentPatchSet": {
+        "approvals": [
+            {
+                "by": {
+                    "name": "Jenkins", 
+                    "username": "jenkins"
+                }, 
+                "description": "Verified", 
+                "grantedOn": 1414652802, 
+                "type": "Verified", 
+                "value": "1"
+            }, 
+            {
+                "by": {
+                    "email": "jichenjc@cn.ibm.com", 
+                    "name": "jichenjc", 
+                    "username": "jichenjc"
+                }, 
+                "description": "Code-Review", 
+                "grantedOn": 1414659603, 
+                "type": "Code-Review", 
+                "value": "1"
+            }, 
+            {
+                "by": {
+                    "email": "joe.gordon0@gmail.com", 
+                    "name": "Joe Gordon", 
+                    "username": "jogo"
+                }, 
+                "description": "Code-Review", 
+                "grantedOn": 1414702548, 
+                "type": "Code-Review", 
+                "value": "-1"
+            }
+        ], 
+        "author": {
+            "email": "smita.raut@in.ibm.com", 
+            "name": "Smita Raut", 
+            "username": "smita-raut"
+        }, 
+        "createdOn": 1414652657, 
+        "isDraft": false, 
+        "number": "7", 
+        "parents": [
+            "f3f289b1eef76a2571dda6976016ab309abad7e5"
+        ], 
+        "ref": "refs/changes/51/130851/7", 
+        "revision": "b75eb4544dad0f91a1591e2aa37008ba5aed8a56", 
+        "sizeDeletions": 0, 
+        "sizeInsertions": 251, 
+        "uploader": {
+            "email": "nilesh.bhosale@in.ibm.com", 
+            "name": "Nilesh Bhosale", 
+            "username": "nileshbhosale"
+        }
+    }, 
+    "id": "I53cc43f854e4004b21838b574221c7d154bdd154", 
+    "lastUpdated": 1414745618, 
+    "number": "130851", 
+    "open": true, 
+    "owner": {
+        "email": "smita.raut@in.ibm.com", 
+        "name": "Smita Raut", 
+        "username": "smita-raut"
+    }, 
+    "project": "openstack/nova-specs", 
+    "sortKey": "0030cf350001ff23", 
+    "status": "NEW", 
+    "subject": "Volume host affinity based VM placement", 
+    "topic": "bp/volume-host-affinity-based-vm-placement", 
+    "url": "https://review.openstack.org/130851"
+}
+
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/51/130851/7 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/130851
+
+Patch: 129116
+Ref: refs/changes/16/129116/14
+{
+    "branch": "master", 
+    "commitMessage": "Accelerates the booting process of launching homogeneous VMs.\n\nWe adopts a third-party library, called VMThunder, for fast booting\nhomogeneous VMs. It accelerates the booting process in five ways:\n1) Image cache\n2) P2P transferring:\n3) Backend storage optimization\n4) Multi-attach volume\n5) Direct image access\n\nImplements: blueprint thunder-boost\nChange-Id: Ibfdfb0ba432cc201598454c690a9db5ceecae363\n", 
+    "createdOn": 1413514817, 
+    "currentPatchSet": {
+        "approvals": [
+            {
+                "by": {
+                    "email": "joe.gordon0@gmail.com", 
+                    "name": "Joe Gordon", 
+                    "username": "jogo"
+                }, 
+                "description": "Code-Review", 
+                "grantedOn": 1414689375, 
+                "type": "Code-Review", 
+                "value": "-2"
+            }, 
+            {
+                "by": {
+                    "name": "Jenkins", 
+                    "username": "jenkins"
+                }, 
+                "description": "Verified", 
+                "grantedOn": 1414743874, 
+                "type": "Verified", 
+                "value": "-1"
+            }
+        ], 
+        "author": {
+            "email": "zhang.john.vmthunder@gmail.com", 
+            "name": "Zhang John", 
+            "username": "vmthunder"
+        }, 
+        "createdOn": 1414743772, 
+        "isDraft": false, 
+        "number": "14", 
+        "parents": [
+            "e90fbb84223bd502f482f468b5e66d2c6fcead50"
+        ], 
+        "ref": "refs/changes/16/129116/14", 
+        "revision": "5e4c86fe23fea0ead003b0b8e30bc614306da6da", 
+        "sizeDeletions": 0, 
+        "sizeInsertions": 243, 
+        "uploader": {
+            "email": "zhang.john.vmthunder@gmail.com", 
+            "name": "Zhang John", 
+            "username": "vmthunder"
+        }
+    }, 
+    "id": "Ibfdfb0ba432cc201598454c690a9db5ceecae363", 
+    "lastUpdated": 1414743874, 
+    "number": "129116", 
+    "open": true, 
+    "owner": {
+        "email": "zhang.john.vmthunder@gmail.com", 
+        "name": "Zhang John", 
+        "username": "vmthunder"
+    }, 
+    "project": "openstack/nova-specs", 
+    "sortKey": "0030cf180001f85c", 
+    "status": "NEW", 
+    "subject": "Accelerates the booting process of launching homogeneous VMs.", 
+    "topic": "bp/thunder-boost", 
+    "url": "https://review.openstack.org/129116"
+}
+
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/16/129116/14 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/129116
+
+Patch: 88983
+Ref: refs/changes/83/88983/17
+{
+    "branch": "master", 
+    "commitMessage": "Persist scheduler hints\n\nThe aim of this spec is to implement bp persist-scheduler-hints\n\nChange-Id: I2855ae9219082c3f1a52c574ebd78b94cb9c39de\n", 
+    "createdOn": 1397909943, 
+    "currentPatchSet": {
+        "approvals": [
+            {
+                "by": {
+                    "email": "sahid.ferdjaoui@redhat.com", 
+                    "name": "sahid", 
+                    "username": "sahid"
+                }, 
+                "description": "Code-Review", 
+                "grantedOn": 1400846184, 
+                "type": "Code-Review", 
+                "value": "-1"
+            }, 
+            {
+                "by": {
+                    "email": "john@johngarbutt.com", 
+                    "name": "John Garbutt", 
+                    "username": "johngarbutt"
+                }, 
+                "description": "Code-Review", 
+                "grantedOn": 1400858459, 
+                "type": "Code-Review", 
+                "value": "-1"
+            }, 
+            {
+                "by": {
+                    "email": "philip.day@hp.com", 
+                    "name": "Phil Day", 
+                    "username": "philip-day"
+                }, 
+                "description": "Code-Review", 
+                "grantedOn": 1402922025, 
+                "type": "Code-Review", 
+                "value": "-1"
+            }, 
+            {
+                "by": {
+                    "email": "dms@danplanet.com", 
+                    "name": "Dan Smith", 
+                    "username": "danms"
+                }, 
+                "description": "Code-Review", 
+                "grantedOn": 1403202358, 
+                "type": "Code-Review", 
+                "value": "-1"
+            }, 
+            {
+                "by": {
+                    "email": "sbauza@redhat.com", 
+                    "name": "Sylvain Bauza", 
+                    "username": "sbauza"
+                }, 
+                "description": "Code-Review", 
+                "grantedOn": 1403508155, 
+                "type": "Code-Review", 
+                "value": "-1"
+            }, 
+            {
+                "by": {
+                    "name": "Jenkins", 
+                    "username": "jenkins"
+                }, 
+                "description": "Verified", 
+                "grantedOn": 1414729368, 
+                "type": "Verified", 
+                "value": "-1"
+            }
+        ], 
+        "author": {
+            "email": "jay.lau.513@gmail.com", 
+            "name": "Jay Lau", 
+            "username": "JayLau"
+        }, 
+        "createdOn": 1400568326, 
+        "isDraft": false, 
+        "number": "17", 
+        "parents": [
+            "e71dedc6b45a3c6a5de1b360544f17806cad6ff2"
+        ], 
+        "ref": "refs/changes/83/88983/17", 
+        "revision": "2568f6ae2e01b55af116eac500c15b6865de04c7", 
+        "sizeDeletions": 0, 
+        "sizeInsertions": 188, 
+        "uploader": {
+            "email": "jay.lau.513@gmail.com", 
+            "name": "Jay Lau", 
+            "username": "JayLau"
+        }
+    }, 
+    "id": "I2855ae9219082c3f1a52c574ebd78b94cb9c39de", 
+    "lastUpdated": 1414729368, 
+    "number": "88983", 
+    "open": true, 
+    "owner": {
+        "email": "jay.lau.513@gmail.com", 
+        "name": "Jay Lau", 
+        "username": "JayLau"
+    }, 
+    "project": "openstack/nova-specs", 
+    "sortKey": "0030ce2600015b97", 
+    "status": "NEW", 
+    "subject": "Persist scheduler hints", 
+    "topic": "bp/persist-scheduler-hints", 
+    "url": "https://review.openstack.org/88983"
+}
+
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/83/88983/17 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 131933
+Ref: refs/changes/33/131933/1
+{
+    "branch": "master", 
+    "commitMessage": "Adds Kilo template back into toctree\n\nWe have previously published the kilo template here:\nhttp://specs.openstack.org/openstack/nova-specs/specs/kilo-template.html\nand have since updated it. But because we removed it from the toctree\nit is not being updated on the website.\n\nThis change adds just the kilo template back into the toctree.\n\nChange-Id: I8bdaef79439bf2f49a979c16de22c7aa6d7e2fcb\n", 
+    "createdOn": 1414648072, 
+    "currentPatchSet": {
+        "approvals": [
+            {
+                "by": {
+                    "name": "Jenkins", 
+                    "username": "jenkins"
+                }, 
+                "description": "Verified", 
+                "grantedOn": 1414648193, 
+                "type": "Verified", 
+                "value": "1"
+            }, 
+            {
+                "by": {
+                    "email": "everett.toews@rackspace.com", 
+                    "name": "Everett Toews", 
+                    "username": "everett-toews"
+                }, 
+                "description": "Code-Review", 
+                "grantedOn": 1414675636, 
+                "type": "Code-Review", 
+                "value": "1"
+            }, 
+            {
+                "by": {
+                    "email": "joe.gordon0@gmail.com", 
+                    "name": "Joe Gordon", 
+                    "username": "jogo"
+                }, 
+                "description": "Code-Review", 
+                "grantedOn": 1414702223, 
+                "type": "Code-Review", 
+                "value": "2"
+            }
+        ], 
+        "author": {
+            "email": "cbkyeoh@gmail.com", 
+            "name": "Christopher Yeoh", 
+            "username": "cyeoh-0"
+        }, 
+        "createdOn": 1414648072, 
+        "isDraft": false, 
+        "number": "1", 
+        "parents": [
+            "08c972e0b5cc0991148d15508429103fd991de31"
+        ], 
+        "ref": "refs/changes/33/131933/1", 
+        "revision": "4f1fd861b07329ea159a9035e5df72e7cf111bc0", 
+        "sizeDeletions": -3, 
+        "sizeInsertions": 3, 
+        "uploader": {
+            "email": "cbkyeoh@gmail.com", 
+            "name": "Christopher Yeoh", 
+            "username": "cyeoh-0"
+        }
+    }, 
+    "id": "I8bdaef79439bf2f49a979c16de22c7aa6d7e2fcb", 
+    "lastUpdated": 1414702223, 
+    "number": "131933", 
+    "open": true, 
+    "owner": {
+        "email": "cbkyeoh@gmail.com", 
+        "name": "Christopher Yeoh", 
+        "username": "cyeoh-0"
+    }, 
+    "project": "openstack/nova-specs", 
+    "sortKey": "0030cc620002035d", 
+    "status": "NEW", 
+    "subject": "Adds Kilo template back into toctree", 
+    "topic": "add_kilo_template", 
+    "url": "https://review.openstack.org/131933"
+}
+
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/33/131933/1 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 131587
+Ref: refs/changes/87/131587/1
+{
+    "branch": "master", 
+    "commitMessage": "Application Consistent Snapshot\n\nThe main goal of this blueprint is to define a hypervisor-agnostic interface\nto notify applications of an impending snapshot and to perform any\napplication-specific quiesce operations prior to a filesystem freeze and\nsnapshot. A notification is also delivered when a snapshot and thaw have\ncompleted in order for the application to perform any post-thaw operations.\n\nChange-Id: Idbbdf759fd74c8300926dafb7d0817b64923bd4f\n", 
+    "createdOn": 1414534625, 
+    "currentPatchSet": {
+        "approvals": [
+            {
+                "by": {
+                    "name": "Jenkins", 
+                    "username": "jenkins"
+                }, 
+                "description": "Verified", 
+                "grantedOn": 1414534932, 
+                "type": "Verified", 
+                "value": "-1"
+            }
+        ], 
+        "author": {
+            "email": "freemabr@us.ibm.com", 
+            "name": "Bryan Freeman", 
+            "username": "bryguyver"
+        }, 
+        "createdOn": 1414534625, 
+        "isDraft": false, 
+        "number": "1", 
+        "parents": [
+            "08c972e0b5cc0991148d15508429103fd991de31"
+        ], 
+        "ref": "refs/changes/87/131587/1", 
+        "revision": "61fe984fcb62ae0f5696632aba0e4f150f0b22f1", 
+        "sizeDeletions": 0, 
+        "sizeInsertions": 517, 
+        "uploader": {
+            "email": "freemabr@us.ibm.com", 
+            "name": "Bryan Freeman", 
+            "username": "bryguyver"
+        }
+    }, 
+    "id": "Idbbdf759fd74c8300926dafb7d0817b64923bd4f", 
+    "lastUpdated": 1414695167, 
+    "number": "131587", 
+    "open": false, 
+    "owner": {
+        "email": "freemabr@us.ibm.com", 
+        "name": "Bryan Freeman", 
+        "username": "bryguyver"
+    }, 
+    "project": "openstack/nova-specs", 
+    "sortKey": "0030cbec00020203", 
+    "status": "ABANDONED", 
+    "subject": "Application Consistent Snapshot", 
+    "topic": "bp/is", 
+    "url": "https://review.openstack.org/131587"
+}
+
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/87/131587/1 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/131587
+
+Patch: 131597
+Ref: refs/changes/97/131597/4
+{
+    "branch": "master", 
+    "commitMessage": "Application Consistent Snapshot\n\nThe main goal of blueprint application-consistent-snapshot is to define a hypervisor-agnostic interface\nto notify applications of an impending snapshot and to perform any\napplication-specific quiesce operations prior to a filesystem freeze and\nsnapshot. A notification is also delivered when a snapshot and thaw have\ncompleted in order for the application to perform any post-thaw operations.\n\nChange-Id: Iaf23d8d3392bf48302bad94f039cf6a307a89f9b\n", 
+    "createdOn": 1414536725, 
+    "currentPatchSet": {
+        "approvals": [
+            {
+                "by": {
+                    "name": "Jenkins", 
+                    "username": "jenkins"
+                }, 
+                "description": "Verified", 
+                "grantedOn": 1414692117, 
+                "type": "Verified", 
+                "value": "-1"
+            }
+        ], 
+        "author": {
+            "email": "freemabr@us.ibm.com", 
+            "name": "Bryan Freeman", 
+            "username": "bryguyver"
+        }, 
+        "createdOn": 1414691340, 
+        "isDraft": false, 
+        "number": "4", 
+        "parents": [
+            "08c972e0b5cc0991148d15508429103fd991de31"
+        ], 
+        "ref": "refs/changes/97/131597/4", 
+        "revision": "0c031caa3d6a6513cce0ab0ff87eb96fe7e96700", 
+        "sizeDeletions": 0, 
+        "sizeInsertions": 517, 
+        "uploader": {
+            "email": "freemabr@us.ibm.com", 
+            "name": "Bryan Freeman", 
+            "username": "bryguyver"
+        }
+    }, 
+    "id": "Iaf23d8d3392bf48302bad94f039cf6a307a89f9b", 
+    "lastUpdated": 1414692117, 
+    "number": "131597", 
+    "open": true, 
+    "owner": {
+        "email": "freemabr@us.ibm.com", 
+        "name": "Bryan Freeman", 
+        "username": "bryguyver"
+    }, 
+    "project": "openstack/nova-specs", 
+    "sortKey": "0030cbb90002020d", 
+    "status": "NEW", 
+    "subject": "Application Consistent Snapshot", 
+    "topic": "bp/application-consistent-snapshot", 
+    "url": "https://review.openstack.org/131597"
+}
+
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/97/131597/4 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/131597
+
+Patch: 105042
+Ref: refs/changes/42/105042/2
+{
+    "branch": "master", 
+    "commitMessage": "Spec for instance rescue support in Hyper-V\n\nThis blueprint introduces rescue instance support in the Nova Hyper-V\ndriver.\n\nbp hyper-v-rescue\n\nChange-Id: I59dd05faae05cdea39b0a81955add1c443c1ae22\n", 
+    "createdOn": 1404687758, 
+    "currentPatchSet": {
+        "approvals": [
+            {
+                "by": {
+                    "email": "john@johngarbutt.com", 
+                    "name": "John Garbutt", 
+                    "username": "johngarbutt"
+                }, 
+                "description": "Code-Review", 
+                "grantedOn": 1405501126, 
+                "type": "Code-Review", 
+                "value": "-2"
+            }, 
+            {
+                "by": {
+                    "name": "Jenkins", 
+                    "username": "jenkins"
+                }, 
+                "description": "Verified", 
+                "grantedOn": 1406124802, 
+                "type": "Verified", 
+                "value": "1"
+            }
+        ], 
+        "author": {
+            "email": "apilotti@cloudbasesolutions.com", 
+            "name": "Alessandro Pilotti", 
+            "username": "alexpilotti"
+        }, 
+        "createdOn": 1405502178, 
+        "isDraft": false, 
+        "number": "2", 
+        "parents": [
+            "f706bc603d391d188893ee88e10ebdcaf2f66fc5"
+        ], 
+        "ref": "refs/changes/42/105042/2", 
+        "revision": "c8fb038c4c871a27b1a748c232086bce51e46147", 
+        "sizeDeletions": 0, 
+        "sizeInsertions": 119, 
+        "uploader": {
+            "email": "apilotti@cloudbasesolutions.com", 
+            "name": "Alessandro Pilotti", 
+            "username": "alexpilotti"
+        }
+    }, 
+    "id": "I59dd05faae05cdea39b0a81955add1c443c1ae22", 
+    "lastUpdated": 1414689856, 
+    "number": "105042", 
+    "open": false, 
+    "owner": {
+        "email": "apilotti@cloudbasesolutions.com", 
+        "name": "Alessandro Pilotti", 
+        "username": "alexpilotti"
+    }, 
+    "project": "openstack/nova-specs", 
+    "sortKey": "0030cb9400019a52", 
+    "status": "ABANDONED", 
+    "subject": "Spec for instance rescue support in Hyper-V", 
+    "topic": "bp/introduces", 
+    "url": "https://review.openstack.org/105042"
+}
+
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/42/105042/2 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 105041
+Ref: refs/changes/41/105041/1
+{
+    "branch": "master", 
+    "commitMessage": "Spec for Hyper-V RemoteFX support\n\nThis blueprint introduces RemoteFX support in the Nova Hyper-V driver.\n\nbp hyper-v-remotefx\n\nChange-Id: If99b4fe51653de2098056da6ecca1190afa0799e\n", 
+    "createdOn": 1404685572, 
+    "currentPatchSet": {
+        "approvals": [
+            {
+                "by": {
+                    "email": "john@johngarbutt.com", 
+                    "name": "John Garbutt", 
+                    "username": "johngarbutt"
+                }, 
+                "description": "Code-Review", 
+                "grantedOn": 1405501261, 
+                "type": "Code-Review", 
+                "value": "-2"
+            }, 
+            {
+                "by": {
+                    "name": "Jenkins", 
+                    "username": "jenkins"
+                }, 
+                "description": "Verified", 
+                "grantedOn": 1406124662, 
+                "type": "Verified", 
+                "value": "1"
+            }
+        ], 
+        "author": {
+            "email": "apilotti@cloudbasesolutions.com", 
+            "name": "Alessandro Pilotti", 
+            "username": "alexpilotti"
+        }, 
+        "createdOn": 1404685572, 
+        "isDraft": false, 
+        "number": "1", 
+        "parents": [
+            "f706bc603d391d188893ee88e10ebdcaf2f66fc5"
+        ], 
+        "ref": "refs/changes/41/105041/1", 
+        "revision": "abd1da67aa45340ad18e29805547be6e464c825b", 
+        "sizeDeletions": 0, 
+        "sizeInsertions": 159, 
+        "uploader": {
+            "email": "apilotti@cloudbasesolutions.com", 
+            "name": "Alessandro Pilotti", 
+            "username": "alexpilotti"
+        }
+    }, 
+    "id": "If99b4fe51653de2098056da6ecca1190afa0799e", 
+    "lastUpdated": 1414689846, 
+    "number": "105041", 
+    "open": false, 
+    "owner": {
+        "email": "apilotti@cloudbasesolutions.com", 
+        "name": "Alessandro Pilotti", 
+        "username": "alexpilotti"
+    }, 
+    "project": "openstack/nova-specs", 
+    "sortKey": "0030cb9400019a51", 
+    "status": "ABANDONED", 
+    "subject": "Spec for Hyper-V RemoteFX support", 
+    "topic": "bp/introduces", 
+    "url": "https://review.openstack.org/105041"
+}
+
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/41/105041/1 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 104630
+Ref: refs/changes/30/104630/2
+{
+    "branch": "master", 
+    "commitMessage": "Spec for Hyper-V host power actions\n\nThis blueprint introduces host power off and reboot support in the Nova\nHyper-V driver.\n\nbp hyper-v-host-power-actions\n\nChange-Id: I40a5e50e674b50a18766508588fba1c91714a88b\n", 
+    "createdOn": 1404410495, 
+    "currentPatchSet": {
+        "approvals": [
+            {
+                "by": {
+                    "email": "john@johngarbutt.com", 
+                    "name": "John Garbutt", 
+                    "username": "johngarbutt"
+                }, 
+                "description": "Code-Review", 
+                "grantedOn": 1405501839, 
+                "type": "Code-Review", 
+                "value": "-2"
+            }, 
+            {
+                "by": {
+                    "name": "Jenkins", 
+                    "username": "jenkins"
+                }, 
+                "description": "Verified", 
+                "grantedOn": 1406124688, 
+                "type": "Verified", 
+                "value": "1"
+            }
+        ], 
+        "author": {
+            "email": "apilotti@cloudbasesolutions.com", 
+            "name": "Alessandro Pilotti", 
+            "username": "alexpilotti"
+        }, 
+        "createdOn": 1405502316, 
+        "isDraft": false, 
+        "number": "2", 
+        "parents": [
+            "47a96edbfc2002cfa172e6094312e933e39023ae"
+        ], 
+        "ref": "refs/changes/30/104630/2", 
+        "revision": "2f8c289d9da72a28972caf5ef4cd425742345145", 
+        "sizeDeletions": 0, 
+        "sizeInsertions": 116, 
+        "uploader": {
+            "email": "apilotti@cloudbasesolutions.com", 
+            "name": "Alessandro Pilotti", 
+            "username": "alexpilotti"
+        }
+    }, 
+    "id": "I40a5e50e674b50a18766508588fba1c91714a88b", 
+    "lastUpdated": 1414689811, 
+    "number": "104630", 
+    "open": false, 
+    "owner": {
+        "email": "apilotti@cloudbasesolutions.com", 
+        "name": "Alessandro Pilotti", 
+        "username": "alexpilotti"
+    }, 
+    "project": "openstack/nova-specs", 
+    "sortKey": "0030cb93000198b6", 
+    "status": "ABANDONED", 
+    "subject": "Spec for Hyper-V host power actions", 
+    "topic": "bp/introduces", 
+    "url": "https://review.openstack.org/104630"
+}
+
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/30/104630/2 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 103945
+Ref: refs/changes/45/103945/3
+{
+    "branch": "master", 
+    "commitMessage": "Spec for Hyper-V generation 2 VMs\n\nThis blueprint proposed the introduction of Hyper-V generation 2 VMs\nsupport in the Nova Hyper-V compute driver.\n\nbp hyper-v-generation-2-vms\n\nChange-Id: I1b0f145bbb17df8cd6578ebd7ce0588acab9bb50\n", 
+    "createdOn": 1404234736, 
+    "currentPatchSet": {
+        "approvals": [
+            {
+                "by": {
+                    "email": "berrange@redhat.com", 
+                    "name": "Daniel Berrange", 
+                    "username": "berrange"
+                }, 
+                "description": "Code-Review", 
+                "grantedOn": 1404752175, 
+                "type": "Code-Review", 
+                "value": "2"
+            }, 
+            {
+                "by": {
+                    "email": "joe.gordon0@gmail.com", 
+                    "name": "Joe Gordon", 
+                    "username": "jogo"
+                }, 
+                "description": "Code-Review", 
+                "grantedOn": 1405037200, 
+                "type": "Code-Review", 
+                "value": "-1"
+            }, 
+            {
+                "by": {
+                    "email": "john@johngarbutt.com", 
+                    "name": "John Garbutt", 
+                    "username": "johngarbutt"
+                }, 
+                "description": "Code-Review", 
+                "grantedOn": 1405500638, 
+                "type": "Code-Review", 
+                "value": "-2"
+            }, 
+            {
+                "by": {
+                    "name": "Jenkins", 
+                    "username": "jenkins"
+                }, 
+                "description": "Verified", 
+                "grantedOn": 1405971937, 
+                "type": "Verified", 
+                "value": "1"
+            }
+        ], 
+        "author": {
+            "email": "apilotti@cloudbasesolutions.com", 
+            "name": "Alessandro Pilotti", 
+            "username": "alexpilotti"
+        }, 
+        "createdOn": 1404308436, 
+        "isDraft": false, 
+        "number": "3", 
+        "parents": [
+            "47a96edbfc2002cfa172e6094312e933e39023ae"
+        ], 
+        "ref": "refs/changes/45/103945/3", 
+        "revision": "c5cb56d71353b465c8417ee3c1ff84e23e867012", 
+        "sizeDeletions": 0, 
+        "sizeInsertions": 146, 
+        "uploader": {
+            "email": "apilotti@cloudbasesolutions.com", 
+            "name": "Alessandro Pilotti", 
+            "username": "alexpilotti"
+        }
+    }, 
+    "id": "I1b0f145bbb17df8cd6578ebd7ce0588acab9bb50", 
+    "lastUpdated": 1414689797, 
+    "number": "103945", 
+    "open": false, 
+    "owner": {
+        "email": "apilotti@cloudbasesolutions.com", 
+        "name": "Alessandro Pilotti", 
+        "username": "alexpilotti"
+    }, 
+    "project": "openstack/nova-specs", 
+    "sortKey": "0030cb9300019609", 
+    "status": "ABANDONED", 
+    "subject": "Spec for Hyper-V generation 2 VMs", 
+    "topic": "bp/proposed", 
+    "url": "https://review.openstack.org/103945"
+}
+
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/45/103945/3 && git format-patch -1 --stdout FETCH_HEAD
+
+
+Patch: 105034
+Ref: refs/changes/34/105034/15
+{
+    "branch": "master", 
+    "commitMessage": "Spec for keypair X509 public key certificates\n\nIntroduction of X509 public key certificates keypair support in the Nova\nAPI.\n\nbp keypair-x509-certificates\n\nChange-Id: I0559d4bd727219dd5ed2783731aefdcc91f5a449\n", 
+    "createdOn": 1404678342, 
+    "currentPatchSet": {
+        "approvals": [
+            {
+                "by": {
+                    "name": "Jenkins", 
+                    "username": "jenkins"
+                }, 
+                "description": "Verified", 
+                "grantedOn": 1413923879, 
+                "type": "Verified", 
+                "value": "1"
+            }, 
+            {
+                "by": {
+                    "email": "jaypipes@gmail.com", 
+                    "name": "Jay Pipes", 
+                    "username": "jaypipes"
+                }, 
+                "description": "Code-Review", 
+                "grantedOn": 1413925406, 
+                "type": "Code-Review", 
+                "value": "1"
+            }, 
+            {
+                "by": {
+                    "email": "john@johngarbutt.com", 
+                    "name": "John Garbutt", 
+                    "username": "johngarbutt"
+                }, 
+                "description": "Code-Review", 
+                "grantedOn": 1413982415, 
+                "type": "Code-Review", 
+                "value": "2"
+            }, 
+            {
+                "by": {
+                    "email": "robert.clark@hp.com", 
+                    "name": "Robert Clark", 
+                    "username": "hyakuhei"
+                }, 
+                "description": "Code-Review", 
+                "grantedOn": 1413983095, 
+                "type": "Code-Review", 
+                "value": "1"
+            }, 
+            {
+                "by": {
+                    "email": "ahmed.shohel@ericsson.com", 
+                    "name": "Abu Shohel Ahmed", 
+                    "username": "shohel"
+                }, 
+                "description": "Code-Review", 
+                "grantedOn": 1414070627, 
+                "type": "Code-Review", 
+                "value": "1"
+            }
+        ], 
+        "author": {
+            "email": "apilotti@cloudbasesolutions.com", 
+            "name": "Alessandro Pilotti", 
+            "username": "alexpilotti"
+        }, 
+        "createdOn": 1413923648, 
+        "isDraft": false, 
+        "number": "15", 
+        "parents": [
+            "f4bdca76583382481558d13bad847e7518ee9b4f"
+        ], 
+        "ref": "refs/changes/34/105034/15", 
+        "revision": "13890cdb6fff25472d98b9cf87b272277c5e06d6", 
+        "sizeDeletions": 0, 
+        "sizeInsertions": 251, 
+        "uploader": {
+            "email": "apilotti@cloudbasesolutions.com", 
+            "name": "Alessandro Pilotti", 
+            "username": "alexpilotti"
+        }
+    }, 
+    "id": "I0559d4bd727219dd5ed2783731aefdcc91f5a449", 
+    "lastUpdated": 1414679491, 
+    "number": "105034", 
+    "open": true, 
+    "owner": {
+        "email": "apilotti@cloudbasesolutions.com", 
+        "name": "Alessandro Pilotti", 
+        "username": "alexpilotti"
+    }, 
+    "project": "openstack/nova-specs", 
+    "sortKey": "0030cae700019a4a", 
+    "status": "NEW", 
+    "subject": "Spec for keypair X509 public key certificates", 
+    "topic": "bp/keypair-x509-certificates", 
+    "url": "https://review.openstack.org/105034"
+}
+
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/34/105034/15 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/105034
+
+Patch: 127609
+Ref: refs/changes/09/127609/4
+{
+    "branch": "master", 
+    "commitMessage": "Add resource object models\n\nSpecification for describing resource amounts and usage records using a\ngeneralized class interface.\n\nChange-Id: I37b8a1c8b0bbf73bbcf2ee2c2d29018039eb1a9a\nBlueprint: resource-objects\n", 
+    "createdOn": 1412964281, 
+    "currentPatchSet": {
+        "approvals": [
+            {
+                "by": {
+                    "email": "ed@leafe.com", 
+                    "name": "Ed Leafe", 
+                    "username": "ed-leafe"
+                }, 
+                "description": "Code-Review", 
+                "grantedOn": 1413218838, 
+                "type": "Code-Review", 
+                "value": "1"
+            }, 
+            {
+                "by": {
+                    "name": "Jenkins", 
+                    "username": "jenkins"
+                }, 
+                "description": "Verified", 
+                "grantedOn": 1413219037, 
+                "type": "Verified", 
+                "value": "1"
+            }, 
+            {
+                "by": {
+                    "email": "berrange@redhat.com", 
+                    "name": "Daniel Berrange", 
+                    "username": "berrange"
+                }, 
+                "description": "Code-Review", 
+                "grantedOn": 1413271363, 
+                "type": "Code-Review", 
+                "value": "-1"
+            }, 
+            {
+                "by": {
+                    "email": "john@johngarbutt.com", 
+                    "name": "John Garbutt", 
+                    "username": "johngarbutt"
+                }, 
+                "description": "Code-Review", 
+                "grantedOn": 1413372892, 
+                "type": "Code-Review", 
+                "value": "-1"
+            }, 
+            {
+                "by": {
+                    "email": "sbauza@redhat.com", 
+                    "name": "Sylvain Bauza", 
+                    "username": "sbauza"
+                }, 
+                "description": "Code-Review", 
+                "grantedOn": 1413380297, 
+                "type": "Code-Review", 
+                "value": "-1"
+            }, 
+            {
+                "by": {
+                    "email": "joe.gordon0@gmail.com", 
+                    "name": "Joe Gordon", 
+                    "username": "jogo"
+                }, 
+                "description": "Code-Review", 
+                "grantedOn": 1413401504, 
+                "type": "Code-Review", 
+                "value": "-1"
+            }
+        ], 
+        "author": {
+            "email": "jaypipes@gmail.com", 
+            "name": "Jay Pipes", 
+            "username": "jaypipes"
+        }, 
+        "createdOn": 1413218592, 
+        "isDraft": false, 
+        "number": "4", 
+        "parents": [
+            "5f452082f9fe4a265a99b87c03374d7f505b4ea9"
+        ], 
+        "ref": "refs/changes/09/127609/4", 
+        "revision": "b64348b8707208454bddf69219cfa4879c184017", 
+        "sizeDeletions": 0, 
+        "sizeInsertions": 343, 
+        "uploader": {
+            "email": "jaypipes@gmail.com", 
+            "name": "Jay Pipes", 
+            "username": "jaypipes"
+        }
+    }, 
+    "id": "I37b8a1c8b0bbf73bbcf2ee2c2d29018039eb1a9a", 
+    "lastUpdated": 1414678166, 
+    "number": "127609", 
+    "open": true, 
+    "owner": {
+        "email": "jaypipes@gmail.com", 
+        "name": "Jay Pipes", 
+        "username": "jaypipes"
+    }, 
+    "project": "openstack/nova-specs", 
+    "sortKey": "0030cad10001f279", 
+    "status": "NEW", 
+    "subject": "Add resource object models", 
+    "topic": "bp/resource-objects", 
+    "url": "https://review.openstack.org/127609"
+}
+
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/09/127609/4 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/127609
+
+Patch: 128691
+Ref: refs/changes/91/128691/11
+{
+    "branch": "master", 
+    "commitMessage": "VMware:  Support multi disk images in OVA container format\n\nWhen OVA support for VMware is added, this spec proposes to follow on with\nadding the support for OVA images that contain multiple disk images.\n\nChange-Id: I86330550213ad1d9c7fb7bb5dbc624529cd989e4\nImplements: blueprint vmware-driver-ova-multidisk-support\n", 
+    "createdOn": 1413389154, 
+    "currentPatchSet": {
+        "approvals": [
+            {
+                "by": {
+                    "name": "Jenkins", 
+                    "username": "jenkins"
+                }, 
+                "description": "Verified", 
+                "grantedOn": 1414675865, 
+                "type": "Verified", 
+                "value": "1"
+            }
+        ], 
+        "author": {
+            "email": "tflower@ca.ibm.com", 
+            "name": "Tesshu Flower", 
+            "username": "tflower"
+        }, 
+        "createdOn": 1414675733, 
+        "isDraft": false, 
+        "number": "11", 
+        "parents": [
+            "057d14504a02a8e70d4cab72219b520ec774933e"
+        ], 
+        "ref": "refs/changes/91/128691/11", 
+        "revision": "15002e8014c6d1bbe71162b41cfc163f9d27b71e", 
+        "sizeDeletions": 0, 
+        "sizeInsertions": 162, 
+        "uploader": {
+            "email": "tflower@ca.ibm.com", 
+            "name": "Tesshu Flower", 
+            "username": "tflower"
+        }
+    }, 
+    "id": "I86330550213ad1d9c7fb7bb5dbc624529cd989e4", 
+    "lastUpdated": 1414675867, 
+    "number": "128691", 
+    "open": true, 
+    "owner": {
+        "email": "tflower@ca.ibm.com", 
+        "name": "Tesshu Flower", 
+        "username": "tflower"
+    }, 
+    "project": "openstack/nova-specs", 
+    "sortKey": "0030caab0001f6b3", 
+    "status": "NEW", 
+    "subject": "VMware:  Support multi disk images in OVA container format", 
+    "topic": "bp/vmware-driver-ova-multidisk-support", 
+    "url": "https://review.openstack.org/128691"
+}
+
+Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/91/128691/11 && git format-patch -1 --stdout FETCH_HEAD
+
+Writing to /tmp/patches/128691
+
 Patch: 130447
 Ref: refs/changes/47/130447/4
 {
@@ -72,161 +1881,6 @@ Executing command: git fetch https://mikalstill@review.openstack.org/openstack/n
 
 Writing to /tmp/patches/130447
 
-Patch: 129116
-Ref: refs/changes/16/129116/6
-{
-    "branch": "master", 
-    "commitMessage": "Fixed dead links of thunder-boost\nImplements: blueprint thunder-boost\n\nChange-Id: Ibfdfb0ba432cc201598454c690a9db5ceecae363\n", 
-    "createdOn": 1413514817, 
-    "currentPatchSet": {
-        "approvals": [
-            {
-                "by": {
-                    "name": "Jenkins", 
-                    "username": "jenkins"
-                }, 
-                "description": "Verified", 
-                "grantedOn": 1414335492, 
-                "type": "Verified", 
-                "value": "1"
-            }, 
-            {
-                "by": {
-                    "email": "joe.gordon0@gmail.com", 
-                    "name": "Joe Gordon", 
-                    "username": "jogo"
-                }, 
-                "description": "Code-Review", 
-                "grantedOn": 1414429441, 
-                "type": "Code-Review", 
-                "value": "-1"
-            }, 
-            {
-                "by": {
-                    "email": "berrange@redhat.com", 
-                    "name": "Daniel Berrange", 
-                    "username": "berrange"
-                }, 
-                "description": "Code-Review", 
-                "grantedOn": 1414432113, 
-                "type": "Code-Review", 
-                "value": "-1"
-            }
-        ], 
-        "author": {
-            "email": "zhang.john.vmthunder@gmail.com", 
-            "name": "Zhang John", 
-            "username": "vmthunder"
-        }, 
-        "createdOn": 1414335398, 
-        "isDraft": false, 
-        "number": "6", 
-        "parents": [
-            "e90fbb84223bd502f482f468b5e66d2c6fcead50"
-        ], 
-        "ref": "refs/changes/16/129116/6", 
-        "revision": "e52d8595e60b013964135883dacfff9b27eefcb0", 
-        "sizeDeletions": 0, 
-        "sizeInsertions": 201, 
-        "uploader": {
-            "email": "zhang.john.vmthunder@gmail.com", 
-            "name": "Zhang John", 
-            "username": "vmthunder"
-        }
-    }, 
-    "id": "Ibfdfb0ba432cc201598454c690a9db5ceecae363", 
-    "lastUpdated": 1414664149, 
-    "number": "129116", 
-    "open": true, 
-    "owner": {
-        "email": "zhang.john.vmthunder@gmail.com", 
-        "name": "Zhang John", 
-        "username": "vmthunder"
-    }, 
-    "project": "openstack/nova-specs", 
-    "sortKey": "0030c9e70001f85c", 
-    "status": "NEW", 
-    "subject": "Fixed dead links of thunder-boost Implements: blueprint thunder-boost", 
-    "topic": "bp/thunder-boost", 
-    "url": "https://review.openstack.org/129116"
-}
-
-Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/16/129116/6 && git format-patch -1 --stdout FETCH_HEAD
-
-Writing to /tmp/patches/129116
-
-Patch: 130851
-Ref: refs/changes/51/130851/7
-{
-    "branch": "master", 
-    "commitMessage": "Volume host affinity based VM placement\n\nBlueprint: volume-host-affinity-based-vm-placement\n\nCinder scheduler schedules volume creation on certain host based on\nscheduler filters in case of multi-node setup. For local volume\nbackends like LVM, the volume resides locally on the host where\nvolume create was scheduled.\n\nFor clustered filesystems like IBM General Parallel File System\n(GPFS) which provides features like FPO (File Placement Optimizer),\nthe volume create command will be run on that host and volume will\nbe created locally if FPO is enabled. FPO is designed for efficiency\nin case of Hadoop and MapReduce workloads. IBM GPFS Volume Driver\ncan be used to configure backends that use FPO enabled GPFS storage\npools.\n\nThere can be various use cases that leverage the volume locality\ninformation, irrespective of cinder backend being used, and\ninstantiate the VM closer to where the volume resides.\n\nChange-Id: I53cc43f854e4004b21838b574221c7d154bdd154\n", 
-    "createdOn": 1414168914, 
-    "currentPatchSet": {
-        "approvals": [
-            {
-                "by": {
-                    "name": "Jenkins", 
-                    "username": "jenkins"
-                }, 
-                "description": "Verified", 
-                "grantedOn": 1414652802, 
-                "type": "Verified", 
-                "value": "1"
-            }, 
-            {
-                "by": {
-                    "email": "jichenjc@cn.ibm.com", 
-                    "name": "jichenjc", 
-                    "username": "jichenjc"
-                }, 
-                "description": "Code-Review", 
-                "grantedOn": 1414659603, 
-                "type": "Code-Review", 
-                "value": "1"
-            }
-        ], 
-        "author": {
-            "email": "smita.raut@in.ibm.com", 
-            "name": "Smita Raut", 
-            "username": "smita-raut"
-        }, 
-        "createdOn": 1414652657, 
-        "isDraft": false, 
-        "number": "7", 
-        "parents": [
-            "f3f289b1eef76a2571dda6976016ab309abad7e5"
-        ], 
-        "ref": "refs/changes/51/130851/7", 
-        "revision": "b75eb4544dad0f91a1591e2aa37008ba5aed8a56", 
-        "sizeDeletions": 0, 
-        "sizeInsertions": 251, 
-        "uploader": {
-            "email": "nilesh.bhosale@in.ibm.com", 
-            "name": "Nilesh Bhosale", 
-            "username": "nileshbhosale"
-        }
-    }, 
-    "id": "I53cc43f854e4004b21838b574221c7d154bdd154", 
-    "lastUpdated": 1414659603, 
-    "number": "130851", 
-    "open": true, 
-    "owner": {
-        "email": "smita.raut@in.ibm.com", 
-        "name": "Smita Raut", 
-        "username": "smita-raut"
-    }, 
-    "project": "openstack/nova-specs", 
-    "sortKey": "0030c99c0001ff23", 
-    "status": "NEW", 
-    "subject": "Volume host affinity based VM placement", 
-    "topic": "bp/volume-host-affinity-based-vm-placement", 
-    "url": "https://review.openstack.org/130851"
-}
-
-Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/51/130851/7 && git format-patch -1 --stdout FETCH_HEAD
-
-Writing to /tmp/patches/130851
-
 Patch: 131633
 Ref: refs/changes/33/131633/4
 {
@@ -298,78 +1952,6 @@ Ref: refs/changes/33/131633/4
 Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/33/131633/4 && git format-patch -1 --stdout FETCH_HEAD
 
 Writing to /tmp/patches/131633
-
-Patch: 130451
-Ref: refs/changes/51/130451/4
-{
-    "branch": "master", 
-    "commitMessage": "use-uuid-v1 spec\n\nChange-Id: I69aa10c4a2a3a70155066adc4731ffc696eb7328\nAPIImpact\nImplements: blueprint use-uuid-v1\n", 
-    "createdOn": 1414049792, 
-    "currentPatchSet": {
-        "approvals": [
-            {
-                "by": {
-                    "name": "Jenkins", 
-                    "username": "jenkins"
-                }, 
-                "description": "Verified", 
-                "grantedOn": 1414599042, 
-                "type": "Verified", 
-                "value": "-1"
-            }, 
-            {
-                "by": {
-                    "email": "joe.gordon0@gmail.com", 
-                    "name": "Joe Gordon", 
-                    "username": "jogo"
-                }, 
-                "description": "Code-Review", 
-                "grantedOn": 1414611329, 
-                "type": "Code-Review", 
-                "value": "-1"
-            }
-        ], 
-        "author": {
-            "email": "pasquale.porreca@dektech.com.au", 
-            "name": "Pasquale Porreca", 
-            "username": "pasquale-porreca"
-        }, 
-        "createdOn": 1414596674, 
-        "isDraft": false, 
-        "number": "4", 
-        "parents": [
-            "e744d5af92de4003edb78e256935e06b9b972172"
-        ], 
-        "ref": "refs/changes/51/130451/4", 
-        "revision": "a05f8e7a9e2733b1f5605f711c0c6ef0dec471e5", 
-        "sizeDeletions": 0, 
-        "sizeInsertions": 319, 
-        "uploader": {
-            "email": "pasquale.porreca@dektech.com.au", 
-            "name": "Pasquale Porreca", 
-            "username": "pasquale-porreca"
-        }
-    }, 
-    "id": "I69aa10c4a2a3a70155066adc4731ffc696eb7328", 
-    "lastUpdated": 1414658535, 
-    "number": "130451", 
-    "open": true, 
-    "owner": {
-        "email": "pasquale.porreca@dektech.com.au", 
-        "name": "Pasquale Porreca", 
-        "username": "pasquale-porreca"
-    }, 
-    "project": "openstack/nova-specs", 
-    "sortKey": "0030c98a0001fd93", 
-    "status": "NEW", 
-    "subject": "use-uuid-v1 spec", 
-    "topic": "bp/use-uuid-v1", 
-    "url": "https://review.openstack.org/130451"
-}
-
-Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/51/130451/4 && git format-patch -1 --stdout FETCH_HEAD
-
-Writing to /tmp/patches/130451
 
 Patch: 127127
 Ref: refs/changes/27/127127/10
@@ -679,66 +2261,6 @@ Executing command: git fetch https://mikalstill@review.openstack.org/openstack/n
 
 Writing to /tmp/patches/128560
 
-Patch: 131933
-Ref: refs/changes/33/131933/1
-{
-    "branch": "master", 
-    "commitMessage": "Adds Kilo template back into toctree\n\nWe have previously published the kilo template here:\nhttp://specs.openstack.org/openstack/nova-specs/specs/kilo-template.html\nand have since updated it. But because we removed it from the toctree\nit is not being updated on the website.\n\nThis change adds just the kilo template back into the toctree.\n\nChange-Id: I8bdaef79439bf2f49a979c16de22c7aa6d7e2fcb\n", 
-    "createdOn": 1414648072, 
-    "currentPatchSet": {
-        "approvals": [
-            {
-                "by": {
-                    "name": "Jenkins", 
-                    "username": "jenkins"
-                }, 
-                "description": "Verified", 
-                "grantedOn": 1414648193, 
-                "type": "Verified", 
-                "value": "1"
-            }
-        ], 
-        "author": {
-            "email": "cbkyeoh@gmail.com", 
-            "name": "Christopher Yeoh", 
-            "username": "cyeoh-0"
-        }, 
-        "createdOn": 1414648072, 
-        "isDraft": false, 
-        "number": "1", 
-        "parents": [
-            "08c972e0b5cc0991148d15508429103fd991de31"
-        ], 
-        "ref": "refs/changes/33/131933/1", 
-        "revision": "4f1fd861b07329ea159a9035e5df72e7cf111bc0", 
-        "sizeDeletions": -3, 
-        "sizeInsertions": 3, 
-        "uploader": {
-            "email": "cbkyeoh@gmail.com", 
-            "name": "Christopher Yeoh", 
-            "username": "cyeoh-0"
-        }
-    }, 
-    "id": "I8bdaef79439bf2f49a979c16de22c7aa6d7e2fcb", 
-    "lastUpdated": 1414648193, 
-    "number": "131933", 
-    "open": true, 
-    "owner": {
-        "email": "cbkyeoh@gmail.com", 
-        "name": "Christopher Yeoh", 
-        "username": "cyeoh-0"
-    }, 
-    "project": "openstack/nova-specs", 
-    "sortKey": "0030c8dd0002035d", 
-    "status": "NEW", 
-    "subject": "Adds Kilo template back into toctree", 
-    "topic": "add_kilo_template", 
-    "url": "https://review.openstack.org/131933"
-}
-
-Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/33/131933/1 && git format-patch -1 --stdout FETCH_HEAD
-
-
 Patch: 130721
 Ref: refs/changes/21/130721/8
 {
@@ -799,78 +2321,6 @@ Ref: refs/changes/21/130721/8
 Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/21/130721/8 && git format-patch -1 --stdout FETCH_HEAD
 
 Writing to /tmp/patches/130721
-
-Patch: 131729
-Ref: refs/changes/29/131729/1
-{
-    "branch": "master", 
-    "commitMessage": "Add spec for VIF Driver for SR-IOV InfiniBand\n\nChange-Id: I5673b2abeb21d16ed7fde553896ac8a32ed3881c\n", 
-    "createdOn": 1414585423, 
-    "currentPatchSet": {
-        "approvals": [
-            {
-                "by": {
-                    "name": "Jenkins", 
-                    "username": "jenkins"
-                }, 
-                "description": "Verified", 
-                "grantedOn": 1414585745, 
-                "type": "Verified", 
-                "value": "1"
-            }, 
-            {
-                "by": {
-                    "email": "joe.gordon0@gmail.com", 
-                    "name": "Joe Gordon", 
-                    "username": "jogo"
-                }, 
-                "description": "Code-Review", 
-                "grantedOn": 1414611949, 
-                "type": "Code-Review", 
-                "value": "-1"
-            }
-        ], 
-        "author": {
-            "email": "irenab@mellanox.com", 
-            "name": "Berezovsky Irena", 
-            "username": "irenab"
-        }, 
-        "createdOn": 1414585423, 
-        "isDraft": false, 
-        "number": "1", 
-        "parents": [
-            "08c972e0b5cc0991148d15508429103fd991de31"
-        ], 
-        "ref": "refs/changes/29/131729/1", 
-        "revision": "679a16b7edbc96d03e7e4310915c5ec68733513b", 
-        "sizeDeletions": 0, 
-        "sizeInsertions": 136, 
-        "uploader": {
-            "email": "irenab@mellanox.com", 
-            "name": "Berezovsky Irena", 
-            "username": "irenab"
-        }
-    }, 
-    "id": "I5673b2abeb21d16ed7fde553896ac8a32ed3881c", 
-    "lastUpdated": 1414611949, 
-    "number": "131729", 
-    "open": true, 
-    "owner": {
-        "email": "irenab@mellanox.com", 
-        "name": "Berezovsky Irena", 
-        "username": "irenab"
-    }, 
-    "project": "openstack/nova-specs", 
-    "sortKey": "0030c68100020291", 
-    "status": "NEW", 
-    "subject": "Add spec for VIF Driver for SR-IOV InfiniBand", 
-    "topic": "bp/vif-driver-ib-passthrough", 
-    "url": "https://review.openstack.org/131729"
-}
-
-Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/29/131729/1 && git format-patch -1 --stdout FETCH_HEAD
-
-Writing to /tmp/patches/131729
 
 Patch: 130919
 Ref: refs/changes/19/130919/3
@@ -944,78 +2394,6 @@ Executing command: git fetch https://mikalstill@review.openstack.org/openstack/n
 
 Writing to /tmp/patches/130919
 
-Patch: 128691
-Ref: refs/changes/91/128691/10
-{
-    "branch": "master", 
-    "commitMessage": "VMware:  Support multi disk images in OVA container format\n\nWhen OVA support for VMware is added, this spec proposes to follow on with\nadding the support for OVA images that contain multiple disk images.\n\nChange-Id: I86330550213ad1d9c7fb7bb5dbc624529cd989e4\nImplements: blueprint vmware-driver-ova-multidisk-support\n", 
-    "createdOn": 1413389154, 
-    "currentPatchSet": {
-        "approvals": [
-            {
-                "by": {
-                    "email": "joe.gordon0@gmail.com", 
-                    "name": "Joe Gordon", 
-                    "username": "jogo"
-                }, 
-                "description": "Code-Review", 
-                "grantedOn": 1413479267, 
-                "type": "Code-Review", 
-                "value": "-1"
-            }, 
-            {
-                "by": {
-                    "name": "Jenkins", 
-                    "username": "jenkins"
-                }, 
-                "description": "Verified", 
-                "grantedOn": 1413555871, 
-                "type": "Verified", 
-                "value": "1"
-            }
-        ], 
-        "author": {
-            "email": "tflower@ca.ibm.com", 
-            "name": "Tesshu Flower", 
-            "username": "tflower"
-        }, 
-        "createdOn": 1413555297, 
-        "isDraft": false, 
-        "number": "10", 
-        "parents": [
-            "057d14504a02a8e70d4cab72219b520ec774933e"
-        ], 
-        "ref": "refs/changes/91/128691/10", 
-        "revision": "967ec3b0e481ed793e5b74e8eebd6e12ebb95b31", 
-        "sizeDeletions": 0, 
-        "sizeInsertions": 161, 
-        "uploader": {
-            "email": "tflower@ca.ibm.com", 
-            "name": "Tesshu Flower", 
-            "username": "tflower"
-        }
-    }, 
-    "id": "I86330550213ad1d9c7fb7bb5dbc624529cd989e4", 
-    "lastUpdated": 1414611369, 
-    "number": "128691", 
-    "open": true, 
-    "owner": {
-        "email": "tflower@ca.ibm.com", 
-        "name": "Tesshu Flower", 
-        "username": "tflower"
-    }, 
-    "project": "openstack/nova-specs", 
-    "sortKey": "0030c6780001f6b3", 
-    "status": "NEW", 
-    "subject": "VMware:  Support multi disk images in OVA container format", 
-    "topic": "bp/vmware-driver-ova-multidisk-support", 
-    "url": "https://review.openstack.org/128691"
-}
-
-Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/91/128691/10 && git format-patch -1 --stdout FETCH_HEAD
-
-Writing to /tmp/patches/128691
-
 Patch: 126696
 Ref: refs/changes/96/126696/9
 {
@@ -1076,67 +2454,6 @@ Ref: refs/changes/96/126696/9
 Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/96/126696/9 && git format-patch -1 --stdout FETCH_HEAD
 
 Writing to /tmp/patches/126696
-
-Patch: 131597
-Ref: refs/changes/97/131597/3
-{
-    "branch": "master", 
-    "commitMessage": "Application Consistent Snapshot\n\nThe main goal of this blueprint is to define a hypervisor-agnostic interface\nto notify applications of an impending snapshot and to perform any\napplication-specific quiesce operations prior to a filesystem freeze and\nsnapshot. A notification is also delivered when a snapshot and thaw have\ncompleted in order for the application to perform any post-thaw operations.\n\nChange-Id: Iaf23d8d3392bf48302bad94f039cf6a307a89f9b\n", 
-    "createdOn": 1414536725, 
-    "currentPatchSet": {
-        "approvals": [
-            {
-                "by": {
-                    "name": "Jenkins", 
-                    "username": "jenkins"
-                }, 
-                "description": "Verified", 
-                "grantedOn": 1414595211, 
-                "type": "Verified", 
-                "value": "-1"
-            }
-        ], 
-        "author": {
-            "email": "freemabr@us.ibm.com", 
-            "name": "Bryan Freeman", 
-            "username": "bryguyver"
-        }, 
-        "createdOn": 1414594425, 
-        "isDraft": false, 
-        "number": "3", 
-        "parents": [
-            "08c972e0b5cc0991148d15508429103fd991de31"
-        ], 
-        "ref": "refs/changes/97/131597/3", 
-        "revision": "e47f4b00eb458795f2b5117ce46d114854be8d47", 
-        "sizeDeletions": 0, 
-        "sizeInsertions": 517, 
-        "uploader": {
-            "email": "freemabr@us.ibm.com", 
-            "name": "Bryan Freeman", 
-            "username": "bryguyver"
-        }
-    }, 
-    "id": "Iaf23d8d3392bf48302bad94f039cf6a307a89f9b", 
-    "lastUpdated": 1414595211, 
-    "number": "131597", 
-    "open": true, 
-    "owner": {
-        "email": "freemabr@us.ibm.com", 
-        "name": "Bryan Freeman", 
-        "username": "bryguyver"
-    }, 
-    "project": "openstack/nova-specs", 
-    "sortKey": "0030c56a0002020d", 
-    "status": "NEW", 
-    "subject": "Application Consistent Snapshot", 
-    "topic": "bp/application-consistent-snapshot", 
-    "url": "https://review.openstack.org/131597"
-}
-
-Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/97/131597/3 && git format-patch -1 --stdout FETCH_HEAD
-
-Writing to /tmp/patches/131597
 
 Patch: 131740
 Ref: refs/changes/40/131740/1
@@ -1732,67 +3049,6 @@ Executing command: git fetch https://mikalstill@review.openstack.org/openstack/n
 
 Writing to /tmp/patches/92507
 
-Patch: 131587
-Ref: refs/changes/87/131587/1
-{
-    "branch": "master", 
-    "commitMessage": "Application Consistent Snapshot\n\nThe main goal of this blueprint is to define a hypervisor-agnostic interface\nto notify applications of an impending snapshot and to perform any\napplication-specific quiesce operations prior to a filesystem freeze and\nsnapshot. A notification is also delivered when a snapshot and thaw have\ncompleted in order for the application to perform any post-thaw operations.\n\nChange-Id: Idbbdf759fd74c8300926dafb7d0817b64923bd4f\n", 
-    "createdOn": 1414534625, 
-    "currentPatchSet": {
-        "approvals": [
-            {
-                "by": {
-                    "name": "Jenkins", 
-                    "username": "jenkins"
-                }, 
-                "description": "Verified", 
-                "grantedOn": 1414534932, 
-                "type": "Verified", 
-                "value": "-1"
-            }
-        ], 
-        "author": {
-            "email": "freemabr@us.ibm.com", 
-            "name": "Bryan Freeman", 
-            "username": "bryguyver"
-        }, 
-        "createdOn": 1414534625, 
-        "isDraft": false, 
-        "number": "1", 
-        "parents": [
-            "08c972e0b5cc0991148d15508429103fd991de31"
-        ], 
-        "ref": "refs/changes/87/131587/1", 
-        "revision": "61fe984fcb62ae0f5696632aba0e4f150f0b22f1", 
-        "sizeDeletions": 0, 
-        "sizeInsertions": 517, 
-        "uploader": {
-            "email": "freemabr@us.ibm.com", 
-            "name": "Bryan Freeman", 
-            "username": "bryguyver"
-        }
-    }, 
-    "id": "Idbbdf759fd74c8300926dafb7d0817b64923bd4f", 
-    "lastUpdated": 1414534932, 
-    "number": "131587", 
-    "open": true, 
-    "owner": {
-        "email": "freemabr@us.ibm.com", 
-        "name": "Bryan Freeman", 
-        "username": "bryguyver"
-    }, 
-    "project": "openstack/nova-specs", 
-    "sortKey": "0030c17e00020203", 
-    "status": "NEW", 
-    "subject": "Application Consistent Snapshot", 
-    "topic": "bp/is", 
-    "url": "https://review.openstack.org/131587"
-}
-
-Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/87/131587/1 && git format-patch -1 --stdout FETCH_HEAD
-
-Writing to /tmp/patches/131587
-
 Patch: 131553
 Ref: refs/changes/53/131553/1
 {
@@ -1854,55 +3110,6 @@ Executing command: git fetch https://mikalstill@review.openstack.org/openstack/n
 
 Writing to /tmp/patches/131553
 
-Patch: 89893
-Ref: refs/changes/93/89893/12
-{
-    "branch": "master", 
-    "commitMessage": "Propose Isolate Scheduler DB\n\nIdentifies work to do on scheduler for reducing dependencies to other\nNova objects in order to prepare scheduler forklift.\n\nImplements: blueprint isolate-scheduler-db\n\nChange-Id: I489ab606341ed406024fff0c7e302fc158d20be2\n", 
-    "createdOn": 1398270590, 
-    "currentPatchSet": {
-        "author": {
-            "email": "sbauza@redhat.com", 
-            "name": "Sylvain Bauza", 
-            "username": "sbauza"
-        }, 
-        "createdOn": 1413457126, 
-        "isDraft": false, 
-        "number": "12", 
-        "parents": [
-            "e90fbb84223bd502f482f468b5e66d2c6fcead50"
-        ], 
-        "ref": "refs/changes/93/89893/12", 
-        "revision": "81f8db68b1c1b900fecc2a2329d148af92f7182d", 
-        "sizeDeletions": 0, 
-        "sizeInsertions": 273, 
-        "uploader": {
-            "email": "sbauza@redhat.com", 
-            "name": "Sylvain Bauza", 
-            "username": "sbauza"
-        }
-    }, 
-    "id": "I489ab606341ed406024fff0c7e302fc158d20be2", 
-    "lastUpdated": 1414527361, 
-    "number": "89893", 
-    "open": true, 
-    "owner": {
-        "email": "sbauza@redhat.com", 
-        "name": "Sylvain Bauza", 
-        "username": "sbauza"
-    }, 
-    "project": "openstack/nova-specs", 
-    "sortKey": "0030c10000015f25", 
-    "status": "NEW", 
-    "subject": "Propose Isolate Scheduler DB", 
-    "topic": "bp/isolate-scheduler-db", 
-    "url": "https://review.openstack.org/89893"
-}
-
-Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/93/89893/12 && git format-patch -1 --stdout FETCH_HEAD
-
-Writing to /tmp/patches/89893
-
 Patch: 131413
 Ref: refs/changes/13/131413/2
 {
@@ -1963,138 +3170,6 @@ Ref: refs/changes/13/131413/2
 Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/13/131413/2 && git format-patch -1 --stdout FETCH_HEAD
 
 Writing to /tmp/patches/131413
-
-Patch: 129420
-Ref: refs/changes/20/129420/13
-{
-    "branch": "master", 
-    "commitMessage": "This bp is for quota management in nested projects\nChange-Id: I11f83d5da1f86a9d55e3b83495567b5e3cae483a\n", 
-    "createdOn": 1413611670, 
-    "currentPatchSet": {
-        "approvals": [
-            {
-                "by": {
-                    "name": "Jenkins", 
-                    "username": "jenkins"
-                }, 
-                "description": "Verified", 
-                "grantedOn": 1414031253, 
-                "type": "Verified", 
-                "value": "1"
-            }, 
-            {
-                "by": {
-                    "email": "joe.gordon0@gmail.com", 
-                    "name": "Joe Gordon", 
-                    "username": "jogo"
-                }, 
-                "description": "Code-Review", 
-                "grantedOn": 1414449010, 
-                "type": "Code-Review", 
-                "value": "-1"
-            }
-        ], 
-        "author": {
-            "email": "sajeesh.cs@cern.ch", 
-            "name": "sajeesh cs", 
-            "username": "sajeeshcs"
-        }, 
-        "createdOn": 1414030852, 
-        "isDraft": false, 
-        "number": "13", 
-        "parents": [
-            "2e3f8a525418e1748877eca6bf8898a13934656f"
-        ], 
-        "ref": "refs/changes/20/129420/13", 
-        "revision": "0e692ecb8538634b39176b8b02c2638086ea5fcc", 
-        "sizeDeletions": 0, 
-        "sizeInsertions": 289, 
-        "uploader": {
-            "email": "sajeesh.cs@cern.ch", 
-            "name": "sajeesh cs", 
-            "username": "sajeeshcs"
-        }
-    }, 
-    "id": "I11f83d5da1f86a9d55e3b83495567b5e3cae483a", 
-    "lastUpdated": 1414519307, 
-    "number": "129420", 
-    "open": true, 
-    "owner": {
-        "email": "sajeesh.cs@cern.ch", 
-        "name": "sajeesh cs", 
-        "username": "sajeeshcs"
-    }, 
-    "project": "openstack/nova-specs", 
-    "sortKey": "0030c0790001f98c", 
-    "status": "NEW", 
-    "subject": "This bp is for quota management in nested projects Change-Id: I11f83d5da1f86a9d55e3b83495567b5e3cae483a", 
-    "topic": "bp/nested-quota-driver-api", 
-    "url": "https://review.openstack.org/129420"
-}
-
-Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/20/129420/13 && git format-patch -1 --stdout FETCH_HEAD
-
-
-Patch: 130732
-Ref: refs/changes/32/130732/4
-{
-    "branch": "master", 
-    "commitMessage": "New VIF type for routing VM data instead of bridging it\n\nChange-Id: I7bd6e07b8e4e1279e2c4098d2c75896a470dcfef\n", 
-    "createdOn": 1414146800, 
-    "currentPatchSet": {
-        "approvals": [
-            {
-                "by": {
-                    "name": "Jenkins", 
-                    "username": "jenkins"
-                }, 
-                "description": "Verified", 
-                "grantedOn": 1414515750, 
-                "type": "Verified", 
-                "value": "1"
-            }
-        ], 
-        "author": {
-            "email": "Neil.Jerram@metaswitch.com", 
-            "name": "Neil Jerram", 
-            "username": "neiljerram"
-        }, 
-        "createdOn": 1414515343, 
-        "isDraft": false, 
-        "number": "4", 
-        "parents": [
-            "e744d5af92de4003edb78e256935e06b9b972172"
-        ], 
-        "ref": "refs/changes/32/130732/4", 
-        "revision": "6e7dfc166a0322792445daa3b1d011f90ed77afd", 
-        "sizeDeletions": 0, 
-        "sizeInsertions": 281, 
-        "uploader": {
-            "email": "Neil.Jerram@metaswitch.com", 
-            "name": "Neil Jerram", 
-            "username": "neiljerram"
-        }
-    }, 
-    "id": "I7bd6e07b8e4e1279e2c4098d2c75896a470dcfef", 
-    "lastUpdated": 1414515750, 
-    "number": "130732", 
-    "open": true, 
-    "owner": {
-        "email": "Neil.Jerram@metaswitch.com", 
-        "name": "Neil Jerram", 
-        "username": "neiljerram"
-    }, 
-    "project": "openstack/nova-specs", 
-    "sortKey": "0030c03e0001feac", 
-    "status": "NEW", 
-    "subject": "New VIF type for routing VM data instead of bridging it", 
-    "topic": "bp/vif-type-routed", 
-    "url": "https://review.openstack.org/130732"
-}
-
-Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/32/130732/4 && git format-patch -1 --stdout FETCH_HEAD
-
-Writing to /tmp/patches/130732
 
 Patch: 128753
 Ref: refs/changes/53/128753/5
@@ -2270,78 +3345,6 @@ Executing command: git fetch https://mikalstill@review.openstack.org/openstack/n
 
 Writing to /tmp/patches/129606
 
-Patch: 122705
-Ref: refs/changes/05/122705/6
-{
-    "branch": "master", 
-    "commitMessage": "adaptive status polling\n\nThis change is to introduce adaptive status polling into nova\ndesign, which make nova more efficent and robust. It also ams\nto unify polling implementation in nova.\n\nRelated to blueprint adaptive-status-polling\n\nChange-Id: I551f01f56072d49ab1f69fc2ad32510f3e7ebca6\n", 
-    "createdOn": 1411125361, 
-    "currentPatchSet": {
-        "approvals": [
-            {
-                "by": {
-                    "email": "berrange@redhat.com", 
-                    "name": "Daniel Berrange", 
-                    "username": "berrange"
-                }, 
-                "description": "Code-Review", 
-                "grantedOn": 1414491308, 
-                "type": "Code-Review", 
-                "value": "-1"
-            }, 
-            {
-                "by": {
-                    "name": "Jenkins", 
-                    "username": "jenkins"
-                }, 
-                "description": "Verified", 
-                "grantedOn": 1414491363, 
-                "type": "Verified", 
-                "value": "-1"
-            }
-        ], 
-        "author": {
-            "email": "liyi.meng@ericsson.com", 
-            "name": "Liyi Meng", 
-            "username": "liyi"
-        }, 
-        "createdOn": 1414491104, 
-        "isDraft": false, 
-        "number": "6", 
-        "parents": [
-            "b408ca10aa13740dbb2d2a3eb23376c473393e56"
-        ], 
-        "ref": "refs/changes/05/122705/6", 
-        "revision": "72ec3f533a34b69ebc7390a9492ceae78dfd8970", 
-        "sizeDeletions": 0, 
-        "sizeInsertions": 187, 
-        "uploader": {
-            "email": "liyi.meng@ericsson.com", 
-            "name": "Liyi Meng", 
-            "username": "liyi"
-        }
-    }, 
-    "id": "I551f01f56072d49ab1f69fc2ad32510f3e7ebca6", 
-    "lastUpdated": 1414491363, 
-    "number": "122705", 
-    "open": true, 
-    "owner": {
-        "email": "liyi.meng@ericsson.com", 
-        "name": "Liyi Meng", 
-        "username": "liyi"
-    }, 
-    "project": "openstack/nova-specs", 
-    "sortKey": "0030bea80001df51", 
-    "status": "NEW", 
-    "subject": "adaptive status polling", 
-    "topic": "bp/adaptive-status-polling", 
-    "url": "https://review.openstack.org/122705"
-}
-
-Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/05/122705/6 && git format-patch -1 --stdout FETCH_HEAD
-
-Writing to /tmp/patches/122705
-
 Patch: 126895
 Ref: refs/changes/95/126895/5
 {
@@ -2505,111 +3508,6 @@ Ref: refs/changes/06/106306/2
 }
 
 Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/06/106306/2 && git format-patch -1 --stdout FETCH_HEAD
-
-
-Patch: 88983
-Ref: refs/changes/83/88983/17
-{
-    "branch": "master", 
-    "commitMessage": "Persist scheduler hints\n\nThe aim of this spec is to implement bp persist-scheduler-hints\n\nChange-Id: I2855ae9219082c3f1a52c574ebd78b94cb9c39de\n", 
-    "createdOn": 1397909943, 
-    "currentPatchSet": {
-        "approvals": [
-            {
-                "by": {
-                    "email": "sahid.ferdjaoui@redhat.com", 
-                    "name": "sahid", 
-                    "username": "sahid"
-                }, 
-                "description": "Code-Review", 
-                "grantedOn": 1400846184, 
-                "type": "Code-Review", 
-                "value": "-1"
-            }, 
-            {
-                "by": {
-                    "email": "john@johngarbutt.com", 
-                    "name": "John Garbutt", 
-                    "username": "johngarbutt"
-                }, 
-                "description": "Code-Review", 
-                "grantedOn": 1400858459, 
-                "type": "Code-Review", 
-                "value": "-1"
-            }, 
-            {
-                "by": {
-                    "email": "philip.day@hp.com", 
-                    "name": "Phil Day", 
-                    "username": "philip-day"
-                }, 
-                "description": "Code-Review", 
-                "grantedOn": 1402922025, 
-                "type": "Code-Review", 
-                "value": "-1"
-            }, 
-            {
-                "by": {
-                    "email": "dms@danplanet.com", 
-                    "name": "Dan Smith", 
-                    "username": "danms"
-                }, 
-                "description": "Code-Review", 
-                "grantedOn": 1403202358, 
-                "type": "Code-Review", 
-                "value": "-1"
-            }, 
-            {
-                "by": {
-                    "email": "sbauza@redhat.com", 
-                    "name": "Sylvain Bauza", 
-                    "username": "sbauza"
-                }, 
-                "description": "Code-Review", 
-                "grantedOn": 1403508155, 
-                "type": "Code-Review", 
-                "value": "-1"
-            }
-        ], 
-        "author": {
-            "email": "jay.lau.513@gmail.com", 
-            "name": "Jay Lau", 
-            "username": "JayLau"
-        }, 
-        "createdOn": 1400568326, 
-        "isDraft": false, 
-        "number": "17", 
-        "parents": [
-            "e71dedc6b45a3c6a5de1b360544f17806cad6ff2"
-        ], 
-        "ref": "refs/changes/83/88983/17", 
-        "revision": "2568f6ae2e01b55af116eac500c15b6865de04c7", 
-        "sizeDeletions": 0, 
-        "sizeInsertions": 188, 
-        "uploader": {
-            "email": "jay.lau.513@gmail.com", 
-            "name": "Jay Lau", 
-            "username": "JayLau"
-        }
-    }, 
-    "id": "I2855ae9219082c3f1a52c574ebd78b94cb9c39de", 
-    "lastUpdated": 1414461548, 
-    "number": "88983", 
-    "open": false, 
-    "owner": {
-        "email": "jay.lau.513@gmail.com", 
-        "name": "Jay Lau", 
-        "username": "JayLau"
-    }, 
-    "project": "openstack/nova-specs", 
-    "sortKey": "0030bcb700015b97", 
-    "status": "ABANDONED", 
-    "subject": "Persist scheduler hints", 
-    "topic": "bp/persist-scheduler-hints", 
-    "url": "https://review.openstack.org/88983"
-}
-
-Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/83/88983/17 && git format-patch -1 --stdout FETCH_HEAD
 
 
 Patch: 103203
@@ -3319,172 +4217,6 @@ Ref: refs/changes/50/130550/4
 Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/50/130550/4 && git format-patch -1 --stdout FETCH_HEAD
 
 
-Patch: 126966
-Ref: refs/changes/66/126966/4
-{
-    "branch": "master", 
-    "commitMessage": "Quiesce filesystems with QEMU guest agent during image snapshot\n\nCurrently we need to quiesce filesystems (fsfreeze) manually before\nsnapshotting an image of active instances to create consistent backups.\nThis proposal is to automate the fsfreeze using QEMU Guest Agent.\n\nPreviously-approved: juno\nPart of blueprint quiesced-image-snapshots-with-qemu-guest-agent\nChange-Id: Ifb77d202e7578b4a379f2894c630bbdda7e9a6a7\n", 
-    "createdOn": 1412792688, 
-    "currentPatchSet": {
-        "approvals": [
-            {
-                "by": {
-                    "name": "Jenkins", 
-                    "username": "jenkins"
-                }, 
-                "description": "Verified", 
-                "grantedOn": 1413317782, 
-                "type": "Verified", 
-                "value": "1"
-            }, 
-            {
-                "by": {
-                    "email": "john@johngarbutt.com", 
-                    "name": "John Garbutt", 
-                    "username": "johngarbutt"
-                }, 
-                "description": "Code-Review", 
-                "grantedOn": 1413368919, 
-                "type": "Code-Review", 
-                "value": "-1"
-            }, 
-            {
-                "by": {
-                    "email": "berrange@redhat.com", 
-                    "name": "Daniel Berrange", 
-                    "username": "berrange"
-                }, 
-                "description": "Code-Review", 
-                "grantedOn": 1413803466, 
-                "type": "Code-Review", 
-                "value": "2"
-            }, 
-            {
-                "by": {
-                    "email": "mriedem@us.ibm.com", 
-                    "name": "Matt Riedemann", 
-                    "username": "mriedem"
-                }, 
-                "description": "Code-Review", 
-                "grantedOn": 1413901369, 
-                "type": "Code-Review", 
-                "value": "-1"
-            }
-        ], 
-        "author": {
-            "email": "tomoki.sekiyama@hds.com", 
-            "name": "Tomoki Sekiyama", 
-            "username": "tsekiyama"
-        }, 
-        "createdOn": 1413317364, 
-        "isDraft": false, 
-        "number": "4", 
-        "parents": [
-            "f5212b6ed0267a07ec480c79c87b7e417ef30ace"
-        ], 
-        "ref": "refs/changes/66/126966/4", 
-        "revision": "c234c2efdea1f871a6ab2a490b17e5254319721b", 
-        "sizeDeletions": 0, 
-        "sizeInsertions": 153, 
-        "uploader": {
-            "email": "tomoki.sekiyama@hds.com", 
-            "name": "Tomoki Sekiyama", 
-            "username": "tsekiyama"
-        }
-    }, 
-    "id": "Ifb77d202e7578b4a379f2894c630bbdda7e9a6a7", 
-    "lastUpdated": 1414191868, 
-    "number": "126966", 
-    "open": true, 
-    "owner": {
-        "email": "tomoki.sekiyama@hds.com", 
-        "name": "Tomoki Sekiyama", 
-        "username": "tsekiyama"
-    }, 
-    "project": "openstack/nova-specs", 
-    "sortKey": "0030ab280001eff6", 
-    "status": "NEW", 
-    "subject": "Quiesce filesystems with QEMU guest agent during image snapshot", 
-    "topic": "bp/quiesced-image-snapshots-with-qemu-guest-agent", 
-    "url": "https://review.openstack.org/126966"
-}
-
-Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/66/126966/4 && git format-patch -1 --stdout FETCH_HEAD
-
-Writing to /tmp/patches/126966
-
-Patch: 128112
-Ref: refs/changes/12/128112/3
-{
-    "branch": "master", 
-    "commitMessage": "Quiesce admin action for consistent snapshot\n\nCurrently we need to quiesce filesystems (fsfreeze) manually before\nsnapshotting cinder volumes attached to active instances to create consistent\nbackups. This should be automated when QEMU Guest Agent is enabled.\nTo achieve the automated quiescing, Nova should expose an admin action to\nquiesce the guest file systems for Cinder.\n\nPart of blueprint quiesce-admin-action\nChange-Id: I191b5a52d4aa09216ebb54227a24ad34f668af25\n", 
-    "createdOn": 1413239992, 
-    "currentPatchSet": {
-        "approvals": [
-            {
-                "by": {
-                    "name": "Jenkins", 
-                    "username": "jenkins"
-                }, 
-                "description": "Verified", 
-                "grantedOn": 1413404412, 
-                "type": "Verified", 
-                "value": "1"
-            }, 
-            {
-                "by": {
-                    "email": "berrange@redhat.com", 
-                    "name": "Daniel Berrange", 
-                    "username": "berrange"
-                }, 
-                "description": "Code-Review", 
-                "grantedOn": 1413804192, 
-                "type": "Code-Review", 
-                "value": "-1"
-            }
-        ], 
-        "author": {
-            "email": "tomoki.sekiyama@hds.com", 
-            "name": "Tomoki Sekiyama", 
-            "username": "tsekiyama"
-        }, 
-        "createdOn": 1413404144, 
-        "isDraft": false, 
-        "number": "3", 
-        "parents": [
-            "d8c3b33231df05dfc089fbfba1939ac804332093"
-        ], 
-        "ref": "refs/changes/12/128112/3", 
-        "revision": "8cd4f25a3d356d3352a83499bf282b3196305204", 
-        "sizeDeletions": 0, 
-        "sizeInsertions": 193, 
-        "uploader": {
-            "email": "tomoki.sekiyama@hds.com", 
-            "name": "Tomoki Sekiyama", 
-            "username": "tsekiyama"
-        }
-    }, 
-    "id": "I191b5a52d4aa09216ebb54227a24ad34f668af25", 
-    "lastUpdated": 1414177000, 
-    "number": "128112", 
-    "open": true, 
-    "owner": {
-        "email": "tomoki.sekiyama@hds.com", 
-        "name": "Tomoki Sekiyama", 
-        "username": "tsekiyama"
-    }, 
-    "project": "openstack/nova-specs", 
-    "sortKey": "0030aa300001f470", 
-    "status": "NEW", 
-    "subject": "Quiesce admin action for consistent snapshot", 
-    "topic": "bp/quiesce-admin-action", 
-    "url": "https://review.openstack.org/128112"
-}
-
-Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/12/128112/3 && git format-patch -1 --stdout FETCH_HEAD
-
-Writing to /tmp/patches/128112
-
 Patch: 126717
 Ref: refs/changes/17/126717/7
 {
@@ -3961,111 +4693,6 @@ Executing command: git fetch https://mikalstill@review.openstack.org/openstack/n
 
 Writing to /tmp/patches/130482
 
-Patch: 105034
-Ref: refs/changes/34/105034/15
-{
-    "branch": "master", 
-    "commitMessage": "Spec for keypair X509 public key certificates\n\nIntroduction of X509 public key certificates keypair support in the Nova\nAPI.\n\nbp keypair-x509-certificates\n\nChange-Id: I0559d4bd727219dd5ed2783731aefdcc91f5a449\n", 
-    "createdOn": 1404678342, 
-    "currentPatchSet": {
-        "approvals": [
-            {
-                "by": {
-                    "name": "Jenkins", 
-                    "username": "jenkins"
-                }, 
-                "description": "Verified", 
-                "grantedOn": 1413923879, 
-                "type": "Verified", 
-                "value": "1"
-            }, 
-            {
-                "by": {
-                    "email": "jaypipes@gmail.com", 
-                    "name": "Jay Pipes", 
-                    "username": "jaypipes"
-                }, 
-                "description": "Code-Review", 
-                "grantedOn": 1413925406, 
-                "type": "Code-Review", 
-                "value": "1"
-            }, 
-            {
-                "by": {
-                    "email": "john@johngarbutt.com", 
-                    "name": "John Garbutt", 
-                    "username": "johngarbutt"
-                }, 
-                "description": "Code-Review", 
-                "grantedOn": 1413982415, 
-                "type": "Code-Review", 
-                "value": "2"
-            }, 
-            {
-                "by": {
-                    "email": "robert.clark@hp.com", 
-                    "name": "Robert Clark", 
-                    "username": "hyakuhei"
-                }, 
-                "description": "Code-Review", 
-                "grantedOn": 1413983095, 
-                "type": "Code-Review", 
-                "value": "1"
-            }, 
-            {
-                "by": {
-                    "email": "ahmed.shohel@ericsson.com", 
-                    "name": "Abu Shohel Ahmed", 
-                    "username": "shohel"
-                }, 
-                "description": "Code-Review", 
-                "grantedOn": 1414070627, 
-                "type": "Code-Review", 
-                "value": "1"
-            }
-        ], 
-        "author": {
-            "email": "apilotti@cloudbasesolutions.com", 
-            "name": "Alessandro Pilotti", 
-            "username": "alexpilotti"
-        }, 
-        "createdOn": 1413923648, 
-        "isDraft": false, 
-        "number": "15", 
-        "parents": [
-            "f4bdca76583382481558d13bad847e7518ee9b4f"
-        ], 
-        "ref": "refs/changes/34/105034/15", 
-        "revision": "13890cdb6fff25472d98b9cf87b272277c5e06d6", 
-        "sizeDeletions": 0, 
-        "sizeInsertions": 251, 
-        "uploader": {
-            "email": "apilotti@cloudbasesolutions.com", 
-            "name": "Alessandro Pilotti", 
-            "username": "alexpilotti"
-        }
-    }, 
-    "id": "I0559d4bd727219dd5ed2783731aefdcc91f5a449", 
-    "lastUpdated": 1414070627, 
-    "number": "105034", 
-    "open": true, 
-    "owner": {
-        "email": "apilotti@cloudbasesolutions.com", 
-        "name": "Alessandro Pilotti", 
-        "username": "alexpilotti"
-    }, 
-    "project": "openstack/nova-specs", 
-    "sortKey": "0030a34300019a4a", 
-    "status": "NEW", 
-    "subject": "Spec for keypair X509 public key certificates", 
-    "topic": "bp/keypair-x509-certificates", 
-    "url": "https://review.openstack.org/105034"
-}
-
-Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/34/105034/15 && git format-patch -1 --stdout FETCH_HEAD
-
-Writing to /tmp/patches/105034
-
 Patch: 127610
 Ref: refs/changes/10/127610/5
 {
@@ -4251,89 +4878,6 @@ Ref: refs/changes/08/129608/1
 Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/08/129608/1 && git format-patch -1 --stdout FETCH_HEAD
 
 Writing to /tmp/patches/129608
-
-Patch: 130005
-Ref: refs/changes/05/130005/1
-{
-    "branch": "master", 
-    "commitMessage": "Nova specs doc for dynamic server groups\n\nThis is the documentation for\nhttps://blueprints.launchpad.net/nova/+spec/dynamic-server-groups\n\nChange-Id: I58de5b61b1db05b1392b6a5ea54e37d43e2b867e\n", 
-    "createdOn": 1413917727, 
-    "currentPatchSet": {
-        "approvals": [
-            {
-                "by": {
-                    "name": "Jenkins", 
-                    "username": "jenkins"
-                }, 
-                "description": "Verified", 
-                "grantedOn": 1413918033, 
-                "type": "Verified", 
-                "value": "-1"
-            }, 
-            {
-                "by": {
-                    "email": "rbryant@redhat.com", 
-                    "name": "Russell Bryant", 
-                    "username": "russellb"
-                }, 
-                "description": "Code-Review", 
-                "grantedOn": 1413918482, 
-                "type": "Code-Review", 
-                "value": "-1"
-            }, 
-            {
-                "by": {
-                    "email": "dms@danplanet.com", 
-                    "name": "Dan Smith", 
-                    "username": "danms"
-                }, 
-                "description": "Code-Review", 
-                "grantedOn": 1413919563, 
-                "type": "Code-Review", 
-                "value": "-1"
-            }
-        ], 
-        "author": {
-            "email": "jmulsow@us.ibm.com", 
-            "name": "Jennifer Mulsow", 
-            "username": "jmulsow"
-        }, 
-        "createdOn": 1413917727, 
-        "isDraft": false, 
-        "number": "1", 
-        "parents": [
-            "2e3f8a525418e1748877eca6bf8898a13934656f"
-        ], 
-        "ref": "refs/changes/05/130005/1", 
-        "revision": "4035c57ef28ca83016d89d1b33a5223db1e62538", 
-        "sizeDeletions": 0, 
-        "sizeInsertions": 326, 
-        "uploader": {
-            "email": "jmulsow@us.ibm.com", 
-            "name": "Jennifer Mulsow", 
-            "username": "jmulsow"
-        }
-    }, 
-    "id": "I58de5b61b1db05b1392b6a5ea54e37d43e2b867e", 
-    "lastUpdated": 1413937979, 
-    "number": "130005", 
-    "open": true, 
-    "owner": {
-        "email": "jmulsow@us.ibm.com", 
-        "name": "Jennifer Mulsow", 
-        "username": "jmulsow"
-    }, 
-    "project": "openstack/nova-specs", 
-    "sortKey": "00309aa00001fbd5", 
-    "status": "NEW", 
-    "subject": "Nova specs doc for dynamic server groups", 
-    "topic": "bp/s", 
-    "url": "https://review.openstack.org/130005"
-}
-
-Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/05/130005/1 && git format-patch -1 --stdout FETCH_HEAD
-
-Writing to /tmp/patches/130005
 
 Patch: 126978
 Ref: refs/changes/78/126978/2
@@ -5279,122 +5823,6 @@ Ref: refs/changes/28/129428/1
 
 Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/28/129428/1 && git format-patch -1 --stdout FETCH_HEAD
 
-
-Patch: 127609
-Ref: refs/changes/09/127609/4
-{
-    "branch": "master", 
-    "commitMessage": "Add resource object models\n\nSpecification for describing resource amounts and usage records using a\ngeneralized class interface.\n\nChange-Id: I37b8a1c8b0bbf73bbcf2ee2c2d29018039eb1a9a\nBlueprint: resource-objects\n", 
-    "createdOn": 1412964281, 
-    "currentPatchSet": {
-        "approvals": [
-            {
-                "by": {
-                    "email": "ed@leafe.com", 
-                    "name": "Ed Leafe", 
-                    "username": "ed-leafe"
-                }, 
-                "description": "Code-Review", 
-                "grantedOn": 1413218838, 
-                "type": "Code-Review", 
-                "value": "1"
-            }, 
-            {
-                "by": {
-                    "name": "Jenkins", 
-                    "username": "jenkins"
-                }, 
-                "description": "Verified", 
-                "grantedOn": 1413219037, 
-                "type": "Verified", 
-                "value": "1"
-            }, 
-            {
-                "by": {
-                    "email": "berrange@redhat.com", 
-                    "name": "Daniel Berrange", 
-                    "username": "berrange"
-                }, 
-                "description": "Code-Review", 
-                "grantedOn": 1413271363, 
-                "type": "Code-Review", 
-                "value": "-1"
-            }, 
-            {
-                "by": {
-                    "email": "john@johngarbutt.com", 
-                    "name": "John Garbutt", 
-                    "username": "johngarbutt"
-                }, 
-                "description": "Code-Review", 
-                "grantedOn": 1413372892, 
-                "type": "Code-Review", 
-                "value": "-1"
-            }, 
-            {
-                "by": {
-                    "email": "sbauza@redhat.com", 
-                    "name": "Sylvain Bauza", 
-                    "username": "sbauza"
-                }, 
-                "description": "Code-Review", 
-                "grantedOn": 1413380297, 
-                "type": "Code-Review", 
-                "value": "-1"
-            }, 
-            {
-                "by": {
-                    "email": "joe.gordon0@gmail.com", 
-                    "name": "Joe Gordon", 
-                    "username": "jogo"
-                }, 
-                "description": "Code-Review", 
-                "grantedOn": 1413401504, 
-                "type": "Code-Review", 
-                "value": "-1"
-            }
-        ], 
-        "author": {
-            "email": "jaypipes@gmail.com", 
-            "name": "Jay Pipes", 
-            "username": "jaypipes"
-        }, 
-        "createdOn": 1413218592, 
-        "isDraft": false, 
-        "number": "4", 
-        "parents": [
-            "5f452082f9fe4a265a99b87c03374d7f505b4ea9"
-        ], 
-        "ref": "refs/changes/09/127609/4", 
-        "revision": "b64348b8707208454bddf69219cfa4879c184017", 
-        "sizeDeletions": 0, 
-        "sizeInsertions": 343, 
-        "uploader": {
-            "email": "jaypipes@gmail.com", 
-            "name": "Jay Pipes", 
-            "username": "jaypipes"
-        }
-    }, 
-    "id": "I37b8a1c8b0bbf73bbcf2ee2c2d29018039eb1a9a", 
-    "lastUpdated": 1413544963, 
-    "number": "127609", 
-    "open": true, 
-    "owner": {
-        "email": "jaypipes@gmail.com", 
-        "name": "Jay Pipes", 
-        "username": "jaypipes"
-    }, 
-    "project": "openstack/nova-specs", 
-    "sortKey": "0030810a0001f279", 
-    "status": "NEW", 
-    "subject": "Add resource object models", 
-    "topic": "bp/resource-objects", 
-    "url": "https://review.openstack.org/127609"
-}
-
-Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/09/127609/4 && git format-patch -1 --stdout FETCH_HEAD
-
-Writing to /tmp/patches/127609
 
 Patch: 128964
 Ref: refs/changes/64/128964/1
@@ -12771,219 +13199,6 @@ Ref: refs/changes/43/96543/10
 Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/43/96543/10 && git format-patch -1 --stdout FETCH_HEAD
 
 
-Patch: 105042
-Ref: refs/changes/42/105042/2
-{
-    "branch": "master", 
-    "commitMessage": "Spec for instance rescue support in Hyper-V\n\nThis blueprint introduces rescue instance support in the Nova Hyper-V\ndriver.\n\nbp hyper-v-rescue\n\nChange-Id: I59dd05faae05cdea39b0a81955add1c443c1ae22\n", 
-    "createdOn": 1404687758, 
-    "currentPatchSet": {
-        "approvals": [
-            {
-                "by": {
-                    "email": "john@johngarbutt.com", 
-                    "name": "John Garbutt", 
-                    "username": "johngarbutt"
-                }, 
-                "description": "Code-Review", 
-                "grantedOn": 1405501126, 
-                "type": "Code-Review", 
-                "value": "-2"
-            }, 
-            {
-                "by": {
-                    "name": "Jenkins", 
-                    "username": "jenkins"
-                }, 
-                "description": "Verified", 
-                "grantedOn": 1406124802, 
-                "type": "Verified", 
-                "value": "1"
-            }
-        ], 
-        "author": {
-            "email": "apilotti@cloudbasesolutions.com", 
-            "name": "Alessandro Pilotti", 
-            "username": "alexpilotti"
-        }, 
-        "createdOn": 1405502178, 
-        "isDraft": false, 
-        "number": "2", 
-        "parents": [
-            "f706bc603d391d188893ee88e10ebdcaf2f66fc5"
-        ], 
-        "ref": "refs/changes/42/105042/2", 
-        "revision": "c8fb038c4c871a27b1a748c232086bce51e46147", 
-        "sizeDeletions": 0, 
-        "sizeInsertions": 119, 
-        "uploader": {
-            "email": "apilotti@cloudbasesolutions.com", 
-            "name": "Alessandro Pilotti", 
-            "username": "alexpilotti"
-        }
-    }, 
-    "id": "I59dd05faae05cdea39b0a81955add1c443c1ae22", 
-    "lastUpdated": 1406124802, 
-    "number": "105042", 
-    "open": true, 
-    "owner": {
-        "email": "apilotti@cloudbasesolutions.com", 
-        "name": "Alessandro Pilotti", 
-        "username": "alexpilotti"
-    }, 
-    "project": "openstack/nova-specs", 
-    "sortKey": "002e9df500019a52", 
-    "status": "NEW", 
-    "subject": "Spec for instance rescue support in Hyper-V", 
-    "topic": "bp/introduces", 
-    "url": "https://review.openstack.org/105042"
-}
-
-Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/42/105042/2 && git format-patch -1 --stdout FETCH_HEAD
-
-
-Patch: 105041
-Ref: refs/changes/41/105041/1
-{
-    "branch": "master", 
-    "commitMessage": "Spec for Hyper-V RemoteFX support\n\nThis blueprint introduces RemoteFX support in the Nova Hyper-V driver.\n\nbp hyper-v-remotefx\n\nChange-Id: If99b4fe51653de2098056da6ecca1190afa0799e\n", 
-    "createdOn": 1404685572, 
-    "currentPatchSet": {
-        "approvals": [
-            {
-                "by": {
-                    "email": "john@johngarbutt.com", 
-                    "name": "John Garbutt", 
-                    "username": "johngarbutt"
-                }, 
-                "description": "Code-Review", 
-                "grantedOn": 1405501261, 
-                "type": "Code-Review", 
-                "value": "-2"
-            }, 
-            {
-                "by": {
-                    "name": "Jenkins", 
-                    "username": "jenkins"
-                }, 
-                "description": "Verified", 
-                "grantedOn": 1406124662, 
-                "type": "Verified", 
-                "value": "1"
-            }
-        ], 
-        "author": {
-            "email": "apilotti@cloudbasesolutions.com", 
-            "name": "Alessandro Pilotti", 
-            "username": "alexpilotti"
-        }, 
-        "createdOn": 1404685572, 
-        "isDraft": false, 
-        "number": "1", 
-        "parents": [
-            "f706bc603d391d188893ee88e10ebdcaf2f66fc5"
-        ], 
-        "ref": "refs/changes/41/105041/1", 
-        "revision": "abd1da67aa45340ad18e29805547be6e464c825b", 
-        "sizeDeletions": 0, 
-        "sizeInsertions": 159, 
-        "uploader": {
-            "email": "apilotti@cloudbasesolutions.com", 
-            "name": "Alessandro Pilotti", 
-            "username": "alexpilotti"
-        }
-    }, 
-    "id": "If99b4fe51653de2098056da6ecca1190afa0799e", 
-    "lastUpdated": 1406124662, 
-    "number": "105041", 
-    "open": true, 
-    "owner": {
-        "email": "apilotti@cloudbasesolutions.com", 
-        "name": "Alessandro Pilotti", 
-        "username": "alexpilotti"
-    }, 
-    "project": "openstack/nova-specs", 
-    "sortKey": "002e9df300019a51", 
-    "status": "NEW", 
-    "subject": "Spec for Hyper-V RemoteFX support", 
-    "topic": "bp/introduces", 
-    "url": "https://review.openstack.org/105041"
-}
-
-Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/41/105041/1 && git format-patch -1 --stdout FETCH_HEAD
-
-
-Patch: 104630
-Ref: refs/changes/30/104630/2
-{
-    "branch": "master", 
-    "commitMessage": "Spec for Hyper-V host power actions\n\nThis blueprint introduces host power off and reboot support in the Nova\nHyper-V driver.\n\nbp hyper-v-host-power-actions\n\nChange-Id: I40a5e50e674b50a18766508588fba1c91714a88b\n", 
-    "createdOn": 1404410495, 
-    "currentPatchSet": {
-        "approvals": [
-            {
-                "by": {
-                    "email": "john@johngarbutt.com", 
-                    "name": "John Garbutt", 
-                    "username": "johngarbutt"
-                }, 
-                "description": "Code-Review", 
-                "grantedOn": 1405501839, 
-                "type": "Code-Review", 
-                "value": "-2"
-            }, 
-            {
-                "by": {
-                    "name": "Jenkins", 
-                    "username": "jenkins"
-                }, 
-                "description": "Verified", 
-                "grantedOn": 1406124688, 
-                "type": "Verified", 
-                "value": "1"
-            }
-        ], 
-        "author": {
-            "email": "apilotti@cloudbasesolutions.com", 
-            "name": "Alessandro Pilotti", 
-            "username": "alexpilotti"
-        }, 
-        "createdOn": 1405502316, 
-        "isDraft": false, 
-        "number": "2", 
-        "parents": [
-            "47a96edbfc2002cfa172e6094312e933e39023ae"
-        ], 
-        "ref": "refs/changes/30/104630/2", 
-        "revision": "2f8c289d9da72a28972caf5ef4cd425742345145", 
-        "sizeDeletions": 0, 
-        "sizeInsertions": 116, 
-        "uploader": {
-            "email": "apilotti@cloudbasesolutions.com", 
-            "name": "Alessandro Pilotti", 
-            "username": "alexpilotti"
-        }
-    }, 
-    "id": "I40a5e50e674b50a18766508588fba1c91714a88b", 
-    "lastUpdated": 1406124688, 
-    "number": "104630", 
-    "open": true, 
-    "owner": {
-        "email": "apilotti@cloudbasesolutions.com", 
-        "name": "Alessandro Pilotti", 
-        "username": "alexpilotti"
-    }, 
-    "project": "openstack/nova-specs", 
-    "sortKey": "002e9df3000198b6", 
-    "status": "NEW", 
-    "subject": "Spec for Hyper-V host power actions", 
-    "topic": "bp/introduces", 
-    "url": "https://review.openstack.org/104630"
-}
-
-Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/30/104630/2 && git format-patch -1 --stdout FETCH_HEAD
-
-
 Patch: 91486
 Ref: refs/changes/86/91486/8
 {
@@ -13208,99 +13423,6 @@ Ref: refs/changes/34/107834/2
 }
 
 Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/34/107834/2 && git format-patch -1 --stdout FETCH_HEAD
-
-
-Patch: 103945
-Ref: refs/changes/45/103945/3
-{
-    "branch": "master", 
-    "commitMessage": "Spec for Hyper-V generation 2 VMs\n\nThis blueprint proposed the introduction of Hyper-V generation 2 VMs\nsupport in the Nova Hyper-V compute driver.\n\nbp hyper-v-generation-2-vms\n\nChange-Id: I1b0f145bbb17df8cd6578ebd7ce0588acab9bb50\n", 
-    "createdOn": 1404234736, 
-    "currentPatchSet": {
-        "approvals": [
-            {
-                "by": {
-                    "email": "berrange@redhat.com", 
-                    "name": "Daniel Berrange", 
-                    "username": "berrange"
-                }, 
-                "description": "Code-Review", 
-                "grantedOn": 1404752175, 
-                "type": "Code-Review", 
-                "value": "2"
-            }, 
-            {
-                "by": {
-                    "email": "joe.gordon0@gmail.com", 
-                    "name": "Joe Gordon", 
-                    "username": "jogo"
-                }, 
-                "description": "Code-Review", 
-                "grantedOn": 1405037200, 
-                "type": "Code-Review", 
-                "value": "-1"
-            }, 
-            {
-                "by": {
-                    "email": "john@johngarbutt.com", 
-                    "name": "John Garbutt", 
-                    "username": "johngarbutt"
-                }, 
-                "description": "Code-Review", 
-                "grantedOn": 1405500638, 
-                "type": "Code-Review", 
-                "value": "-2"
-            }, 
-            {
-                "by": {
-                    "name": "Jenkins", 
-                    "username": "jenkins"
-                }, 
-                "description": "Verified", 
-                "grantedOn": 1405971937, 
-                "type": "Verified", 
-                "value": "1"
-            }
-        ], 
-        "author": {
-            "email": "apilotti@cloudbasesolutions.com", 
-            "name": "Alessandro Pilotti", 
-            "username": "alexpilotti"
-        }, 
-        "createdOn": 1404308436, 
-        "isDraft": false, 
-        "number": "3", 
-        "parents": [
-            "47a96edbfc2002cfa172e6094312e933e39023ae"
-        ], 
-        "ref": "refs/changes/45/103945/3", 
-        "revision": "c5cb56d71353b465c8417ee3c1ff84e23e867012", 
-        "sizeDeletions": 0, 
-        "sizeInsertions": 146, 
-        "uploader": {
-            "email": "apilotti@cloudbasesolutions.com", 
-            "name": "Alessandro Pilotti", 
-            "username": "alexpilotti"
-        }
-    }, 
-    "id": "I1b0f145bbb17df8cd6578ebd7ce0588acab9bb50", 
-    "lastUpdated": 1405971937, 
-    "number": "103945", 
-    "open": true, 
-    "owner": {
-        "email": "apilotti@cloudbasesolutions.com", 
-        "name": "Alessandro Pilotti", 
-        "username": "alexpilotti"
-    }, 
-    "project": "openstack/nova-specs", 
-    "sortKey": "002e940100019609", 
-    "status": "NEW", 
-    "subject": "Spec for Hyper-V generation 2 VMs", 
-    "topic": "bp/proposed", 
-    "url": "https://review.openstack.org/103945"
-}
-
-Executing command: git fetch https://mikalstill@review.openstack.org/openstack/nova-specs refs/changes/45/103945/3 && git format-patch -1 --stdout FETCH_HEAD
 
 
 Patch: 108244

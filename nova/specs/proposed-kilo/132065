@@ -1,0 +1,228 @@
+From 5abd67d728a4731d8ba0bef05266a638a97fb0cb Mon Sep 17 00:00:00 2001
+From: Paul Murray <pmurray@hp.com>
+Date: Thu, 30 Oct 2014 16:40:40 +0000
+Subject: [PATCH] Propose Isolate Scheduler DB Aggregates
+
+This spec supports the move to split out the Nova scheduler. Aggregate
+information is used by several filters in the filter scheduler
+but is populated and manipulated by the AggregateAPI sub-component of the
+compute api. To facilitate the split the information needs to be communicated
+to the scheduler via an API.
+
+blueprint isolate-scheduler-db-aggregates
+
+Change-Id: Ib12b3ae2b59b6d3bf89a4500226da230f0112a45
+---
+ .../approved/isolate-scheduler-db-aggregates.rst   | 200 +++++++++++++++++++++
+ 1 file changed, 200 insertions(+)
+ create mode 100644 specs/kilo/approved/isolate-scheduler-db-aggregates.rst
+
+diff --git a/specs/kilo/approved/isolate-scheduler-db-aggregates.rst b/specs/kilo/approved/isolate-scheduler-db-aggregates.rst
+new file mode 100644
+index 0000000..3839b5c
+--- /dev/null
++++ b/specs/kilo/approved/isolate-scheduler-db-aggregates.rst
+@@ -0,0 +1,200 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++===============================
++Isolate Scheduler DB Aggregates
++===============================
++
++https://blueprints.launchpad.net/nova/+spec/isolate-scheduler-db-aggregates
++
++This spec supports the move to split out the Nova scheduler. Aggregate
++information is used by several filters in the filter scheduler
++but is populated and manipulated by the AggregateAPI sub-component of the
++compute api. To facilitate the split the information needs to be communicated
++to the scheduler via an API.
++
++Problem description
++===================
++
++Currently, scheduler filters obtain aggregate information directly from
++the nova database. This information is populated by the AggregateAPI
++sub-component of the compute API. This reliance on a shared table prevents
++the scheduler database from being separated from the nova database.
++
++To avoid this shared table we propose that the scheduler client should
++be used to pass aggregate information to the scheduler. The scheduler would
++then be free to store this information in its own aggregate table.
++
++In addition, the scheduler is the only component of nova that uses the
++aggregate information beyond user access via the nova API. This change also
++paves the way to move the AggregateAPI to the scheduler.
++
++Use Cases
++---------
++
++As a developer I want to isolate the scheduler from the rest of nova so
++it can be separated out as an independent component. This isolation makes
++the nova code base easier to maintain and paves the way for multiple
++alternative implementations of the scheduler, potentially including one that
++is used by multiple OpenStack projects.
++
++As a deployer I want to be able to select which implementation of a scheduler
++I chose to use.
++
++Project Priority
++----------------
++
++The kilo priorities list is currently not defined. However under the
++currently proposed list of priorities it would fall under "Scheduler split"
++and "Technical Debt".
++
++Proposed change
++===============
++
++The following steps are required for this change:
++
++
++* Make all filters use nova objects to access the aggregate information.
++  Currently most of the filters have been converted to use the
++  AggregateList object via the aggregate_values_from_db method in
++  nova.scheduler.filter.utils. Others yet to be converted include:
++
++
++  * AggregateImagePropertiesIsolation
++
++
++  * AggregateInstanceExtraSpecsFilter
++
++
++  * AggregateMultiTenancyIsolation
++
++
++  * AvailabilityZoneFilter
++
++
++* Add an API to the scheduler client library to deal with aggregates. At this
++  point this will simply redirect to the existing AggregateAPI.
++
++
++* Make all interaction with the AggregateAPI outside the scheduler go through
++  the scheduler library.
++
++
++Alternatives
++------------
++
++The objective is to completely isolate the scheduler form the nova database
++and vice versa. The scheduler requires the aggregate information when it
++makes placement decisions in the select_destinations method. This method
++operates on requirement and policy data provided in a request specification
++and compares it to data about hosts.
++
++There are two immediate alternatives to communicating aggregate information
++to the scheduler:
++
++
++* The information could be encoded in the request specification. The
++  aggregate data is relatively static and can be quite large, so populating
++  every request specification does not make much sense. It would be better
++  to pass it only when it changes, which is effectively what the new API
++  would do.
++
++
++* The information could be encoded in the data communicated to the scheduler
++  by the compute nodes. This would be an indirect path, the compute nodes do
++  not normally have a copy of the aggregate data and would need to obtain it
++  to pass it to the scheduler. Also, again, it is generally more static then
++  data about resource usage etc. and so it makes more sense to communicate
++  it when it changes, which is effectively what the new API would do.
++
++Data model impact
++-----------------
++
++None.
++
++REST API impact
++---------------
++
++None - the client library will continue to use the existing AggregateAPI.
++
++Security impact
++---------------
++
++None.
++
++Notifications impact
++--------------------
++
++None.
++
++Other end user impact
++---------------------
++
++None.
++
++Performance Impact
++------------------
++
++No change. Once the scheduler client is receiving aggregate updates it will
++be in a position to implement performance enhancements, such as caching
++aggregate data instead of retrieval from the database all the time.
++
++Other deployer impact
++---------------------
++
++None.
++
++Developer impact
++----------------
++
++None.
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  pmurray
++
++Other contributors:
++  <launchpad-id or None>
++
++Work Items
++----------
++
++The work items are as follows:
++
++1. Replace direct calls to the database by use of the AggregatesList object.
++
++2. Implement the aggregate methods for the scheduler client library.
++
++3. Replace calls to the AggregateAPI with calls to the client library.
++
++Dependencies
++============
++
++None.
++
++
++Testing
++=======
++
++The changes can be covered by unit tests.
++
++Documentation Impact
++====================
++
++None.
++
++References
++==========
++
++This spec relates to the split of the scheduler. See:
++
++* https://blueprints.launchpad.net/nova/+spec/isolate-scheduler-db
+-- 
+1.9.1
+

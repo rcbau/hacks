@@ -1,21 +1,29 @@
-From e52d8595e60b013964135883dacfff9b27eefcb0 Mon Sep 17 00:00:00 2001
+From 5e4c86fe23fea0ead003b0b8e30bc614306da6da Mon Sep 17 00:00:00 2001
 From: zhang john <zhang.john.vmthunder@gmail.com>
 Date: Thu, 16 Oct 2014 21:59:14 -0400
-Subject: [PATCH] Fixed dead links of thunder-boost Implements: blueprint
- thunder-boost
+Subject: [PATCH] Accelerates the booting process of launching homogeneous VMs.
 
+We adopts a third-party library, called VMThunder, for fast booting
+homogeneous VMs. It accelerates the booting process in five ways:
+1) Image cache
+2) P2P transferring:
+3) Backend storage optimization
+4) Multi-attach volume
+5) Direct image access
+
+Implements: blueprint thunder-boost
 Change-Id: Ibfdfb0ba432cc201598454c690a9db5ceecae363
 ---
- specs/kilo/approved/thunder-boost.rst | 201 ++++++++++++++++++++++++++++++++++
- 1 file changed, 201 insertions(+)
+ specs/kilo/approved/thunder-boost.rst | 243 ++++++++++++++++++++++++++++++++++
+ 1 file changed, 243 insertions(+)
  create mode 100644 specs/kilo/approved/thunder-boost.rst
 
 diff --git a/specs/kilo/approved/thunder-boost.rst b/specs/kilo/approved/thunder-boost.rst
 new file mode 100644
-index 0000000..5e9bb96
+index 0000000..793cebd
 --- /dev/null
 +++ b/specs/kilo/approved/thunder-boost.rst
-@@ -0,0 +1,201 @@
+@@ -0,0 +1,243 @@
 +..
 + This work is licensed under a Creative Commons Attribution 3.0 Unported
 + License.
@@ -70,15 +78,57 @@ index 0000000..5e9bb96
 +multiple homogeneous VMs. This method uses a third-party library (VMThunder) to
 +support simultaneous booting of a large number of VMs.
 +
-+VMThunder configures each VM with two volumes (the figure can be found here
-+http://www.kylinx.com/vmthunder/vmthunder.png): a (read-only) template volume
-+exactly the same as the pre-created original volume and a (writable) snapshot
-+volume storing each VM's difference to the template. The original volume is the
-+root of a template volume relay tree, and each VM fetches only the necessary
-+data from its parent over the multi-path iSCSI protocol. In addition, VMThunder
-+makes use of a compute node's local storage as a cache to accelerate the image
-+transferring process and avoid a repetitive data transfer. The P2P-style,
-+on-demand data transfer dramatically accelerates VMs' booting process.
++The following diagram shows the architecture of image carrier.
++
++````
++
++                   +-------------------------------------+
++                   |              Original               |
++                   |               Volume                |
++                   +-------------------------------------+
++                   |                                     |
++                   |                                     |
++          +-+----+-++----+-+                    +-+----+-++----+-+
++          | +----+  +----+ |                    | +----+  +----+ |
++          | | TV |  | SV | |                    | | TV |  | SV | |
++          | +----+  +----+ |                    | +----+  +----+ |
++          +-+----+--+----+-+                    +-+----+--+----+-+
++          |                |                    |                |
++          |                |                    |                |
+++-+----+-------+-+  +-+-------+----+-+ +-+----+-++----+-+  +-+----+--+----+-+
++| +----+  +----+ |  | +----+  +----+ | | +----+  +----+ |  | +----+  +----+ |
++| | TV |  | SV | |  | | TV |  | SV | | | | TV |  | SV | |  | | TV |  | SV | |
++| +----+  +----+ |  | +----+  +----+ | | +----+  +----+ |  | +----+  +----+ |
+++-+----+--+----+-+  +-+----+--+----+-+ +-+----+--+----+-+  +-+----+--+----+-+
++
++                    +-----------------+-------------+
++                    |         Block Device          |
++                    |                               |
++                    | +--------------------------+  |
++                    | |   TV:Template Volume     |  |
++                    | |   (Base image, mounted   |  |
++                    | |   from parent Via iSCSI) |  |
++                    | +--------------------------+  |
++                    | +--------------------------+  |
++                    | |   SV: Snapshot Volume    |  |
++                    | |   (Diff image)           |  |
++                    | |                          |  |
++                    | +--------------------------+  |
++                    |                               |
++                    +-------------------------------+
++
++
++````
++
++VMThunder configures each VM with two volumes(shown above):a (read-only)
++template volume exactly the same as the pre-created original volume and a
++(writable) snapshot volume storing each VM's difference to the template.
++The original volume is the root of a template volume relay tree, and each VM
++fetches only the necessary data from its parent over the multi-path iSCSI
++protocol. In addition, VMThunder makes use of a compute node's local storage
++as a cache to accelerate the image transferring process and avoid a repetitive
++data transfer. The P2P-style, on-demand data transfer dramatically accelerates
++VMs' booting process.
 +
 +Our modification to Nova is light-weighted (about 80 lines of insertions and
 +deletions). Two major functions, i.e., the creation and deletion of the
@@ -216,7 +266,7 @@ index 0000000..5e9bb96
 +Mailing list:
 +http://lists.openstack.org/pipermail/openstack-dev/2014-April/032883.html
 +
-+VMThunder Publication:http://www.VMThunder.org/blog/2014/03/02/publication/
++VMThunder Publication:http://vmthunder.github.io/blog/2014/03/02/publication/
 -- 
 1.9.1
 

@@ -1,4 +1,4 @@
-From 967ec3b0e481ed793e5b74e8eebd6e12ebb95b31 Mon Sep 17 00:00:00 2001
+From 15002e8014c6d1bbe71162b41cfc163f9d27b71e Mon Sep 17 00:00:00 2001
 From: Tesshu Flower <tflower@ca.ibm.com>
 Date: Wed, 15 Oct 2014 12:00:53 -0400
 Subject: [PATCH] VMware:  Support multi disk images in OVA container format
@@ -9,16 +9,16 @@ adding the support for OVA images that contain multiple disk images.
 Change-Id: I86330550213ad1d9c7fb7bb5dbc624529cd989e4
 Implements: blueprint vmware-driver-ova-multidisk-support
 ---
- .../vmware-driver-ova-multidisk-support.rst        | 161 +++++++++++++++++++++
- 1 file changed, 161 insertions(+)
+ .../vmware-driver-ova-multidisk-support.rst        | 162 +++++++++++++++++++++
+ 1 file changed, 162 insertions(+)
  create mode 100644 specs/kilo/approved/vmware-driver-ova-multidisk-support.rst
 
 diff --git a/specs/kilo/approved/vmware-driver-ova-multidisk-support.rst b/specs/kilo/approved/vmware-driver-ova-multidisk-support.rst
 new file mode 100644
-index 0000000..1745775
+index 0000000..f3362eb
 --- /dev/null
 +++ b/specs/kilo/approved/vmware-driver-ova-multidisk-support.rst
-@@ -0,0 +1,161 @@
+@@ -0,0 +1,162 @@
 +..
 + This work is licensed under a Creative Commons Attribution 3.0 Unported
 + License.
@@ -52,9 +52,10 @@ index 0000000..1745775
 +----------
 +
 +The end user will be able to import an OVA image into OpenStack as per the
-+VMware OVA support blueprint, but now when the OVA image contains multiple
-+disk images, the nova boot (spawn) will create a VMware VM that uses all the
-+disks contained in the OVA file.
++VMware OVA support blueprint
++(https://blueprints.launchpad.net/nova/+spec/vmware-driver-ova-support), but
++now when the OVA image contains multiple disk images, the nova boot (spawn)
++will create a VMware VM that uses all the disks contained in the OVA file.
 +
 +Project Priority
 +-----------------

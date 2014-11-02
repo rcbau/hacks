@@ -1,4 +1,4 @@
-From 8cd4f25a3d356d3352a83499bf282b3196305204 Mon Sep 17 00:00:00 2001
+From dca7f6407e50a18e63ad9af8a75148e9ec88395b Mon Sep 17 00:00:00 2001
 From: Tomoki Sekiyama <tomoki.sekiyama@hds.com>
 Date: Mon, 13 Oct 2014 18:34:22 -0400
 Subject: [PATCH] Quiesce admin action for consistent snapshot
@@ -12,16 +12,16 @@ quiesce the guest file systems for Cinder.
 Part of blueprint quiesce-admin-action
 Change-Id: I191b5a52d4aa09216ebb54227a24ad34f668af25
 ---
- specs/kilo/approved/quiesce-admin-action.rst | 193 +++++++++++++++++++++++++++
- 1 file changed, 193 insertions(+)
+ specs/kilo/approved/quiesce-admin-action.rst | 192 +++++++++++++++++++++++++++
+ 1 file changed, 192 insertions(+)
  create mode 100644 specs/kilo/approved/quiesce-admin-action.rst
 
 diff --git a/specs/kilo/approved/quiesce-admin-action.rst b/specs/kilo/approved/quiesce-admin-action.rst
 new file mode 100644
-index 0000000..f7ad18d
+index 0000000..abfd224
 --- /dev/null
 +++ b/specs/kilo/approved/quiesce-admin-action.rst
-@@ -0,0 +1,193 @@
+@@ -0,0 +1,192 @@
 +..
 + This work is licensed under a Creative Commons Attribution 3.0 Unported
 + License.
@@ -82,12 +82,11 @@ index 0000000..f7ad18d
 +2. libvirt >= 1.2.5 (which has fsFreeze/fsThaw API) is installed in the
 +   hypervisor
 +
-+3. 'hw_qemu_guest_agent=yes' and 'hw_require_fsfreeze=yes' properties are set
-+   on the image metadata,
++3. 'hw_qemu_guest_agent=yes' properties are set on the image metadata,
 +   and QEMU Guest Agent is installed and enabled in the instance
 +
-+Cinder should call the APIs only if 'hw_require_fsfreeze=yes' is set on the
-+image metadata.
++Cinder should call the APIs only if new parameter 'quiesce=True' is specified
++to snapshot-create API.
 +
 +When these conditions are not satisfied, the methods will fail by
 +'QuiesceUnsupportedException'.

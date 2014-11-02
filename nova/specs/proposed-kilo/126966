@@ -1,4 +1,4 @@
-From c234c2efdea1f871a6ab2a490b17e5254319721b Mon Sep 17 00:00:00 2001
+From aee70e7792e75ffa9650cc1b010ee62bc78ca0bd Mon Sep 17 00:00:00 2001
 From: Tomoki Sekiyama <tomoki.sekiyama@hds.com>
 Date: Tue, 7 Oct 2014 19:33:57 -0400
 Subject: [PATCH] Quiesce filesystems with QEMU guest agent during image
@@ -12,16 +12,16 @@ Previously-approved: juno
 Part of blueprint quiesced-image-snapshots-with-qemu-guest-agent
 Change-Id: Ifb77d202e7578b4a379f2894c630bbdda7e9a6a7
 ---
- ...esced-image-snapshots-with-qemu-guest-agent.rst | 153 +++++++++++++++++++++
- 1 file changed, 153 insertions(+)
+ ...esced-image-snapshots-with-qemu-guest-agent.rst | 161 +++++++++++++++++++++
+ 1 file changed, 161 insertions(+)
  create mode 100644 specs/kilo/approved/quiesced-image-snapshots-with-qemu-guest-agent.rst
 
 diff --git a/specs/kilo/approved/quiesced-image-snapshots-with-qemu-guest-agent.rst b/specs/kilo/approved/quiesced-image-snapshots-with-qemu-guest-agent.rst
 new file mode 100644
-index 0000000..19f516c
+index 0000000..ae41014
 --- /dev/null
 +++ b/specs/kilo/approved/quiesced-image-snapshots-with-qemu-guest-agent.rst
-@@ -0,0 +1,153 @@
+@@ -0,0 +1,161 @@
 +..
 + This work is licensed under a Creative Commons Attribution 3.0 Unported
 + License.
@@ -45,7 +45,7 @@ index 0000000..19f516c
 +snapshotting an image of active instances to create consistent backups.
 +This should be automated when QEMU Guest Agent is enabled.
 +
-+(Quiescing for cinder volume snapshot is covered by another proposal [1]_)
++(Quiescing on cinder's create-snapshot API is covered by another proposal [1]_)
 +
 +Use Cases
 +---------
@@ -70,7 +70,14 @@ index 0000000..19f516c
 +When QEMU Guest Agent is enabled in an instance, Nova-compute libvirt driver
 +will request the agent to freeze the filesystems (and applications if
 +fsfreeze-hook is installed) before taking snapshot of the image.
-+After taking snapshot, the driver will request the agent to thaw the
++
++For boot-from-volume instances, Nova will call Cinder's snapshot-create API
++for every volume attached after quiescing an instance. To avoid double
++quiescing, Nova should tell Cinder not to quiesce the instance on snapshot.
++For this purpose, 'quiesce=True|False' parameter will be added to
++Cinder's snapshot-create API.
++
++After taking snapshots, the driver will request the agent to thaw the
 +filesystems.
 +
 +The prerequisites of this feature are:
@@ -91,7 +98,7 @@ index 0000000..19f516c
 +Alternatives
 +------------
 +
-+Rewrite nova's snapshotting with libvirt's domain.reateSnapshot API with
++Rewrite nova's snapshotting with libvirt's domain.createSnapshot API with
 +VIR_DOMAIN_SNAPSHOT_CREATE_QUIESCE flag, although it will change the current
 +naming scheme of disk images. In addition, it cannot be leveraged to implement
 +live snapshot of cinder volumes.
@@ -149,8 +156,8 @@ index 0000000..19f516c
 +----------
 +
 +1. Implement the automatic quiesce during snapshotting when it is available.
-+2. Enable the test to run in CI with libvirt >= 1.2.5
-+
++2. Add a quiesced snapshotting scenario test with libvirt >= 1.2.5
++   (Fedora experimental queue will be a good place to start testing.)
 +
 +Dependencies
 +============
@@ -161,19 +168,20 @@ index 0000000..19f516c
 +=======
 +
 +Live snapshotting with an image with qemu-guest-agent should be added to
-+scenario tests.
-+Note that it requires environment with libvirt >= 1.2.5.
++tempest.
++Note that it requires environment with libvirt >= 1.2.5, so it would be
++Fedora experimental queue job with virt-preview repository enabled.
 +
 +Documentation Impact
 +====================
 +
 +Need to document how to use this feature in the operation guide (which
-+currently recommends you use the fsfreze tool manually).
++currently recommends you use the fsfreeze tool manually).
 +
 +References
 +==========
 +
-+.. [1] Quiesce admin action ofr consistent snapshot:
++.. [1] Quiesce admin action for consistent snapshot:
 +       https://review.openstack.org/#/c/128112/
 -- 
 1.9.1

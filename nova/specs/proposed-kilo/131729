@@ -1,20 +1,20 @@
-From 679a16b7edbc96d03e7e4310915c5ec68733513b Mon Sep 17 00:00:00 2001
+From 67144c2734998e54d8310ef07e1da44d3f28a705 Mon Sep 17 00:00:00 2001
 From: Irena Berezovsky <irenab@mellanox.com>
 Date: Wed, 22 Oct 2014 09:39:08 +0300
 Subject: [PATCH] Add spec for VIF Driver for SR-IOV InfiniBand
 
 Change-Id: I5673b2abeb21d16ed7fde553896ac8a32ed3881c
 ---
- specs/kilo/approved/vif-driver-ib-passthrough.rst | 136 ++++++++++++++++++++++
- 1 file changed, 136 insertions(+)
+ specs/kilo/approved/vif-driver-ib-passthrough.rst | 138 ++++++++++++++++++++++
+ 1 file changed, 138 insertions(+)
  create mode 100644 specs/kilo/approved/vif-driver-ib-passthrough.rst
 
 diff --git a/specs/kilo/approved/vif-driver-ib-passthrough.rst b/specs/kilo/approved/vif-driver-ib-passthrough.rst
 new file mode 100644
-index 0000000..d70d830
+index 0000000..d2b41bd
 --- /dev/null
 +++ b/specs/kilo/approved/vif-driver-ib-passthrough.rst
-@@ -0,0 +1,136 @@
+@@ -0,0 +1,138 @@
 +..
 + This work is licensed under a Creative Commons Attribution 3.0 Unported
 + License.
@@ -34,10 +34,10 @@ index 0000000..d70d830
 +Problem description
 +===================
 +
-+Till Juno Release (including) InfiniBand SR-IOV networking was possible via
-+out of the tree nova vif driver with neutron Mellanox Ml2 Mechanism Driver.
-+Due to Juno efforts to integrate SR-IOV as part of the nova, it is possible
-+to add Infiniband SR-IOV vif plugging to LibvirtGenericVIFDriver.
++Till Juno Release (including) InfiniBand (IB) SR-IOV networking was possible
++via out of the tree nova vif driver with neutron Mellanox Ml2 Mechanism Driver.
++Due to Juno efforts to integrate SR-IOV device scheduling as part of the nova,
++it is possible to add IB SR-IOV vif plugging to LibvirtGenericVIFDriver.
 +
 +Use Cases
 +----------
@@ -62,7 +62,7 @@ index 0000000..d70d830
 +The vif_type name should be renamed to VIF_TYPE_IB_HOSTDEV to indicate specific
 +InfiniBand vif_type.
 +Currently, there is no standard API to set InfiniBand vGuid (equivalent for
-+Ethernet mac address), therefor special utility will be invoked to set this.
++Ethernet mac address), therefor special driver utility will be used to set it.
 +This utility is already used in case of mlnx_direct vif_type.
 +
 +Alternatives
@@ -93,7 +93,7 @@ index 0000000..d70d830
 +Other end user impact
 +---------------------
 +
-+This blueprint adds no other end user impact.
++None
 +
 +Performance Impact
 +------------------
@@ -105,7 +105,7 @@ index 0000000..d70d830
 +
 +To use this feature the deployer must use Infiniband enabled network adapters.
 +Infiniband Subnet Manager should be running to enable IB Fabric.
-+The 'ebrctl' utility library should be installed on compute nodes.
++The 'ebrctl' utility should be installed on compute nodes.
 +
 +Developer impact
 +----------------
@@ -132,13 +132,15 @@ index 0000000..d70d830
 +Dependencies
 +============
 +
-+*  ebrctl library is required.
++proprietary 'ebrctl' library is required. This is installed as part
++of the Driver OFED package.
 +
 +Testing
 +=======
 +
 +Unit tests will be added to validate these modifications.
-+Third party testing is already in place to verify the complete solution.
++Third party testing is already in place to verify the complete solution:
++https://wiki.openstack.org/wiki/ThirdPartySystems/Mellanox_CI
 +
 +Documentation Impact
 +====================

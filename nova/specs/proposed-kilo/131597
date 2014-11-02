@@ -1,9 +1,9 @@
-From e47f4b00eb458795f2b5117ce46d114854be8d47 Mon Sep 17 00:00:00 2001
+From 0c031caa3d6a6513cce0ab0ff87eb96fe7e96700 Mon Sep 17 00:00:00 2001
 From: Bryan Freeman <freemabr@us.ibm.com>
 Date: Mon, 30 Jun 2014 23:15:25 -0400
 Subject: [PATCH] Application Consistent Snapshot
 
-The main goal of this blueprint is to define a hypervisor-agnostic interface
+The main goal of blueprint application-consistent-snapshot is to define a hypervisor-agnostic interface
 to notify applications of an impending snapshot and to perform any
 application-specific quiesce operations prior to a filesystem freeze and
 snapshot. A notification is also delivered when a snapshot and thaw have

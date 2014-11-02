@@ -1,19 +1,19 @@
-From 6e7dfc166a0322792445daa3b1d011f90ed77afd Mon Sep 17 00:00:00 2001
+From 66e40426a8e119e0bb2c6c0409a468d693040b5c Mon Sep 17 00:00:00 2001
 From: Neil Jerram <Neil.Jerram@metaswitch.com>
 Date: Fri, 24 Oct 2014 11:27:31 +0100
-Subject: [PATCH] New VIF type for routing VM data instead of bridging it
+Subject: [PATCH] New VIF type to allow routing VM data instead of bridging it
 
 Change-Id: I7bd6e07b8e4e1279e2c4098d2c75896a470dcfef
 ---
- specs/kilo/approved/vif-type-routed.rst | 281 ++++++++++++++++++++++++++++++++
+ specs/kilo/approved/vif-type-tap.rst | 281 +++++++++++++++++++++++++++++++++++
  1 file changed, 281 insertions(+)
- create mode 100644 specs/kilo/approved/vif-type-routed.rst
+ create mode 100644 specs/kilo/approved/vif-type-tap.rst
 
-diff --git a/specs/kilo/approved/vif-type-routed.rst b/specs/kilo/approved/vif-type-routed.rst
+diff --git a/specs/kilo/approved/vif-type-tap.rst b/specs/kilo/approved/vif-type-tap.rst
 new file mode 100644
-index 0000000..25f4b8d
+index 0000000..47f6c98
 --- /dev/null
-+++ b/specs/kilo/approved/vif-type-routed.rst
++++ b/specs/kilo/approved/vif-type-tap.rst
 @@ -0,0 +1,281 @@
 +..
 + This work is licensed under a Creative Commons Attribution 3.0 Unported
@@ -21,15 +21,15 @@ index 0000000..25f4b8d
 +
 + http://creativecommons.org/licenses/by/3.0/legalcode
 +
-+=======================================================
-+New VIF type for routing VM data instead of bridging it
-+=======================================================
++============================================================
++New VIF type to allow routing VM data instead of bridging it
++============================================================
 +
-+https://blueprints.launchpad.net/nova/+spec/vif-type-routed
++https://blueprints.launchpad.net/nova/+spec/vif-type-tap
 +
-+We propose to add a new VIF type, VIF_TYPE_ROUTED, whose meaning is
-+that data to/from VMs will be routed by their immediate compute host
-+instead of being bridged.  This approach enables various alternative
++We propose to add a new VIF type, VIF_TYPE_TAP, whose meaning is that
++data to/from VMs may be routed by their immediate compute host instead
++of being bridged.  This approach enables various alternative
 +approaches to providing connectivity between VMs - particularly in
 +deployments where those VMs only require services at layer 3 (IP) and
 +above - and it is still possible to implement, through iptables and
@@ -75,9 +75,8 @@ index 0000000..25f4b8d
 +Use Cases
 +---------
 +
-+VIF_TYPE_ROUTED is used in an alternative networking model in which
-+each compute node routes the data to/from its VMs, instead of bridging
-+it:
++VIF_TYPE_TAP is used in an alternative networking model in which each
++compute node routes the data to/from its VMs, instead of bridging it:
 +
 +::
 +
@@ -131,17 +130,17 @@ index 0000000..25f4b8d
 +===============
 +
 +To demonstrate the above approach within OpenStack, we need a simple
-+Nova extension, namely to provide and implement VIF_TYPE_ROUTED.
-+VIF_TYPE_ROUTED is a new virtual interface type which means that data
-+to/from a VM's TAP interface will be routed by the compute host, and
++Nova extension, namely to provide and implement VIF_TYPE_TAP.
++VIF_TYPE_TAP is a new virtual interface type which means that data
++to/from a VM's TAP interface may be routed by the compute host, and
 +therefore that the TAP interface should not be plugged into any kind
 +of bridge.
 +
 +In detail, this means:
 +
-+* adding VIF_TYPE_ROUTED in nova/network/model.py
++* adding VIF_TYPE_TAP in nova/network/model.py
 +
-+* adding get_config_routed, plug_routed and unplug_routed methods in
++* adding get_config_tap, plug_tap and unplug_tap methods in
 +  nova/virt/libvirt/vif.py, with implementations that simply
 +  configure, create and delete a TAP device.
 +
@@ -182,7 +181,7 @@ index 0000000..25f4b8d
 +Performance Impact
 +------------------
 +
-+Unless the VIF_TYPE_ROUTED vif type is explicitly requested (e.g. by a
++Unless the VIF_TYPE_TAP vif type is explicitly requested (e.g. by a
 +Neutron/ML2 mechanism driver class), there is no possible performance
 +impact on a standard OpenStack system.
 +
@@ -190,7 +189,7 @@ index 0000000..25f4b8d
 +---------------------
 +
 +The Nova extension proposed here will have no effect on existing or
-+newly deployed OpenStack systems, unless the VIF_TYPE_ROUTED vif type
++newly deployed OpenStack systems, unless the VIF_TYPE_TAP vif type
 +is explicitly requested somewhere (e.g. by a Neutron/ML2 mechanism
 +driver class).
 +
@@ -248,7 +247,7 @@ index 0000000..25f4b8d
 +
 +* https://blueprints.launchpad.net/neutron/+spec/calico-mechanism-driver
 +  provides a Neutron/ML2 mechanism driver that implements routed
-+  networking by using VIF_TYPE_ROUTED
++  networking by using VIF_TYPE_TAP.
 +
 +Strictly speaking only the second of these is technically dependent on
 +the current spec.  In a broader sense, however - i.e. for successful
@@ -263,14 +262,15 @@ index 0000000..25f4b8d
 +
 +1. At unit-test level, by adding a test case to
 +nova/tests/virt/libvirt/test_vif.py, that creates and verifies a
-+virtual interface with type VIF_TYPE_ROUTED.
++virtual interface with type VIF_TYPE_TAP.
 +
 +2. By a third-party CI system, to be set up and operated as described
 +at https://wiki.openstack.org/wiki/NeutronThirdPartyTesting, that
 +tests the combination of (i) this spec, (ii) a related Neutron spec
-+[A] to enable DHCP agent function for VIF_TYPE_ROUTED interfaces, and
++[A] to enable DHCP agent function for routed VIF_TYPE_TAP interfaces,
++and
 +(iii) a Neutron/ML2 mechanism driver [B] that implements networking
-+based on VIF_TYPE_ROUTED interfaces.
++based on routing and VIF_TYPE_TAP interfaces.
 +
 +3. By continuing related development and testing at Project Calico
 +(http://www.projectcalico.org/).
@@ -283,8 +283,8 @@ index 0000000..25f4b8d
 +Documentation Impact
 +====================
 +
-+No documentation changes for Nova are anticipated.  VIF_TYPE_ROUTED
-+will be automatically enabled by a related Neutron/ML2 driver, where
++No documentation changes for Nova are anticipated.  VIF_TYPE_TAP will
++be automatically enabled by a related Neutron/ML2 driver, where
 +appropriate.
 +
 +
