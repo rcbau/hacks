@@ -3,10 +3,16 @@ tox-in-docker
 
 Warning: Still at the proof-of-concept stage.
 
-1. Build the base system, and cache it locally:
+1. Fetch the base system, and cache it locally:
 
  ```
- docker build -t openstack-tox openstack-tox/
+ sudo docker pull anguslees/openstack-tox
+ ```
+
+ ... or alternatively, build it yourself:
+
+ ```
+ sudo docker build -t anguslees/openstack-tox openstack-tox/
  ```
 
  The only thing OpenStack-specific about this is the set of `*-dev`
@@ -34,7 +40,7 @@ Warning: Still at the proof-of-concept stage.
  Some examples:
 
  ```
- docker run --rm $project-tox tox --develop -epep8
- docker run --rm $project-tox .tox/py27/bin/testr list-tests
- docker run --rm -ti $project-tox .tox/py27/bin/python
+ sudo docker run --rm $project-tox tox --develop -epep8
+ sudo docker run --rm $project-tox .tox/py27/bin/testr list-tests
+ sudo docker run --rm -ti $project-tox .tox/py27/bin/python
  ```

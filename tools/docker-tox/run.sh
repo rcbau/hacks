@@ -10,7 +10,7 @@ mv .tox/dist/*.zip $dockdir/sdist.zip
 cp --preserve=timestamps tox.ini *requirements.txt setup.py $dockdir/
 
 cat <<EOF >$dockdir/Dockerfile
-FROM openstack-tox
+FROM anguslees/openstack-tox
 EOF
 
 sudo docker build "$@" $dockdir
