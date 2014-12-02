@@ -1,4 +1,4 @@
-From acd6e95cbadddf6638514eb7467b856fd87f01ee Mon Sep 17 00:00:00 2001
+From 1a6ca57ff9a0dcf5d0439d33e4f03181569d5015 Mon Sep 17 00:00:00 2001
 From: Solly Ross <sross@redhat.com>
 Date: Wed, 8 Oct 2014 15:42:02 -0400
 Subject: [PATCH] Blueprint to migrate libvirt volumes
@@ -12,16 +12,16 @@ Spec for blueprint migrate-libvirt-volumes
 Change-Id: I143e2dd6eb1690eaf0652e0aa2e38b80a315e0b9
 Previously-approved: juno
 ---
- specs/kilo/approved/migrate-libvirt-volumes.rst | 216 ++++++++++++++++++++++++
- 1 file changed, 216 insertions(+)
+ specs/kilo/approved/migrate-libvirt-volumes.rst | 224 ++++++++++++++++++++++++
+ 1 file changed, 224 insertions(+)
  create mode 100644 specs/kilo/approved/migrate-libvirt-volumes.rst
 
 diff --git a/specs/kilo/approved/migrate-libvirt-volumes.rst b/specs/kilo/approved/migrate-libvirt-volumes.rst
 new file mode 100644
-index 0000000..2a12515
+index 0000000..0965df8
 --- /dev/null
 +++ b/specs/kilo/approved/migrate-libvirt-volumes.rst
-@@ -0,0 +1,216 @@
+@@ -0,0 +1,224 @@
 +..
 + This work is licensed under a Creative Commons Attribution 3.0 Unported
 + License.
@@ -34,10 +34,10 @@ index 0000000..2a12515
 +
 +https://blueprints.launchpad.net/nova/+spec/migrate-libvirt-volumes
 +
-+Currently, the libvirt driver uses SSH (rsync or scp) to do cold migrations
-+and resizes on non-shared storage.  This requires SSH permissions between
-+compute nodes, which is problematic for a number of reasons.  Instead we can
-+use the methods built in to libvirt's storage pool API to do migrations.
++Currently, the libvirt driver only uses SSH (rsync or scp) to do cold
++migrations and resizes on non-shared storage.  This requires SSH permissions
++between compute nodes, which is problematic for a number of reasons.  Instead
++we can use the methods built in to libvirt's storage pool API to do migrations.
 +
 +NOTE: this proposal requires `Use libvirt storage pools`_
 +
@@ -62,7 +62,8 @@ index 0000000..2a12515
 +
 +Deployer: This allows the deployer to not have to set up SSH access between
 +compute nodes while still supporting non-shared-storage resizes and cold
-+migrations.
++migrations, as long as the deployer is using the new libvirt storage pools
++image backend.
 +
 +Project Priority
 +----------------
@@ -72,22 +73,19 @@ index 0000000..2a12515
 +Proposed change
 +===============
 +
-+As specified in blueprint mentioned above, Nova's disk images would be placed
-+in a libvirt storage pool.  At migration time, a new volume would be created in
-+the destination node's storage pool, and the methods virStorageVolDowload and
-+virStorageVolUpload would be used to stream the contents of the disk between
-+compute nodes
++The functionality in this blueprint would only be used when the deployer is
++using the new libvirt storage pool image backend, and has enabled the
++:code:`[libvirt]vol_upload_migration` option.
++
++At migration time, a new volume would be created in the destination node's
++storage pool, and the methods virStorageVolDowload and virStorageVolUpload
++would be used to stream the contents of the disk between compute nodes
 +(http://libvirt.org/html/libvirt-libvirt.html#virStorageVolUpload).
 +
 +In order to ensure secure migrations, libvirt should be configured to use one
 +of the various forms of authentication and encryption that it supports, such as
 +Kerberos (via SASL -- http://libvirt.org/auth.html) or TLS client certificates
 +(http://libvirt.org/remote.html#Remote_libvirtd_configuration).
-+
-+Note that this would only apply to setups using the new image backend
-+described in the previous blueprint; setups using the "legacy" image
-+backends would continue to use the SSH method until the "legacy" image
-+backends are removed.
 +
 +Alternatives
 +------------
@@ -146,14 +144,17 @@ index 0000000..2a12515
 +
 +* Rsync compresses compress the contents to be transfered, but AFAIK libvirt
 +  does not (although this is being worked on in conjunction with the libvirt
-+  developers).  This could result in more data being transfered over
-+  the network.
++  developers).  This could result in more data being transfered over the
++  network.
 +
-+* The actually streaming process would be using python as an intermediary
-+  (e.g. :code:`data = stream1.recv(1024*64); stream2.send(data)`, although
-+  the actual code would properly support async IO, detection of partial sends,
-+  etc).  While this would be less performant than having C code which would do
-+  the transfer, I suspect there are ways in which we could optimize the code.
++* The actually streaming process requires some use of intermediary code to call
++  the write function on the contents of the read function.  One way would be
++  using python as an intermediary (e.g.  :code:`data = stream1.recv(1024*64);
++  stream2.send(data)`, although the actual code would properly support async
++  IO, detection of partial sends, etc).  While this would be less performant
++  than having C code which would do the transfer, I suspect there are ways in
++  which we could optimize the code, or other methods (such as utilizing the
++  libvirt command line client).
 +
 +Other deployer impact
 +---------------------
@@ -163,10 +164,10 @@ index 0000000..2a12515
 +migrations are enabled, this has already been done).  Such connections must be
 +secured as noted in `Security Impact`_.
 +
-+Additionally, it would be beneficial to introduce a configuration option
-+:code: `[libvirt]vol_upload_migration` to enable or disable this functionality
-+until we can guarantee the performance is on par with the current SSH/rsync
-+functionality (when disabled, we would fall back to the current functionality).
++Additionally the configuration option :code: `[libvirt]vol_upload_migration`
++would need to be enabled.  This is especially important until we can guarantee
++the performance is on par with the current SSH/rsync functionality (when
++disabled, we would fall back to the current SSH/rsync-based functionality).
 +
 +Developer impact
 +----------------
@@ -190,12 +191,13 @@ index 0000000..2a12515
 +----------
 +
 +1. Implement the virStorageVolUpload/virStorageVolDownload code in the
-+   :code:`migrate_disk_and_power_off` method, replacing the existing calls
-+   to :code:`libvirt_utils.copy_image`.
++   :code:`migrate_disk_and_power_off` method, as an alternative to the existing
++   calls to :code:`libvirt_utils.copy_image`.
 +
 +2. Follow Up: remove the instances of SSH that are used to set up and tear down
 +   the migration (e.g. for shared storage detection).  These could easily be
-+   done in a manner similar to how live migration works.
++   done in a manner similar to how live migration works (having
++   pre_migrate_host and pre_migrate_dest methods, instead of SSHing).
 +
 +
 +Dependencies
@@ -210,15 +212,21 @@ index 0000000..2a12515
 +=======
 +
 +Since this only changes how migration works under the hood, existing migration
-+tests should be sufficient for the most part.
++tests could simply be run again with the :code:`[libvirt]vol_upload_migration`
++configuration option enabled on a setup where the libvirt storage pool image
++backend is also in use.
++
++One potential location to enable these code paths is the "bleeding edge"
++libvirt tests which are being created.
 +
 +
 +Documentation Impact
 +====================
 +
-+For the OpenStack Security Guide, we should document that SSH keys are no
-+longer required between compute nodes, as well as provide instructions for
-+securing remove libvirtd connections.
++For the OpenStack Security Guide, we should note that the new functionality can
++be used as an alternative to deploying SSH access between compute nodes,
++instead of having to provision SSH keys for the compute nodes, as well as
++provide instructions for securing remote libvirtd connections.
 +
 +In the Compute Admin Guide, we should provide instructions for how to enable
 +remote libvirtd connections (as required for libvirt live migration), as well

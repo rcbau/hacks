@@ -1,0 +1,243 @@
+From ed14ac86abfe8a4a4a09d1aeff5f0d4c7cc4b813 Mon Sep 17 00:00:00 2001
+From: Jennifer Mulsow <jmulsow@us.ibm.com>
+Date: Fri, 21 Nov 2014 14:52:03 -0600
+Subject: [PATCH] Nova specs doc for dynamic server groups - remove
+
+This is the documentation for
+https://blueprints.launchpad.net/nova/+spec/dynamic-server-groups-remove
+
+Change-Id: I1728e3b347b4ae0364785d167ac530bf4109f3bf
+---
+ .../kilo/approved/dynamic-server-groups-remove.rst | 220 +++++++++++++++++++++
+ 1 file changed, 220 insertions(+)
+ create mode 100644 specs/kilo/approved/dynamic-server-groups-remove.rst
+
+diff --git a/specs/kilo/approved/dynamic-server-groups-remove.rst b/specs/kilo/approved/dynamic-server-groups-remove.rst
+new file mode 100644
+index 0000000..ef19ac2
+--- /dev/null
++++ b/specs/kilo/approved/dynamic-server-groups-remove.rst
+@@ -0,0 +1,220 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++======================================================
++Dynamic Management of Server Groups - Remove a Server
++======================================================
++
++https://blueprints.launchpad.net/nova/+spec/dynamic-server-groups-remove
++
++This blueprint extends the functionality of "Server Groups" such that the
++virtual machines in the group can be removed at any time, instead of limiting
++it to virtual machine deletion time only. By providing this added bit of
++functionality, server groups become more operator-friendly and usable in many
++real-world scenarios.
++
++
++Problem description
++===================
++
++Use Cases
++----------
++
++* As a cloud operator, I want to remove an instance from a server group (i.e.,
++  without having to delete the instance), so that I can update my groups as
++  affinity rules change over time.
++
++Project Priority
++-----------------
++
++None
++
++Proposed change
++===============
++
++A new action to be performed on server groups will be added to remove an
++instance from a server group. This will be added in the form of a new Nova API
++and a new Nova CLI.
++
++The API will be added to nova/api/openstack/compute/contrib/server_groups.py.
++Also, a new delete_member() method will need to be added to the
++nova/objects/instance_group.py:InstanceGroup class that will call the existing
++Nova database API method instance_group_member_delete() to soft delete the
++instance in the INSTANCE_GROUP_MEMBER database table.
++
++Alternatives
++------------
++
++The alternative to this would be to retain the existing behavior where an
++instance will always belong to the given server group until the instance is
++deleted, and only then will the instance be removed from the server group.
++
++Data model impact
++-----------------
++
++None. The existing instance group data models can be used. No additions needed.
++
++REST API impact
++---------------
++
++New remove server API
++
++* Specification for the method
++
++  * Removes a server from a server group
++
++  * Method type: POST
++
++  * Normal http response code: 200
++
++  * Expected error http response codes:
++
++    * 400 - invalid request::
++
++          This response code will be returned if the request body is formatted
++          incorrectly, a required parameter is missing from the request, or if
++          the server passed in the request body does not belong to the server
++          group.
++
++    * 404 - not found::
++
++          This response code will be returned if the server group does not
++          exist.
++
++  * URL: /v2/{tenant_id}/os-server-groups/{ServerGroup_id}/action
++
++  * Parameters:
++
++    +----------------+-------+------------+-----------------------------------+
++    |  Parameter     | Style |   Type     |  Description                      |
++    +================+=======+============+===================================+
++    | tenant_id      | URI   | xsd:string | The ID for the tenant or          |
++    |                |       |            | account in a multi-tenancy cloud. |
++    +----------------+-------+------------+-----------------------------------+
++    | ServerGroup_id | URI   | String     | The server group ID.              |
++    +----------------+-------+------------+-----------------------------------+
++    | server_id      | URI   | capsi:UUID | The UUID for the server to remove |
++    |                |       |            | from the server group.            |
++    +----------------+-------+------------+-----------------------------------+
++
++  * JSON schema definition for the body data::
++
++            {
++                "remove_server": {
++                    "server_id": "324dfb7d-f4a9-419a-9a19-237df04b443b"
++                }
++            }
++
++  * JSON schema definition for the response data::
++
++            {
++                "server_group": {
++                    "id": "5bbcc3c4-1da2-4437-a48a-66f15b1b13f9",
++                    "name": "test",
++                    "policies": [
++                        "anti-affinity"
++                    ],
++                    "members": [],
++                    "metadata": {}
++                }
++           }
++
++* Policy Changes: Right now, the server group APIs only apply role checking
++  at the compute_extension:server_groups level. A new action-level
++  authorization will be added so that the Nova policy.json file has the ability
++  to distinctly enumerate what roles can remove servers from a server group.
++  The following action will be required in the policy to remove a server from
++  a server group:
++
++  * compute_extension:server_groups:remove_server
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++A Nova servergroup.deletemember notification will be created to be sent when a
++server is removed from a server group.
++
++Other end user impact
++---------------------
++
++In addition to the API, the user will be able to use the Nova CLI to remove
++instances from a server group. The CLI will be of the form:
++
++* nova server-group-delete-server <id> <server>
++
++Where <id> represents the server group's identifier and <server> represents
++an instance's uuid or name. The uuid will be required in cases in which the
++name does not unambiguously identify a server.
++
++Performance Impact
++------------------
++
++None
++
++Other deployer impact
++---------------------
++
++None
++
++Developer impact
++----------------
++
++None
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  jmulsow
++
++Other contributors:
++  jwcroppe
++
++Work Items
++----------
++
++Work items or tasks:
++
++* Add 'remove a server from a server group' API to the v2 Server Group APIs.
++  v2 extensions.
++* Add 'remove a server from a server group' API to the v3 Server Group APIs.
++* Add Nova CLI removing a server from a server group.
++
++Dependencies
++============
++
++None
++
++Testing
++=======
++
++Unit tests, including integrated API sample tests and tempest tests will be
++added.
++
++Documentation Impact
++====================
++
++Documentation will be needed to the Nova APIs and Nova CLIs for the new 'remove
++server' action being added for server groups.
++
++References
++==========
++
++Discussion on the openstack-dev mailing list:
++http://lists.openstack.org/pipermail/openstack-dev/2014-September/045636.html
++
++This topic was also discussed during the Nova Unconference session at the
++Kilo OpenStack Summit on November 6, 2014.
++https://etherpad.openstack.org/p/kilo-nova-summit-unconference
++
+-- 
+1.9.1
+

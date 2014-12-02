@@ -1,4 +1,4 @@
-From 76decc6e794bfc94f82529c8e43f0b78c0633b12 Mon Sep 17 00:00:00 2001
+From c3993dd23d6a37eb2d4bd0e59c7fac92516413ae Mon Sep 17 00:00:00 2001
 From: Jennifer Mulsow <jmulsow@us.ibm.com>
 Date: Tue, 21 Oct 2014 13:50:27 -0500
 Subject: [PATCH] Nova specs doc for dynamic server groups
@@ -8,16 +8,16 @@ https://blueprints.launchpad.net/nova/+spec/dynamic-server-groups
 
 Change-Id: I58de5b61b1db05b1392b6a5ea54e37d43e2b867e
 ---
- specs/kilo/approved/dynamic-server-groups.rst | 457 ++++++++++++++++++++++++++
- 1 file changed, 457 insertions(+)
+ specs/kilo/approved/dynamic-server-groups.rst | 451 ++++++++++++++++++++++++++
+ 1 file changed, 451 insertions(+)
  create mode 100644 specs/kilo/approved/dynamic-server-groups.rst
 
 diff --git a/specs/kilo/approved/dynamic-server-groups.rst b/specs/kilo/approved/dynamic-server-groups.rst
 new file mode 100644
-index 0000000..ce9d34a
+index 0000000..d85a812
 --- /dev/null
 +++ b/specs/kilo/approved/dynamic-server-groups.rst
-@@ -0,0 +1,457 @@
+@@ -0,0 +1,451 @@
 +..
 + This work is licensed under a Creative Commons Attribution 3.0 Unported
 + License.
@@ -99,9 +99,9 @@ index 0000000..ce9d34a
 +dependencies section for more info on open issues with the current code.
 +
 +In order to best convey the race conditions and the preventative measures that
-+will be put into place for each, For each, a table has been inserted below.
-+This table outlines scenarios involving a server group with anti-affinity
-+policy only.  Affinity is discussed after the anti-affinity table.
++will be put into place, each condition has been inserted into a table that is
++linked to below. This table outlines scenarios involving a server group with
++anti-affinity policy only. Affinity is discussed after the anti-affinity table.
 +
 +The table is structured such that the first column represents the operation
 +that the user is trying to perform on an instance in a server group, and the
@@ -117,8 +117,8 @@ index 0000000..ce9d34a
 +
 +  A user will not be allowed to add an existing instance to a sever group if
 +  any of the following actions are being performed on any instances in the
-+  server group: live migration, cold migration, and resize. This will be
-+  checked in the "add server to a server group API", and a 409 HTTP error
++  server group: deploy, live migration, cold migration, and resize. This will
++  be checked in the "add server to a server group API", and a 409 HTTP error
 +  code will be returned with a message explaining this to the user.
 +
 +  This check will prevent a timing window where the server group policy can be
@@ -144,49 +144,42 @@ index 0000000..ce9d34a
 +  and therefore could introduce policy violations for other operations that
 +  occurred after the respective operation was initiated.
 +
++  For example, currently an instance in a group with anti-affinity policy could
++  be migrating from Host A to Host B. At the same time a new instance could be
++  deployed in the same group on host A. If the migration fails, and the
++  instance is rolled back to Host A, the anti-affinity policy will be violated.
++  With this additional logic, this could not occur, since both the source and
++  target hosts for the migration would have not been considered for candidates
++  for the deploy operation.
++
 +Mechanism 3::
 +
 +  lockutils synchronization will be used on the server group ID at the API
 +  level around the policy validation check and database update for the "add
-+  "a server to a server group API".
++  a server to a server group API".
 +
-+  This will prevent race conditions where simultaneous calls to the "add server
-+  to a server group API" could add multiple instances with conflicting hosts
-+  to the server group's policy.
++  This will prevent race conditions where simultaneous calls to the "add a
++  server to a server group API" could add multiple instances with conflicting
++  hosts to the server group's policy.
 +
 +Mechanism 4::
 +
-+  As an extra precaution, the "add server to a server group API" will
-+  do an additional policy validation check after the database has been
-+  updated. If it finds that the policy has been violated at this point,
-+  it will back out the addition of this instance into the server group,
-+  and return an HTTP 409 code.
++  As an extra precaution, the "add a server to a server group API" will do an
++  additional policy validation check after the database has been updated. If it
++  finds that the policy has been violated at this point, it will back out the
++  addition of this instance into the server group, and return an HTTP 409 code.
 +
-+================================================================================================= ========= ========= =============== =============== ====== ========= ================================================= ============================================================================================================================================================================================================================================================================================================================================================================================================================================= 
-+Anti-affinity                                                                                     deploy VM resize VM cold migrate VM live migrate VM add VM remove VM any operation performed to a VM in server group Y                                                                                                                                                                                                                                                                                                                                                                                                                                               
-+================================================================================================= ========= ========= =============== =============== ====== ========= ================================================= ============================================================================================================================================================================================================================================================================================================================================================================================================================================= 
-+deploy VM                                                                                         x                                                                                                                      Mechanism 2: The deploy would be allowed, but the filter would eliminate both the source and target hosts from the already-active VM migrations,  or resizes. In addition target hosts for ongoing deploys of instances requesting to be placed in the same server group will also be filtered out. Also, the existing policy validation during a deploy in the compute manager that is synchronized on the server group also prevents this. 
-+deploy VM                                                                                                   x         x               x                                                                                  Mechanism 2: The deploy would be allowed, but the filter would eliminate both the source and target hosts from the already-active VM migrations,  or resizes. In addition target hosts for ongoing deploys of instances requesting to be placed in the same server group will also be filtered out.                                                                                                                                           
-+resize VM                                                                                         x         x         x               x                                                                                  Mechanism 2: The resize to a different host would be allowed, but the filter would eliminate both the source and target hosts from the already-active VM migrations,  or resizes. In addition target hosts for ongoing deploys of instances requesting to be placed in the same server group will also be filtered out.                                                                                                                       
-+cold migrate VM                                                                                   x         x         x               x                                                                                  Mechanism 2: The cold migration would be allowed, but the filter would eliminate both the source and target hosts from the already-active VM migrations, or resizes. In addition target hosts for ongoing deploys of instances requesting to be placed in the same server group will also be filtered out.                                                                                                                                    
-+live migrate VM                                                                                   x         x         x               x                                                                                  Mechanism 2: The live migration would be allowed, but the filter would eliminate both the source and target hosts from the already-active VM migrations, deploys or resizes.  In addition target hosts for ongoing deploys of instances requesting to be placed in the same server group will also be filtered out.                                                                                                                           
-+deploy VM                                                                                                                                             x                                                                  Mechanism 3: policy validation check within add VM API, synchronized on the server group id and the existing policy validation check within the deploy                                                                                                                                                                                                                                                                                        
-+resize VM                                                                                                                                             x                                                                  Mechanism 4: This would be a very small window. It would mean that the policy validation check passed in the add API, but before the database is updated, an instance in the same server group got scheduled to the same host. The recheck of the policy after the database update outlined in Mechanism 4 would prevent this race condition.                                                                                                 
-+cold migrate VM                                                                                                                                       x                                                                  Mechanism 4: This would be a very small window. It would mean that the policy validation check passed in the add API, but before the database is updated, an instance in the same server group got scheduled to the same host. The recheck of the policy after the database update outlined in Mechanism 4 would prevent this race condition.                                                                                                 
-+live migrate VM                                                                                                                                       x                                                                  Mechanism 4: This would be a very small window. It would mean that the policy validation check passed in the add API, but before the database is updated, an instance in the same server group got scheduled to the same host. The recheck of the policy after the database update outlined in Mechanism 4 would prevent this race condition.                                                                                                 
-+add VM                                                                                                                                                x                                                                  Mechanism 3: Policy validation check and database update within add VM API, synchronized on the server group ID                                                                                                                                                                                                                                                                                                                               
-+add VM                                                                                            x         x         x               x                                                                                  Mechanism 1: The add wold be prevented, because there is an active deploy, cold migrate live migration, or resize occurring for a VM within the same group.                                                                                                                                                                                                                                                                                   
-+remove VM                                                                                         *         *         *               *               *      *                                                           Removes are always allowed                                                                                                                                                                                                                                                                                                                                                                                                                    
-+any operation performed to a VM in server group X                                                                                                                      *                                                 These new mechanisms put in place will only occur for instances if they are in the same server group. For example, target hosts of ongoing migrations will not be filtered out from possible target hosts for another migration request, unless those instances are in the same server group as the one for which the new migration request is for.                                                                                           
-+x denotes that an operation is ongoing                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 
-+* denotes that an operation may or may not be ongoing (i.e., agnostic)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              
-+================================================================================================= ========= ========= =============== =============== ====== ========= ================================================= =============================================================================================================================================================================================================================================================================================================================================================================================================================================
++Due to the 79 characters per line limit, the table for anti-affinity race
++conditions could not be displayed here in ASCII text. It is saved as a PDF
++in the following github repository.
++https://github.com/jmulsow/nova-specs-extras/raw/master/anti-affinity.pdf
 +
 +There are not as many race conditions to worry about when a server group has an
 +affinity policy. Resizes to a different host, cold migrations, and live
 +migrations will not be allowed on any instances in an affinity server group,
 +since instances can only ever be on a single host. The following are the
-+scenarios that have the possibility of violating the policy of the server group.
++scenarios that have the possibility of violating the policy of the server
++group.
 +
 +Scenario 1::
 +
@@ -194,18 +187,18 @@ index 0000000..ce9d34a
 +  1. VM-1 is deployed to host A in Server Group 1
 +  2. VM-2 is deployed to host A in Server Group 1 and finishes before VM-1
 +     finishes
-+  3. VM-1 deploy eventually fails, so it would generally reschedule... but since
-+     VM-2 was added to the group, rescheduling should be disabled since the
-+     policy would be violated
++  3. VM-1 deploy eventually fails, so it would generally reschedule... but
++     since VM-2 was added to the group, rescheduling should be disabled since
++     the policy would be violated
 +
 +Scenario 2::
 +
-+  The add server to a server group API is called to add an instance on Host A
-+  to a server group with the affinity policy. There is an ongoing deploy at
-+  the same time that is deploying an instance to Host B and assigning it to
-+  the same server group. This scenario will be prevented with Mechanism 1.
-+  The add server to a server group API will return a 409 because it will find
-+  that there is an ongoing deploy for an instance in this server group.
++  The "add a server to a server group API" is called to add an instance on
++  Host A to a server group with the affinity policy. There is an ongoing
++  deploy at the same time that is deploying an instance to Host B and assigning
++  it to the same server group. This scenario will be prevented with Mechanism
++  1. The add server to a server group API will return a 409 because it will
++  find that there is an ongoing deploy for an instance in this server group.
 +
 +Alternatives
 +------------
@@ -309,8 +302,8 @@ index 0000000..ce9d34a
 +
 +    * 400 - invalid request::
 +
-+          This response code will be returned if a required parameter is missing
-+          from the request.
++          This response code will be returned if a required parameter is
++          missing from the request.
 +
 +    * 404 - not found::
 +
@@ -433,7 +426,8 @@ index 0000000..ce9d34a
 +* Add the API framework for adding and removing a server from a server group.
 +* Add validation checking and quota management to the add/remove server flow.
 +* Update the anit-affinity filter in the scheduler to filter out source and
-+  destination hosts of ongoing operations of instances in the same server group.
++  destination hosts of ongoing operations of instances in the same server
++  group.
 +* Add Nova CLIs for adding or removing a server from a server group.
 +
 +Dependencies

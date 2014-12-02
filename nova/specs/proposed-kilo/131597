@@ -1,4 +1,4 @@
-From 0c031caa3d6a6513cce0ab0ff87eb96fe7e96700 Mon Sep 17 00:00:00 2001
+From ff431ad11b120b9d1efa6405496d6440c169e8b9 Mon Sep 17 00:00:00 2001
 From: Bryan Freeman <freemabr@us.ibm.com>
 Date: Mon, 30 Jun 2014 23:15:25 -0400
 Subject: [PATCH] Application Consistent Snapshot
@@ -11,16 +11,16 @@ completed in order for the application to perform any post-thaw operations.
 
 Change-Id: Iaf23d8d3392bf48302bad94f039cf6a307a89f9b
 ---
- .../kilo/application-consistent-snapshots-spec.rst | 517 +++++++++++++++++++++
- 1 file changed, 517 insertions(+)
- create mode 100644 specs/kilo/application-consistent-snapshots-spec.rst
+ .../application-consistent-snapshots-spec.rst      | 509 +++++++++++++++++++++
+ 1 file changed, 509 insertions(+)
+ create mode 100644 specs/kilo/approved/application-consistent-snapshots-spec.rst
 
-diff --git a/specs/kilo/application-consistent-snapshots-spec.rst b/specs/kilo/application-consistent-snapshots-spec.rst
+diff --git a/specs/kilo/approved/application-consistent-snapshots-spec.rst b/specs/kilo/approved/application-consistent-snapshots-spec.rst
 new file mode 100644
-index 0000000..ee76992
+index 0000000..bd8eb3b
 --- /dev/null
-+++ b/specs/kilo/application-consistent-snapshots-spec.rst
-@@ -0,0 +1,517 @@
++++ b/specs/kilo/approved/application-consistent-snapshots-spec.rst
+@@ -0,0 +1,509 @@
 +..
 + This work is licensed under a Creative Commons Attribution 3.0 Unported
 + License.
@@ -95,26 +95,25 @@ index 0000000..ee76992
 +Proposed change
 +===============
 +
-+1. The two new Nova API calls and commands are introduced to quiesce an instance
-+prior to the calls for instance or volume snapshots. (Proposed in blueprint
-+`Quiesce admin action
-+<https://blueprints.launchpad.net/nova/+spec/quiesce-admin-action>`_ )
-+are extended to include new Request and Response parameters to indicate whether
-+applications should be notified to quiesce themselves prior to fs freeze.
++1. The two new Nova API calls and commands are introduced to quiesce an
++instance prior to the calls for instance or volume snapshots (Proposed in
++blueprint `Quiesce admin action`) are extended to include new Request and
++Response parameters to indicate whether applications should be notified to
++quiesce themselves prior to fs freeze.
 +
 +2. Compute drivers implementing the application quiesce will execute pre-freeze
 +and post-thaw scripts existing in the guest instance in a pre-determined
-+location and return the results (SUCCESS/FAILURE) of the operations. This location
-+may vary based on guest OS and/or compute driver but it will be need to be
-+documented.
++location and return the results (SUCCESS/FAILURE) of the operations. This
++location may vary based on guest OS and/or compute driver but it will be need
++to be documented.
 +
 +QEMU Guest Agent qemu-ga sets a nice precedence using the UNIX init.d-style
 +of sending "freeze" "thaw" parms to scripts in a well known location to
-+trigger pre-freeze/post-thaw operations. 
++trigger pre-freeze/post-thaw operations.
 +
-+3. For this effort, only the KVM/QEMU driver will be changed, along with the base
-+code for all hypervisors to introduce the Freeze and Thaw as none-operational
-+services (501 not implemented for this hypervisor). 
++3. For this effort, only the KVM/QEMU driver will be changed, along with the
++base code for all hypervisors to introduce the Freeze and Thaw as
++non-operational services (501 not implemented for this hypervisor).
 +
 +Alternatives
 +------------
@@ -142,8 +141,7 @@ index 0000000..ee76992
 +       {
 +           "quiesce":
 +           {
-+               "quiesce_application": "True",
-+               "quiesce_filesystems": "True"
++               "quiesce_application": "True"
 +           }
 +       }
 +
@@ -151,10 +149,8 @@ index 0000000..ee76992
 +    * quiesce_application   xsd:boolean  Indicate whether application(s) should
 +                                         be notified to quiesce prior to fs
 +                                         quiesce. Default==True.
-+    * quiesce_filesystems   xsd:boolean  Indicate whether filesystems should be
-+                                         quiesced. Default==True.
-+    * metadata (optional)   xsd:string   Key/Value pairs to be made available to
-+                                         applications during quiesce.
++    * metadata (optional)   xsd:string   Key/Value pairs to be made available
++                                         to applications during quiesce.
 +
 +* JSON response body for 'quiesce'::
 +
@@ -168,17 +164,17 @@ index 0000000..ee76992
 +
 +* Response parameters for 'quiesce'
 +    * quiesce_application_status   xsd:string  Indicates whether the quiesce
-+                                               application operation was successful.
++                                               app operation was successful.
 +    * quiesce_filesystems_status   xsd:string  Indicates whether the quiesce
-+                                               filesystems operation was successful.
++                                               fs operation was successful.
 +    * metadata                     xsd:string  Key/Value pairs returned from
 +                                               applications during quiesce.
 +    * quiesce_application_fault    xsd:string  Fault object containing error
-+                                               code + message providing information
-+                                               about why application quiesce failed
-+    * quiesce_filesystem_fault     xsd:string  Fault object containing error code +
-+                                               message providing information about
-+                                               why filesystem quiesce failed
++                                               code + message providing info
++                                               about why app quiesce failed
++    * quiesce_filesystem_fault     xsd:string  Fault object containing error
++                                               code + message providing info
++                                               about why fs quiesce failed
 +
 +* JSON request body for 'unquiesce' ::
 +
@@ -186,7 +182,6 @@ index 0000000..ee76992
 +        "unquiesce":
 +        {
 +            "quiesce_application": "True",
-+            "quiesce_filesystems": "True"
 +        }
 +    }
 +
@@ -194,34 +189,32 @@ index 0000000..ee76992
 +    * quiesce_application   xsd:boolean  Indicate whether application(s) should
 +                                         be notified to unquiesce following fs
 +                                         quiesce. Default==True.
-+    * quiesce_filesystems   xsd:boolean  Indicate whether filesystems should be
-+                                         unquiesced. Default==True.
-+    * metadata (optional)   xsd:string   Key/Value pairs to be made available to
-+                                         applications during unquiesce.
++    * metadata (optional)   xsd:string   Key/Value pairs to be made available
++                                         to applications during unquiesce.
 +
 +* Response parameters for 'unquiesce'
-+    * unquiesce_application_status   xsd:string  Indicates whether the unquiesce
-+                                                 application operation was successful.
-+    * unquiesce_filesystems_status   xsd:string  Indicates whether the unquiesce
-+                                                 filesystems operation was successful.
++    * unquiesce_application_status   xsd:string  Indicates whether unquiesce
++                                                 app operation was successful.
++    * unquiesce_filesystems_status   xsd:string  Indicates whether unquiesce
++                                                 fs operation was successful.
 +    * metadata                       xsd:string  Key/Value pairs returned from
 +                                                 applications during unquiesce.
 +    * unquiesce_application_fault    xsd:string  Fault object containing error
-+                                                 code + message providing information
-+                                                 about why application unquiesce failed
++                                                 code + message providing info
++                                                 about why app unquiesce failed
 +    * unquiesce_filesystem_fault     xsd:string  Fault object containing error
-+                                                 code + message providing information
-+                                                 about why filesystem unquiesce failed
++                                                 code + message providing info
++                                                 about why fs unquiesce failed
 +
 +* Normal response code:
-+    * `200 OK`: Returned after the instances' applications and filesystems were successfully
-+                quiesced/unquiesced.
++    * `200 OK`: Returned after the instances' applications and filesystems were
++                successfully quiesced/unquiesced.
 +
 +* Error response codes:
 +    * `500 Internal Server Error`: Returned if the driver fails to quiesce/
 +                                   unquiesce; further information about the
-+                                   failures will be contained withing the request
-+                                   body.
++                                   failures will be contained withing the
++                                   request body.
 +    * `501 Not Implemented`: Returned if compute driver does not support this
 +                             quiesce/unquiesce functionality
 +    * For malformed requests, other error codes may be returned like the other
@@ -361,8 +354,8 @@ index 0000000..ee76992
 +to, and following freeze, the results of these operations do not appear to be
 +fed back to the initiator.
 +
-+We also recognize that a unified guest-agent has been previously proposed, using a
-+secure, tenant isolated communication channel. We anticipate that this
++We also recognize that a unified guest-agent has been previously proposed,
++using a secure, tenant isolated communication channel. We anticipate that this
 +implementation will be reworked when the unified guest-agent is solidified.
 +
 +The use of existing hypervisor facilities and guest-agents makes use of proven
@@ -419,7 +412,8 @@ index 0000000..ee76992
 +============
 +
 +`Quiesced image snapshots with qemu guest
-+<https://blueprints.launchpad.net/nova/+spec/quiesced-image-snapshots-with-qemu-guest-agent>`_
++<https://blueprints.launchpad.net/nova/+spec/quiesced-image-snapshots-with-qemu
++-guest-agent>`_
 +
 +`Quiesce admin action
 +<https://blueprints.launchpad.net/nova/+spec/quiesce-admin-action>`_
@@ -504,7 +498,8 @@ index 0000000..ee76992
 +<https://blueprints.launchpad.net/nova/+spec/qemu-guest-agent-support>`_
 +
 +`Quiescing filesystems with QEMU guest agent during image snapshotting
-+<https://blueprints.launchpad.net/nova/+spec/quiesced-image-snapshots-with-qemu-guest-agent>`_
++<https://blueprints.launchpad.net/nova/+spec/quiesced-image-snapshots-with-qemu
++-guest-agent>`_
 +
 +`Quiesce admin action
 +<https://blueprints.launchpad.net/nova/+spec/quiesce-admin-action>`_
@@ -534,9 +529,6 @@ index 0000000..ee76992
 +
 +`Taking snapshots in Nova:
 +<http://docs.openstack.org/openstack-ops/content/snapshots.html>`_
-+
-+`Taking snapshots in Cinder of attached volume requires --force=True:
-+<http://docs.openstack.org/cli-reference/content/cinderclient_commands.html#cinderclient_subcommand_snapshot-create_v2>`_
 +
 -- 
 1.9.1

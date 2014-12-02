@@ -1,4 +1,4 @@
-From 4be00101b065537899e0f6c85b60eda975117d7a Mon Sep 17 00:00:00 2001
+From 018f9715b26e658cd5734284a269e2c254e27cd9 Mon Sep 17 00:00:00 2001
 From: Thang Pham <thang.g.pham@gmail.com>
 Date: Tue, 6 May 2014 23:02:16 -0400
 Subject: [PATCH] Validate project with Keystone
@@ -16,26 +16,25 @@ This blueprint proposes a way to validate a specified project
 with Keystone.  This blueprint is only intented for cases
 where the API calls are done on a very infrequent basis.  More
 specifically, it is only meant to be used for validating
-project ID in quota management (i.e. quota-defaults,
-quota-delete, quota-show, quota-update) and in flavor management
-(i.e. flavor-access-add, flavor-access-list,
-flavor-access-remove).  A separate blueprint is required for any
+project ID in quota management (i.e. quota-defaults, quota-show,
+quota-update) and in flavor management (i.e. flavor-access-add,
+flavor-access-list).  A separate blueprint is required for any
 functionality that is outside of quota and flavor management.
 
 bp validate-project-with-keystone
 
 Change-Id: I70eac05145b3fadfb388484cf14cb07586651c61
 ---
- .../validate-tenant-user-with-keystone.rst         | 244 +++++++++++++++++++++
- 1 file changed, 244 insertions(+)
+ .../validate-tenant-user-with-keystone.rst         | 234 +++++++++++++++++++++
+ 1 file changed, 234 insertions(+)
  create mode 100644 specs/kilo/approved/validate-tenant-user-with-keystone.rst
 
 diff --git a/specs/kilo/approved/validate-tenant-user-with-keystone.rst b/specs/kilo/approved/validate-tenant-user-with-keystone.rst
 new file mode 100644
-index 0000000..c3daf86
+index 0000000..cb08c60
 --- /dev/null
 +++ b/specs/kilo/approved/validate-tenant-user-with-keystone.rst
-@@ -0,0 +1,244 @@
+@@ -0,0 +1,234 @@
 +..
 + This work is licensed under a Creative Commons Attribution 3.0 Unported
 + License.
@@ -58,11 +57,10 @@ index 0000000..c3daf86
 +
 +This blueprint is only intended for cases where the API calls are done on a
 +very infrequent basis.  More specifically, it is only meant to be used for
-+validating project ID in quota management (i.e. quota-defaults,
-+quota-delete, quota-show, quota-update) and in flavor management (i.e.
-+flavor-access-add, flavor-access-list, flavor-access-remove).  A separate
-+blueprint is required for any functionality that is outside of quota and
-+flavor management.
++validating project ID in quota management (i.e. quota-defaults, quota-show,
++quota-update) and in flavor management (i.e. flavor-access-add,
++flavor-access-list).  A separate blueprint is required for any functionality
++that is outside of quota and flavor management.
 +
 +It is important to note that this implementation does not support
 +validating the user ID.  Federated users are not mirrored in the keystone
@@ -74,9 +72,9 @@ index 0000000..c3daf86
 +===================
 +
 +The quota management feature of nova requires a project ID to be specified as
-+part of the CLI.  This affects nova quota-show, quota-update, and
-+quota-delete.  When a project is specified in one of the quota actions above,
-+they are not checked against keystone to validate their IDs.
++part of the CLI.  This affects nova quota-show and quota-update.  When a
++project is specified in one of the quota actions above, they are not checked
++against keystone to validate their IDs.
 +
 +A user could specify a project name instead of the project ID, e.g.
 +nova quota-update --instances 9 demo.  Since no checks are done, an entry
@@ -84,10 +82,9 @@ index 0000000..c3daf86
 +the project name.  This causes invalid quotas to be set and returned if the
 +project ID does not match what is in the project_user_quotas table.
 +
-+It also affects flavor management.  More specifically, nova flavor-access-add,
-+flavor-access-list, and flavor-access-remove.  When a project is specified in
-+one of the flavor actions above, they are not checked against keystone to
-+validate their IDs.
++It also affects flavor management.  More specifically, nova flavor-access-add
++and flavor-access-list.  When a project is specified in one of the flavor
++actions above, they are not checked against keystone to validate their IDs.
 +
 +Use Cases
 +----------
@@ -122,8 +119,8 @@ index 0000000..c3daf86
 +as-is.  It would be up to the user to figure out the appropriate project ID
 +from "keystone tenant-list".  However, this alternative presents user errors,
 +where the user could mistakenly specify the project name instead of the
-+project ID for nova quota-show, quota-update, or quota-delete.  If this
-+occurs, the quota would not be set correctly.
++project ID for nova quota-show or quota-update.  If this occurs, the quota
++would not be set correctly.
 +
 +Another alternative is to have the python-novaclient validate the project ID
 +and expect other clients (e.g. third party) to do the same.  However, it
@@ -135,26 +132,19 @@ index 0000000..c3daf86
 +It may be possible that there are entries in nova's project_user_quotas table,
 +where the project_id is set to an invalid ID.  However, these entries do not
 +hold any significant value, since no actual project is tied to them.  In such
-+case, a --force option will be introduced to the quota-delete command.  This
-+will allow invalid entries to be deleted by skipping over the keystone
-+validation of the specified project ID.
-+
++case, the quota-delete command can still be used to delete the invalid
++entries, since no project_id validation are done against delete operations.
 +
 +REST API impact
 +---------------
 +Previously, a POST and GET request using an invalid project ID would create an
 +entry in nova's project_user_quotas table or return the quota value (if any)
 +for the project.  With this proposal, if a keystone service account exists to
-+validate the project ID, appropriate error messages will be returned from the
++validate the project ID, HTTPBadRequest (code 400) will be returned from the
 +POST and GET requests for an invalid project.  If a keystone service account
 +does not exist, the functionality would continue to function as before and
 +only a warning message would be logged (not returned via the POST or GET
 +request).
-+
-+In the case where an invalid entry may exist in the database and the user wants
-+to delete it, a new force option will be introduced to the DELETE request.
-+By default, the project ID will be validated, unless the force option is
-+specified.
 +
 +Security impact
 +---------------
@@ -187,9 +177,9 @@ index 0000000..c3daf86
 +
 +Other end user impact
 +---------------------
-+If a keystone service account exists to validate the project ID, appropriate
-+error messages will be returned from the POST and GET requests for an invalid
-+project.  These messages would be:
++If a keystone service account exists to validate the project ID,
++HTTPBadRequest will be returned from the POST and GET requests for an invalid
++project.  The explaination would be:
 +
 +* The specified project ID is not valid.
 +
@@ -254,13 +244,12 @@ index 0000000..c3daf86
 +Testing
 +=======
 +Tempest test cases, as well as nova unit test cases, will be created to verify
-+this feature.  The following commands should be tested: nova quota-show,
-+quota-update, and quota-delete.  More specifically, the --tenant options need
-+to be specified with the proper ID for positive test cases, and invalid IDs
-+for negative test cases.  The following commands should also be tested:
-+flavor-access-add, flavor-access-list, and flavor-access-remove.  The
-+tenant_id needs to be specified with the proper ID for positive
-+test cases, and invalid IDs for negative test cases.
++this feature.  The following commands should be tested: nova quota-show and
++quota-update.  More specifically, the --tenant options need to be specified
++with the proper ID for positive test cases, and invalid IDs for negative test
++cases.  The following commands should also be tested: flavor-access-add and
++flavor-access-list.  The tenant_id needs to be specified with the proper ID
++for positive test cases, and invalid IDs for negative test cases.
 +
 +
 +Documentation Impact

@@ -1,0 +1,200 @@
+From b0242119fc2a64d0855bf2f2328d2539ee61e6c4 Mon Sep 17 00:00:00 2001
+From: Matthew Booth <mbooth@redhat.com>
+Date: Mon, 17 Nov 2014 14:02:38 +0000
+Subject: [PATCH] Flatten Instance Metadata
+
+bp flatten-instance-metadata
+
+Change-Id: Id52aedbc216b7dc212e27499d3ba1eebccb6ab5a
+---
+ specs/kilo/approved/flatten-instance-metadata.rst | 178 ++++++++++++++++++++++
+ 1 file changed, 178 insertions(+)
+ create mode 100644 specs/kilo/approved/flatten-instance-metadata.rst
+
+diff --git a/specs/kilo/approved/flatten-instance-metadata.rst b/specs/kilo/approved/flatten-instance-metadata.rst
+new file mode 100644
+index 0000000..17ddb2b
+--- /dev/null
++++ b/specs/kilo/approved/flatten-instance-metadata.rst
+@@ -0,0 +1,178 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++==========================================
++Flatten Instance Metadata in the DB
++==========================================
++
++https://blueprints.launchpad.net/nova/+spec/flatten-instance-metadata
++
++This spec applies to both InstanceMetadata and InstanceSystemMetadata. For
++brevity, I have occasionally referred to them collectively as instance
++metadata.  The changes proposed apply identically to both sets of metadata.
++
++
++Problem description
++===================
++
++InstanceMetadata and InstanceSystemMetadata are currently stored in separate
++tables as key/value pairs.  While this effectively represents the data, it
++doesn't take into account its usage. Instance metadata is only ever accessed or
++updated for an instance 'in bulk', that is all metadata for a single instance.
++However, by storing it in multiple rows of a separate table, accessing it
++always requires a second query. Additionally, updating it without races is
++difficult, and we currently fail to do this correctly.
++
++
++Use Cases
++----------
++
++This change has immediate benefits in itself. It will:
++
++* Reduce the number of queries required to retrieve an Instance to 1
++* Eliminate races when updating instance metadata
++
++It will also make it simpler to implement atomic, lock-free updates on
++Instance objects in the future.
++
++It will involve a change to the data model and to the db api. It will not have
++any impact on an external API. Any code which calls db.instance_metadata_*() or
++db.instance_system_metadata_*() will need to be updated.
++
++A potential disadvantage of this approach is that we will not be able to
++implement any query which selects instances based on their instance metadata. I
++have not found any instances where we do this currently, but it is worth
++pausing if we think we will want to do this in the future.
++
++
++Project Priority
++-----------------
++
++This does not fit under any of the :ref:`kilo-priorities`.
++
++
++Proposed change
++===============
++
++The instance_metadata and instance_system_metadata tables will be eliminated.
++Their contents will be moved into 2 new columns on the instances table:
++metadata and system_metadata. Their contents will be a JSON encoded dict.
++
++All db apis relating to instance metadata will be removed. All code calling
++them will be updated to request the new columns from the instance table.
++
++
++Alternatives
++------------
++
++Given that there are 2 key/value pair tables relating to instance, making a
++cartesian join impractical, there is no reasonable way to fetch or update an
++instance object in a single database call.
++
++It should, however, be possible to achieve atomic reads and write with the
++current datamodel with appropriate locking in the database.
++
++
++Data model impact
++-----------------
++
++The instance_metadata and instance_system_metadata tables go away.
++
++The instances table gains 2 new fields: 'metadata', and 'system_metadata'.
++
++Data from instance_metadata and instance_system_metadata are combined in to a
++JSON dict and stored in instances.metadata and instances.system_metadata
++respectively.
++
++
++REST API impact
++---------------
++
++There is no impact to any REST api.
++
++
++Security impact
++---------------
++
++None
++
++
++Notifications impact
++--------------------
++
++None
++
++
++Other end user impact
++---------------------
++
++None
++
++
++Performance Impact
++------------------
++
++This change will improve the performance of both accessing and updating
++instance metadata and instances. It will reduce the number of calls required
++to fetch an instance and its metadata from 3 to 1. It will reduce the number
++of calls required to update an instance and its metadata from O(n) to 2.
++
++Other deployer impact
++---------------------
++
++None
++
++
++Developer impact
++----------------
++
++The change will touch the Nova db api. This will not have any impact outside
++Nova.
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++
++Primary assignee:
++  MatthewBooth
++
++Other contributors:
++  None
++
++
++Work Items
++----------
++
++Most likely 2 patches: 1 each for InstanceMetadata and InstanceSystemMetadata.
++
++
++Dependencies
++============
++
++None
++
++
++Testing
++=======
++
++This is not intended to have any externally visible change. All existing tests
++should continue to pass.
++
++
++Documentation Impact
++====================
++
++This change should not have any documentation impact.
++
++
++References
++==========
++
++None
+-- 
+1.9.1
+

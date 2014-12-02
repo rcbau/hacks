@@ -1,0 +1,309 @@
+From f7f1b3f4f951aed40f7144aa687cb598b8634125 Mon Sep 17 00:00:00 2001
+From: Jay Pipes <jaypipes@gmail.com>
+Date: Thu, 27 Nov 2014 10:52:12 -0500
+Subject: [PATCH] Adds an archival framework to Nova
+
+Specification for a new record archival framework that will
+allow Nova to get rid of the deleted and deleted_at columns in all
+tables in the Nova database.
+
+Blueprint archival-framework
+
+Change-Id: I6ee86fe55796d8fb820e9857cf4aa180be751403
+---
+ specs/kilo/approved/archival-framework.rst | 283 +++++++++++++++++++++++++++++
+ 1 file changed, 283 insertions(+)
+ create mode 100644 specs/kilo/approved/archival-framework.rst
+
+diff --git a/specs/kilo/approved/archival-framework.rst b/specs/kilo/approved/archival-framework.rst
+new file mode 100644
+index 0000000..3d7920b
+--- /dev/null
++++ b/specs/kilo/approved/archival-framework.rst
+@@ -0,0 +1,283 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++=========================
++Create Archival Framework
++=========================
++
++https://blueprints.launchpad.net/nova/+spec/archival-framework
++
++Introduce a method for archiving data to a backend storage system.
++
++Problem description
++===================
++
++Over the course of normal operations, a cloud will have many instances launched
++and terminated. Typically, the number of terminated instances will greatly
++outnumber the active instances in a cloud. This information about terminated
++instances is valuable for audit and archival purposes, but it presents a number
++of performance and maintenance problems for Nova.
++
++The first problem is related to the performance and scale of the Nova database
++operations. Each row in *every table in the Nova database* has two fields that
++have a value when the record was deleted. The `deleted` column stores the value
++of the `id` column and the `deleted_at` column stores the timestamp at which
++the record was deleted. The `deleted` column stores the ID of the record
++because this column is used in various unique constraints that, for example,
++prevents users from having two instances with the same name, but only if the
++instances are not terminated.
++
++The combination of the `deleted` and `deleted_at` column adds 12 bytes to each
++row in every table. In addition to this 12 bytes per row, there is an
++additional 8 bytes used per record in each unique constraint that contains the `deleted` column.
++Just on the instances table, there are 3 unique constraints (over the name, host, and host/node columns)
++with 8 more bytes used per row on each of these indexes.
++
++This small number of bytes per row isn't much, but over time, and with millions
++of records in the database in all of the tables, can make a definite impact on
++performance. Generally, the slimmer we can make a row in a table in the
++database, the more records can fit into a single page of memory, and thus fewer
++reads are needed for seeks and scans in the database.
++
++The second and more important problem related to deleted records has to do
++with the complexity introduced to the queries and join conditions in Nova's
++database layer. When Nova needs to list or act on a set of instances, it must
++filter out these terminated instances by excluding instances that have a
++`deleted` column value greater than 0. The ubiquitous `model_query()` method in
++the `nova.db.sqlalchemy.api` module takes a `read_deleted` parameter that can
++be 'yes', 'no', or 'only', which adds filtering to the query over the deleted
++column:
++
++.. code:: python
++
++    default_deleted_value = base_model.__mapper__.c.deleted.default.arg
++    if read_deleted == 'no':
++        query = query.filter(base_model.deleted == default_deleted_value)
++    elif read_deleted == 'yes':
++        pass  # omit the filter to include deleted and active
++    elif read_deleted == 'only':
++        query = query.filter(base_model.deleted != default_deleted_value)
++
++This adds complexity to each query and also means that various SQLAlchemy models have relations that look like this:
++
++.. code:: python
++
++    instance = orm.relationship(Instance,
++                            backref=orm.backref('block_device_mapping'),
++                            foreign_keys=instance_uuid,
++                            primaryjoin='and_(BlockDeviceMapping.'
++                                              'instance_uuid=='
++                                              'Instance.uuid,'
++                                              'BlockDeviceMapping.deleted=='
++                                              '0)')
++
++This complexity is all due to a number of business requirements:
++
++* We must have the ability to do forensic analysis against terminated or
++  deleted records
++
++* We want to provide certain uniqueness constraints over things like
++  names of instances, but we don't want the constraints to apply to
++  deleted records
++
++This blueprint aims to provide a framework for archiving of records with the
++aim that the `deleted` and `deleted_at` columns can eventually be removed
++entirely from the Nova database schema and the complexity involved in the
++join conditions and unique constraints can similarly be removed from the
++database layer.
++
++Use Cases
++----------
++
++An operator wishes to have a full forensic audit trail that can be used to
++identify what a cloud user did with a particular instance, up to the time
++that the instance was terminated. The operator wants the main Nova database
++to only contain the "active" set of data -- i.e. not including any terminated
++instances or volumes -- in order for the performance of the Nova system to
++be good for the majority of calls to the database.
++
++Project Priority
++-----------------
++
++None.
++
++Proposed change
++===============
++
++We propose to add a generic archival framework to Nova that will allow a
++set of relations in the main Nova database to be deleted and stored in a
++separate archival storage system.
++
++The archival framework should be driver-based, to allow for different
++backend storage systems to be used. Some operators may choose to store
++archived records in a traditional RDBMS. Others may prefer to use log
++storage or a NoSQL data store.
++
++The archival framework should have a single method for archival. This method
++should accept a set of `nova.objects` that represent the data to be archived.
++The framework should be store the records in backend storage and then fully
++delete the records from active storage in the Nova database. Data should be
++deleted from active storage in a fully transactional manner -- i.e. no orphaned
++records should be left from parent relations. Whether the archival operation
++is transactional should be left as a decision for the backend storage driver.
++The archive method *should be an asynchronous operation*.
++
++The framework should have a single method for looking up a set of records based
++on object identifiers and/or a timestamp.
++
++A REST API for this archival framework is deliberately NOT in scope for this
++blueprint.
++
++A utility (perhaps as an addition to the `nova-manage` CLI utility) should be
++provided to archive records in existing databases using a batch processing,
++low priority procedure that tries not to interfere with the normal operation
++of the Nova services.
++
++Database schema migration scripts should be provided that check for the lack
++of deleted records in all tables of the Nova database -- which will indicate
++that the archival utility program has completed the archival of all records --
++and then proceed to remove the `deleted` and `deleted_at` columns from the
++database schemas, and remove the `deleted` columns from all unique constraints.
++
++Alternatives
++------------
++
++The main alternatives to a true archival framework are actually already in
++existence in Nova. The first alternative is to use the "soft delete" method
++of marking a record as deleted and constructing unique constraints around
++primary keys and a `deleted` column. The second alternative is to move
++deleted records to a set of shadow tables using a "purge" process, and
++potentially joining main tables to shadown tables. Both of these alternative
++solutions are problematic due to the complexity they add to the Nova database
++layer and the fact that they treat all data -- old and active -- in the same
++way, and insist on storing each type of data using the same storage mechanism.
++
++Data model impact
++-----------------
++
++All use of the `oslo.db.sqlalchemy.models.SoftDeleteMixin` class will be
++removed from Nova. All relations currently defined to account for the `deleted`
++columns will be reworked to remove the `deleted` column. The `deleted_at` and
++`deleted` columns will be removed from all models.
++
++All `nova.objects` objects will need to be updated to account for older
++compute workers sending instance and other data that includes the `deleted` and
++`deleted_at` data.
++
++REST API impact
++---------------
++
++None.
++
++Security impact
++---------------
++
++None.
++
++Notifications impact
++--------------------
++
++None.
++
++Other end user impact
++---------------------
++
++None.
++
++Performance Impact
++------------------
++
++Performance improvements are expected for the main Nova database due to the
++decreased query complexity and schema narrowing.
++
++Other deployer impact
++---------------------
++
++There should be explicit instructions provided for how a deployer should roll
++out the archival framework with little to no downtime involved. The steps a
++deployer takes with regards to updating the code base of Nova, running the
++`nova-manage archive` commands, and then the corresponding `nova-manage db
++expand/migrate/contract` commands should be provided in the developer reference
++and included in the operators manual.
++
++Developer impact
++----------------
++
++None.
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  Mike Durnosvistov (mdurnosvistov@mirantis.com)
++
++Work Items
++----------
++
++- Create the archival framework with a base driver interface and excellent
++  docstring documentation about the expected arguments to methods, behaviour
++  of the methods with regard to asynchronous calls, and any exceptions that
++  might be raised.
++
++- Add RPC API methods to the `nova-conductor` worker for `archive_records`
++  and `archived_records_get`. `archive_records` should be a cast (async)
++  operation, whereas `archived_records_get` can be a call (sync) operation.
++
++- Have a separate thread within the conductor that manages the archive queue
++  and have the `archive_records` RPC API command add an archival request to
++  the queue, to be processed by a separate worker threads in a low-priority
++  way.
++
++- Write the implementation for a simple log-file driver that writes archived
++  records (in the `nova.objects` JSON-serialization format) to disk, and has
++  a naive search records facility to find archived records.
++
++- Write the `nova-manage archive` utility that will go through all the tables
++  in the Nova database and archive all deleted records in batches.
++
++- Remove the `SoftDeleteMixin` class from all models in the Nova sqlalchemy
++  models.py file. Remove the `deleted` column from any join conditions in
++  relations in the models. Remove the `read_deleted` stuff from `model_query()`
++
++- Change all `nova.objects` `destroy()` methods to call the archival RPC API
++  instead of calling the database API's delete methods.
++
++- Write the schema migrations that remove the `deleted` and `deleted_at`
++  columns from the database, reworks the unique constraints that contain
++  the `deleted` column, and removes all shadow tables from the database.
++
++- Write documentation for all of the above.
++
++Dependencies
++============
++
++None.
++
++Testing
++=======
++
++New unit tests for the archival module will be added. Functional tests that
++show deleted data is not in the main database after deletion events will be
++added to Tempest.
++
++Documentation Impact
++====================
++
++Developer reference material that explains the new archival engine, the rules
++associated with using the engine for different types of records, and the
++different backend storage systems should be delivered as a part of this
++blueprint.
++
++References
++==========
++
++Mailing list threads:
++
++http://lists.openstack.org/pipermail/openstack-dev/2014-November/051446.html
++http://lists.openstack.org/pipermail/openstack-dev/2014-November/051678.html
+-- 
+1.9.1
+

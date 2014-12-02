@@ -1,0 +1,177 @@
+From d4f39b98d14653ff1630a69c422e95d48acea6ec Mon Sep 17 00:00:00 2001
+From: Nisha Agarwal <agarwalnisha1980@gmail.com>
+Date: Fri, 31 Oct 2014 13:06:45 +0530
+Subject: [PATCH] Enhance the ComputeCapabilities filter to accept the list as
+ value.
+
+Implements: blueprint ironic-enhance-compute-capabilities
+
+Change-Id: I95302c737c09e3fad42080c75bb4b0e76a06e379
+---
+ .../ironic-enhance-compute-capabilities.rst        | 154 +++++++++++++++++++++
+ 1 file changed, 154 insertions(+)
+ create mode 100644 specs/kilo/approved/ironic-enhance-compute-capabilities.rst
+
+diff --git a/specs/kilo/approved/ironic-enhance-compute-capabilities.rst b/specs/kilo/approved/ironic-enhance-compute-capabilities.rst
+new file mode 100644
+index 0000000..8dd566e
+--- /dev/null
++++ b/specs/kilo/approved/ironic-enhance-compute-capabilities.rst
+@@ -0,0 +1,154 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++===================================================================
++Enhance the ComputeCapabilities filter to accept the list as value.
++===================================================================
++
++https://blueprints.launchpad.net/nova/+spec/ironic-enhance-compute-capabilities
++
++Nova has the filter ComputeCapabilities filter which selects the instances
++when instance capabilities matches the extra_specs of the flavor. This allows
++the node to be selected for deploying for uefi or bios. The filter is not
++capable of selecting the same node for both methods of deployment, even when
++the hardware is capable of both, and therefore currently requires the
++capabilities to be changed manually within Ironic.
++
++Problem description
++===================
++
++The ComputeCapabilities filter acts for static selection of node as per current
++implementation. The ComputeCapabilities filter is not capable to choose if the
++values provided is a list. There shall be filters which accepts the values
++as list, Example : 'supported_boot_modes:bios uefi',
++'boot_options:netboot localboot'.
++
++The current scheduler filters lack a means to express:
++
++* a desired combination of capabilities on the flavor, and
++
++* a set of supported capabilities on the compute node, then
++
++* match these and pass the desired set down to the hypervisor.
++
++Such "sets of capabilities" are, for example, different boot modes
++(BIOS or UEFI), different performance modes (power-save or high-performance),
++or different virtualization modes (VT "on" or "off") -- all of which can be
++changed on-demand at deploy time with some hardware.
++
++A pool of hardware might support all of these, but without an ability to
++match sets of capabilities, the operator must pigeon-hole each server
++into a single capability for scheduling purposes.
++
++Use Cases
++----------
++
++The node/instance can be picked up for deploying based on the capabilities
++and flavor values.
++
++Project Priority
++-----------------
++
++Yes, as the basic UEFI support in ironic was done during Juno and current
++method allows the node to be picked up for both modes only after manually
++updating the capabilities of the ironic node.
++
++Proposed change
++===============
++
++The spec proposes to enhance the filter ComputeCapabilities filter to
++accept multiple values for a key also.
++
++Alternatives
++------------
++
++The same can be achieved by adding a new filter ComputeCapabilitiesList
++filter in the schedular. It adds a new filter to the
++'nova/scheduler/filters'. This filter would select the node based on
++given value which can match either value in the list of the capabilities.
++
++Data model impact
++-----------------
++
++None.
++
++REST API impact
++---------------
++
++None.
++
++Security impact
++---------------
++
++None.
++
++Notifications impact
++--------------------
++
++None.
++
++Other end user impact
++---------------------
++
++It helps the nova to select the node for deploy based on the capability of
++the node.
++
++Performance Impact
++------------------
++
++None.
++
++Other deployer impact
++---------------------
++
++None.
++
++Developer impact
++----------------
++
++For example, for supported_boot_modes the user doesn't need to manually
++check what all boot modes are supported by the baremetal.
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  agarwalnisha1980
++
++Work Items
++----------
++
++
++* Enhance the ComputeCapabilities filter to accept the list also as
++  value.
++
++Example : "capabilities=supported_boot_modes:bios uefi".
++
++The capabilities filter does not read beyond the comma, hence the
++delimiter used is space.
++
++Dependencies
++============
++
++None.
++
++Testing
++=======
++
++Unit tests will be added.
++
++Documentation Impact
++====================
++
++None.
++
++References
++==========
++
++None.
+-- 
+1.9.1
+

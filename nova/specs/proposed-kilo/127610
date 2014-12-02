@@ -1,4 +1,4 @@
-From 6059f1009366aea292ecde653f3cfc4a564af3cc Mon Sep 17 00:00:00 2001
+From b1d965365fd21f9e47346cd92b6b632ed7c861f9 Mon Sep 17 00:00:00 2001
 From: Jay Pipes <jaypipes@gmail.com>
 Date: Fri, 10 Oct 2014 14:08:33 -0400
 Subject: [PATCH] Adds RequestSpec object model
@@ -6,19 +6,21 @@ Subject: [PATCH] Adds RequestSpec object model
 Specification for adding an object model that encapsulates the request
 to launch one or more instances in the cloud.
 
+Co-Authored-By: Sylvain Bauza <sbauza@redhat.com>
+
 Change-Id: I5d580c98d98d6899ce46b892d64b21c8dd8abe69
 Blueprint: request-spec-object
 ---
- specs/kilo/approved/request-spec-object.rst | 291 ++++++++++++++++++++++++++++
- 1 file changed, 291 insertions(+)
+ specs/kilo/approved/request-spec-object.rst | 287 ++++++++++++++++++++++++++++
+ 1 file changed, 287 insertions(+)
  create mode 100644 specs/kilo/approved/request-spec-object.rst
 
 diff --git a/specs/kilo/approved/request-spec-object.rst b/specs/kilo/approved/request-spec-object.rst
 new file mode 100644
-index 0000000..61c3e1b
+index 0000000..2d8b356
 --- /dev/null
 +++ b/specs/kilo/approved/request-spec-object.rst
-@@ -0,0 +1,291 @@
+@@ -0,0 +1,287 @@
 +..
 + This work is licensed under a Creative Commons Attribution 3.0 Unported
 + License.
@@ -28,8 +30,6 @@ index 0000000..61c3e1b
 +=========================
 +Create RequestSpec Object
 +=========================
-+
-+Include the URL of your launchpad blueprint:
 +
 +https://blueprints.launchpad.net/nova/+spec/request-spec-object
 +
@@ -55,18 +55,20 @@ index 0000000..61c3e1b
 +a pre-requisite to making a properly-versioned and properly-documented
 +interface in preparation for a split-out of the scheduler code.
 +
++
 +Use Cases
 +----------
 +
-+Nova contributors wish to extend the functionality of the scheduler and intend
-+to break the scheduler out into the Gantt project. In order to do this
-+effectively, the internal interfaces around the resource tracker and the
-+scheduler must be cleaned up to use structured objects.
++This is a pure refactoring effort for cleaning up all the interfaces in between
++Nova and the scheduler so the scheduler could be split out by the next cycle.
 +
 +Project Priority
 +-----------------
 +
-+Falls under the technical debt reduction category.
++This blueprint is part of a global effort around the 'scheduler' refactoring
++for helping it to be split out. This has been defined as the 3rd priority for
++this Kilo cycle.
++
 +
 +Proposed change
 +===============
@@ -91,7 +93,10 @@ index 0000000..61c3e1b
 +Data model impact
 +-----------------
 +
-+None.
++This spec is not focusing on persisting the RequestSpec object but another
++blueprint (and a spec) will be proposed with this one as dependency for
++providing a save() method to the RequestSpec object which would allow it to be
++persisted in (probably) instance_extra DB table.
 +
 +REST API impact
 +---------------
@@ -129,14 +134,6 @@ index 0000000..61c3e1b
 +None, besides making the scheduler call interfaces gradually easier to read
 +and understand.
 +
-+Implementation
-+==============
-+
-+Assignee(s)
-+-----------
-+
-+Primary assignee:
-+  jaypipes
 +
 +Implementation
 +==============
@@ -187,11 +184,16 @@ index 0000000..61c3e1b
 +
 +    fields = {
 +        'image': fields.DictOfStringsField(nullable=False),
-+        'instance_properties': fields.DictOfStringsField(nullable=False),
-+        'instance_type': fields.ObjectField('Flavor', nullable=True),
-+        'num_instances': fields.IntegerField(nullable=False, default=1),
-+        'instance_uuids': fields.ListOfStringsField(nullable=True)
++        # instance_properties could eventually be deconstructed into component
++        # parts
++        'instance_properties': fields.ObjectField('Instance'),
++        'instance_type': fields.ObjectField('Flavor', nullable=False),
++        'num_instances': fields.IntegerField(default=1),
 +    }
++
++As `request_spec` dictionary is having a deprecated `instance_uuids` field, we
++will not provide this field into the RequestSpec object and instead bump the
++RPC API version and remove it from the dictionary before as a work item.
 +
 +This blueprint does not change the `select_destinations` scheduler RPC API
 +method, so we would construct a `nova.objects.request_spec.RequestSpec` object
@@ -206,9 +208,7 @@ index 0000000..61c3e1b
 +        """
 +        elevated = context.elevated()
 +        request_spec = objects.RequestSpec.from_dict(request_spec)
-+        instance_properties = request_spec.instance_properties
 +        instance_type = request_spec.instance_type
-+        instance_uuids = request_spec.instance_uuids
 +
 +        update_group_hosts = self._setup_instance_group(context,
 +                filter_properties)
@@ -247,17 +247,24 @@ index 0000000..61c3e1b
 +of the scheduler filters to access the original properties via object
 +notation instead of dict-notation.
 +
++As said above in the data model impact section, this blueprint is not targeting
++to persist this object at the moment. We are also not yet removing the
++`filter_properties` dictionary in this blueprint.
++
 +Assignee(s)
 +-----------
 +
 +Primary assignee:
-+  jaypipes
++  bauzas
 +
 +Other contributors:
-+  bauzas
++  None
 +
 +Work Items
 +----------
++
++- Remove `instance_uuids` field from `request_spec` and bump a new version for
++  the Scheduler RPC API
 +
 +- Add request spec class to `nova/scheduler/request_spec.py` w/ unit tests
 +
@@ -299,17 +306,8 @@ index 0000000..61c3e1b
 +the interfaces between the nova-api, nova-scheduler, nova-conductor and
 +nova-compute daemons that involve scheduling and resource decisions.
 +
-+Blueprints involved in this effort include:
-+
-+- `detach-service-from-computenode`
-+- `resource-objects`
-+- `request-spec-object` <-- this blueprint
-+- `sched-select-destinations-use-request-spec-object`
-+- `placement-spec-object`
-+- `condition-objects`
-+- `sched-placement-spec-use-resource-objects`
-+- `sched-placement-spec-use-condition-objects`
-+- `sched-get-placement-claims`
++See https://wiki.openstack.org/wiki/Gantt/kilo#Tasks for the list of all
++blueprints targeted for Kilo.
 -- 
 1.9.1
 

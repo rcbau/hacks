@@ -25,6 +25,20 @@ except Exception as ex:
 
 cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
 
+# Determine item prices
+product_prices = {}
+cur.execute('select * from product')
+rows = cur.fetchall()
+for row in rows:
+    product_prices[row['id']] = row['cost']
+
+# Cache invoice dates
+invoice_dates = {}
+cur.execute('select * from invoice')
+rows = cur.fetchall()
+for row in rows:
+    invoice_dates[row['id']] = row['issue_date']
+
 # Find paid invoices
 paid_invoices = []
 payment_dates = {}
@@ -37,6 +51,23 @@ for row in rows:
         paid_dt = row['creation_timestamp']
         paid_d = datetime.datetime(paid_dt.year, paid_dt.month, paid_dt.day)
         payment_dates[row['invoice_id']] = paid_d
+
+# Invoices worth $0 are also "paid"
+invoice_totals = {}
+
+cur.execute('select * from invoice_item')
+rows = cur.fetchall()
+for row in rows:
+    if not row['product_id']:
+        continue
+
+    invoice_totals.setdefault(row['invoice_id'], 0)
+    invoice_totals[row['invoice_id']] += product_prices[row['product_id']]
+
+for invoice_id in invoice_totals:
+    if invoice_totals[invoice_id] == 0 and not invoice_id in paid_invoices:
+        paid_invoices.append(invoice_id)
+        payment_dates[invoice_id] = invoice_dates[invoice_id]
 
 # Find what those invoices paid for
 products_by_date = {}

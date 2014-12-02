@@ -1,0 +1,250 @@
+From 721786a38303e0b00823ff09ff5e6aa49af7950c Mon Sep 17 00:00:00 2001
+From: "Daniel P. Berrange" <berrange@redhat.com>
+Date: Mon, 10 Nov 2014 15:53:16 +0000
+Subject: [PATCH] virt: Convert get_available_resources to use an object
+ instead of dict
+
+The nova.virt.Driver class defines a get_available_resources method. This
+returns a dict whose contents are essentially undocumented and can only be
+inferred by looking at the code. This blueprint aims to define a set of
+objects and convert the virt drivers to return these objects directly.
+
+Change-Id: I0bc9f5eed9d8034d17071d5a91eb4274a6e0ff1a
+Blueprint: virt-driver-get-available-resources-object
+---
+ .../virt-driver-get-available-resources-object.rst | 223 +++++++++++++++++++++
+ 1 file changed, 223 insertions(+)
+ create mode 100644 specs/kilo/approved/virt-driver-get-available-resources-object.rst
+
+diff --git a/specs/kilo/approved/virt-driver-get-available-resources-object.rst b/specs/kilo/approved/virt-driver-get-available-resources-object.rst
+new file mode 100644
+index 0000000..64233da
+--- /dev/null
++++ b/specs/kilo/approved/virt-driver-get-available-resources-object.rst
+@@ -0,0 +1,223 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++================================================================
++Convert get_available_resources to use an object instead of dict
++================================================================
++
++https://blueprints.launchpad.net/nova/+spec/virt-driver-get-available-resources-object
++
++The nova.virt.Driver class defines a get_available_resources method. This
++returns a dict whose contents are essentially undocumented and can only be
++inferred by looking at the code. This blueprint aims to define a set of
++objects and convert the virt drivers to return these objects directly.
++
++Problem description
++===================
++
++The virt driver implementations need to provide information about the resource
++availability on their compute nodes to the schedular, and to a lesser extent,
++to the cloud administrator. Historically this has been achieved by implementing
++the 'get_available_resources' method on nova/virt/driver.py
++
++This method is expected to return a dict with various standard keys pointing to
++data in a specific format. Unfortunately the contents of this dict is almost
++entirely undocumented and so the virt drivers have not all returned data that
++is in a consistent format.
++
++The data about supported instances was cleaned up in the Juno cycle, with the
++introduction of constants for architecture, vm mode and hv type values. There
++are still huge areas of bad code to deal with, in particular for reporting the
++CPU model of the host, there is almost no consistency across drivers what so
++ever. The Ironic driver is reporting alot of fields which are not accessed by
++the resource tracker at all, nor ever stored in the database.
++
++Use Cases
++----------
++
++The cleanup aims to improve the maintainability of the Nova virt drivers for
++developers, but introducing a formally specified set of objects to define the
++data returned by the "get_available_resources" method. Cleaning up the virt
++drivers will assist more generally with the cleanup of the resource tracker and
++schedular, but making it clear exactly what the virt drivers are reporting.
++
++Project Priority
++-----------------
++
++This cleanup falls under the "scheduler" project priority for Kilo
++
++Proposed change
++===============
++
++There need to be at least the following objects defined
++
++* HVSpec - record architecture, hv type and vm mode associated with
++  a supported guest instance type. A compute node supports zero or
++  more instance specs. This already exists.
++
++* PCIDevice - record information about a single PCI device in the
++  compute node. A compute node supports zero or more PCI devices.
++  This already exists.
++
++* PCIAddress - record information about a PCI device address, comprising
++  the domain, bus, slot and function numbers. Currently the PCIDevice
++  object just uses a StringField, but since there is a well defined
++  format this string must be in, adding an explicit object to encode
++  and decode the format is desirable. This does not exist yet, but is
++  not critical path for the rest of the cleanup, just nice to have.
++
++* CPUModel - record information about the physical CPU model of the
++  compute node. This includes information about the vendor, model,
++  feature flags, and topology. This does not exist yet.
++
++* CPUTopology - record information about the CPU topology, comprising
++  the number of sockets, cores and threads of a CPU. Will be referenced
++  by the CPUModel class. This object is also needed for a new virt
++  driver API for CPU compatibility checking during migration. This does
++  not yet exist.
++
++* NUMATopology - record information about the NUMA topology of the compute
++  nodes, comprising the nodes and the CPUs/RAM within them. This object
++  already exists, but needs to be converted to be a proper Nova object.
++
++* HostResources - record information about the memory, disk and CPU
++  availability of compute node, along with lists of PCI devices,
++  supported instances, and CPU model. This does not yet exist
++
++Once all the objects are defined, the bulk of the work is converting
++the nova/virt/*/driver.py files "get_available_resource" method
++impls to return an instance of HostResources instead of the current
++dict. There will be many updates to the variuous unit tests to adapt
++to the change object format too.
++
++The bare minimum work will be done to the resource_tracker.py file,
++only changing to the extent required to accept the new objects in
++place of the current dict
++
++Alternatives
++------------
++
++The original plan was to define a set of classes in nova/virt/hardware.py
++which were plain python objects. The resource tracker would then convert
++these into the Nova objects to suit its needs. It is now thought that such
++a split of two parallel class hierarchies is overkill, and it is better to
++have the virt drivers directly return the Nova objects.
++
++Data model impact
++-----------------
++
++There is no intention to modify any aspect of the current database schema.
++While the intent is to use the existing data formats for all fields, the
++switch to using Nova object may result in some of the JSON/dict based
++table columns gaining new attributes for versioning information. The Nova
++object framework should transparently take care of dealing with the
++transition.
++
++REST API impact
++---------------
++
++No changes.
++
++Security impact
++---------------
++
++No security sensitive code areas are changed.
++
++Notifications impact
++--------------------
++
++No changes.
++
++Other end user impact
++---------------------
++
++No changes.
++
++Performance Impact
++------------------
++
++While there might be a small increase in the size of the data stored
++in some of the JSON based table columns, it is not believed to have
++a significant performance impact. Any impact will be outweighed by
++the benefits of versioning introduced by Nova objects.
++
++Other deployer impact
++---------------------
++
++There should be no deployer visible impact.
++
++Developer impact
++----------------
++
++The intention is to update all in-tree virt drivers to work with the
++new objects models and immediately discontinue support for the old
++dict based data format from "get_available_resource". Developers of
++in-tree virt drivers will need to rebase any work they have in the
++area of this method. Once the code lands, out of tree virt drivers
++will be broken until their maintainers convert their code to the new
++object model.
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  berrange
++
++Other contributors:
++  Design guidance on object models to be taken from other developers
++  working on the scheduler.
++
++Work Items
++----------
++
++There are essentially three stages to the work
++
++* Cleanup various bits of crazy in the "get_available_resource"
++  method implementations. This is proceeding regardless of this
++  blueprint since these are all essentially bug fixes
++
++* Define the various new objects required as mentioned ealier
++
++* Convert the in-tree virt drivers and unit tests to the new
++  object models
++
++Dependencies
++============
++
++* The 'resource-objects' spec aims to define a set of Nova
++  objects to represent resources inside the resource tracker.
++
++  https://review.openstack.org/#/c/127609/4/specs/kilo/approved/resource-objects.rst
++
++  This scope of this spec appears isolated from the virt drivers.
++  ie it will consume data from the dict returned by the virt driver
++  get_available_resource method, and turn it into objects. It could
++  thus dove-tail with this work in the virt-driver to achieve
++  objectification from top to bottom.
++
++Testing
++=======
++
++The existing tempest test coverage for virt drivers will exercise this
++codepath. No new features are being added, merely existing code refactored
++so further test cases should not be required.
++
++There will of course be new unit tests and existing unit tests updated.
++
++Documentation Impact
++====================
++
++There is nothing end user / cloud admin visible in this work. The only
++impact is on Nova developers. This will be handled by inline python API
++docs where appropriate.
++
++References
++==========
++
++None
+-- 
+1.9.1
+

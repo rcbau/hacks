@@ -1,4 +1,4 @@
-From 831fae7fa4688baddcfd822dd68d92d0b3082cbe Mon Sep 17 00:00:00 2001
+From 59a25072f831c79f3b0fc17f1af378bbe47c851f Mon Sep 17 00:00:00 2001
 From: He Jie Xu <xuhj@linux.vnet.ibm.com>
 Date: Thu, 9 Oct 2014 15:46:08 +0800
 Subject: [PATCH] Add separated policy rule for each v2.1 api
@@ -11,16 +11,16 @@ Part of blueprint separated-policy-rule-v3-api
 
 Change-Id: I0a8d43ac3ae56b65e598fc0dc0fab40a36ee1a00
 ---
- .../kilo/approved/separated-policy-rule-v3-api.rst | 177 +++++++++++++++++++++
- 1 file changed, 177 insertions(+)
+ .../kilo/approved/separated-policy-rule-v3-api.rst | 180 +++++++++++++++++++++
+ 1 file changed, 180 insertions(+)
  create mode 100644 specs/kilo/approved/separated-policy-rule-v3-api.rst
 
 diff --git a/specs/kilo/approved/separated-policy-rule-v3-api.rst b/specs/kilo/approved/separated-policy-rule-v3-api.rst
 new file mode 100644
-index 0000000..198373f
+index 0000000..bc7b9e7
 --- /dev/null
 +++ b/specs/kilo/approved/separated-policy-rule-v3-api.rst
-@@ -0,0 +1,177 @@
+@@ -0,0 +1,180 @@
 +..
 + This work is licensed under a Creative Commons Attribution 3.0 Unported
 + License.
@@ -41,6 +41,9 @@ index 0000000..198373f
 +So this BP want to add policy rule for each v2.1 API, then we can get finer
 +granularity to permission control and consistent way to configure policy
 +rule for API.
++
++This is part of policy improvement, the full view describe of those
++improvement at: https://review.openstack.org/#/c/128560
 +
 +Problem description
 +===================
@@ -179,7 +182,7 @@ index 0000000..198373f
 +Dependencies
 +============
 +
-+None
++https://blueprints.launchpad.net/nova/+spec/v3-api-policy
 +
 +Testing
 +=======

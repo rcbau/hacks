@@ -1,4 +1,4 @@
-From fa0a39db108c4c7d2ff4ab532abc69b676e896dc Mon Sep 17 00:00:00 2001
+From 7ad058ec3b08df383270637cfb71fb5f180f7391 Mon Sep 17 00:00:00 2001
 From: Ian Main <imain@redhat.com>
 Date: Wed, 15 Oct 2014 13:11:19 -0700
 Subject: [PATCH] Add the docker hypervisor plugin to Nova
@@ -16,16 +16,16 @@ Tempest test coverage.
 
 Change-Id: I420bfa6740a2fb1e2b7bfb976975387e3ea57992
 ---
- specs/kilo/approved/docker-hypervisor-plugin.rst | 201 +++++++++++++++++++++++
- 1 file changed, 201 insertions(+)
+ specs/kilo/approved/docker-hypervisor-plugin.rst | 217 +++++++++++++++++++++++
+ 1 file changed, 217 insertions(+)
  create mode 100644 specs/kilo/approved/docker-hypervisor-plugin.rst
 
 diff --git a/specs/kilo/approved/docker-hypervisor-plugin.rst b/specs/kilo/approved/docker-hypervisor-plugin.rst
 new file mode 100644
-index 0000000..2df3a71
+index 0000000..6371b22
 --- /dev/null
 +++ b/specs/kilo/approved/docker-hypervisor-plugin.rst
-@@ -0,0 +1,201 @@
+@@ -0,0 +1,217 @@
 +..
 + This work is licensed under a Creative Commons Attribution 3.0 Unported
 + License.
@@ -66,6 +66,22 @@ index 0000000..2df3a71
 +consider supporting by creating a specialized container service.  However, this
 +is not within the scope of this proposal.
 +
++Use Cases
++---------
++
++End users will be able to use containers to manage resources on their data
++centers.  This allows for light weight images to be utilized directly by
++OpenStack.
++
++This also allows direct deployment of Docker containers enabling all the
++features of developer iteration, local testing, versioning etc. provided by
++Docker and its image format.
++
++Project Priority
++----------------
++
++None
++
 +Proposed change
 +===============
 +
@@ -86,8 +102,8 @@ index 0000000..2df3a71
 +* Introduce a new container service in OpenStack that is completely independent
 +  of Nova APIs and is soley focused on container capabilities.
 +
-+* Disregard the capabilities added to OpenStack via docker support with scheduler
-+  support.
++* Disregard the capabilities added to OpenStack via docker support with
++  scheduler support.
 +
 +* Not include Docker container management in OpenStack at all.
 +

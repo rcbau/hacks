@@ -1,0 +1,452 @@
+From e7710b583c0f01575115995a0eed8c0c80731364 Mon Sep 17 00:00:00 2001
+From: Maxime Leroy <maxime.leroy@6wind.com>
+Date: Wed, 19 Nov 2014 17:29:43 +0100
+Subject: [PATCH] Add libvirt-vif-driver-plugin specification
+
+Add a new plugging mechanism for VIF driver to accelerate the
+integration and to allow loading vendor external vif driver.
+
+Implements: blueprint libvirt-vif-driver-plugin
+Change-Id: I9f3b3e4fc564fbc3b1f8de828025a37f45690752
+---
+ specs/kilo/approved/libvirt-vif-driver-plugin.rst | 428 ++++++++++++++++++++++
+ 1 file changed, 428 insertions(+)
+ create mode 100644 specs/kilo/approved/libvirt-vif-driver-plugin.rst
+
+diff --git a/specs/kilo/approved/libvirt-vif-driver-plugin.rst b/specs/kilo/approved/libvirt-vif-driver-plugin.rst
+new file mode 100644
+index 0000000..3f49171
+--- /dev/null
++++ b/specs/kilo/approved/libvirt-vif-driver-plugin.rst
+@@ -0,0 +1,428 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++Libvirt VIF drivers plugin
++==========================
++
++https://blueprints.launchpad.net/nova/+spec/libvirt-vif-driver-plugin
++
++We propose a new VIF driver plugin mechanism to: accelerate integration, and,
++load external VIF drivers.
++
++Problem description
++-------------------
++
++#. Essential part of Neutron plugins and port binding mechanism drivers
++   are maintained in the Nova code base. Review is performed by two distinct
++   communities:
++
++   - Nova for the new VIF driver, and,
++   - Neutron for the new L2 plugins.
++
++   Adding a new L2 plugin to OpenStack is then a rather difficult task.
++
++     From Daniel P. Berrange
++     (Ref: http://lists.openstack.org/pipermail/openstack-dev/2014-August/044192.html)
++
++      Our general rule for accepting new VIF drivers in Nova is that Neutron
++      should have accepted the corresponding other half of VIF driver, since
++      Nova does not want to add support for things that are not in-tree for
++      Neutron.
++      [...]
++      So based on this policy, my recommendation would be to keep the Nova VIF
++      support out of tree in your own branch of Nova codebase until Neutron
++      team are willing to accept their half of the driver.
++      [...]
++
++   As the VIF_driver option has been removed from the Juno release, it is
++   necessary to maintain a specific Nova branch until the L2 plugin has been
++   accepted by the Neutron community.
++
++   To facilitate the integration of the new VIF driver, we propose a new plugin
++   mechanism in Nova to load an external VIF driver. It provides a way to
++   introduce a new L2 plugin without going through the approval cycle of
++   the Nova community as a first step.
++
++#. And increasing number of new VIF drivers need to be reviewed:
++
++   - sriov:
++     https://blueprints.launchpad.net/nova/+spec/vif-driver-ib-passthrough
++
++   - vhost snabb: https://blueprints.launchpad.net/nova/+spec/vif-vhostuser
++
++   - vhost dpdk:
++     https://blueprints.launchpad.net/nova/+spec/libvirt-ovs-use-usvhost
++
++   - network: https://blueprints.launchpad.net/nova/+spec/libvirt-direct-network
++
++   - macvtap: https://blueprints.launchpad.net/nova/+spec/macvtap-vif
++
++   - Huawei vswitch:
++     https://blueprints.launchpad.net/nova/+spec/vif-huwai-vswitch
++
++   - ...
++
++   Having a plugin mechanim in Nova for VIF drivers would reduce the pressure
++   of vendors on the Nova community to review new VIF drivers.
++
++#. In addition, such a mechanism could be used in a long term goal to remove
++   vendor specific VIF drivers from the Nova tree - this is in line with the
++   ongoing review of blueprints https://review.openstack.org/#/c/134680, where
++   the Neutron community expects to spin out all vendor plugins and mechanism
++   drivers.
++
++Use Cases
++~~~~~~~~~
++
++Facilate new VIF drivers integration
++++++++++++++++++++++++++++++++++++++
++
++Having a VIF driver plugin mechanism would make it easier to adopt and
++integrate new drivers.  It would not be necessary to maintain a specific
++Nova branch until the L2 plugin has been accepted by the Neutron community.
++
++Support external vif_driver
+++++++++++++++++++++++++++++
++
++In Neutron, it is possible to support external L2 drivers with the core_plugin
++option.
++(See Additional plugins https://wiki.openstack.org/wiki/Neutron#Plugins)
++
++For external L2 plugins in Neutron, it makes sense to be able to load an
++external VIF driver in Nova.
++
++Alternative vif_driver
++++++++++++++++++++++++
++
++Replacing a vif_driver in the Nova tree by an external VIF driver can be useful
++for some specific use cases:
++
++   - Supporting new vif_models (other than virtio, e1000...).  This allows to
++     support external drivers that are not part of the kernel mainstream.
++
++   - Supporting specific libvirt options for a vif_model, such as offloading
++     features.  (i.e.,
++     http://libvirt.org/formatdomain.html#elementsDriverBackendOption)
++
++   - Supporting alternative backends for OVS (such as DPDK openvswitch), or
++     Linux bridge without requiring a new VIF_TYPE for each specific backend.
++
++Project Priority
++~~~~~~~~~~~~~~~~
++
++None
++
++Proposed change
++---------------
++
++New module: LibvirtVIFDriverManager
++~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
++
++Introduce a new module, :file:`vif_manager.py`, in charge of loading different
++VIF drivers inside or outside of the Nova tree.
++
++The new vif_model module includes:
++
++- A new option to list the VIF drivers to be loaded.
++
++  The default value is the list of all VIF drivers supported in the Nova
++  tree. Thus, the cloud administrator doesn't need to use this option for VIF
++  drivers.
++
++  .. rubric:: Example
++
++  .. code-block:: python
++
++     libvirt_vif_manager_opts = [
++	 cfg.ListOpt(
++	     'vif_drivers',
++	     default=[
++		 'nova.virt.libvirt.vifs.bridge_vif.LibvirtBridgeVIFDriver',
++		 'nova.virt.libvirt.vifs.ovs_vif.LibvirtOvsVIFDriver',
++		 'nova.virt.libvirt.vifs.ivs_vif.LibvirtIvsVIFDriver',
++		 'nova.virt.libvirt.vifs.qbg_vif.Libvirt802QBGVIFDriver',
++		 'nova.virt.libvirt.vifs.qbh_vif.Libvirt802QBHVIFDriver',
++		 'nova.virt.libvirt.vifs.hwweb_vif.LibvirtHwVebVIFDriver',
++		 'nova.virt.libvirt.vifs.iovisor_vif.LibvirtIovisorVIFDriver',
++		 'nova.virt.libvirt.vifs.midonet_vif.LibvirtMidonetVIFDriver',
++		 'nova.virt.libvirt.vifs.mlnxdirect_vif.LibvirtMlnxDirectVIFDriver',
++	     ],
++	 )
++     ]
++
++- A new class to load LibvirtVIFDriverManager, in charge of:
++
++  - loading VIF drivers, and,
++  - select the appropriate driver depending on the vif_type.
++
++  .. rubric:: Example
++
++  .. code-block:: python
++
++     class LibvirtVIFDriverManager(object):
++         """ VIF driver Manager for libvirt networking."""
++
++         def __init__(self, get_connection):
++             self.vif_drivers = {}
++             for vif_driver in CONF.libvirt.vif_drivers:
++                 vif_driver_class = importutils.import_class(vif_driver)
++                 self.vif_drivers[vif_driver_class.vif_type] = \
++                     vif_driver_class(vif_driver_class)
++
++         def get_config(self, instance, vif, image_meta,
++                        inst_type, virt_type):
++             vif_driver = self.vif_drivers[vif['type']]
++             retrun vif_driver.get_config(instance, vif, image_meta,
++                                          inst_type, virt_type)
++
++         def plug(self, instance, vif):
++             vif_driver = self.vif_drivers[vif['type']]
++             vif_driver.plug(instance, vif)
++
++         def unplug(self, instance, vif):
++             vif_driver = self.vif_drivers[vif['type']]
++             vif_drivers.unplug(instance, vif)
++
++Update libvirt/vif.py module accordingly
++~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
++
++- Split LibvirtGenericVIFDriver into several sub-classes:
++
++  .. code-block:: python
++
++     class LibvirtBridgeVIFDriver(LibvirtBaseVIFDriver)
++     class LibvirtOvsVIFDriver(LibvirtBaseVIFDriver)
++     class LibvirtIvsVIFDriver(LibvirtBaseVIFDriver)
++     class Libvirt802QBGVIFDriver(LibvirtBaseVIFDriver)
++     class Libvirt802QBHVIFDriver(LibvirtBaseVIFDriver)
++     class LibvirtHwVebVIFDriver(LibvirtBaseVIFDriver)
++     class LibvirtIovisorVIFDriver(LibvirtBaseVIFDriver)
++     class LibvirtMidonetVIFDriver(LibvirtBaseVIFDriver)
++     class LibvirtMlnxDirectVIFDriver(LibvirtBaseVIFDriver)
++
++  .. note:
++
++  Spliting the VIF driver allows for more modular code.
++
++- Add a new LibvirtBaseVIFDriver class. The API of a VIF driver is defined by
++  this class. Each VIF driver must inherit this class.
++
++  .. code-block:: python
++
++     class LibvirtBaseVIFDriver(object):
++         """Base VIF driver for libvirt networking."""
++
++         # vif_type need to be set here for vif_manager
++         vif_type = network_model.VIF_TYPE_OTHER
++
++         def __init__(self, get_connection):
++             self.get_connection = get_connection
++
++         def get_base_config(self, instance, vif, image_meta,
++                             inst_type, virt_type):
++             ...
++
++         # Each vif driver need to implemented these methods
++         def get_config(self, instance, vif, image_meta,
++                        inst_type, virt_type):
++             raise NotImplementedError()
++
++         def plug(self, instance, vif):
++             raise NotImplementedError()
++
++     def unplug(self, instance, vif):
++             raise NotImplementedError()
++
++  .. note::
++
++     There is no guarantee regarding the statibily of this API. It is up to the
++     vendor to ensure that its external VIF driver is supported by the latest
++     API.
++
++Alternatives
++~~~~~~~~~~~~
++
++Reintroduce vif_driver the option
+++++++++++++++++++++++++++++++++++
++
++The vif_driver option has been introduced by this 2011 commit:
++https://github.com/openstack/nova/commit/a05b0325a76dea16a2d5f7d1931a5cbc922e03
++
++The vif_driver option could be used to load external VIF drivers. However, in
++the Juno release, the vif_driver option has been removed. This is a direct
++consequence of this old blueprint: Simplify libvirt VIF drivers.
++(ref: https://blueprints.launchpad.net/nova/+spec/libvirt-vif-driver )
++
++   The main reason is:
++
++   A great burden is placed on the Nova sysadmin to correctly configure libvirt
++   VIF driver choices. All of this can & should be done automatically based on
++   information about the type of network Nova is connecting to.
++
++LibvirtVIFDriverManager and LibvirtGenericVIFDriver
+++++++++++++++++++++++++++++++++++++++++++++++++++++
++
++With these alternatives, the LibvirtGenericVIFDriver is not split into multiple
++classes for each vif_driver.
++
++The LibvirtVIFDriverManager is still in charge of loading the vif_driver class.
++But a vif_driver class can support multiple vif_types.
++
++.. rubric:: Pros
++
++- Small changes for LibvirtGenericVIFDriver vs. splitting it into multiple
++  VIF drivers classes.
++
++.. rubric:: Cons
++
++- The selection of the VIF driver is more complex, it is done in two phases:
++
++     - LibvirtVIFDriverManager selects the VIFDriver class depending on the
++       VIF_TYPE.
++     - The VIFDriver class (e.g., LibvirtGenericVIFDriver) selects a specific
++       vif_driver depending on the VIF_TYPE.
++
++- Having a logic for one VIF_TYPE and another for one vif_driver class seems to
++  be less confusing. It is still possible to have a module such as
++  :file:`vif.py` supporting multiple vif_drivers with multiples classes.
++
++Add a plugin mechanism in LibvirtGenericVIFDriver
+++++++++++++++++++++++++++++++++++++++++++++++++++
++
++There are no new classes: 'LibvirtVIFDriverManager'. The
++LibvirtGenericVIFDriver is in charge of loading the external VIF driver.
++
++To select a VIF_DRIVER for the get_config, plug, and unplug methods, the
++LibvirtGenericVIFDriver first tries to use this internal function. If there are
++no internal functions for this VIF_TYPE, the vif_driver is selected from the
++external_vif_drivers dictionary attribute.
++
++.. rubric:: Example
++
++.. code-block:: python
++
++      def get_config(self, instance, vif, image_meta,
++                   inst_type, virt_type):
++        vif_type = vif['type']
++	...
++        vif_slug = self._normalize_vif_type(vif_type)
++        func = getattr(self, 'get_config_%s' % vif_slug, None)
++        if not func:
++           external_vif_driver = self.external_vif_drivers[vif_type]
++	   if not external_vif_driver:
++	      raise exception.NovaException(
++		  _("Unexpected vif_type=%s") % vif_type)
++	   func = external_vif_driver.get_config
++
++        return func(instance, vif, image_meta,
++                    inst_type, virt_type)
++
++.. rubric:: Pros
++
++- Small changes for LibvirtGenericVIFDriver instead of splitting it into
++  multiple VIF drivers classes.
++
++- vif_driver selection is done in one class (instead of 2 for the first
++  alternative).
++
++.. rubric:: Cons
++
++- The LibvirtGenericVIFDriver is in charge of loading external devices.  Having
++  a dedicated class in charge of loading VIF drivers and of selecting a VIF
++  driver seems to be a better implementation.
++
++- VIF drivers in the Nova tree are not implemented in the same way as external
++  VIF drivers. The same API should be used for all the VIF drivers.
++
++- It is not possible to replace a VIF driver in the tree by an alternative one.
++
++Data model impact
++~~~~~~~~~~~~~~~~~
++
++No impact
++
++REST API impact
++~~~~~~~~~~~~~~~
++
++No impact
++
++Security impact
++~~~~~~~~~~~~~~~
++
++No impact
++
++Notifications impact
++~~~~~~~~~~~~~~~~~~~~
++
++No impact
++
++Other end user impact
++~~~~~~~~~~~~~~~~~~~~~
++
++No Impact
++
++Performance Impact
++~~~~~~~~~~~~~~~~~~
++
++The code in charge of the vif drivers is re-organized but that has not impact
++on the performance.
++
++Other deployer impact
++~~~~~~~~~~~~~~~~~~~~~
++
++The vif_drivers option (in :file:`/etc/nova.conf`) has a default value with all
++the libvirt VIF drivers available in Nova.
++
++The cloud administrator doesn't need to use this option for standard VIF
++drivers.
++
++Only advanced users and developers would use this options.
++
++Developer impact
++~~~~~~~~~~~~~~~~
++
++It would help to test new VIF driver.
++
++Implementation
++--------------
++
++Assignee(s)
++~~~~~~~~~~~
++
++Primary assignee:
++  maxime-leroy
++
++Work Items
++~~~~~~~~~~
++
++- Add new LibvirtVIFDriverManager with the vif_options
++
++- Split LibvirtGenericVIFDriver into several sub-classes
++
++Dependencies
++------------
++
++None
++
++Testing
++-------
++
++- Add a new unit test to check that we can load a dummy vif_driver
++  in LibvirtVIFDriverManager
++
++- Update :file:`test_vif.py` to use the LibvirtVIFDriverManager class instead
++  of the LibvirtGenericVIFDriver class
++
++Documentation Impact
++--------------------
++
++The new vif_drivers option for libvirt in :file:`nova.conf` needs to be
++documented.
++
++References
++----------
++
++None
+-- 
+1.9.1
+

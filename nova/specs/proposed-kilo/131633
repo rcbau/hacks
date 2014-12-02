@@ -1,4 +1,4 @@
-From 3f020562484dd01a33095231bdbdce46ac93b8ae Mon Sep 17 00:00:00 2001
+From 8fb4ed884d0dbc71f444865f8d10cebf27daa93f Mon Sep 17 00:00:00 2001
 From: Eli Qiao <taget@linux.vnet.ibm.com>
 Date: Wed, 29 Oct 2014 12:34:35 +0800
 Subject: [PATCH] Judge the service state when perform a deleting on it
@@ -15,7 +15,7 @@ Change-Id: I4dfa38d3432cb4516fd93e386f288412d78ec5c6
 
 diff --git a/specs/kilo/approved/judge-service-state-when-deleting.rst b/specs/kilo/approved/judge-service-state-when-deleting.rst
 new file mode 100644
-index 0000000..f1120d6
+index 0000000..3d05611
 --- /dev/null
 +++ b/specs/kilo/approved/judge-service-state-when-deleting.rst
 @@ -0,0 +1,155 @@
@@ -152,7 +152,7 @@ index 0000000..f1120d6
 +Dependencies
 +============
 +
-+None
++This change should be applied to v2.1 once microversions is implemented.
 +
 +Testing
 +=======

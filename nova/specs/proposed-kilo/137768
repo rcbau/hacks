@@ -1,0 +1,200 @@
+From d3247489c947881cefe45d1d63ecbb1bc54bc2c1 Mon Sep 17 00:00:00 2001
+From: Roman Dobosz <roman.dobosz@intel.com>
+Date: Fri, 28 Nov 2014 12:03:09 +0100
+Subject: [PATCH] Propose for new way of check for the host condition.
+
+Instead of compute service existence check, new type of check for host state
+is introduced.
+
+Change-Id: I3a3b999233d6220862f07f7e780ef0eef73b3599
+---
+ specs/kilo/host-health-monitoring.rst | 177 ++++++++++++++++++++++++++++++++++
+ 1 file changed, 177 insertions(+)
+ create mode 100644 specs/kilo/host-health-monitoring.rst
+
+diff --git a/specs/kilo/host-health-monitoring.rst b/specs/kilo/host-health-monitoring.rst
+new file mode 100644
+index 0000000..ac63f65
+--- /dev/null
++++ b/specs/kilo/host-health-monitoring.rst
+@@ -0,0 +1,177 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++======================
++Host health monitoring
++======================
++
++https://blueprints.launchpad.net/nova/+spec/host-health-monitoring/+edit
++
++Provide check for the host condition, instead of compute service check.
++
++Problem description
++===================
++
++For the time being, there is no way for distinguish between two really different
++things: host status and nova-compute status, which is deployed on the host.
++
++Also, provided host information by API and commands, is service centric - i.e.
++``nova host-list`` is just another wrapper for ``nova service-list`` with
++different format (in fact ``service-list`` is superset to ``host-list``). Seems
++like nova is treating *host* term equally to *compute-host*, which might be
++misleading. Such situation can be error prone for the case where there is a need
++to perform host evacuation.
++
++Use Cases
++----------
++
++As a End User, I want to get clear information about host state, so that I can
++perform certain steps like evacuation.
++
++Proposed change
++===============
++
++Instead of treating servicegroup existence of ``compute`` node as a host alive
++indicator, introduce new servicegroup API call for the host check.
++
++Idea is, that there would be check of the status of the services for provided
++host name. If there is at least one with state up, that will mean the host is
++up. If all of the servicegroups nodes doesn't contain the provided host name,
++means the host is down.
++
++Appropriate logic will go into servicegroup API, as new method to get host state
++information, and REST API will be affected as well.
++
++Alternatives
++------------
++
++The other way to get th information is to introduce new node ``hosts`` within
++servicegroup and append the hostname under it - so there would be only one place
++to look for the host state. Drawback of that approach would be, that
++implementation will affect servicegroup driver implementations, and complicate
++``join()`` method for all of them.
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++Modify ``HostController`` method ``index`` to include also information about
++hosts state.
++
++So the changed output may looks like this:
++::
++
++   GET /
++   {
++       "hosts": [
++           {
++               "host_name": "some.host.name",
++               "service": "compute",
++               "state": "up",
++               "zone": "internal"
++           },
++           {
++               "host_name": "some.host.name",
++               "service": "network",
++               "state": "up",
++               "zone": "internal"
++           },
++           {
++               "host_name": "some.other.host.name",
++               "service": "compute",
++               "state": "down",
++               "zone": "internal"
++           },
++           {
++               "host_name": "some.other.host.name",
++               "service": "network",
++               "state": "down",
++               "zone": "internal"
++           }
++       ]
++   }
++
++Note, that since this is requested host-centric information, the new state
++information applies to the host, and by accident to the services - even if the
++``compute`` service is down for ``some.host.name``.
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++None
++
++Performance Impact
++------------------
++
++None
++
++Other deployer impact
++---------------------
++
++None
++
++Developer impact
++----------------
++
++None
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  roman-dobosz
++
++Work Items
++----------
++
++* Create new servicegroup API method `host_is_up`.
++* Modify HostController index method to include the new ``state`` field.
++
++Dependencies
++============
++
++None
++
++Testing
++=======
++
++* Expand unit tests for the servicegroup for covering new method
++* Expand unit tests for the for hosts if necessary
++
++
++Documentation Impact
++====================
++
++None
++
++References
++==========
++
++Bug, which address the issue with checking only the nova-compute service, not
++the host:
++
++* https://bugs.launchpad.net/nova/+bug/1379292
++
++At the summit, issues regarding host monitoring was discussed:
++
++* https://etherpad.openstack.org/p/kilo-crossproject-ha-integration
+-- 
+1.9.1
+

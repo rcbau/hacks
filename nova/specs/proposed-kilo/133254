@@ -1,0 +1,428 @@
+From c770d59cb8a4436f87b1927730e088615e9c9ec2 Mon Sep 17 00:00:00 2001
+From: Angelo Matarazzo <angelo.matarazzo@dektech.com.au>
+Date: Fri, 7 Nov 2014 15:41:24 +0100
+Subject: [PATCH] Spec boot order for instance
+
+This specification proposes a way to define a boot order for a
+instance across devices, whether disks or network interfaces.
+
+APIImpact
+
+Implements: blueprint boot-order-for-instance
+
+Change-Id: I6abdb2b50b38b241db30b3ff655b84579ec5af46
+---
+ specs/kilo/approved/boot-order-for-instance.rst | 400 ++++++++++++++++++++++++
+ 1 file changed, 400 insertions(+)
+ create mode 100644 specs/kilo/approved/boot-order-for-instance.rst
+
+diff --git a/specs/kilo/approved/boot-order-for-instance.rst b/specs/kilo/approved/boot-order-for-instance.rst
+new file mode 100644
+index 0000000..7bc4bea
+--- /dev/null
++++ b/specs/kilo/approved/boot-order-for-instance.rst
+@@ -0,0 +1,400 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++=======================
++boot order for instance
++=======================
++
++
++
++https://blueprints.launchpad.net/nova/+spec/boot-order-for-instance
++
++This specification proposes a way to define a boot order for a
++instance across devices, whether disks, network interfaces.
++
++
++
++Problem description
++===================
++
++The main goal of this specification is to give the End Users the possibility to
++select a specific network interface as a possible booting source.
++Currently in enterprise environments it is often desired to be able to use a
++Preboot Execution Environment (PXE) to boot and install custom operating
++systems on virtual machines.
++In order to add this feature this specification proposes to modify the current
++way used by Nova to define the boot order, as suggested in [1]
++The proposed solution has the advantage to be able to specify the boot order
++not only for type of device (disk,floppy,cdrom,network) but for specific device
++(disk1,disk2,network1,network2)
++
++
++Use Cases
++----------
++
++The proposed feature addresses the case of virtualization of a legacy
++bare metal system.
++In these systems there are machines that retrieve their boot image over the
++network from a PXE server. This is used in case the machine does not have its
++own disk or the boot image needs to be managed remotely for some reason.
++In order to port this scenario into a cloud environment, the PXE server can be
++virtualized with existing OpenStack functionality.
++
++In order to explain better a particular use case a simple diagram follows:
++
+++------------+  +-----------+  +   +--------------+  +--+
++| Client     |  |   PXE     |  |   | configuration|  |
++| /booting   +--+   server/ +------+ system       +----+legacy
++|  VM        |  |   pxe VM  |  |   |              |  |  system
+++------------+  +-----------+  +   +--------------+  +--+
++
++                            proprietary
++                              interface
++
++In the previous scheme the configuration server is connected with the pxe
++server using proprietary interface and it is composed by several modules and
++acts according to external events.
++
++In this scenario the decision of which image should be passed to the booting
++machine by the pxe server, is taken by the configuration server.
++The interactions between Pxe server and the rest of the system is not limited
++to this and the way they work cannot be changed when migrating to OpenStack.
++
++It is too complex to modify the internal logic of the legacy system cause it
++impacts lots of modules.
++Therefore, in order to minimize the impacts during migration to OpenStack,
++it would be preferred if network booting via boot order selection was natively
++supported.
++
++A further use case deals with a user that wants to select the boot disk out of
++several disks which are connected to the vm/instance
++The current nova implementation allows that multiple devices of the same type
++are sorted according to their targets while preserving the order of buses.
++It can be tricky to configure in the desired way and the proposed modification
++will provide the user the full control over booting order.
++
++
++Project Priority
++-----------------
++
++None
++
++Proposed change
++===============
++
++Currently, Nova supports disk, cdrom and floppy as boot device type
++and the user can specify the boot order through the following command:
++
++::
++
++$ nova boot  --block-device bootindex=integer
++
++This command makes the libvirt nova driver add dev attributes in the BIOS
++section according to the bootindex parameter.
++::
++
++    <os>
++        <boot dev='hd'/>
++        <boot dev='cdrom'/>
++    </os>
++
++This specification aims to provide the possibility to define a boot order
++across all assigned devices  according to official documentation of libvirt[1].
++It is possible to insert <boot order='xx' /> element in the "device" section of
++libvirt domain.
++In this way the instance can boot both from specific disk and
++from specific network interface bypassing the image/snapshot/volume
++requirement.
++Example:
++
++::
++
++    <devices>
++          <disk type='file' device='disk'>
++              <boot order='2'/>
++          </disk>
++          <interface type='network'>
++              <source dev='eth0'/>
++              <mac address='52:54:00:5d:c7:9e'/>
++              <boot order='1'/>
++          </interface>
++    </devices>
++
++REST API must be modified in order to allow the user to choose the boot index
++for the network device.
++
++Nova module will recognize the bootindex over all the devices, it will set the
++appropriate boot order per device and it will use the Libvirt Driver to
++generate an appropriate Libvirt XML domain
++
++Besides the current way used by nova to prioritize the boot devices must be
++changed because the proposed implementation and existing one are
++mutually exclusive as reported in official documentation of libvirt[1]
++
++A new option "--nic bootindex=integer" will be introduced in python-novaclient
++module to specify the compute instance which will boot according to the order
++sorted by bootindex option.
++
++Example
++
++::
++
++  $ nova boot ... --block-device bootindex=integer ... --nic bootindex=integer
++
++Alternatives
++------------
++
++There is no alternative to give an instance the possibility to boot from a
++specific attached device.
++In order to boot from network a different approach  is possible
++specifing  Libvirt XML attribute <boot dev='network'/> in OS section of domain
++but the specific device cannot be chosen.
++
++Data model impact
++-----------------
++
++None.
++
++
++REST API impact
++---------------
++
++Currently the v3 definition are in progress and should be enabled
++The affected method is Create server: an optional boot_index parameter
++will be added in networks and port section.
++Method description, method type, normal http response code(s), expected error
++http response code(s), URL for the resource will not change.
++
++Method Type : POST
++
++URL : /v3/​{tenant_id}​/os_devices_boot
++
++Description : Create server
++
++Normal response codes : 202
++
++Error response codes : computeFault (400, 500, …), UnprocessableEntity (422),
++serviceUnavailable (503), badRequest (400), unauthorized (401), forbidden (
++403), badMethod (405), overLimit (413), itemNotFound (404), badMediaType (415),
++NetworkNotFound (400), serverCapacityUnavailable (503)
++
++
++**Additional parameter passed via the url**
++
+++---------------+-----------+------------+-----------------------------------+
++| **Parameter** | **Style** | **Type**   | **Description**                   |
+++---------------+-----------+------------+-----------------------------------+
++| boot_index    | plain     | xsd:string | Specify the boot index            |
++| (Optional)    |           |            |                                   |
+++---------------+-----------+------------+-----------------------------------+
++
++**JSON schema definition of the parameter**
++
++::
++
++  base_create = {
++      'type': 'object',
++      'properties': {
++          'server': {
++              'type': 'object',
++              'properties': {
++                  'name': parameter_types.name,
++                  'imageRef': parameter_types.image_ref,
++                  'flavorRef': parameter_types.flavor_ref,
++                  'adminPass': parameter_types.admin_password,
++                  'metadata': parameter_types.metadata,
++                  'networks': {
++                      'type': 'array',
++                      'items': {
++                          'type': 'object',
++                          'properties': {
++                              'fixed_ip': {
++                                  'type': ['string', 'null'],
++                                  'oneOf': [
++                                      {'format': 'ipv4'},
++                                      {'format': 'ipv6'}
++                                  ]
++                              },
++                              'port': {
++                                  'type': ['string', 'null'],
++                                  'format': 'uuid'
++                              },
++                              'uuid': {'type': 'string'},
++                              'boot_index':['integer', 'null'],
++                          },
++                          'additionalProperties': False,
++                      }
++                  }
++              },
++              'required': ['name', 'flavorRef'],
++          },
++      },
++  }
++
++**Example use case: JSON Request**
++
++::
++
++  {
++       "server": {
++           "name": "server-test-1",
++           "flavorRef": "2",
++           "max_count": 1,
++           "min_count": 1,
++           "networks": [
++               {
++                    "uuid": "d32019d3-bc6e-4319-9c1d-6722fc136a22"
++                    "boot_index" : "1"
++               },
++               {
++                    "port" : "d32019d3-bc6e-4319-9c1d-6722fc136a23"
++                    "boot_index" : "2"
++               },
++           ],
++       }
++  }
++
++**Example use case: JSON Response**
++
++::
++
++  {
++    "server": {
++           "security_groups": [
++               {
++                     "name": "default"
++               }
++           ],
++           "OS-DCF:diskConfig": "MANUAL",
++           "id": "c6d04159-9bfc-4ab8-823d-0d5ca2abe152",
++           "links": [
++              {
++                  "href": "http://166.78.46.130:8774/v3/
++                  4fd44f30292945e481c7b8a0c8908869/
++                  servers/c6d04159-9bfc-4ab8-823d-0d5ca2abe152",
++                  "rel": "self"
++              },
++              {
++                  "href": "http://166.78.46.130:8774/
++                  4fd44f30292945e481c7b8a0c8908869/servers/
++                  c6d04159-9bfc-4ab8-823d-0d5ca2abe152",
++                  "rel": "bookmark"
++              }
++          ],
++          "adminPass": "aabbccddeeff"
++    }
++  }
++
++Security impact
++---------------
++
++None.
++
++Notifications impact
++--------------------
++
++None.
++
++Other end user impact
++---------------------
++
++A new option --nic bootindex=integer will be introduced in
++python-novaclient module for nova boot command
++
++::
++
++  $ nova boot ... --block-device bootindex=integer ... --nic bootindex=integer
++
++Performance Impact
++------------------
++
++None.
++
++Other deployer impact
++---------------------
++
++If the boot source device is a network interface the deployer should configure
++firewall rules properly to allow DHCP and TFTP packets between booting instance
++and pxe server.
++In Ubuntu OS libvirt ignores the boot_order parameter set in network interface.
++It tries to boot also from  network interfaces not set as boot device.
++There is a bug on ipxe client reported only for Ubuntu OS.
++
++In Red Hat Enterprise/CentOS 7 libvirt the bug has been solved.
++
++
++Developer impact
++----------------
++
++The foreseen implementation involves libvirt library.
++Booting via the BIOS is available for hypervisors supporting full
++virtualization and not supporting this fine grained boot ordering. The others
++will ignore anything except the device with bootindex=1.
++
++The feature won't work with hypervisors not managed via libvirt.
++
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  matarazzoangelo
++
++Other contributors:
++  trung-t-trinh
++  pasquale-porreca
++  marco-romano-6
++  daniele-casini
++
++Work Items
++----------
++
++- Modify  nova API to allow to define bootindex for network interface
++
++- Change the current functions  to allow to pass boot-order parameter
++  to libvirt driver for disk devices
++
++- Manage bootindex parameter to pass the boot order for network interfaces
++  to libvirt driver
++
++-Modify python-novaclient to allow the user to define bootindex also for
++ network interface
++
++
++Dependencies
++============
++
++None.
++
++Testing
++=======
++
++Tempest tests will be necessary for this functionality.
++
++
++Documentation Impact
++====================
++
++It will be necessary to add a specification in the Compute API document for the
++new parameter and to modify the existing documentation on boot_index of block
++device.
++
++
++User guide is affected by these changes:
++- The Section nova commands should be changed
++
++
++References
++==========
++
++[1] http://lists.openstack.org/pipermail/openstack-dev/2014-October/047633.html
++[2] http://libvirt.org/formatdomain.html#elementsOS
++[3] https://blueprints.launchpad.net/nova/+spec/pxe-boot-instance
++[4] https://blueprints.launchpad.net/nova/+spec/libvirt-empty-vm-boot-pxe
+\ No newline at end of file
+-- 
+1.9.1
+

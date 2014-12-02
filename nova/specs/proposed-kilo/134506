@@ -1,0 +1,187 @@
+From 0ab00ba1450994cd300449c36bbb0996d7bd4cdd Mon Sep 17 00:00:00 2001
+From: Hans Lindgren <hanlind@kth.se>
+Date: Fri, 14 Nov 2014 12:13:08 +0100
+Subject: [PATCH] Let schedulers reuse filter/weigher objects
+
+Scheduler handling of filters/weighers is inefficient and forces them to be
+recreated for every single request. This proposes a small change to move the
+responsibility of filter/weigher initialization from handlers to schedulers
+themself to let these objects be stored and reused.
+
+Change-Id: I51f8d8df01c8de07193154275e599d5e032232bf
+---
+ specs/kilo/approved/scheduler-optimization.rst | 161 +++++++++++++++++++++++++
+ 1 file changed, 161 insertions(+)
+ create mode 100644 specs/kilo/approved/scheduler-optimization.rst
+
+diff --git a/specs/kilo/approved/scheduler-optimization.rst b/specs/kilo/approved/scheduler-optimization.rst
+new file mode 100644
+index 0000000..ff757b8
+--- /dev/null
++++ b/specs/kilo/approved/scheduler-optimization.rst
+@@ -0,0 +1,161 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++===========================================
++Let schedulers reuse filter/weigher objects
++===========================================
++
++https://blueprints.launchpad.net/nova/+spec/scheduler-optimization
++
++Scheduler handling of filters/weighers is inefficient and forces them to be
++recreated for every single request. This proposes a small change to move the
++responsibility of filter/weigher initialization from handlers to schedulers
++themself to let these objects be stored and reused.
++
++
++Problem description
++===================
++
++Currently, when a scheduler call get_filtered_objects/get_weighed_objects to
++filter/weigh hosts for a request, it provides a list if filter/weigher classes
++that immediatly gets instantiated before being used. The problem is that for
++each request to the scheduler, every filter/weigher must be instantiated over
++and over. This is not only time consuming and unneccesary, it also makes it
++harder for filters/weighers to make use of caching or similar optimizations.
++
++Use Cases
++----------
++
++None since this is pure refactoring.
++
++Project Priority
++-----------------
++
++This is a scheduler change, but not really related to the scheduler priority.
++
++Proposed change
++===============
++
++By moving filter/weigher object creation from filter/weight handlers to
++schedulers, it becomes possible for schedulers to store and reuse objects for
++multiple requests. This in turn makes caching in filters/weighers work,
++something that currently is broken, see performance impact below.
++
++With this change, filter/weigher object creation is mostly taking place during
++scheduler init. One notable exception is how FilterScheduler would load its
++filters.
++
++Unlike weighers, filters used by FilterScheduler are configured using two
++separate config options:
++
++- scheduler_available_filters
++- scheduler_default_filters
++
++Due to this and because there exists many filters beside the default ones,
++instantiating all of them while some non-default ones like trusted filter
++depends on external services or extra configuration that might or might not
++exist in every setup, might lead to errors that ultimately would result in the
++scheduler service failing to start. Instead, only configured default filters
++are created initially and the rest if and when they are used.
++
++Alternatives
++------------
++
++Another way to solve the caching between requests in trusted filter was
++proposed at https://review.openstack.org/#/c/64498/ but has since been
++abandoned. This same approach could be implemented in other filters that need
++caching between requests.
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++None
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++None
++
++Performance Impact
++------------------
++
++This will hopefully make scheduler filtering/weighting execute faster. Filter/
++weigher initialization will happen only once at scheduler startup and not with
++every request to the scheduler. This also enables filters/weighers to make use
++of caching like trusted filter is currently designed to do, only that the
++current design prohibits that. See https://bugs.launchpad.net/nova/+bug/1223450
++
++Other deployer impact
++---------------------
++
++None
++
++Developer impact
++----------------
++
++Filter/weigher developers should be aware of the lifecycle of filters/weighers
++so that code is placed properly at either init or actual filtering/weighing
++functions. This to maximize performance and to avoid unintentional side effects
++due to state being stored between independent calls.
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  hanlind
++
++Other contributors:
++  None
++
++Work Items
++----------
++
++1. Change filter/weight handler calls to take filter/weigher objects instead of
++   classes. Move responsibility of object creation from handlers to schedulers.
++
++
++Dependencies
++============
++
++None
++
++
++Testing
++=======
++
++This is not changing any external interfaces so unit tests should suffice.
++
++
++Documentation Impact
++====================
++
++Developer documentation, see developer impact above.
++
++
++References
++==========
++
++Code up for review
++https://review.openstack.org/#/c/132229/
+\ No newline at end of file
+-- 
+1.9.1
+

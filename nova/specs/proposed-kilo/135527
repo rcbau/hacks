@@ -1,0 +1,167 @@
+From 5e5687367766f9d0fc0d46bb79514e35d0b96ae0 Mon Sep 17 00:00:00 2001
+From: He Jie Xu <soulxu@gmail.com>
+Date: Wed, 19 Nov 2014 16:05:19 +0800
+Subject: [PATCH] Fix race conditions when migrate with server-group
+
+This spec implements the bp fix-race-when-migration-with-server-group
+
+Change-Id: I2b58b7bc37eb061efe4c2892f57f47130e6fb1a8
+---
+ .../fix-race-when-migration-with-server-group.rst  | 145 +++++++++++++++++++++
+ 1 file changed, 145 insertions(+)
+ create mode 100644 specs/kilo/approved/fix-race-when-migration-with-server-group.rst
+
+diff --git a/specs/kilo/approved/fix-race-when-migration-with-server-group.rst b/specs/kilo/approved/fix-race-when-migration-with-server-group.rst
+new file mode 100644
+index 0000000..d04927c
+--- /dev/null
++++ b/specs/kilo/approved/fix-race-when-migration-with-server-group.rst
+@@ -0,0 +1,145 @@
++
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++========================================================
++Fix the race conditions when migration with server-group
++========================================================
++
++https://blueprints.launchpad.net/nova/+spec/fix-race-when-migration-with-server-group
++
++The aim of this feature is to resolve the race condition when migrating
++instance with server-group.
++
++Problem description
++===================
++
++After implement persist scheduler-hints and assign new scheduler-hints. The
++scheduler will honor the group hints when migration. But there still have
++race conditions when migrating instance with server-group, those race problem
++may violate the policy of server-group.
++
++Use Cases
++---------
++
++When resize/migrate/live_migrate/rebuild/evacuate instance with server-group,
++the instance shouldn't violate the policy of server-group.
++
++Project Priority
++----------------
++
++This feature is valuable for scheduler and user, although it's not part of
++global effort. But the current migration with server-group is buggy. So we
++need fix those race conditions.
++
++Proposed change
++===============
++
++The propose is when populate hosts in the group should consider the orignal
++host and new host when migration.
++
++So it need track the migration, currently only resize/migrate will create
++new record in migrations table. We should create record also for
++evacuate/live_migration/rebuild.
++
++For each case, described at below:
++
++Affinity server group:
++* Migrate instance out from hostA into hostB, at sametime the new instance
++deploy:
++
++  The new instance may place both hostA and hostB. This can be accepted.
++
++Anti-Affinity:
++* Migrate instance to hostA, at sametime new instance deploy to hostA
++
++  Create migration record before instance's host update. And change
++  the way of populate group hosts, it should count new hosts for any instance
++  in migrating. Then there won't have any new instance will deploy to hostA
++
++* Migrate instance to hostA, after instance's host updated, then rollback
++
++  Create migration record after instance's host updated. And
++  change the way of pupulate group hosts, it should count old host for any
++  instance in migrating. Then when rollback happened, the server group policy
++  won't be violated.
++
++Alternatives
++------------
++
++Store the new host and orignal host in instance_extra table with new column
++'migration_info'. But we already have migration table, and another table to
++record similar info is confuse.
++
++Data model impact
++-----------------
++
++This propose will use existed migration table, so there isn't any data model
++change.
++
++REST API impact
++---------------
++
++None
++
++Security impact
++---------------
++None
++
++Notifications impact
++--------------------
++None
++
++Other end user impact
++---------------------
++None
++
++Performance Impact
++------------------
++None
++
++Other deployer impact
++---------------------
++None
++
++Developer impact
++----------------
++None
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++    Alex Xu (soulxu@gmail.com)
++
++Work Items
++----------
++
++* Track migration for evacuate/live_migration/rebuild
++* Count orignal host and new host when populate hosts of server group
++
++Dependencies
++============
++
++https://blueprints.launchpad.net/nova/+spec/assign-new-scheduler-hints
++
++Testing
++=======
++
++* Add unit test for change
++
++Documentation Impact
++====================
++
++This is fix the problem inside the nova, so needn't update any doc.
++
++References
++==========
++None
+-- 
+1.9.1
+

@@ -1,24 +1,38 @@
-From 8d4f37a8827d18d95422018567702e3fc2a56ab5 Mon Sep 17 00:00:00 2001
+From 24ff74fec93e72c7084b7372cd3f53552a26dd29 Mon Sep 17 00:00:00 2001
 From: Mitsuhiro Tanino <mitsuhiro.tanino@hds.com>
 Date: Fri, 31 Oct 2014 14:07:46 -0400
 Subject: [PATCH] Support iSCSI live migration for different iSCSI target
 
-This spec proposes to support live migration of instances with
+Currently, Nova premises a situation which iSCSI target is not changed
+before and after live migration. Therefore, if destination node has
+different iSCSI target, the live migration fails in current Nova's
+specification. However, if each compute node uses same iSCSI target,
+each compute node recognizes all volumes in the iSCSI target and this
+is undesirable situation from the view point of security.
+
+Therefore, this spec proposes to support live migration of instances with
 Cinder volumes among compute nodes that need to log into different
 iSCSI targets to access the volumes.
 
+For your reference, if iSCSI storages have features to manage visibility
+of LUNs for each initiator within one iSCSI target, using same iSCSI
+target for each compute node is not a problem. But general iSCSI storages
+don't have such kind features, therefore they need this feature to
+support live migration.
+
 Change-Id: I9f0212cb74804e0122200ff543c46f1a91a39921
+Blueprint iscsi-live-migration-different-target
 ---
- .../iscsi-live-migration-different-target.rst      | 201 +++++++++++++++++++++
- 1 file changed, 201 insertions(+)
+ .../iscsi-live-migration-different-target.rst      | 253 +++++++++++++++++++++
+ 1 file changed, 253 insertions(+)
  create mode 100644 specs/kilo/approved/iscsi-live-migration-different-target.rst
 
 diff --git a/specs/kilo/approved/iscsi-live-migration-different-target.rst b/specs/kilo/approved/iscsi-live-migration-different-target.rst
 new file mode 100644
-index 0000000..07ccb2f
+index 0000000..9a39202
 --- /dev/null
 +++ b/specs/kilo/approved/iscsi-live-migration-different-target.rst
-@@ -0,0 +1,201 @@
+@@ -0,0 +1,253 @@
 +..
 + This work is licensed under a Creative Commons Attribution 3.0 Unported
 + License.
@@ -33,10 +47,22 @@ index 0000000..07ccb2f
 +
 +https://blueprints.launchpad.net/cinder/+spec/iscsi-live-migration-for-different-target
 +
-+This spec proposes to support live migration of instances with
++Currently, Nova premises a situation which iSCSI target is not changed
++before and after live migration. Therefore, if destination node has
++different iSCSI target, the live migration fails in current Nova's
++specification. However, if each compute node uses same iSCSI target,
++each compute node recognizes all volumes in the iSCSI target and this
++is undesirable situation from the view point of security.
++
++Therefore, this spec proposes to support live migration of instances with
 +Cinder volumes among compute nodes that need to log into different
 +iSCSI targets to access the volumes.
 +
++For your reference, if iSCSI storages have features to manage visibility
++of LUNs for each initiator within one iSCSI target, using same iSCSI
++target for each compute node is not a problem. But general iSCSI storages
++don't have such kind features, therefore they need this feature to
++support live migration.
 +
 +Problem description
 +===================
@@ -101,8 +127,17 @@ index 0000000..07ccb2f
 +
 +(2) Check "serial" field of each disk in domain definition XML.
 +    Then, if the original "serial" and destination "serial" are same
-+    value, replace "source dev=" using device paths from destination
-+    host in the XML .....[EX2]
++    value, replace "source dev" in the XML using device paths from
++    destination host .....[EX2]
++
++    QEMU built-in iSCSI initiator(libiscsi) will be supported during
++    Kilo phase. This proposal need to take account of both
++    iscsi-initiator case and libiscsi case.
++
++    * https://review.openstack.org/#/c/133048/
++
++    If the initiator is libiscsi, replace "name", "host name" and "port"
++    fields in the XML using res_data from destination host .....[EX3]
 +
 +(3) Pass the new XML data to libvirt migrateToURI2 API.
 +
@@ -118,8 +153,9 @@ index 0000000..07ccb2f
 +
 +[EX2]
 +
-+[Before]::
++For iscsi-initiator::
 +
++  [Before]
 +  <disk type='block' device='disk'>
 +     <driver name='qemu' type='raw' cache='none'/>
 +     <source dev='/dev/disk/by-path/
@@ -130,8 +166,7 @@ index 0000000..07ccb2f
 +  </disk>
 +
 +
-+[After]::
-+
++  [After]
 +  <disk type='block' device='disk'>
 +     <driver name='qemu' type='raw' cache='none'/>
 +     <source dev='/dev/disk/by-path/
@@ -140,6 +175,33 @@ index 0000000..07ccb2f
 +       <serial>58a84f6d-3f0c-4e19-a0af-eb657b790657</serial>
 +       <address type='pci' domain='0x0' bus='0x0' slot='0x04' function='0x0'/>
 +   </disk>
++
++
++[EX3]
++
++For libiscsi::
++
++  [Before]
++  <disk type='network' device='disk'>
++     <driver name='qemu' type='raw'/>
++     <source protocol='iscsi' name='iqn.abc.org.12345.opst/X'>
++       <host name='192.168.0.10' port='3260'/>
++     </source>
++     <serial>58a84f6d-3f0c-4e19-a0af-eb657b790657</serial>
++     <target dev='vdb' bus='virtio'/>
++  </disk>
++
++
++  [After]
++  <disk type='network' device='disk'>
++     <driver name='qemu' type='raw'/>
++     <source protocol='iscsi' name='iqn.abc.org.67890.opst/Z'>
++       <host name='192.168.0.10' port='3260'/>
++     </source>
++     <serial>58a84f6d-3f0c-4e19-a0af-eb657b790657</serial>
++     <target dev='vdb' bus='virtio'/>
++  </disk>
++
 +
 +Alternatives
 +------------
@@ -199,7 +261,11 @@ index 0000000..07ccb2f
 +Work Items
 +----------
 +
-+None.
++These two patches will be posted.
++
++1. Support iscsi-initiator
++
++2. Support QEMU built-in iSCSI initiator(libiscsi)
 +
 +Dependencies
 +============

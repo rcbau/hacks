@@ -1,0 +1,153 @@
+From 778d01d67c7e3aa6ccc73df4184ddc61c6fd929e Mon Sep 17 00:00:00 2001
+From: warewang <wangguangcai@huawei.com>
+Date: Fri, 28 Nov 2014 11:25:51 +0800
+Subject: [PATCH] Add drivertype priority scheduling on migration
+
+In the process of live_migration, if the user does not specify the
+destination, the scheduler will choose a suitable host,  but the scheduler
+can not choose hosts according to the driver_type and driver_version in
+the existing scheduling method, especially in a heterogeneous environment,
+it will lead to the migration failure probability increased, so I think
+the OpenStack as an excellent choice should be able to deal with this
+situation.
+
+Change-Id: I16851fe368a58574b183f5273da7686dd13d64f2
+---
+ specs/kilo/support-driver-filter.rst | 124 +++++++++++++++++++++++++++++++++++
+ 1 file changed, 124 insertions(+)
+ create mode 100644 specs/kilo/support-driver-filter.rst
+
+diff --git a/specs/kilo/support-driver-filter.rst b/specs/kilo/support-driver-filter.rst
+new file mode 100644
+index 0000000..938f27f
+--- /dev/null
++++ b/specs/kilo/support-driver-filter.rst
+@@ -0,0 +1,124 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++========================================================
++Support drive_type and drive_version priority scheduling
++========================================================
++
++https://blueprints.launchpad.net/nova/+spec/support-driver-filter
++
++This feature aims to improve the scheduler on live_migration.
++
++Problem description
++===================
++
++In the process of live_migration, if the user does not specify the destination,
++the scheduler will choose a suitable host, but the scheduler can not choose
++hosts according to the driver_type and driver_version in the existing
++scheduling method, especially in a heterogeneous environment, it will lead to
++the migration failure probability increased, so I think the OpenStack as an
++excellent choice should be able to deal with this situation.
++
++Use Cases
++----------
++
++Driver-filter can be used on live_migration, especially in the heterogeneous
++hypervisor, it can improve the success rate of scheduling.
++
++
++Project Priority
++----------------
++
++None
++
++Proposed change
++===============
++
++Create a new scheduler filter class 'HypervisorFilter', use
++host_state.hypervisor_type and host_state.hypervisor_version as filter_object.
++User can add the filter on nova.scheduler_default_filters.
++
++Alternatives
++------------
++
++None
++
++Data model impact
++-----------------
++
++No impact.
++
++REST API impact
++---------------
++
++No impact.
++
++Security impact
++---------------
++
++No impact.
++
++Notifications impact
++--------------------
++
++No impact.
++
++Other end user impact
++
++No impact.
++---------------------
++
++Performance Impact
++------------------
++
++The new code itself will introduce some performance impact, but the conductor
++didn't judge the hypervisor_version and hypervisor_type after the scheduler, so
++the performance impact is negligible.
++
++Other deployer impact
++---------------------
++
++Add the new filter class, it takes effect by default.
++
++Developer impact
++----------------
++
++No impact
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  warewang
++
++Work Items
++----------
++
++Add new filter class.
++Add some unit tests and tempest.
++
++Dependencies
++============
++
++None
++
++Testing
++=======
++
++New unit tests and tempest about 'HypervisorFilter' will be added.
++
++Documentation Impact
++====================
++
++The docs about 'HypervisorFilter' need to be drafted.
++
++References
++==========
++
++None
+\ No newline at end of file
+-- 
+1.9.1
+

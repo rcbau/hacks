@@ -1,0 +1,247 @@
+From 65630404521090edba3ef2727f8dc8a74a22b215 Mon Sep 17 00:00:00 2001
+From: abhishekkekane <abhishek.kekane@nttdata.com>
+Date: Wed, 12 Nov 2014 11:54:08 -0800
+Subject: [PATCH] Improve performance of UnShelve API
+
+The aim of this feature is to improve the performance of unshelve
+instance by eliminating downloading/copying snapshot time. All
+instance files will be retained in the instance store backed by NFS
+on the compute node when an instance is shelved.
+
+Change-Id: I2476574f664f5a87a51bec5fac344c839e14b6d1
+---
+ .../kilo/approved/improve-unshelve-performance.rst | 222 +++++++++++++++++++++
+ 1 file changed, 222 insertions(+)
+ create mode 100644 specs/kilo/approved/improve-unshelve-performance.rst
+
+diff --git a/specs/kilo/approved/improve-unshelve-performance.rst b/specs/kilo/approved/improve-unshelve-performance.rst
+new file mode 100644
+index 0000000..6fce0f4
+--- /dev/null
++++ b/specs/kilo/approved/improve-unshelve-performance.rst
+@@ -0,0 +1,222 @@
++========================================
++Improve performance of unshelve instance
++========================================
++
++https://blueprints.launchpad.net/nova/+spec/improve-unshelve-performance
++
++The aim of this feature is to improve the performance of unshelve instance
++by eliminating downloading/copying snapshot time. All instance files will be
++retained in the instance store backed by NFS on the compute node when an
++instance is shelved.
++
++Problem description
++===================
++
++When you unshelve hundreds of instances at the same time, instance spawning
++time varies and it mainly depends on the size of the instance snapshot and
++the network speed between glance and nova servers.
++If you have configured file store (NFS) as a backend in Glance for storing
++images/snapshots, then it’s possible to improve the performance of unshelve
++instance dramatically by configuring nova.image.download.FileTransfer in nova.
++In this case, it simply copies the instance snapshot as if it is stored on
++the local filesystem of the compute node. But then again in this case, it is
++observed the network traffic increases enormously between NFS servers and nova
++resulting in slow spawning of the instances.
++
++Use Cases
++----------
++
++Unshelve hundreds of instances in minimal time.
++
++Project Priority
++-----------------
++
++High
++
++Proposed change
++===============
++
++NFS will be used for storing instance files on the compute nodes.
++
++An existing configuration parameter “shelved_offload_time" will be used here
++to indicate the instance files shouldn’t be deleted.
++
++-1, never offload (CPU/Memory/Disks resources are not released).
++0, offload when shelved (CPU/Memory/Disks resources are not released).
++> 0, offload using “_poll_shelved_instances” periodic task
++(CPU/Memory/Disks resources are not released).
++
++New value will be added
++-2, offload partially, release CPU/Memory but retain instance files.
++
++Note: In case shelved_offload_time=-2, You must configure instance path on
++NFS either on all of the compute nodes or group of compute nodes defined
++by host aggregate.
++
++A new VM state 'SHELVED_PARTIAL_OFFLOADED' and new Task state
++'SHELVING_PARTIAL_OFFLOADING' will be added. In case of SHELVE_OFFLOAD,
++all the resources will be already cleaned up from the compute node so at the
++api layer it only releases network/volume resources consumed by the instance
++when it is deleted in the shelved_offload state. But when shelved_offload_time
++is set to -2, instance files are still persisting on the compute node (NFS)
++and these files needs to be cleanup when the instance is destroyed. To decide
++whether or not terminate instance call should be sent to the compute node,
++there is a need to introduce 'SHELVED_PARTIAL_OFFLOADED' new VM state.
++
++Shelve api call:
++* shelved_host (host where the instance is running) will be set to
++instance_system_metadata.
++* Disk resources (instance files) will not be destroyed
++(self.driver.destroy(…,destroy_disks=False).
++* As disk resources are persisted, instance snapshot will not be taken.
++* CPU/Memory will be released.
++* Instance host and node will be set to None.
++* VM state will be set to SHELVED_PARTIAL_OFFLOADED.
++* Quotas will not be released, similar to shelve/shelve_offloaded case.
++
++Note: In case of host aggregate, decision cannot be made by compute api
++to create the image, so image creation code will be moved from compute
++api to compute manager.
++
++Unshelve api call:
++* Select a new compute node (nova-scheduler) from the available pool of
++compute nodes
++* Set the newly elected host to the instance and call start_instance method
++(hard reboot). In this case, it will use the already existing instance files
++as it is without the need of downloading/copying instance snapshot from the
++glance server.
++* VM state will be set to ACTIVE.
++* Quotas will not be touched.
++
++Deleting instance in shelve_partial_offload state:
++* Instance host stored in the 'shelved_host' from instance system_metadata
++will be retrieved and assign to the instance.
++* Instance will be destroyed from the shelved host. It will ensure instance
++files are deleted properly.
++* Quotas will be released in the normal workflow.
++
++Advantages:
++* Improve unshelve instance performance as it completely eliminates the need
++of downloading/copying instance snapshot from glance
++* Unshelve instance performance will not be impacted by any kind of backed
++store configured in glance.
++* CPU/Memory released after shelving instances will allow nova scheduler to
++use the compute capacity for launching new instances (similar to
++shelve_offload case).
++* Improve shelve instance performance as it completely eliminates the need
++of taking snapshot and uploading it to glance.
++
++Alternatives
++------------
++
++None
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++None
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++New notification 'shelve_partial_offload.start' and
++'shelve_partial_offload.end' will be added.
++
++Other end user impact
++---------------------
++
++None
++
++Performance Impact
++------------------
++
++* Shelve instance performance will be improved as snapshot will not be taken
++  when shelve_offload_time is set to -2.
++* Unshelve instance performance will be improved in case instance files are
++  stored on NFS on the compute nodes when shelve_offload_time is set to -2.
++
++Other deployer impact
++---------------------
++
++An existing configuration parameter “shelved_offload_time" will be modified
++here to indicate the instance files shouldn’t be deleted.
++
++-1, never offload
++0, offload when shelved
++> 0, offload using “_poll_shelved_instances” periodic task
++
++New value will be added
++-2, offload partially, release CPU/Memory but retain instance files
++
++Note: In case shelved_offload_time=-2, You must configure instance path on
++NFS either on all of the compute nodes or group of compute nodes defined
++by host aggregate.
++
++Developer impact
++----------------
++
++None
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  abhishekkekane
++
++Other contributors:
++  None
++
++Work Items
++----------
++
++* Implement shelve partial offloading
++* Implement unshelve the partial offloaded instance
++* Add unit tests for code coverage
++
++
++Dependencies
++============
++
++Bug: https://bugs.launchpad.net/nova/+bug/1307791
++Patch : https://review.openstack.org/#/c/89298/
++
++
++Testing
++=======
++
++Existing tests will be modified to cover the shelve_offload_partial case.
++
++* tempest/api/compute/servers/test_delete_server.py:
++  def test_delete_server_while_in_shelved_state(self)
++
++* tempest/api/compute/servers/test_server_actions.py:
++  def test_shelve_unshelve_server(self)
++
++* tempest/api/compute/v3/servers/test_server_actions.py:
++  def test_shelve_unshelve_server(self)
++
++
++Documentation Impact
++====================
++
++Please refer 'Other deployer impact' section.
++
++
++References
++==========
++
++None
+-- 
+1.9.1
+

@@ -1,4 +1,4 @@
-From 15002e8014c6d1bbe71162b41cfc163f9d27b71e Mon Sep 17 00:00:00 2001
+From 70bad157d335b435ba0ccb30e6a420d860d76678 Mon Sep 17 00:00:00 2001
 From: Tesshu Flower <tflower@ca.ibm.com>
 Date: Wed, 15 Oct 2014 12:00:53 -0400
 Subject: [PATCH] VMware:  Support multi disk images in OVA container format
@@ -9,16 +9,16 @@ adding the support for OVA images that contain multiple disk images.
 Change-Id: I86330550213ad1d9c7fb7bb5dbc624529cd989e4
 Implements: blueprint vmware-driver-ova-multidisk-support
 ---
- .../vmware-driver-ova-multidisk-support.rst        | 162 +++++++++++++++++++++
- 1 file changed, 162 insertions(+)
+ .../vmware-driver-ova-multidisk-support.rst        | 169 +++++++++++++++++++++
+ 1 file changed, 169 insertions(+)
  create mode 100644 specs/kilo/approved/vmware-driver-ova-multidisk-support.rst
 
 diff --git a/specs/kilo/approved/vmware-driver-ova-multidisk-support.rst b/specs/kilo/approved/vmware-driver-ova-multidisk-support.rst
 new file mode 100644
-index 0000000..f3362eb
+index 0000000..91d251d
 --- /dev/null
 +++ b/specs/kilo/approved/vmware-driver-ova-multidisk-support.rst
-@@ -0,0 +1,162 @@
+@@ -0,0 +1,169 @@
 +..
 + This work is licensed under a Creative Commons Attribution 3.0 Unported
 + License.
@@ -150,7 +150,7 @@ index 0000000..f3362eb
 +
 +* Optimization - If the image itself already exists in the datastore cache
 +  location, it should be possible to copy the ovf file from the datastore cache
-+  itself, rather than downloading the entire OPA from glance and extracting it.
++  itself, rather than downloading the entire OVA from glance and extracting it.
 +  This would speed up deploys greatly after the 1st deploy that uses a
 +  particular datastore. Note this may require modifications to the code to
 +  copy the ovf to the datastore cache location instead of just the disk file.
@@ -166,6 +166,12 @@ index 0000000..f3362eb
 +Testing
 +=======
 +
++Similar to what is proposed in the parent blueprint
++https://blueprints.launchpad.net/nova/+spec/vmware-driver-ova-support, this
++blueprint proposes to update the `VMware NSX CI <https://wiki.openstack.org/wiki
++/NovaVMware/Minesweeper>`_ with additional tests to verify spawning of
++instances using OVA images that contain multiple disk files.  This is because
++tempest doesn't support driver specific tests.
 +
 +
 +Documentation Impact
@@ -181,6 +187,7 @@ index 0000000..f3362eb
 +==========
 +
 +* https://blueprints.launchpad.net/nova/+spec/vmware-driver-ova-support
++* https://wiki.openstack.org/wiki/NovaVMware/Minesweeper
 -- 
 1.9.1
 

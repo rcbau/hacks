@@ -1,4 +1,4 @@
-From 5e4c86fe23fea0ead003b0b8e30bc614306da6da Mon Sep 17 00:00:00 2001
+From 70e040bd0011a666f5a1206717921e4c8ad1f269 Mon Sep 17 00:00:00 2001
 From: zhang john <zhang.john.vmthunder@gmail.com>
 Date: Thu, 16 Oct 2014 21:59:14 -0400
 Subject: [PATCH] Accelerates the booting process of launching homogeneous VMs.
@@ -14,16 +14,16 @@ homogeneous VMs. It accelerates the booting process in five ways:
 Implements: blueprint thunder-boost
 Change-Id: Ibfdfb0ba432cc201598454c690a9db5ceecae363
 ---
- specs/kilo/approved/thunder-boost.rst | 243 ++++++++++++++++++++++++++++++++++
- 1 file changed, 243 insertions(+)
+ specs/kilo/approved/thunder-boost.rst | 241 ++++++++++++++++++++++++++++++++++
+ 1 file changed, 241 insertions(+)
  create mode 100644 specs/kilo/approved/thunder-boost.rst
 
 diff --git a/specs/kilo/approved/thunder-boost.rst b/specs/kilo/approved/thunder-boost.rst
 new file mode 100644
-index 0000000..793cebd
+index 0000000..82af6e7
 --- /dev/null
 +++ b/specs/kilo/approved/thunder-boost.rst
-@@ -0,0 +1,243 @@
+@@ -0,0 +1,241 @@
 +..
 + This work is licensed under a Creative Commons Attribution 3.0 Unported
 + License.
@@ -86,15 +86,13 @@ index 0000000..793cebd
 +                   |              Original               |
 +                   |               Volume                |
 +                   +-------------------------------------+
-+                   |                                     |
-+                   |                                     |
++
 +          +-+----+-++----+-+                    +-+----+-++----+-+
 +          | +----+  +----+ |                    | +----+  +----+ |
 +          | | TV |  | SV | |                    | | TV |  | SV | |
 +          | +----+  +----+ |                    | +----+  +----+ |
 +          +-+----+--+----+-+                    +-+----+--+----+-+
-+          |                |                    |                |
-+          |                |                    |                |
++
 ++-+----+-------+-+  +-+-------+----+-+ +-+----+-++----+-+  +-+----+--+----+-+
 +| +----+  +----+ |  | +----+  +----+ | | +----+  +----+ |  | +----+  +----+ |
 +| | TV |  | SV | |  | | TV |  | SV | | | | TV |  | SV | |  | | TV |  | SV | |

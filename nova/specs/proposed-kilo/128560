@@ -1,4 +1,4 @@
-From f6a9f63a2a825ad37db3132034622942368c56c1 Mon Sep 17 00:00:00 2001
+From 1ec0c08d1eea8097bee49ed8ef0ad4f53016beea Mon Sep 17 00:00:00 2001
 From: He Jie Xu <xuhj@linux.vnet.ibm.com>
 Date: Wed, 15 Oct 2014 13:27:15 +0800
 Subject: [PATCH] The end goal of Nova API policy improvement
@@ -17,7 +17,7 @@ Change-Id: If26bd38a1130494015d4d4fbbbd83db7a5ce781f
 
 diff --git a/specs/kilo/approved/the-end-goal-of-api-policy.rst b/specs/kilo/approved/the-end-goal-of-api-policy.rst
 new file mode 100644
-index 0000000..b94cb97
+index 0000000..b460915
 --- /dev/null
 +++ b/specs/kilo/approved/the-end-goal-of-api-policy.rst
 @@ -0,0 +1,250 @@
@@ -84,7 +84,7 @@ index 0000000..b94cb97
 +===============
 +
 +The generic rule for all the improvement is keep V2 API back-compatible. The
-+improvement just for EC2 and V2.1 API. Because V2 API may be depreciated after
++improvement just for EC2 and V2.1 API. Because V2 API may be deprecated after
 +V2.1 parity with V2. And reduce the risk of broken what we have for now.
 +
 +* Enforcement policy at REST API layer and remove hard-code permission

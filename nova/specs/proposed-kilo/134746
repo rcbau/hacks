@@ -1,0 +1,252 @@
+From df03036c8cef67b2fc73fb2d1844ce5dd964cd90 Mon Sep 17 00:00:00 2001
+From: He Jie Xu <soulxu@gmail.com>
+Date: Sun, 16 Nov 2014 12:14:36 +0800
+Subject: [PATCH] Assign new scheduler-hints when migrate instance
+
+This spec is going to implement bp assign-new-scheduler-hints
+
+APIImpact
+
+Change-Id: Ifb751f32b556c37eb5c5364e2de5a27509632a81
+---
+ specs/kilo/approved/assign-new-scheduler-hints.rst | 228 +++++++++++++++++++++
+ 1 file changed, 228 insertions(+)
+ create mode 100644 specs/kilo/approved/assign-new-scheduler-hints.rst
+
+diff --git a/specs/kilo/approved/assign-new-scheduler-hints.rst b/specs/kilo/approved/assign-new-scheduler-hints.rst
+new file mode 100644
+index 0000000..037b42c
+--- /dev/null
++++ b/specs/kilo/approved/assign-new-scheduler-hints.rst
+@@ -0,0 +1,228 @@
++
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++================================================
++Assign new scheduler-hints when migrate instance
++================================================
++
++https://blueprints.launchpad.net/nova/+spec/assign-new-scheduler-hints
++
++After scheduler-hints can be persistent. The migration of instance will
++always follow the scheduling policy in the scheduler-hints. This bp provides
++a way to assign new scheduler-hints for user.
++
++Problem description
++===================
++
++After scheduler-hints can be persistent. So there are two problems:
++
++* There is no way to remove it. The user may want to change the
++  scheduler-hints after deploy the instance.
++* There is no way to update server group. The instance can be attended into a
++  server group by specified scheduler_hints at deploying time. But there is no
++  way to move this instance into another server group on live.
++
++Use Cases
++---------
++
++* When resize/migrate/live_migrate/rebuild/evacuate instance, User can
++  specified new scheduler_hints.
++* When resize/migrate/live_migrate/rebuild/evacuate instance, User can
++  move instance in/out a server_group.
++
++Project Priority
++----------------
++
++This feature is valuable for scheduler and user, although it's not part of
++global effort. But after scheduler-hints can be persistent, there need a way
++to update it.
++
++Proposed change
++===============
++
++This propose is enable passing scheduler_hints when
++resize/migrate/live_migrate/rebuild/evacuate instance.
++
++So Normal user can change scheduler-hints when resize/rebuild instance.
++Admin also can decide if they want to obey scheduler_hints or not when doing
++live_migrate/migrate/evacuate.
++
++If user assign new scheduler_hints when any migration, the new schduler_hints
++will be persisted into the DB instead of the original one, and the migration
++will honor the new scheduler_hints.
++
++The detail of what happened for instance with server group as below:
++
++* The instance already in a server group.
++    * User assigns a different server group in any migration, the request
++      will failed, we didn't enable migrate instance from one group to another
++      one. If user want to move instance from one group to another, user need
++      remove the instance with current group first.
++    * User didn't assign a different server group in the any migration, the
++      request's behavior will be same as the description of migration with
++      persisted scheduler-hints in https://review.openstack.org/#/c/88983/
++* The instance isn't in any server group.
++    * User assigns a new server group in any migration. This will add the
++      instance in to the server group.
++
++NOTE: The race problem of migration with server-group will be fixed in another
++spec.
++
++Alternatives
++------------
++
++For updating scheduler-hints in server's update API, it means allow to normal
++user to trigger live migration. The live migration is only allowed for admin
++user. And that way makes thing complex.
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++This propose will add change to API v2 and v2.1. For v2 API, there would
++be an new extension 'extend_scheduler_hints'. For v2.1 API, it would be
++add to scheduler_hints directly.
++
++The scheduler_hints' json-schema as below::
++
++    schedule_hints_schema = {
++        'type': 'object',
++        'properties': {
++            'group': {
++                'type': 'string', 'maxLength': 255,
++            },
++            'different_host': {
++                'type': ['string', 'array'],
++                'format': 'uuid',
++                'items': parameter_types.server_id
++            },
++            'same_host': {
++                'type': ['string', 'array'],
++                'items': parameter_types.server_id
++            },
++            'query': {
++                'type': ['string', 'object'],
++            },
++            'target_cell': parameter_types.name,
++            'build_near_host_ip': {
++                'type': 'string',
++                'oneOf': [
++                    {'format': 'ipv4'},
++                    {'format': 'ipv6'}
++                ],
++            },
++            'cidr': {
++                'type': 'string',
++                'pattern': '^\/[0-9a-f.:]+$'
++            },
++        },
++        'additionalProperties': False
++    }
++
++Add scheduler_hints for evacuate/rebuild/migrate/live_migrate/resize::
++
++    {
++        'type': 'object',
++        'properties': {
++            '{ACTION}': {
++                'type': 'object',
++                'properties': {
++                    ...
++                    'OS-SCH-HNT:scheduler_hints': schedule_hints_schema,
++                    ...
++                },
++                'additionalProperties': False,
++            },
++        },
++        'required': ['{ACTION}'],
++        'additionalProperties': False,
++    }
++
++If the user specified new scheduler_hints in the request, the scheduling
++will apply that.
++
++For evaucate and live_migrate, they can specify a host that want to migrate
++to. If the host and scheduler_hinst was specified at same time, will add
++host into parameter 'force_hosts', the scheduler will only consider this
++specified host and scheduler_hints, if the host didn't match the
++scheduler_hints, the REST API will return BadRequest(400).
++
++If the user didn't specified any scheduler_hints, the scheduling will use
++the orignal schedule_hints that persisted when deploy instance.
++
++Security impact
++---------------
++None
++
++Notifications impact
++--------------------
++None
++
++Other end user impact
++---------------------
++None
++
++Performance Impact
++------------------
++None
++
++Other deployer impact
++---------------------
++None
++
++Developer impact
++----------------
++
++When add new scheduler hint, developer need change the json-schema to make
++API accept the new hint. And also need bump the API version when the
++REST API micro-version implemented.
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++    Alex Xu (soulxu@gmail.com)
++
++Work Items
++----------
++
++* Add scheduler_hints when evacuate
++* Add scheduler_hints when migrate
++* Add scheduler_hints when resize
++* Add scheduler_hints when live_migrate
++* Add scheduler_hints when rebuild
++
++Dependencies
++============
++
++https://blueprints.launchpad.net/nova/+spec/persist-scheduler_hints
++
++
++Testing
++=======
++
++* Add unit test for API changes.
++* Add tempest function tests.
++
++Documentation Impact
++====================
++
++* Update the API document about all the changes.
++* Update Cloud Admin Guide and Operations Guide to tell admin that
++  scheduler hints can be updated when any migration.
++
++References
++==========
++None
++
+-- 
+1.9.1
+

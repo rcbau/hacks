@@ -1,4 +1,4 @@
-From b64348b8707208454bddf69219cfa4879c184017 Mon Sep 17 00:00:00 2001
+From fe787b376a8b3e522ffcaaba17855977504dbffb Mon Sep 17 00:00:00 2001
 From: Jay Pipes <jaypipes@gmail.com>
 Date: Fri, 10 Oct 2014 14:01:53 -0400
 Subject: [PATCH] Add resource object models
@@ -9,16 +9,16 @@ generalized class interface.
 Change-Id: I37b8a1c8b0bbf73bbcf2ee2c2d29018039eb1a9a
 Blueprint: resource-objects
 ---
- specs/kilo/approved/resource-objects.rst | 343 +++++++++++++++++++++++++++++++
- 1 file changed, 343 insertions(+)
+ specs/kilo/approved/resource-objects.rst | 347 +++++++++++++++++++++++++++++++
+ 1 file changed, 347 insertions(+)
  create mode 100644 specs/kilo/approved/resource-objects.rst
 
 diff --git a/specs/kilo/approved/resource-objects.rst b/specs/kilo/approved/resource-objects.rst
 new file mode 100644
-index 0000000..21d3baa
+index 0000000..8f4b478
 --- /dev/null
 +++ b/specs/kilo/approved/resource-objects.rst
-@@ -0,0 +1,343 @@
+@@ -0,0 +1,347 @@
 +..
 + This work is licensed under a Creative Commons Attribution 3.0 Unported
 + License.
@@ -174,7 +174,8 @@ index 0000000..21d3baa
 +Project Priority
 +-----------------
 +
-+Falls under the technical debt reduction category.
++This blueprint is part of the ‘scheduler’ refactoring effort, defined as a 3rd
++priority for the Kilo release.
 +
 +Proposed change
 +===============
@@ -280,6 +281,9 @@ index 0000000..21d3baa
 +                 If the supplied `amount_spec` is negative, returns False .
 +        """
 +        raise NotImplementedError
++
++Note that each concrete specialization of the UsageSpec class must be able
++to handle overcommit ratios for the type of resource that it handles.
 +
 +With the idea that *all* requested resources for an instance should be able
 +to be compared to *all* resource usage records for a compute node in the

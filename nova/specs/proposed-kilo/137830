@@ -1,0 +1,188 @@
+From d4b1102b1f4a535658668383367fc0b5504ff98e Mon Sep 17 00:00:00 2001
+From: Peter Pentchev <openstack-dev@storpool.com>
+Date: Fri, 28 Nov 2014 18:42:22 +0200
+Subject: [PATCH] Add the StorPool image backend proposal.
+
+Change-Id: Id1d7065af80b7d65c21ca035afd0335333d8833f
+---
+ .../kilo/approved/disk-image-backend-storpool.rst  | 168 +++++++++++++++++++++
+ 1 file changed, 168 insertions(+)
+ create mode 100644 specs/kilo/approved/disk-image-backend-storpool.rst
+
+diff --git a/specs/kilo/approved/disk-image-backend-storpool.rst b/specs/kilo/approved/disk-image-backend-storpool.rst
+new file mode 100644
+index 0000000..f579ad1
+--- /dev/null
++++ b/specs/kilo/approved/disk-image-backend-storpool.rst
+@@ -0,0 +1,168 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++==============================
++StorPool backend for VM images
++==============================
++
++https://blueprints.launchpad.net/nova/+spec/disk-image-backend-storpool
++
++There are various Nova image backend drivers allowing VM images to be stored on
++specific types of storage, such as LVM, RBD, or directly on the host filesystem
++as files.  The purpose of this blueprint is to add a driver for creating and
++storing the VM image as a volume in a StorPool cluster.
++
++Problem description
++===================
++
++StorPool is distributed data storage software running on standard x86 servers.
++StorPool aggregates the performance and capacity of all drives into a shared
++pool of storage distributed among the servers.  Within this storage pool the
++user creates thin-provisioned volumes that are exposed to the clients as block
++devices.  StorPool consists of two parts wrapped in one package - a server and
++a client.  The StorPool server allows a hypervisor to act as a storage node,
++while the StorPool client allows a hypervisor node to access the storage pool
++and act as a compute node.  In OpenStack terms the StorPool solution allows
++each hypervisor node to be both a storage and a compute node simultaneously.
++
++Use Cases
++---------
++
++As a Deployer, I want to be able to allow the End Users to create VM images as
++StorPool volumes, taking advantage of StorPool's performance and scalability
++during the instance operation, instant attachment of the volume to the
++hypervisor at instance startup, and seamless migration of the instance to a
++different hypervisor.  This will also allow instantaneous creation of a VM
++image from a StorPool-backed Cinder volume and also instantaneous creation of
++a VM image from a StorPool-backed Glance image.
++
++Project Priority
++----------------
++
++None.
++
++Proposed change
++===============
++
++The proposed driver will make use of the StorPool API (based on JSON over HTTP)
++to create volumes in the StorPool cluster each time a new VM image is created
++and destroy them when the instance is terminated.  If the VM image is created
++from a StorPool-backed Cinder volume or Glance image, the driver will take care
++of cloning the respective underlying volume or snapshot.  Also, if the VM needs
++to be migrated to a different server, the driver will detach and attach the VM
++image as necessary.
++
++Alternatives
++------------
++
++We are aware of the work in progress to migrate the VM image backend store to
++libvirt pools.  StorPool is also developing a driver for libvirt to expose
++StorPool volumes as a libvirt pool.  When that driver is completed, accepted
++into the upstream libvirt codebase, and packaged into released versions of the
++downstream operating systems and distributions, then deployers will be able to
++make use of the Nova libvirt pools storage.
++
++However, until then the only option available for deployers is a specific Nova
++image backend driver, hence our proposal.  Moreover, while our driver could be
++installed on user systems as a third-party modification, for vendor conformance
++and support purposes it would be much preferable for both us and the users for
++it to be accepted in OpenStack proper.
++
++Data model impact
++-----------------
++
++None.
++
++REST API impact
++---------------
++
++None.
++
++Security impact
++---------------
++
++None.
++
++Notifications impact
++--------------------
++
++None.
++
++Other end user impact
++---------------------
++
++None.
++
++Performance Impact
++------------------
++
++The requests to create, clone, attach, detach, or delete a volume will be
++passed on to the StorPool JSON-over-HTTP API.
++
++Other deployer impact
++---------------------
++
++None.
++
++Developer impact
++----------------
++
++None.
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  Peter Penchev <openstack-dev@storpool.com>
++
++Other contributors:
++  None
++
++Work Items
++----------
++
++* Write the nova.virt.libvirt.imagebackend.StorPool driver to create,
++  handle, and destroy the StorPool volumes corresponding to the VM images.
++
++* Write tests for the StorPool driver.
++
++* Provide a CI setup for the StorPool driver.
++
++Dependencies
++============
++
++None.
++
++Testing
++=======
++
++Since the test setup requires an operational StorPool cluster, the unit tests
++will mostly use mocking to simulate the operations.  A separate continuous
++integration environment will be set up by StorPool and access to it will be
++provided for running automated CI tests.
++
++Documentation Impact
++====================
++
++Using the StorPool driver will be documented.
++
++References
++==========
++
++The StorPool driver for Cinder for handling StorPool volumes:
++https://blueprints.launchpad.net/cinder/+spec/storpool-block-driver
++
++The StorPool driver for Nova for attaching StorPool-backed Cinder volumes:
++https://blueprints.launchpad.net/nova/+spec/libvirt-storpool-volume-attach
++
++The StorPool driver for Glance for storing images on a StorPool backend:
++https://blueprints.launchpad.net/glance/+spec/storpool-image-store
++
++The StorPool distributed storage software: http://storpool.com/
+-- 
+1.9.1
+

@@ -1,0 +1,280 @@
+From 07130fbdc7cd21436acb2cc61679902cbf766dca Mon Sep 17 00:00:00 2001
+From: Jay Lau <liugya@cn.ibm.com>
+Date: Sat, 19 Apr 2014 20:17:54 +0800
+Subject: [PATCH] Persist scheduler hints
+
+The aim of this spec is to implement bp persist-scheduler-hints
+
+APIImpact
+
+Change-Id: I2855ae9219082c3f1a52c574ebd78b94cb9c39de
+---
+ specs/kilo/approved/persist-scheduler-hints.rst | 256 ++++++++++++++++++++++++
+ 1 file changed, 256 insertions(+)
+ create mode 100644 specs/kilo/approved/persist-scheduler-hints.rst
+
+diff --git a/specs/kilo/approved/persist-scheduler-hints.rst b/specs/kilo/approved/persist-scheduler-hints.rst
+new file mode 100644
+index 0000000..0e8b7f1
+--- /dev/null
++++ b/specs/kilo/approved/persist-scheduler-hints.rst
+@@ -0,0 +1,256 @@
++
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++===========================================
++Persist scheduler hints
++===========================================
++
++https://blueprints.launchpad.net/nova/+spec/persist-scheduler_hints
++
++The aim of this feature is to persist scheduler_hints when creating
++VM instance so that the scheduler hints can be available for the whole
++VM life cycle.
++
++Problem description
++===================
++
++Scheduler hints will only take effect at instance deploying time. Later on
++when an admin tries to migrate the instance, there is no way to know if the
++instance is violated their original scheduling policy.
++
++Use Cases
++---------
++
++When resize/migrate/live_migrate/rebuild/evacuate instance, the instance
++still follow the orignal scheduling policy.
++
++Project Priority
++----------------
++
++This feature is valuable for scheduler and user, although it's not part of
++global effort. But it really need a way to make instance obey the scheduling
++hints that assign when deploying.
++
++Proposed change
++===============
++
++The proposed solution is to store scheduler_hints so that it can be available
++for the whole life cycle of the VM instance.
++
++* Persist scheduler_hints after deploying instance.
++* Add scheduler_hints when show the detail of instance.
++* resize/rebuild/evacuate/migrate/live_migrate honor the persistent scheduler-
++  hints.
++
++The scheduler hints will be stored in new column of instance_extra table when
++create db entry for new instance, that's also before scheduling. It it will be
++populated from db directly, then pass to the scheduler.
++
++When resize/rebuild/evacuate/migrate/live_migrate, the instance will be honor
++the persisted scheduler-hints.
++
++If Admin user specified a host when evacuate/live_migrate, conductor should
++add specifed host into scheduler parameter 'force_hosts' in filter_properties,
++then scheduler will try to match the specifed host with scheduler_hints. If
++the specifed host didn't match with persisted scheduler_hints, the migration
++will failed.
++
++The detail of what happened for instance in a server group as below:
++
++Affinity server group:
++* evacuate/live_migrate without specified host, the scheduling always failed.
++* evacuate/live_migrate with specified host, scheduling always successful.
++* resize/migrate will scheduling successful when enable
++'allow_resize/migrate_to_same_host'.
++* rebuild will schedule successful on same host.
++
++To implement the case of evacuate/live_migrate with specified host, it need
++add specifed host into scheduler parameter 'group_hosts' in filter_properties.
++
++Anti-Affinity server group:
++* resize/migrate/rebuild can't scheduling successful to same host.
++* evacuate/live_migrate always scheduling successful.
++
++If the admin user want to move all the instances in a server group out of a
++server by evacuate/live_migration, admin should doing as below:
++
++* If Admin want to move all the instances in a server group out of a server
++  by evacuate, Admin can specfied a host for first instance, then migrate
++  other instances without specfied, the scheduler will try to move thoses
++  instance to affinity with first instance.
++* If Admin want to move all the instances in a server group with affinity
++  policy out of a server by live migration, Admin should set the service
++  disabled on the source host. Then operate as the way evacuate instance
++  described above.
++
++NOTE: The race problem of migration with server-group will be fixed in another
++spec.
++
++Alternatives
++------------
++
++Storing the scheduler hints in the instance system metadata is inefficiently,
++and should be moved to being stored as a blob in an appropriate place
++per-instance. The better way is store in instance_extra table.
++
++Data model impact
++-----------------
++
++The instance_extra table would have a new 'scheduler_hints' column of
++type Text.
++
++Also add a new 'scheduler_hints' field to `nova.object.instance.Instance`
++object, as type `fields.DictOfStringsField`. That field would be populated
++on-demand.
++
++The database migration for this change will be add the new column.
++
++REST API impact
++---------------
++
++This propose will add change to API v2 and v2.1. For v2 API, there would
++be an new extension 'extend_scheduler_hints'. For v2.1 API, it would be
++add to scheduler_hints directly.
++
++The scheduler_hints' json-schema as below::
++
++    schedule_hints_schema = {
++        'type': 'object',
++        'properties': {
++            'group': {
++                'type': 'string', 'maxLength': 255,
++            },
++            'different_host': {
++                'type': ['string', 'array'],
++                'format': 'uuid',
++                'items': parameter_types.server_id
++            },
++            'same_host': {
++                'type': ['string', 'array'],
++                'items': parameter_types.server_id
++            },
++            'query': {
++                'type': ['string', 'object'],
++            },
++            'target_cell': parameter_types.name,
++            'build_near_host_ip': {
++                'type': 'string',
++                'oneOf': [
++                    {'format': 'ipv4'},
++                    {'format': 'ipv6'}
++                ],
++            },
++            'cidr': {
++                'type': 'string',
++                'pattern': '^\/[0-9a-f.:]+$'
++            },
++        },
++        'additionalProperties': False
++    }
++
++The change of nova REST API as below (all the changes is same with v2 and
++v2.1):
++
++* Extend the response of server's show::
++
++    {
++        'type': 'object',
++        'properties': {
++            'server': {
++                'type': 'object',
++                'properties': {
++                    ...
++                    'OS-SCH-HNT:scheduler_hints': schedule_hints_schema,
++                    ...
++                },
++                'additionalProperties': False,
++            },
++        },
++        'required': ['server'],
++        'additionalProperties': False,
++    }
++
++The output of scheduler_hints use the policy rule: admin_or_owner.
++
++If Admin user specifed a host when evacuate/live_migrate, and the specifed
++host didn't match the persisted scheduler_hints, the REST API will return
++BadRequest(400).
++
++Security impact
++---------------
++None
++
++Notifications impact
++--------------------
++None
++
++Other end user impact
++---------------------
++None
++
++Performance Impact
++------------------
++None
++
++Other deployer impact
++---------------------
++None
++
++Developer impact
++----------------
++None
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++    jay-lau-513 (liugya@cn.ibm.com)
++
++Other contributors:
++    Yassine Lamgarchal (yassine.lamgarchal@enovance.com)
++    Alex Xu (soulxu@gmail.com)
++
++Work Items
++----------
++
++* Add new field to instance_extra table
++* Add new field to instance object
++* Enable live_migrate to honor the persisted scheduler_hints
++* Enable evacuate to honor the persisted scheduler_hints
++* Enable rebuild to honor the persisted scheduler_hints
++* Enable resize/cold_migrate to honor the persisted scheduler_hints
++* Persist scheduler_hints when boot new instances
++* Add scheduler_hints for server's show response
++
++Dependencies
++============
++
++For persist scheduler-hints, this spec depend on:
++https://blueprints.launchpad.net/nova/+spec/flavor-from-sysmeta-to-blob
++
++Testing
++=======
++
++* Add unit test for testing scheduler hints inclduing DB and resource
++  tracker.
++* Add unit test for API changes.
++* Add tempest function tests.
++
++Documentation Impact
++====================
++
++* Update the API document about all the changes.
++* Update Cloud Admin Guide and Operations Guide to tell admin that
++  scheduler hints will be persisted when creating VMs.
++
++References
++==========
++None
+-- 
+1.9.1
+

@@ -1,34 +1,33 @@
-From 81f8db68b1c1b900fecc2a2329d148af92f7182d Mon Sep 17 00:00:00 2001
+From df926d9abc7d6e2dedac4ec2c4ac241aa8b14970 Mon Sep 17 00:00:00 2001
 From: Sylvain Bauza <sbauza@redhat.com>
 Date: Wed, 23 Apr 2014 18:26:55 +0200
-Subject: [PATCH] Propose Isolate Scheduler DB
+Subject: [PATCH] Propose Isolate Scheduler DB for Aggregates
 
-Identifies work to do on scheduler for reducing dependencies to other
-Nova objects in order to prepare scheduler forklift.
+Defines a clear way on how to update HostState thru a new RPCAPI endpoint.
 
 Implements: blueprint isolate-scheduler-db
 
 Change-Id: I489ab606341ed406024fff0c7e302fc158d20be2
 ---
- specs/kilo/approved/isolate-scheduler-db.rst | 273 +++++++++++++++++++++++++++
- 1 file changed, 273 insertions(+)
- create mode 100644 specs/kilo/approved/isolate-scheduler-db.rst
+ .../approved/isolate-scheduler-db-aggregates.rst   | 216 +++++++++++++++++++++
+ 1 file changed, 216 insertions(+)
+ create mode 100644 specs/kilo/approved/isolate-scheduler-db-aggregates.rst
 
-diff --git a/specs/kilo/approved/isolate-scheduler-db.rst b/specs/kilo/approved/isolate-scheduler-db.rst
+diff --git a/specs/kilo/approved/isolate-scheduler-db-aggregates.rst b/specs/kilo/approved/isolate-scheduler-db-aggregates.rst
 new file mode 100644
-index 0000000..91ced46
+index 0000000..7b70d59
 --- /dev/null
-+++ b/specs/kilo/approved/isolate-scheduler-db.rst
-@@ -0,0 +1,273 @@
++++ b/specs/kilo/approved/isolate-scheduler-db-aggregates.rst
+@@ -0,0 +1,216 @@
 +..
 + This work is licensed under a Creative Commons Attribution 3.0 Unported
 + License.
 +
 + http://creativecommons.org/licenses/by/3.0/legalcode
 +
-+==========================
-+Isolate Scheduler Database
-+==========================
++=========================================
++Isolate Scheduler Database for Aggregates
++=========================================
 +
 +https://blueprints.launchpad.net/nova/+spec/isolate-scheduler-db
 +
@@ -41,60 +40,17 @@ index 0000000..91ced46
 +weighters) so that scheduler is only internally accessing scheduler-related
 +tables or resources.
 +
++Note : this spec is only targeting changes to the Aggregates-related filters.
++
 +
 +Problem description
 +===================
 +
-+In order to make decisions, the scheduler needs to know the state of very
-+different Nova objects depending on which filter to run, like aggregates or
-+instance groups. At the moment, the scheduler is directly reading values from
-+DB or conductor while it should not, if we want to do a clean split.
++In order to make decisions implying aggregates context, the scheduler needs to
++directly access values from DB or conductor while it should not, considering
++that Aggregates are Nova objects and are no stored on the scheduler tables.
 +
-+Here we can consider two distinct concerns :
-+
-+* things that scheduler should know which are related to compute
-+  nodes should by updated by ResourceTracker using update_available_resource()
-+  or when instance_claim() (like aggregates whose host belongs to)
-+
-+* things the scheduler needs about the wider context of a specific scheduling
-+  request need to be passed into select_destinations scheduler lib call, e.g.
-+  instance groups
-+
-+
-+Use Cases
-+----------
-+
-+N/A, this is a refactoring effort.
-+
-+Project Priority
-+-----------------
-+
-+The kilo priorities list is currently not defined. However under the currently
-+proposed list of priorities it would fall under "Scheduler split" and
-+"Technical Debt".
-+
-+
-+
-+Proposed change
-+===============
-+
-+As said, this blueprint will focus on removing all accesses to other Nova
-+objects for the Scheduler code. Filters will only either look at request_spec,
-+filter_properties and HostState object in order to make decisions.
-+
-+As of now, we identified so far four external Nova objects that are accessed
-+externally by the Scheduler : aggregates (including AZ metadata), instance
-+groups, instances and servicegroup API.
-+
-+Note: This blueprint is *not* targeting to replace calls to other Nova
-+libraries such as nova.pci.pci_request or nova.compute.vm_states if
-+these libraries only manipulate local dicts that are not persisted to DB or
-+calling conductor.
-+
-+Below is the summary of where each distinct Nova object is identified in
-+nova.scheduler namespace :
-+
-+* Aggregates (and AZs) (calls n.db.aggregate_metadata_get_by_host):
++Below is the summary of all filters impacted by that proposal
 +
 +  * AggregateImagePropertiesIsolation,
 +  * AggregateInstanceExtraSpecsFilter,
@@ -105,64 +61,56 @@ index 0000000..91ced46
 +  * AggregateTypeAffinityFilter (calls
 +    n.objects.aggregate.AggregateList.get_by_host)
 +
-+* Compute API for Instances:
 +
-+  * TypeAffinityFilter
-+  * SameHostFilter
-+  * DifferentHostFilter
++Use Cases
++----------
 +
-+* ServiceGroup API:
++N/A, this is a refactoring effort.
 +
-+  * nova.scheduler.driver.Scheduler.hosts_up()
-+  * ComputeFilter
++Project Priority
++-----------------
 +
-+0. For aggregates allocation ratios (AggregateCoreFilter and
-+   AggregateRamFilter), it will be covered by
-+   bp/allocation-ratio-to-resource-tracker from jaypipes
++This blueprint is part of the 'scheduler' refactoring effort identified as the
++3rd priority for Kilo (see footnote [1]).
 +
-+1. Regarding accesses to aggregates table for other filters (see above) which
-+   lookup aggregates of the host to get metadata corresponding to the filter,
-+   we propose the following :
 +
-+  - Compute host reports periodically to Scheduler
-+    (thanks to update_resource_stats) a extra set of AggregateResource objects
-+    (see bp/resource-objects) like :
++Proposed change
++===============
 +
-+    - metadata "filter_tenant_id" from aggregates he is part of
-+    - metadata "availability_zone" from aggregates he is part of
-+    - all the metadata from aggregates he is part of (for extra specs filter)
-+    - etc.
++The strategy will consist in updating the scheduler each time a change comes
++to an Aggregate (adding or removing a host or changing metadata)
 +
-+  - Scheduler updates HostState using the corresponding Resource.usage(). That
-+    will require to update the Scheduler RPC API to add update_resource_stats()
-+    so that the Manager can directly access HostState. As it is currently only
-+    accessing a DB table without having a RPC penalty, we can provide a
-+    new parameter to update_resource_stats() like 'rpc_call=True' only for this
-+    call.
++For that, we propose to add a new method to the current Scheduler client
++which could be having the following structure ::
 +
-+  - Any change into an Aggregate structure (ie. in the Aggregates helper
-+    class) will call update_resource_stats() too with a subset view of what
-+    changed
++    update_aggregate(context, AggregateResource)
 +
-+  - Filters will look into HostState to access what they need
++where AggregateResource would be a clear defined object
++(see bp/resource-objects) including the following fields:
 +
-+2. For instances, we propose a very close approach :
++  - metadata
++  - list of hosts belonging to it
 +
-+  - RT.update_available_resource provides Instance object as a Resource nested
-+    to ComputeNode object
++That method would be called at the aggregates helper module level, in each
++method responsible for actually updating the Aggregate object.
 +
-+  - filters will look into HostState to know if host runs the instance asked in
-+    the hint
 +
-+3. For ServiceGroups, nothing will be done in this blueprint (considering that
-+   it will only be modified in Gantt).
++The implementation proposal for that method would consist in updating HostState
++using the corresponding Resource.usage(). That will require to update the
++Scheduler RPC API to add update_aggregate() so that the Manager can directly
++access HostState.
 +
++Once all of that would be done, filters would just have to look into HostState
++to access what they need.
 +
 +In order to provide compatibility in between distinct releases of compute nodes
 +and scheduler, the idea is, for each filter, to check HostState if the field
-+is there, and if not failback to calling the corresponding Nova object.
-+So, Kilo scheduler filters will have compatibility filters and upgrade to Lxxx
-+will see the failback mode removed (because Kilo computes will provide stats)
++is there, and if not failback to calling the corresponding Aggregate object.
++That also allows to manage the case when the Scheduler service is restarted, as
++HostState is not persisted yet.
++
++For information only, we plan to move the Aggregate objects to the Scheduler DB
++in the next Lxxx cycle so the compatibility layer could be removed.
 +
 +
 +Alternatives
@@ -174,12 +122,6 @@ index 0000000..91ced46
 +instead of direct DB access) and also creates an external dependency with Nova
 +objects that would require to be turned into python-novaclient call once Gantt
 +forklifted.
-+Reporting aggregates capabilities (eg. metadata) can also be designed in
-+various different ways, like having the conductor placing a call to aggregates
-+and providing it in request_spec, or copying all the aggregate data in
-+compute_nodes or moving the whole aggregate concept into the scheduler for its
-+solely use, but we think the proposal we made is the most performance-wise.
-+
 +
 +Data model impact
 +-----------------
@@ -231,7 +173,7 @@ index 0000000..91ced46
 +* Filters should no longer place calls to other bits of code except Scheduler.
 +  This will be done by modifying Scheduler component to proxy conductor calls
 +  to a Singleton which will refuse anything but scheduler-related objects.
-+  See footnote [1] as example. As said above, we will still provide a failback
++  See footnote [2] as example. As said above, we will still provide a failback
 +  mode for Kilo release in order to have compatibility with N-1 release.
 +
 +
@@ -252,19 +194,17 @@ index 0000000..91ced46
 +Work Items
 +----------
 +
-+* Write AggregateResource objects nested to a ComputeNode object
++* Write AggregateResource objects
 +
-+* Write Instance objects nested to a ComputeNode object
++* Add a RPC API endpoint for update_aggregate()
 +
-+* Add a RPC API endpoint for update_resource_stats()
-+
-+* Amend HostState instead of DB compute_nodes if update_resource_stats() on
-+  the Scheduler manager
++* Implement update_aggregate() on the Scheduler Manager so that it updates
++  HostState
 +
 +* Modify filters to look at HostState (and failback to Nova object)
 +
-+* Modify scheduler entrypoint to block conductor accesses to other Nova objects
-+  (once K release development will be open)
++* Modify scheduler entrypoint to block conductor accesses to Aggregates
++  (once Lxxx release development will be open)
 +
 +
 +Dependencies
@@ -292,7 +232,9 @@ index 0000000..91ced46
 +
 +* http://eavesdrop.openstack.org/meetings/gantt/2014/gantt.2014-03-18-15.00.html
 +
-+[1] http://git.openstack.org/cgit/openstack/nova/commit/?id=e5cbbcfc6a5fa31565d21e6c0ea260faca3b253d
++[1] https://etherpad.openstack.org/p/kilo-nova-priorities
++
++[2] http://git.openstack.org/cgit/openstack/nova/commit/?id=e5cbbcfc6a5fa31565d21e6c0ea260faca3b253d
 -- 
 1.9.1
 

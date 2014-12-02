@@ -311,7 +311,7 @@ if __name__ == '__main__':
         print '<li><a href="#%s">%s</a>' % (header.replace(' ', '_'),
                                                 header)
     print '<br/><br/>'
-    print '\n'.join(OUTPUT)
+    print utils.Normalize('\n'.join(OUTPUT))
     print
     print 'I printed %d reviews' % len(PRINTED)
     print 'Generated at: %s' % datetime.datetime.now()

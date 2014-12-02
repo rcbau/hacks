@@ -1,0 +1,183 @@
+From 69776894c77b123340f67e4e4791dc6453b76f5a Mon Sep 17 00:00:00 2001
+From: Andrew Laski <andrew.laski@rackspace.com>
+Date: Fri, 21 Nov 2014 16:06:26 -0500
+Subject: [PATCH] Cells instance migration
+
+Spec for migrating data into the instance_mapping table used for
+tracking which instance is in which cell.
+
+bp cells-instance-migration
+
+Change-Id: Idc104f70820e2796aa0d093118e7e7fe15318986
+---
+ specs/kilo/approved/cells-instance-migration.rst | 158 +++++++++++++++++++++++
+ 1 file changed, 158 insertions(+)
+ create mode 100644 specs/kilo/approved/cells-instance-migration.rst
+
+diff --git a/specs/kilo/approved/cells-instance-migration.rst b/specs/kilo/approved/cells-instance-migration.rst
+new file mode 100644
+index 0000000..535fc10
+--- /dev/null
++++ b/specs/kilo/approved/cells-instance-migration.rst
+@@ -0,0 +1,158 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++==========================================
++Cells instance migration
++==========================================
++
++https://blueprints.launchpad.net/nova/+spec/cells-instance-migration
++
++Now that there's a table to map instances to cells it needs to be populated
++with data on instances that exist prior to its creation and usage.
++
++
++Problem description
++===================
++
++When Nova is partitioned into cells, the compute api needs to know which cell
++to communicate with for a particular instance.  Instances that exist from
++before this mapping was maintained need to have their location added to the
++table.
++
++Use Cases
++----------
++
++* Operators want to partition their deployments into cells for scaling, failure
++  domain, and buildout reasons.  When partitioned, we need a lookup table to
++  know which partition an instance is in.  That lookup table needs to be
++  populated with information on instances that exist prior to its creation.
++
++Project Priority
++-----------------
++
++Cells v2 has been made a project priority for Kilo.
++
++
++Proposed change
++===============
++
++The 'instance_mapping' table will be populated with data on which cell an
++instance lives in.
++
++There are two cases to consider:
++
++In a deployment not using cellsv1 a new v2 cell should be added and then all
++instances can be mapped to that cell.
++
++In a deployment using cellsv1 new v2 cells should be created with the same
++names as the current cells and then instances can be mapped to the new cells
++one at a time.
++
++
++And there are two methods we can use to populate this data.  If a v2 cell is
++configured and we can match an instance to that cell then we can create the
++mapping as the instance is accessed through its pre cells v2 method.
++Additionally a new nova-manage command will be added to do an manual migration
++at any time.
++
++Alternatives
++------------
++
++We could continue to use the nova-cells model in place today.  The downsides of
++this have been discussed in the etherpad link in the references section.
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++None
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++None
++
++Performance Impact
++------------------
++
++On its own this change does not introduce a performance impact.  When it's used
++by later specs it does introduce another database lookup for many actions
++within Nova.  For example a 'nova show <uuid>' will require Nova to look up the
++database that an instance is in before it can query it for instance data.  This
++can be optimized later with a memcached cache of this mapping.
++
++Other deployer impact
++---------------------
++
++Deployers will be provided with a new nova-manage command to trigger the
++creation of the mappings.  This should be run once for a deployment not
++currently using cells, and once in each cell for a deployment currently using
++cells.  This migration can be run at any time but should be run a final time
++before switching over to using cells v2.
++
++Developer impact
++----------------
++
++None
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  alaski
++
++Other contributors:
++  None
++
++Work Items
++----------
++
++* Add database migration for 'instance_mapping' table.
++
++
++Dependencies
++============
++
++https://blueprints.launchpad.net/nova/+spec/cells-instance-mapping
++
++
++Testing
++=======
++
++Since this is designed to be an internal re-architecting of Nova with no user
++visible changes the current suite of Tempest or functional tests should
++suffice.  At some point we will want to look at how to test multiple cells or
++potentially exposing the concept of a cell in the API and we will tackle
++testing requirements then.
++
++
++Documentation Impact
++====================
++
++Documentation on the new nova-manage command will need to be written.
++
++
++References
++==========
++
++``https://etherpad.openstack.org/p/kilo-nova-cells``
+-- 
+1.9.1
+

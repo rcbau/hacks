@@ -1,0 +1,186 @@
+From 2a3afbb6126f554e4faa471e9bec2171bbd46c23 Mon Sep 17 00:00:00 2001
+From: Tobias Engelbert <tobias.engelbert@ericsson.com>
+Date: Tue, 18 Nov 2014 02:07:32 +0100
+Subject: [PATCH] Change the handling for volume operation timeouts
+
+Change-Id: Ic9ad8e2f9723465ef61c795cf1f4a730d7accb71
+Implements: blueprint volume-staus-polling-nova
+---
+ specs/kilo/volume-status-polling-nova.rst | 165 ++++++++++++++++++++++++++++++
+ 1 file changed, 165 insertions(+)
+ create mode 100644 specs/kilo/volume-status-polling-nova.rst
+
+diff --git a/specs/kilo/volume-status-polling-nova.rst b/specs/kilo/volume-status-polling-nova.rst
+new file mode 100644
+index 0000000..817e4ec
+--- /dev/null
++++ b/specs/kilo/volume-status-polling-nova.rst
+@@ -0,0 +1,165 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++==========================================
++Volume Status Polling
++==========================================
++
++https://blueprints.launchpad.net/nova/+spec/volume-status-polling
++
++Parallel volume operations like attach volume to VM lead to 
++inconsistencies between the OpenStack database and the 
++deployed view on the centralized storage backend.
++
++
++Problem description
++===================
++
++When performing multiple volume operation on a centralized storage 
++backend it can come to timeouts on the OpenStack side. These 
++timeouts can be the RPC timeout or e.g. in high availability 
++scenarios, the HA proxy timeout.
++
++When nova wants to attach a volume, it triggers the status change from 
++available to attaching and sends initialize_connection via cinderclient
++to cinder API via the REST API.
++Cinder API performs a synchronous CALL to cinder volume, then
++via the driver the centralized storage backend is contacted. When now a 
++timeout occurs, nova triggers the database to change the volume status 
++from attaching to available. Meanwhile the centralized storage 
++backend performs what was originally requested. 
++Here we can have a mismatch between database and the real view of the 
++centralized storage backend.
++
++The described behaviour might be suitable for all CALLs.
++
++
++
++Proposed change
++===============
++
++The proposed solution is to change the synchronous call chain 
++to an asynchronous one. This solution comprises two basic building blocks:
++
++First, instead of waiting for the connection_information from the storage 
++backend, Cinder-Volume immediately returns empty connection_information. 
++Once the storage backend has finished processing the attachment request 
++and the connection_inforamtion are available, they are stored in the 
++metadata of the volume in the Cinder database. Hence, Nova-Compute 
++needs to implement a polling mechanism which continuously queries the 
++database for valid connection_information until they become available. 
++
++Second, in order to avoid endless polling, a timeout is still needed 
++to cope with real failures of the storage backend
++
++After triggering the attachment process, Nova-Compute waits for the 
++completion of the attachment process by polling the metadata database 
++of the corresponding volume for the connection_information. Cinder-volume 
++stores the connection_information at the end of each attachment request 
++in the metadata of the volume. After a successful attachment, 
++the connection_information are provided to Nova-Compute as before.
++In order to avoid endless polling in case of a failure of the backend, 
++an upper time limit for the polling loop is needed. This time limit is 
++the maximum time span the storage backend needs to complete a single 
++request. This time limit shall be configurable.
++Cinder-volume will store the timestamp of the last successfully 
++completed backend operation in the metadata of all volumes being 
++currently attached.  
++With every query, the polling loop compares the time difference 
++between the last life-sign and the current time. 
++If this difference exceeds t_max, the storage backend is assumed 
++to have failed. Consequently, the polling loop exits and a timeout 
++exception is raised. In this case, Nova-Compute has to trigger 
++a rollback to ensure database consistency.
++
++
++Alternatives
++------------
++
++-
++
++Data model impact
++-----------------
++
++-
++
++REST API impact
++---------------
++
++As a result of the proposed change, Nova has to poll the database 
++to get information about the attachment/detachment process.
++It is proposed that the API is being extended by the asynchronous 
++functions initialize_connection_cast and terminate_connection_cast.
++
++Security impact
++---------------
++
++-
++
++Notifications impact
++--------------------
++
++-
++
++Other end user impact
++---------------------
++
++-
++
++Performance Impact
++------------------
++
++The polling loop has minor impact on the 
++performance.
++
++Other deployer impact
++---------------------
++
++-
++
++Developer impact
++----------------
++
++-
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Tobias Engelbert
++
++Work Items
++----------
++
++- Nova
++
++
++Dependencies
++============
++
++http://blueprints.launchpad.net/cinder/+spec/volume-status-polling
++
++
++Testing
++=======
++
++This change requires a certain amount of testing to verify that the problem 
++does not occur any more.
++
++
++Documentation Impact
++====================
++
++-
++
++
++References
++==========
++
++http://blueprints.launchpad.net/cinder/+spec/volume-status-polling
+-- 
+1.9.1
+

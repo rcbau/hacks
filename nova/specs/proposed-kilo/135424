@@ -1,0 +1,213 @@
+From 207eca82b859ea6fedb8b81a8cf52887cf7cfb51 Mon Sep 17 00:00:00 2001
+From: Andrew Laski <andrew.laski@rackspace.com>
+Date: Tue, 18 Nov 2014 15:56:03 -0500
+Subject: [PATCH] Cells v2 mapping
+
+Spec for adding a new mapping table for cell and making the rpc and
+database layers able to communicate with an arbitrary cell per call.
+
+bp cells-v2-mapping
+Change-Id: I64f530d84b56b7e2365dc041689dc034f9b91f42
+---
+ specs/kilo/approved/cells-v2-mapping.rst | 189 +++++++++++++++++++++++++++++++
+ 1 file changed, 189 insertions(+)
+ create mode 100644 specs/kilo/approved/cells-v2-mapping.rst
+
+diff --git a/specs/kilo/approved/cells-v2-mapping.rst b/specs/kilo/approved/cells-v2-mapping.rst
+new file mode 100644
+index 0000000..ed3a82c
+--- /dev/null
++++ b/specs/kilo/approved/cells-v2-mapping.rst
+@@ -0,0 +1,189 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++==========================================
++Cells v2 mapping
++==========================================
++
++https://blueprints.launchpad.net/nova/+spec/cells-v2-mapping
++
++In order for compute api nodes to communicate with cells they will need to have
++knowledge on how to connect to each cell.  A new database and table will be
++created which can store this information for use by the database and RPC layers
++of Nova.
++
++
++Problem description
++===================
++
++When Nova is partitioned into cells, the compute api needs to be able to
++communicate with each one via a message bus and a database connection.  There
++is currently no mapping of a cell identifier to a message queue and database
++connection.  And there is no mechanism to dispatch RPC message or database
++queries to different endpoints on a per call basis.
++
++Use Cases
++----------
++
++* Developers who want to make database queries or send RPC messages to a
++  specific cell.
++
++
++Project Priority
++-----------------
++
++Cells v2 has been made a project priority for Kilo.
++
++
++Proposed change
++===============
++
++The change being proposed is a new database and table for storing a mapping of
++cell to database and message queue.  This is similar to the current cells
++table, but the concepts of weight and is_parent are not needed and a database
++connection is needed.  A new database is being proposed because the new tables
++that will be added to it belong with the compute api layer of Nova, compared to
++some of the current tables which belong in a cells database.  The exact split
++of which information belongs where is an in-progress effort.
++
++Although the weights are being removed here the capability to weight cells will
++be addressed at a later time.
++
++Additionally the database and rpc abstractions in Nova need to be capable of
++communicating with an arbitrary endpoint for every call/query.
++
++There is nothing in place to use this yet so the scope of work ends at just
++having the capability to do it.
++
++Alternatives
++------------
++
++We could continue to use the nova-cells model in place today.  The downsides of
++this have been described above.
++
++Data model impact
++-----------------
++
++A new 'cell_mapping' table will be added.  And it should be added outside of
++the current 'nova' database in a new 'nova_api' database.  This will be
++configurable by a deployer in the same way the current database is configured.
++So while this table could be put into the same database as current tables via
++configuration, it should be made clear that this table is used by different
++services than other current tables.
++
++The table will look approximately like:
++
++CREATE TABLE `cell_mapping` (
++  `created_at` datetime DEFAULT NULL,
++  `updated_at` datetime DEFAULT NULL,
++  `deleted_at` datetime DEFAULT NULL,
++  `id` int(11) NOT NULL AUTO_INCREMENT,
++  `uuid` varchar(36) NOT NULL,
++  `name` varchar(255) DEFAULT NULL,
++  `deleted` int(11) DEFAULT NULL,
++  `transport_url` mediumtext NOT NULL,
++  `database_connection` mediumtext NOT NULL)
++
++REST API impact
++---------------
++
++None
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++None
++
++Performance Impact
++------------------
++
++On its own this change does not introduce a performance impact.  When it is
++used by later specs it does introduce another database lookup for many actions
++within Nova.  For example a 'nova show <uuid>' will require Nova to look up the
++database that an instance is in before it can query it for instance data.
++
++Other deployer impact
++---------------------
++
++This blueprint introduces the concept of a database that is conceptually
++distinct from the current nova database.  Deployers will need to consider how
++they want to manage a second database, whether it resides on the same host as
++their current nova database or not.
++
++Developer impact
++----------------
++
++This change means that developers should understand that RPC messages or
++database queries may hit one of many endpoints.  At this point it should not
++affect developers work within Nova.  Developers adding future database
++migrations will need to consider whether it goes at the API or cell level and
++add it to the appropriate set of migrations.
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  alaski
++
++Other contributors:
++  None
++
++Work Items
++----------
++
++* Ensure Nova database API can communicate with an arbitrary database on each
++  call.
++
++* Research how to have a separate migration path within Nova for a new
++  database.
++
++* Setup separate database migration path for migrations on a new database.
++
++* Add database migration for 'cell_mapping' table.
++
++
++Dependencies
++============
++
++None
++
++
++Testing
++=======
++
++Since this is designed to be an internal re-architecting of Nova with no user
++visible changes the current suite of Tempest or functional tests should
++suffice.  At some point we will want to look at how to test multiple cells or
++potentially exposing the concept of a cell in the API and we will tackle
++testing requirements then.
++
++
++Documentation Impact
++====================
++
++The existence and management of a new database will need to be documented.  It
++is not required that the database be deployed at this time but deployers should
++be prepped on how to start managing it.
++
++
++References
++==========
++
++``https://etherpad.openstack.org/p/kilo-nova-cells``
+-- 
+1.9.1
+

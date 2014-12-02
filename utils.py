@@ -11,6 +11,14 @@ def execute(cmd):
     return (p.stdout.readlines(), p.returncode)
 
 
+def runcmd(cmd):
+    obj = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                           stderr=subprocess.PIPE, shell=True)
+    (stdout, stderr) = obj.communicate()
+    returncode = obj.returncode
+    return stdout
+
+
 def get_patchset_info(review):
     out, exit = execute('ssh -i ~/.ssh/id_gerrit review.openstack.org gerrit '
                         'query %s --patch-sets --format JSON' % review)

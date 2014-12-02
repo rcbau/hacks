@@ -1,0 +1,155 @@
+From 64a8f0431a62aae6bd819e6549bd6e864599099f Mon Sep 17 00:00:00 2001
+From: Eli Qiao <taget@linux.vnet.ibm.com>
+Date: Wed, 19 Nov 2014 13:21:11 +0800
+Subject: [PATCH] Improve return code of lock_server api
+
+Proposal change the return code of lock server api.
+Raise HTTPConflict when lock/unlock a locked/unlocked
+instance.
+
+APIImpact
+Change-Id: Iae4b196fef35edb5701c9e62a678cf7e9d734850
+---
+ specs/kilo/approved/improve-lock-api.rst | 130 +++++++++++++++++++++++++++++++
+ 1 file changed, 130 insertions(+)
+ create mode 100644 specs/kilo/approved/improve-lock-api.rst
+
+diff --git a/specs/kilo/approved/improve-lock-api.rst b/specs/kilo/approved/improve-lock-api.rst
+new file mode 100644
+index 0000000..96fd925
+--- /dev/null
++++ b/specs/kilo/approved/improve-lock-api.rst
+@@ -0,0 +1,130 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++=====================================================
++improve the return code of lock server api
++=====================================================
++
++Currently, lock server api only returns 202(accepted) and 404(not found).
++The api return code is not accurate.
++The lock/unlock api in compute-api is a sync function, so the return code
++of nova-api should be:
++* 200 : successfully lock/unlock a instance
++* 404 : instance not found
++* 409 : locking/unlocking a locked/unlocked instance
++
++Problem description
++===================
++
++lock server api return code is not correct.
++
++Use Cases
++----------
++
++Give user/admin more accurate return code when perform a lock/unlock
++operation on a instance, so they can get current instance lock status
++immediately.
++
++Project Priority
++-----------------
++
++Priority is not defined yet, but it would be better if we can finished this
++in kilo, this will help to improve the nova api.
++
++Proposed change
++===============
++
++* Change return code from 202 to 200
++* Raise HTTPConflict(409) when locking/unlocking a locked/unlocked instance.
++
++Alternatives
++------------
++
++None
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++This is a backwards incompatible changes.
++* Change return code from 202 to 200.
++* Raise HTTPConflict(209) when try to lock/unlock a locked/unlocked instance.
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++User will get 200 instead of 202 when success doing a lock/unlock operation.
++User will get 409 when locking/unlocking a locked/unlocked instance.
++
++Performance Impact
++------------------
++
++None
++
++Other deployer impact
++---------------------
++
++None
++
++Developer impact
++----------------
++
++None
++
++Implementation
++==============
++
++* Modify the return code of lock_server in REST api.
++* Add verification in compute_api layer in lock/unlock function.
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  Eli Qiao <taget@linux.vnet.ibm.com>
++
++Work Items
++----------
++
++None
++
++Dependencies
++============
++
++This change should be applied to v2.1 once microversions is implemented.
++
++Testing
++=======
++
++Change lock/unlock test cases of compute_api
++Add test cases for lock_server api to test HTTPConflict exception when
++performing lock/unlock on a locked/unlocked server.
++
++Documentation Impact
++====================
++
++Lock server return code is 200 instead of 202
++When user try to lock/unlock a lock/unlocked, will get HTTPConflict exception.
++
++
++References
++==========
++
++None
+-- 
+1.9.1
+

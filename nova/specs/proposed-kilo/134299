@@ -1,0 +1,180 @@
+From e11d8ebd7898ed6417ac2410f3e6a86f6f35c2a0 Mon Sep 17 00:00:00 2001
+From: Tomoki Sekiyama <tomoki.sekiyama@hds.com>
+Date: Thu, 13 Nov 2014 12:03:54 -0500
+Subject: [PATCH] Add spec for 'Enhance iSCSI volume multipath support'
+
+This spec proposes to enhance iSCSI multipath support by defining the way for
+get multiple iSCSI portals/iqns/luns to access a volume (LU) from Cinder.
+
+Change-Id: I0b1f3f33c7f37abef56b4f12449180d314a4a922
+blueprint: iscsi-multipath-enhancement
+---
+ .../kilo/approved/iscsi-multipath-enhancement.rst  | 156 +++++++++++++++++++++
+ 1 file changed, 156 insertions(+)
+ create mode 100644 specs/kilo/approved/iscsi-multipath-enhancement.rst
+
+diff --git a/specs/kilo/approved/iscsi-multipath-enhancement.rst b/specs/kilo/approved/iscsi-multipath-enhancement.rst
+new file mode 100644
+index 0000000..b42581d
+--- /dev/null
++++ b/specs/kilo/approved/iscsi-multipath-enhancement.rst
+@@ -0,0 +1,156 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++==========================================
++Enhance iSCSI volume multipath support
++==========================================
++
++Include the URL of your launchpad blueprint:
++
++https://blueprints.launchpad.net/nova/+spec/iscsi-multipath-enhancement
++
++This spec proposes to enhance multipath support of cinder iSCSI volumes.
++
++Problem description
++===================
++
++Currently, nova-compute supports multipath for iSCSI volume data path.
++It depends on response to targets discovery of from the main iSCSI portal,
++expecting multiple portal addresses are contained.
++
++However, some arrays only respond to discovery with a single portal address,
++even if secondary portals are available. In this case, nova-compute cannot know
++secondary portals and corresponding iSCSI target IQN, so nova-compute cannot
++establish multiple sessions for the target(s). To enable nova-compute to
++login to secondary portals, cinder should tell the secondary portal
++addresses and corresponding target iqns/luns.
++
++Telling secondary portal addresses and iqns/luns is also useful for arrays
++which can respond to discovery with multiple portals addresses and IQNs, since
++compute can access to the volume via secondary portals even when the main
++portal is unaccessible due to network trouble.
++(Note that compute should attach the volume via multipath device "dm-X" so
++that the session to the main portal can be re-established when the network
++is recovered.)
++
++Use Cases
++---------
++
++This proposal is useful to improve availability of volume operations by
++enabling multipath feature with iSCSI storage arrays currently not supported.
++
++Project Priority
++----------------
++
++None
++
++Proposed change
++===============
++
++When 'iscsi_use_multipath' is enabled in nova.conf, nova should pass new
++optional parameter 'multipath=True' to Cinder's initialize_connection API.
++If this is specified, some backend drivers of Cinder will return multiple
++iSCSI portal addresses and corresponding IQNs/LUNs to login to the iSCSI
++target.
++
++When nova-compute receive multiple addresses/IQNs/LUNs, it should login to
++every targret specified by these parameters.
++Even if a part of the portals are not responding, the connection process
++should be continued when the other are responding.
++
++If multiple addresses are not returned from APIs, it should find multiple
++targets using discovery, as in the existing design, for compatibility.
++
++Alternatives
++------------
++
++None
++
++Data model impact
++-----------------
++
++None.
++
++Note that 'connection_info' JSON string with new parameters are stored in the
++table 'block_device_mapping', but it doesn't require changes of schema.
++
++REST API impact
++---------------
++
++None
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++None
++
++Performance Impact
++------------------
++
++None
++
++Other deployer impact
++---------------------
++
++To enable this feature, 'iscsi_use_multipath' should be set to True in
++the [libvirt] section of nova.conf.
++
++Developer impact
++----------------
++
++None
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  tsekiyama
++
++Work Items
++----------
++
++- Implement this feature in Cinder
++- Modify nova and brick library to login to multiple portals
++
++Dependencies
++============
++
++None
++
++Testing
++=======
++
++- Unit tests for connect_volume/disconnect_volume for iSCSI volumes should be
++  added to check if they can handle response from initialize_connection volume
++  API with and without new parameters.
++
++Documentation Impact
++====================
++
++None
++
++References
++==========
++
++* Enable multipath for libvirt iSCSI Volume Driver (merged)
++  https://review.openstack.org/#/c/17946/
++
++* cinder-specs: Enhance iSCSI multipath support
++  (The detailed API specification is described)
++  https://review.openstack.org/#/c/136500/
+-- 
+1.9.1
+

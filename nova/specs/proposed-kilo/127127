@@ -1,4 +1,4 @@
-From 4728370c030337c327a290d61bdd42eacfa0aec1 Mon Sep 17 00:00:00 2001
+From ee55e1cf3743b4660d99b532fac0eaab092749d2 Mon Sep 17 00:00:00 2001
 From: Christopher Yeoh <cyeoh@au1.ibm.com>
 Date: Thu, 9 Oct 2014 14:05:10 +1030
 Subject: [PATCH] REST API Microversions
@@ -9,16 +9,16 @@ APIImpact
 
 Change-Id: I49c3d590d087f9cd3c2d1898455aa296721a4f6e
 ---
- specs/kilo/approved/api-microversions.rst | 423 ++++++++++++++++++++++++++++++
- 1 file changed, 423 insertions(+)
+ specs/kilo/approved/api-microversions.rst | 480 ++++++++++++++++++++++++++++++
+ 1 file changed, 480 insertions(+)
  create mode 100644 specs/kilo/approved/api-microversions.rst
 
 diff --git a/specs/kilo/approved/api-microversions.rst b/specs/kilo/approved/api-microversions.rst
 new file mode 100644
-index 0000000..4f0b0ff
+index 0000000..17889ea
 --- /dev/null
 +++ b/specs/kilo/approved/api-microversions.rst
-@@ -0,0 +1,423 @@
+@@ -0,0 +1,480 @@
 +..
 + This work is licensed under a Creative Commons Attribution 3.0 Unported
 + License.
@@ -77,9 +77,10 @@ index 0000000..4f0b0ff
 +* Allows developers to modify the Nova API in a non backwards
 +  compatible way whilst still supporting the old behaviour. Users of
 +  the REST API are able to decide if they want the Nova API to behave
-+  in the new or old manner on a per request basis. Deployers
-+  are able to make new backwards incompatible features available
-+  without removing support for prior behaviour.
++  in the new or old manner on a per request basis. Deployers are able
++  to make new backwards incompatible features available without
++  removing support for prior behaviour as long as there is support
++  to do this by developers.
 +
 +* Users of the REST API are able to, on a per request basis, decide
 +  which version of the API they want to use (assuming the deployer
@@ -118,11 +119,23 @@ index 0000000..4f0b0ff
 +optional extensions in the Nova tree.
 +
 +Versioning of the API should be a single monotonic counter. It will be
-+of the form X.Y where it follows the Semantic Versioning 2.0.0
-+specification (http://semver.org). Eg. you increment
++of the form X.Y where it follows the following convention:
 +
-+* X when you make incompatible API changes
-+* Y when you make backwards compatible changes
++* X will only be changed if a significant backwards incompatible
++  API change is made which affects the API as whole. That is, something
++  that is only very very rarely incremented.
++* Y when you make any change to the API. Note that this includes
++  semantic changes which may not affect the input or output formats or
++  even originate in the API code layer. We are not distinguishing
++  between backwards compatible and backwards incompatible changes in
++  the versioning system. It will however be made clear in the
++  documentation as to what is a backwards compatible change and what
++  is a backwards incompatible one.
++
++
++Note that groups of similar changes across the API will not be made
++under a single version bump. This will minimise the impact on users as
++they can control changes that they want to be exposed to.
 +
 +A backwards compatible change is defined as one which would be allowed
 +under the OpenStack API Change Guidelines
@@ -163,11 +176,10 @@ index 0000000..4f0b0ff
 +A client specifies the version of the API they want via the following
 +approach, a new header::
 +
-+  X-OpenStack-Compute-API-Version: 2.114, experimental, vendor:rax
++  X-OpenStack-Compute-API-Version: 2.114
 +
-+This conceptually acts like the accept header.  We introduce 3
-+concepts here, global API version, experimental flag, and vendor
-+flags.
++This conceptually acts like the accept header. This is a global API
++version.
 +
 +Semantically this means:
 +
@@ -181,21 +193,27 @@ index 0000000..4f0b0ff
 +* If X-OpenStack-Compute-API-Version: latest (special keyword) return
 +  max_version of the API.
 +
-+* If experimental is sent, return results with *all* experimental
-+  extensions enabled.
-+
-+* If vendor:VENDORNAMESPACE is sent, return results that include out
-+  of tree vendor extensions.
-+
 +This means out of the box, with an old client, an OpenStack
 +installation will return vanilla OpenStack responses at v2. The user
 +or SDK will have to ask for something different in order to get new
 +features.
 +
-+Experimental and vendor, by virtue of being out of tree, do not
-+benefit from versioning. It's an all or nothing affair. There are less
-+unique snowflakes in the world than people think, and we actually want
-+these things back in tree.
++Two extra headers are always returned in the response:
++
++X-OpenStack-Compute-API-Version: version_number, experimental
++Vary: X-OpenStack-Compute-API-Version
++
++The first header specifies the version number of the API which was
++executed. Experimental is only returned if the operator has made a
++modification to the API behaviour that is non standard. This is only
++intended to be a transitional mechanism while some functionality used
++by cloud operators is upstreamed and it will be removed within a small
++number of releases..
++
++The second header is used as a hint to caching proxies that the
++response is also dependent on the X-Openstack-Compute-API-Version and
++not just the body and query parameters. See RFC 2616 section 14.44 for
++details.
 +
 +Implementation design details
 +-----------------------------
@@ -231,9 +249,9 @@ index 0000000..4f0b0ff
 +>  def show(self, req, id):
 +>     pass
 +
-+An incoming request for version 2.2.0 of the API would end up
++An incoming request for version 2.2 of the API would end up
 +executing the first method, whilst an incoming request for version
-+3.1.0 of the API would result in the second being executed.
++3.1 of the API would result in the second being executed.
 +
 +For cases where the method implementations are very similar with just
 +minor differences a lot of duplicated code can be avoided by versioning
@@ -272,14 +290,8 @@ index 0000000..4f0b0ff
 +>    ....  stuff ....
 +
 +
-+To mark a method implementation as only available when experimental or
-+vendor specific it can be marked with:
-+
-+@api_exp()
-+@api_vendor("vendor_string")
-+
-+Note that you cannot combine these with the api_version decorator or
-+with each other.
++Note that end_version is optional in which case it will match any
++version greater than or equal to start_version.
 +
 +Some prototype code which explains how this work is available here:
 +
@@ -289,6 +301,66 @@ index 0000000..4f0b0ff
 +versioning
 +
 +@validation.schema(schema_definition, min_version, max_version)
++
++Note that both min_version and max_version would be optional
++parameters.
++
++A method, extension, or a field in a request or response can be
++removed from the API by specifying a max_version.
++
++>  @api_version(min_version='2.1', max_version='2.9')
++>  def show(self, req, id):
++
++If a request for version 2.11 is made by a client, the client will
++receive a 404 as if the method does not exist at all. If the minimum
++version of the API as whole was brought up to 2.10 then the extension
++itself could then be removed.
++
++The minimum version of the API as a whole would only be increased by a
++consensus decision between Nova developers who have the ovehead of
++maintaining backwards compatibility and deployers and users who want
++backwards compatibility forever.
++
++Because we have a monotonically increasing version number across the
++whole of the API rather than versioning individual plugins we will have
++potential merge conflicts like we currenty have with DB migration
++changesets. Sorry, I don't believe there is any way around this, but
++welcome any suggestions!
++
++
++Client Expectations
++-------------------
++
++As with system which supports version negotiation, a robust client
++consuming this API will need to also support some range of versions
++otherwise that client will not be able to be used in software that
++talks to multiple clouds.
++
++The concrete example is nodepool in OpenStack Infra. Assume there is a
++world where it is regularly connecting to 4 public clouds. They are
++at the following states::
++
++  - Cloud A:
++    - min_ver: 2.100
++    - max_ver: 2.300
++  - Cloud B:
++    - min_ver: 2.200
++    - max_ver: 2.450
++  - Cloud C:
++    - min_ver: 2.300
++    - max_ver: 2.600
++  - Cloud D:
++    - min_ver: 2.400
++    - max_ver: 2.800
++
++No single version of the API is available in all those clouds based on
++the ancientness of some of them. However within the client SDK certain
++basic functions like boot will exist, though might get different
++additional data based on version of the API. The client should smooth
++over these differences when possible.
++
++Realistically this is a problem that exists today, except there is no
++infrastructure to support creating a solution to solve it.
 +
 +
 +Alternatives
@@ -358,18 +430,10 @@ index 0000000..4f0b0ff
 +---
 +
 +* Does adding a new plugin change the version number?
-+  Yes. Although a client could detect this also through /extensions
-+  I think we should still bump the minor number so they know if
-+  it could be present.
++  Yes.
 +
 +* Do we bump a version number when error status codes change?
-+
-+  No. At least while we consider error status code changes a backwards
-+  compatible minor one which clients aren't really interested or
-+  dependent on (who actually checks error code?). Strictly speaking it
-+  is a backwards incompatible change but until the API Change
-+  guidelines change we will stick to this fiction. And debate this
-+  elsewhere :-)
++  Yes, its is an API change.
 +
 +
 +
@@ -400,7 +464,7 @@ index 0000000..4f0b0ff
 +
 +* This is dependent on v2.1 v2-on-v3-api spec being completed.
 +
-+* Any nova spec which wants to make backwards compatible changes
++* Any nova spec which wants to make backwards incompatible changes
 +  to the API (such as the tasks api specification) is dependent on
 +  on this change. As is any spec that wants to make any API change
 +  to the v2.1 API without having to add a dummy extension.
@@ -434,14 +498,7 @@ index 0000000..4f0b0ff
 +
 +* Links to mailing list or IRC discussions
 +
-+* Links to notes from a summit session
-+
-+* Links to relevant research, if appropriate
-+
-+* Related specifications as appropriate (e.g.  if it's an EC2 thing, link the
-+  EC2 docs)
-+
-+* Anything else you feel it is worthwhile to refer to
++* https://etherpad.openstack.org/p/kilo-nova-microversions
 -- 
 1.9.1
 

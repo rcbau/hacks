@@ -1,6 +1,6 @@
-From 4cabf848f573f44c304f7858b63787e914ef5b58 Mon Sep 17 00:00:00 2001
+From b7d6899bb446f20850327e3b491abbb58b140489 Mon Sep 17 00:00:00 2001
 From: Maxim Nestratov <mnestratov@parallels.com>
-Date: Mon, 27 Oct 2014 20:11:52 +0400
+Date: Mon, 17 Nov 2014 15:47:45 +0400
 Subject: [PATCH] Add Parallels Cloud Server support into virt/libvirt driver
 
 This specification proposes to implement modification in
@@ -10,16 +10,16 @@ virt/libvirt driver to support Parallels Cloud Server
 blueprint pcs-support
 Change-Id: Ibbc19ca2181827e7c6576f82f756898a13503f2e
 ---
- specs/kilo/approved/pcs-support.rst | 215 ++++++++++++++++++++++++++++++++++++
- 1 file changed, 215 insertions(+)
+ specs/kilo/approved/pcs-support.rst | 252 ++++++++++++++++++++++++++++++++++++
+ 1 file changed, 252 insertions(+)
  create mode 100644 specs/kilo/approved/pcs-support.rst
 
 diff --git a/specs/kilo/approved/pcs-support.rst b/specs/kilo/approved/pcs-support.rst
 new file mode 100644
-index 0000000..f4179ef
+index 0000000..1a8a8ca
 --- /dev/null
 +++ b/specs/kilo/approved/pcs-support.rst
-@@ -0,0 +1,215 @@
+@@ -0,0 +1,252 @@
 +=====================================================
 +Parallels Cloud Server support in nova/libvirt driver
 +=====================================================
@@ -27,7 +27,7 @@ index 0000000..f4179ef
 +https://blueprints.launchpad.net/nova/+spec/pcs-support
 +
 +This specification is intended to describe process of extending nova/libvirt
-+driver in order to support Parallels Cloud Server [1]
++driver in order to support Parallels Cloud Server [1]_
 +
 +Problem description
 +===================
@@ -38,7 +38,7 @@ index 0000000..f4179ef
 +Though PCS is supported by libvirt it is absent in OpenStack for now due to
 +not only specific demand related to compute node deployment but also
 +different disk image format implied by usage of Parallels disk loopback block
-+device [2], domains configuration and supported features.
++device [2]_, domains configuration and supported features.
 +
 +Use Cases
 +----------
@@ -58,8 +58,8 @@ index 0000000..f4179ef
 +To make PCS be supported by OpenStack we need to modify nova/libvirt driver
 +mostly regarding a new type of virtualization processing.
 +The end user will be able to configure nova to use PCS by setting
-+libvirt.virt_type option to "parallels". Also as a native disk format for
-+both VMs and containers supported in PCS is ploop [2] to get best performance
++libvirt.virt_type option to "parallels". Also, as a native disk format for
++both VMs and containers supported in PCS is ploop [2]_, to get best performance
 +we will need to change glance-api configuration to support PCS ploop format.
 +Using images of different formats will be provided by in-place convertion.
 +As each host reports supported instances via the resource tracker and
@@ -84,62 +84,98 @@ index 0000000..f4179ef
 +disk_formats=ami,ari,aki,vhd,vmdk,raw,qcow2,vdi,iso,ploop
 +...
 +
-+Here is a list of of features we plan to support.
-++-----------------------+--------+--------------+
-+|                       |   VMs  |   Containers |
-++-----------------------+--------+--------------+
-+| Launch                |   yes  |     yes      |
-+| Reboot                |   yes  |     yes      |
-+| Terminate             |   yes  |     yes      |
-+| Resize                |   yes  |     yes      |
-+| Rescue                |   yes  |     yes      |
-+| Pause                 |   yes  |     (1)      |
-+| Un-pause              |   yes  |     (1)      |
-+| Suspend               |   yes  |     yes      |
-+| Resume                |   yes  |     yes      |
-+| Inject Networking     |   yes  |     yes      |
-+| Inject File           |   yes  |     yes      |
-+| Serial Console Output |   yes  |     no       |
-+| VNC Console           |   yes  |     yes      |
-+| SPICE Console         |    no  |     no       |
-+| RDP Console           |    no  |     no       |
-+| Attach Volume         |   yes  |     (2)      |
-+| Detach Volume         |   yes  |     (2)      |
-+| Live Migration        |   yes  |     yes      |
-+| Snapshot              |   yes  |     yes      |
-+| iSCSI                 |   yes  |     yes      |
-+| iSCSI CHAP            |   yes  |     yes      |
-+| Fibre Channel         |   yes  |     yes      |
-+| Set Admin Pass        |   yes  |     yes      |
-+| Get Guest Info        |   yes  |     yes      |
-+| Glance Integration    |   yes  |     yes      |
-+| Service Control       |    no  |     yes      |
-+| VLAN Networking       |   yes  |     yes      |
-+| Flat Networking       |   yes  |     yes      |
-+| Security Groups       |   yes  |     yes      |
-+| Firewall Rules        |   yes  |     yes      |
-+| nova diagnostics      |    no  |     no       |
-+| Config Drive          |   yes  |     yes      |
-+| Auto configure disk   |    no  |     yes      |
-+| Evacuate              |   yes  |     yes      |
-+| Volume swap           |   yes  |     (3)      |
-+| Volume rate limiting  |    (4) |     (4)      |
-++-----------------------+--------+--------------+
++Here is a list of of features we plan to support:
++
+++-----------------------+------+-------------+
++|                       |  VMs |  Containers |
+++=======================+======+=============+
++| Launch                |  yes |         yes |
+++-----------------------+------+-------------+
++| Reboot                |  yes |         yes |
+++-----------------------+------+-------------+
++| Terminate             |  yes |         yes |
+++-----------------------+------+-------------+
++| Resize                |  yes |         yes |
+++-----------------------+------+-------------+
++| Rescue                |  yes |         yes |
+++-----------------------+------+-------------+
++| Pause                 |  yes |         (1) |
+++-----------------------+------+-------------+
++| Un-pause              |  yes |         (1) |
+++-----------------------+------+-------------+
++| Suspend               |  yes |         yes |
+++-----------------------+------+-------------+
++| Resume                |  yes |         yes |
+++-----------------------+------+-------------+
++| Inject Networking     |  yes |         yes |
+++-----------------------+------+-------------+
++| Inject File           |  yes |         yes |
+++-----------------------+------+-------------+
++| Serial Console Output |  yes |          no |
+++-----------------------+------+-------------+
++| VNC Console           |  yes |         yes |
+++-----------------------+------+-------------+
++| SPICE Console         |   no |          no |
+++-----------------------+------+-------------+
++| RDP Console           |   no |          no |
+++-----------------------+------+-------------+
++| Attach Volume         |  yes |         (2) |
+++-----------------------+------+-------------+
++| Detach Volume         |  yes |         (2) |
+++-----------------------+------+-------------+
++| Live Migration        |  yes |         yes |
+++-----------------------+------+-------------+
++| Snapshot              |  yes |         yes |
+++-----------------------+------+-------------+
++| iSCSI                 |  yes |         yes |
+++-----------------------+------+-------------+
++| iSCSI CHAP            |  yes |         yes |
+++-----------------------+------+-------------+
++| Fibre Channel         |  yes |         yes |
+++-----------------------+------+-------------+
++| Set Admin Pass        |  yes |         yes |
+++-----------------------+------+-------------+
++| Get Guest Info        |  yes |         yes |
+++-----------------------+------+-------------+
++| Glance Integration    |  yes |         yes |
+++-----------------------+------+-------------+
++| Service Control       |   no |         yes |
+++-----------------------+------+-------------+
++| VLAN Networking       |  yes |         yes |
+++-----------------------+------+-------------+
++| Flat Networking       |  yes |         yes |
+++-----------------------+------+-------------+
++| Security Groups       |  yes |         yes |
+++-----------------------+------+-------------+
++| Firewall Rules        |  yes |         yes |
+++-----------------------+------+-------------+
++| nova diagnostics      |   no |          no |
+++-----------------------+------+-------------+
++| Config Drive          |  yes |         yes |
+++-----------------------+------+-------------+
++| Auto configure disk   |   no |         yes |
+++-----------------------+------+-------------+
++| Evacuate              |  yes |         yes |
+++-----------------------+------+-------------+
++| Volume swap           |  yes |         (3) |
+++-----------------------+------+-------------+
++| Volume rate limiting  |  (4) |         (4) |
+++-----------------------+------+-------------+
 +
 +(1) There are no technical problems with pausing containers it's
 +    not implemented by now.
 +(2) It's possible to attach volume to a container either as a block device or
 +    as a mount point, giving both types of access simultaneously has a
 +    security problem.
-+(3) We can tune swap size in containers with vswap technology [4],
++(3) We can tune swap size in containers with vswap technology [4]_,
 +    not as a conventional swap disk.
-+(4) We can tune IO rate only for the whole instance only
++(4) We can tune IO rate only for the whole instance but
 +    not for individual volumes.
 +
 +Alternatives
 +------------
 +
-+The alternate way is to implement a separate PCS nova driver like this one[3],
++The alternate way is to implement a separate PCS nova driver like this [3]_,
 +which was implemented in terms of PCS + OpenStack proof of concept.
 +
 +pros:
@@ -185,7 +221,8 @@ index 0000000..f4179ef
 +---------------------
 +
 +Compute nodes available for "parallels" type of virtualization have to be
-+deployed with the help of PCS installer.
++deployed in advance. Integrating PCS hosts deployment with OpenStack is out
++of this spec scope.
 +
 +Developer impact
 +----------------
@@ -208,12 +245,12 @@ index 0000000..f4179ef
 +Work Items
 +----------
 +* Enhance libvirt driver to support new virt_type value.
-+* Add support of new disk image format in glance
 +* Implement all the functionality necessary to support PCS in libvirt driver
-+* To be specified
 +
 +Dependencies
 +============
++Add support of new disk image format in glance
++Bluesprint https://blueprints.launchpad.net/glance/+spec/pcs-support
 +
 +None
 +
@@ -231,10 +268,10 @@ index 0000000..f4179ef
 +References
 +==========
 +
-+[1] Parallels Cloud Server http://www.parallels.com/products/pcs
-+[2] Ploop block device http://openvz.org/Ploop
-+[3] PCS nova driver https://github.com/parallels/pcs-nova-driver
-+[4] OpenVZ kernel memory management model https://openvz.org/VSwap
++.. [1] Parallels Cloud Server http://www.parallels.com/products/pcs
++.. [2] Ploop block device http://openvz.org/Ploop
++.. [3] PCS nova driver https://github.com/parallels/pcs-nova-driver
++.. [4] OpenVZ kernel memory management model https://openvz.org/VSwap
 -- 
 1.9.1
 

@@ -1,0 +1,212 @@
+From d2c57383e583ee41681e23d3913767f0d1a1a76c Mon Sep 17 00:00:00 2001
+From: Matthew Booth <mbooth@redhat.com>
+Date: Fri, 14 Nov 2014 15:40:44 +0000
+Subject: [PATCH] Flatten Aggregate Metadata
+
+bp flatten-aggregate-metadata
+
+Change-Id: Iece0fc4d90e52801a22d999278bb8f06519ad1ee
+---
+ specs/kilo/approved/flatten-aggregate-metadata.rst | 190 +++++++++++++++++++++
+ 1 file changed, 190 insertions(+)
+ create mode 100644 specs/kilo/approved/flatten-aggregate-metadata.rst
+
+diff --git a/specs/kilo/approved/flatten-aggregate-metadata.rst b/specs/kilo/approved/flatten-aggregate-metadata.rst
+new file mode 100644
+index 0000000..febd270
+--- /dev/null
++++ b/specs/kilo/approved/flatten-aggregate-metadata.rst
+@@ -0,0 +1,190 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++==========================================
++Flatten Aggregate Metadata in the DB
++==========================================
++
++https://blueprints.launchpad.net/nova/+spec/flatten-aggregate-metadata
++
++
++Problem description
++===================
++
++Aggregate metadata is currently stored in its own table as key/value pairs.
++While this effectively represents the data, it doesn't take into account its
++usage. Aggregate metadata for an aggregate is only ever accessed or updated
++'in bulk', that is all metadata for a single aggregate. However, by storing it
++in multiple rows of a separate table, accessing it always requires a second
++query. Additionally, updating it without races is difficult, and we currently
++fail to do this correctly.
++
++
++Use Cases
++----------
++
++This change has immediate benefits in itself. It will:
++
++* Reduce the number of queries required to retrieve an Aggregate data to 1
++* Eliminate several races when updating an Aggregate
++
++It will also make it simpler to implement atomic, lock-free updates on
++Aggregate objects in the future.
++
++It will involve a change to the data model and to the db api. It will not have
++any impact on an external API. Any code which calls db.aggregate_metadata_*()
++will need to be updated. This is only a handful of places, plus their related
++tests.
++
++
++Project Priority
++-----------------
++
++This does not fit under any of the :ref:`kilo-priorities`.
++
++But it's a really good idea ;)
++
++
++Proposed change
++===============
++
++The aggregate metadata table will be eliminated. Aggregate metadata will move
++to a new metadata field on the aggregate object. Its contents will be a JSON
++encoded dict.
++
++While I am not, in general, in favour of storing JSON blobs in databases, in
++this case it is an appropriate datamodel as aggregate metadata are only ever
++retrieved as a set, and are initialized as a set.
++
++There is a complication, in that Aggregate.update_metadata() takes a partial
++set, which means that this operation will necessarily involve a SELECT before
++UPDATE in order to merge the values. However, as the current implementation in
++aggregate_metadata_add() already does a minimum of 2 SELECTs (1 in
++require_aggregate_exists, and 1 to fetch all existing key/value pairs), this
++will still be a performance win. It will also be simple to implement this
++race-free, unlike the current implementation, which contains at least 2 races I
++can see from casual inspection.
++
++A disadvantage I can see to the proposed approach is that a future
++generic compare-and-swap, or row locking implementation for object updates
++will not be able to specify aggregate metadata individually for updates. i.e.
++We will have to either compare or lock all aggregate metadata, rather than
++individual elements. This seems like a small disadvantage compared to the gains
++in code safety and performance.
++
++
++Alternatives
++------------
++
++There is no reasonable alternative for fetching or updating all aggregate data
++in a single database call.
++
++The only alternative I have been able to think of for safe updates of aggregate
++metadata involves taking a FOR UPDATE lock on the aggregate row before
++touching aggregate metadata rows.
++
++
++Data model impact
++-----------------
++
++The aggregate_metadata table goes away.
++
++The aggregates table gains a new field, 'metadata'.
++
++Data from aggregates_metadata are combined in to a JSON dict and stored in
++aggregates.metadata.
++
++
++REST API impact
++---------------
++
++There is no impact to any REST api.
++
++
++Security impact
++---------------
++
++None
++
++
++Notifications impact
++--------------------
++
++None
++
++
++Other end user impact
++---------------------
++
++None
++
++
++Performance Impact
++------------------
++
++This change will improve the performance of both accessing and updating
++aggregate metadata and aggregates. It will reduce the number of calls required
++to fetch an aggregate and its metadata from 3 to 1. It will reduce the number
++of calls required to update aggregate metadata from 3/4 to 2.
++
++Other deployer impact
++---------------------
++
++None
++
++
++Developer impact
++----------------
++
++The change will touch the Nova db api. This will not have any impact outside
++Nova.
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++
++Primary assignee:
++  MatthewBooth
++
++Other contributors:
++  None
++
++
++Work Items
++----------
++
++Most likely a single patch.
++
++
++Dependencies
++============
++
++None
++
++
++Testing
++=======
++
++This is not intended to have any externally visible change. All existing tests
++should continue to pass.
++
++
++Documentation Impact
++====================
++
++What is the impact on the docs team of this change? Some changes might require
++donating resources to the docs team to have the documentation updated. Don't
++repeat details discussed above, but please reference them here.
++
++
++References
++==========
++
++None
+-- 
+1.9.1
+

@@ -1,0 +1,163 @@
+From 49465f8589f6dbf51ae82a49badc19858bc41423 Mon Sep 17 00:00:00 2001
+From: Rushi Agrawal <rushi.agr@gmail.com>
+Date: Thu, 3 Jul 2014 10:53:13 +0530
+Subject: [PATCH] EC2: Add volume filtering
+
+Blueprint: ec2-volume-filtering
+
+Change-Id: Idaf3eccf64c6292c6761102ee730492263aa4d3c
+---
+ specs/kilo/approved/ec2-volume-filtering.rst | 141 +++++++++++++++++++++++++++
+ 1 file changed, 141 insertions(+)
+ create mode 100644 specs/kilo/approved/ec2-volume-filtering.rst
+
+diff --git a/specs/kilo/approved/ec2-volume-filtering.rst b/specs/kilo/approved/ec2-volume-filtering.rst
+new file mode 100644
+index 0000000..b90ddbf
+--- /dev/null
++++ b/specs/kilo/approved/ec2-volume-filtering.rst
+@@ -0,0 +1,141 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++======================================
++More filters while listing EC2 volumes
++======================================
++
++https://blueprints.launchpad.net/nova/+spec/ec2-volume-filtering
++
++While listing out volumes using EC2's DescribeVolumes API, our implementation
++allows filtering only based on volume IDs, as of now. Amazon's EC2 API has
++support for around a dozen filters. So this blueprint aims for exposing most
++of them through our EC2 API too.
++
++Problem description
++===================
++
++We would like our EC2 APIs behave as closely to Amazon's as possible. Making
++the EC2 API support more filters is one step towards this goal. After
++this blueprint gets implemented, EC2 API users will be able to filter volumes
++based on these filters, which currently one cannot. The filters which will be
++implemented will be:
++
++ * create-time
++ * size
++ * snapshot-id
++ * status
++ * volume-id
++ * availability-zone
++ * attachment.attach-time
++ * attachment.delete-on-termination
++ * attachment.device
++ * attachment.instance-id
++ * attachment.status
++
++Three more filters, tag-key, tag-value, volume-type will be implemented, once
++their implementations land in EC2 code.
++
++Proposed change
++===============
++
++The process of filtering will be separated into two subparts. The first
++part will be filtering the data directly from Cinder. So basically, Cinder
++supports a few filtering options, e.g. filter volumes by metadata. If the
++DescribeVolume API call asks for filtering by metadata, we'll forward that
++request to Cinder, and then Cinder will return back volumes filtered by
++metadata. But if the DescribeVolumes API wants to filter volume additionally
++by using a filter which is not supported by Cinder, we'll not pass this
++filter to Cinder, but in the next subpart, we'll filter it out from the
++output Cinder provided, before returning it back in the response.
++
++A list of filters supported by Cinder, and a list of filters not supported
++by Cinder will be maintained, which the code will use to iterate over for
++filtering. As Cinder starts supporting more and more filters, we'll keep
++moving them from second list to the first. (The 'lists' will just be
++hardcoded inside the DescribeVolumes API code).
++
++Alternatives
++------------
++
++Can't think of any other method.
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++DescribeVolumes API will now be able to filter volumes, as opposed to the
++current way of just ignoring all the filters except volume ID.
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++None
++
++Performance Impact
++------------------
++
++None
++
++Other deployer impact
++---------------------
++
++None
++
++Developer impact
++----------------
++
++None
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++Primary assignee:
++  rushiagr (Rushi Agrawal)
++
++Work Items
++----------
++
++* Implement filters for DescribeVolumes (single work-item)
++
++Dependencies
++============
++
++None
++
++Testing
++=======
++
++Tempest tests to test these new filters comprehensively will be added in the
++next iteration.
++
++Documentation Impact
++====================
++
++OpenStack's EC2 API doc will need to be updated to show that DescribeVolumes
++now filters volumes too.
++
++References
++==========
++
++Amazon's doc for DescribeVolumes:
++http://docs.aws.amazon.com/AWSEC2/latest/APIReference/ApiReference-query-DescribeVolumes.html
+-- 
+1.9.1
+

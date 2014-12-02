@@ -1,0 +1,241 @@
+From e08ebb1493b821ff0ff95aeab97daaa39625293d Mon Sep 17 00:00:00 2001
+From: James Chapman <james.p.chapman@intel.com>
+Date: Tue, 18 Nov 2014 15:03:55 +0000
+Subject: [PATCH] SRIOV scheduling with stateless offloads
+
+This feature will add support for the consideration of PCI
+device HW offload capabilities during guest placement. The
+user can request PCI device offload functionality for their
+guest, this feature will enable the placement of the guest
+on a compute node that provides these capabilities.
+
+Implements blueprint sriov-sched-with-stateless-offloads
+
+Change-Id: I382eff5873e5ac053d6ee1b7732aefaf8bc2097c
+Co-Authored-By: Adrian Hoban <adrian.hoban@intel.com>
+---
+ .../sriov-sched-with-stateless-offloads.rst        | 212 +++++++++++++++++++++
+ 1 file changed, 212 insertions(+)
+ create mode 100644 specs/kilo/approved/sriov-sched-with-stateless-offloads.rst
+
+diff --git a/specs/kilo/approved/sriov-sched-with-stateless-offloads.rst b/specs/kilo/approved/sriov-sched-with-stateless-offloads.rst
+new file mode 100644
+index 0000000..47c7531
+--- /dev/null
++++ b/specs/kilo/approved/sriov-sched-with-stateless-offloads.rst
+@@ -0,0 +1,212 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++==========================================
++SRIOV scheduling with stateless offloads
++==========================================
++
++https://blueprints.launchpad.net/nova/+spec/sriov-sched-with-stateless-offloads
++
++There is a per packet overhead associated with the processing of ethernet based
++packets, examples of this are packet checksum generation, protocol segmentation
++mechanisms and vlan tagging. Without hardware support this work has to be done
++by the operating system.
++
++Modern network controllers (NIC) can offload some of this processing to
++hardware residing on the NIC which reduces the work load of the operating
++system of the host platform. The benefits of offloading the packet processing
++overhead to hardware are reduced CPU utilisation and network latencies
++resulting in a more efficient packet processing system.
++
++Virtual machines can also benefit from NIC hardware offloads available on the
++host platform. When a virtual manchine is bound to an SRIOV physical or virtual
++function they can avail of the hardware offload capabilities of the NIC on the
++host platform. This reduces the workload of the operating system in the guest
++and reduces traffic on the PCI bus of the host platform as data to be sent over
++the NIC can be transferred in large chunks instead of smaller protocol defined
++packets.
++
++Guests that run NFV type workloads often have performance thresholds they must
++work within. When a guest requires NIC offloads, its important that the guest
++is scheduled to run on a compute node that provides these NIC offloads.
++
++This blueprint will add the following support to Openstack:
++
++* Enable libvirt discover the offload capabilities of PCI devices on compute
++  nodes.
++
++* Enable resource tracker monitor the availability of PCI device offloads.
++
++* Enhance the scheduling/filtering mechanism to ensures that a guest with NIC
++  offload  requirements is scheduled to run on a compute node NIC that provides
++  the required offloads.
++
++Problem description
++===================
++
++Modern NIC's have the ability to offload some of the network stack processing
++to hardware. This is important in high speed networks where processing overhead
++of the network stack becomes significant.
++
++Some of the NIC offloads of interest here are:
++* TCP segmentation (TSO)
++* IP, TCP and UDP checksums
++* VLAN tagging
++
++Certain guest workloads rely on the performance advantages of using NIC
++offloads to perform to an optimum or stay within certain performance
++thresholds.
++
++Currently Openstack is not aware of the NIC offload attributes of its compute
++nodes, or it doesn't consider a guests NIC offload requirements during guest
++placement.
++
++This feature aims to add support to Openstack so that it can discover the NIC
++offload attributes of its compute nodes. And when NIC offload capabilities are
++requested by the user, provide intelligent guest placement on a compute node
++that provides the required NIC offload capabilities.
++
++Use Cases
++----------
++
++A guest running network intensive workloads requires certain NIC offloads in
++order to perform to an optimum. Currently Openstack doesn't consider the
++offload capabilities provided by the host during the scheduling/filtering
++phase. This means, a guest that requires offloads could be scheduled to run on
++a host that doesn't provide these offloads, resulting in non optimal
++performance.
++
++With this feature, the user can request certain NIC offloads for their guests,
++Openstack will then determine what NIC offloads are available on its compute
++nodes and place a guest on a compute node that fulfils the guests requirements.
++
++Project Priority
++-----------------
++
++Performance.
++
++Proposed change
++===============
++
++Libvirt config will be modified to use the NIC offload attributes discovered
++when gathering the available resources.
++
++The user can request PCI device offloads for their guest using the image
++properties. This gives the user the opportunity to tune their custom image for
++the optimal performance.
++
++E.g
++    glance image-update <IMAGE> --property sriov-nic-caps.0=csum,tso
++
++
++The PCI device model will be extended to add a list of HW offload attributes. A
++comma separated list will contain the devices offload information.
++
++Using image properties to change how the image will be scheduled, might involve
++
++The PCI passthrough filter will be modified to take consideration of a PCI
++devices offload capabilities during guest placement.
++
++Alternatives
++------------
++
++None
++
++Data model impact
++-----------------
++
++The PCI device model will be extended to add a list of HW offload attributes.
++
++A migration script will be provided to support the new PCI device model.
++
++REST API impact
++---------------
++
++None
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++The tenant will be able to request NIC offloads for a certain image via the
++image properties.
++
++Performance Impact
++------------------
++
++This feature will ensure that a guest with certain NIC offloads requirements
++will be scheduled on a compute node that provides these features. This will
++optimise the workloads of a guest running intensive workloads.
++
++Other deployer impact
++---------------------
++
++None
++
++Developer impact
++----------------
++
++None
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  james-p-chapman
++
++Other contributors:
++  adrian-hoban
++  pczesno
++
++Work Items
++----------
++
++* Add support to libvirt, that enables the discovery and xml representation of
++  the offload capabilities of PCI devices on the compute platform.
++
++* Update libvirt config to support the management of new PCI device offload
++  data attribute..
++
++* The PCI model will be extended with a list to describe the PCI devicesi
++  offload.
++
++* The PCI passthrough filter will be modified to include the checking of the
++  device offload.
++
++Dependencies
++============
++
++This feature depends on the extra functionality proposed for libvirt. See
++references section for more detail.
++
++Testing
++=======
++
++UT will be added for this feature, also some third party tests will need to
++be added.
++
++Documentation Impact
++====================
++
++If required, documentation will be added to describe the use of image
++properties for PCI device offload capabilities.
++
++References
++==========
++
++http://www.mail-archive.com/libvir-list@redhat.com/msg103820.html
+-- 
+1.9.1
+

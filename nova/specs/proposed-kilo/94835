@@ -1,0 +1,193 @@
+From 7bc7123d0f0961ba1078e84b559812deebdb7ee0 Mon Sep 17 00:00:00 2001
+From: Cyril Roelandt <cyril.roelandt@enovance.com>
+Date: Thu, 22 May 2014 13:50:36 +0200
+Subject: [PATCH] Propose: generate the virtual machine states graph
+
+Generating the virtual machine states and transitions graph from the
+code could be especially useful.
+
+Change-Id: I9e78b18e5f3a6dd5fdcebd3537cd02f11685d666
+---
+ specs/kilo/generate-vmstates-graph.rst | 170 +++++++++++++++++++++++++++++++++
+ 1 file changed, 170 insertions(+)
+ create mode 100644 specs/kilo/generate-vmstates-graph.rst
+
+diff --git a/specs/kilo/generate-vmstates-graph.rst b/specs/kilo/generate-vmstates-graph.rst
+new file mode 100644
+index 0000000..a63e2ce
+--- /dev/null
++++ b/specs/kilo/generate-vmstates-graph.rst
+@@ -0,0 +1,170 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++=========================================================================
++Automatically generate the virtual machine states and transitions graph
++=========================================================================
++
++https://blueprints.launchpad.net/nova/+spec/generate-vmstates-graph
++
++The virtual machine states and transitions graph described in
++doc/source/devref/vmstates.rst is not up-to-date with the code. We would like
++to generate this graph directly from the code, so that the code and its
++documentation are always in sync.
++
++
++
++Problem description
++===================
++
++Since the documentation of the virtual machine states and transitions and the
++code tell different stories, the following issues may arise:
++
++* users are not aware of new features
++* users try to use deprecated features
++* users find their VMs in a state that they did not think could be reached and
++  think it is a bug
++
++
++Proposed change
++===============
++
++Generating the virtual machine states and transitions graph from the code would
++solve this issue. This could be done in two steps:
++
++1. Write a program that parses the code and generates the graph using the
++   graphviz syntax.
++2. Remove the current graphviz code in doc/source/devref/vmstates.rst, and
++   inject the output of the script defined above when building the
++   documentation.
++
++The second step is trivial: it is just a matter of tweaking the build system.
++
++The first step is more complex. Using Python's `ast module
++<https://docs.python.org/3/library/ast.html?highlight=ast#module-ast>`_, it is possible to
++parse nova/compute/api.py and compute the pre-conditions for the defined
++transitions. For instance, if we look at the current definition of the "pause"
++operation:::
++
++    @check_instance_state(vm_state=[vm_states.ACTIVE, vm_states.RESCUED])
++    def pause(self, context, instance):
++        ...
++
++It is possible (and realtively easy) to generate the following two lines of
++graphviz code:::
++
++    active -> pause
++    rescued -> pause
++
++Since the complete graph is a bit hard to read, we will also generate a simple
++table listing all methods and the valid states associated to them.
++
++This does not allow the post-conditions (the states a vm might be in __after__
++performing one of the defined operations) to be retrieved. To do so, we propose
++to add a 'post_vm_state' argument to the 'check_instance_state' decorator, that
++would be used to list all possible states in which a VM might be after the
++operation has been performed.
++
++An implementation can be found at https://review.openstack.org/#/c/97370/ .
++
++Alternatives
++------------
++
++Another way to solve this issue would be to keep the documentation updated
++by hand. But as we all know, this always leads to parts of the documentation
++becoming deprecated.
++
++It could also be automatically done by parsing nova/compute/manager.py and
++determining where the vm states are modified. For instance, in the
++pause_instance() method, it is set to vm_states.PAUSED, so we know that after
++performing the "pause" operation, we may be in the "PAUSED" state. This is just
++like recreating a control flow graph and doing a bit of static analysis.
++Whether this is easy and would allow us to retrieve all the post-conditions is
++not yet determined.
++
++
++Data model impact
++-----------------
++
++None.
++
++REST API impact
++---------------
++
++None.
++
++Security impact
++---------------
++
++None.
++
++Notifications impact
++--------------------
++
++None.
++
++Other end user impact
++---------------------
++
++None.
++
++Performance Impact
++------------------
++
++Generating the documentation will obviously take more time, but it will not be
++noticeable (running the script will take less than one second).
++
++Other deployer impact
++---------------------
++
++None.
++
++Developer impact
++----------------
++
++Developers will have to manually fill the post-conditions in the
++check_instance_state decorator.
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  <cyril-roelandt>
++
++
++Work Items
++----------
++
++1) Improve the existing proof of concept so that it handles post-conditions.
++2) Integrate the existing proof of concept into the build system of the
++   documentation.
++
++Dependencies
++============
++
++None.
++
++Testing
++=======
++
++We may want to add unit tests to make sure this scripts works as expected. For
++starters, just looking at the code and the generated graph should be enough and
++should provide a better documentation the what can currently be found in
++doc/source/devref/vmstates.rst.
++
++
++Documentation Impact
++====================
++
++None.
++
++References
++==========
++
++None.
+-- 
+1.9.1
+

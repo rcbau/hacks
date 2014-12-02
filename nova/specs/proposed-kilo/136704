@@ -1,0 +1,149 @@
+From b9360cb2271215b86e13f455cb285fc32216a04d Mon Sep 17 00:00:00 2001
+From: Eli Qiao <taget@linux.vnet.ibm.com>
+Date: Mon, 24 Nov 2014 16:42:48 +0800
+Subject: [PATCH] Add support live set block device io tune.
+
+APIImpact
+Change-Id: I5bef61675e47346f2975e263ed86048e02ca0d30
+---
+ .../kilo/approved/support-live-io-tune-on-blk.rst  | 128 +++++++++++++++++++++
+ 1 file changed, 128 insertions(+)
+ create mode 100644 specs/kilo/approved/support-live-io-tune-on-blk.rst
+
+diff --git a/specs/kilo/approved/support-live-io-tune-on-blk.rst b/specs/kilo/approved/support-live-io-tune-on-blk.rst
+new file mode 100644
+index 0000000..abf903b
+--- /dev/null
++++ b/specs/kilo/approved/support-live-io-tune-on-blk.rst
+@@ -0,0 +1,128 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++=============================================
++Add support for live block device I/O tune
++=============================================
++
++https://blueprints.launchpad.net/nova/+spec/support-live-iotun-on-blk
++
++Libvirt supports live change block device io tune, we can enable this in nova,
++to provide flexible control of io usage of an instance.
++
++Problem description
++===================
++
++QEMU supports live change io throttling, and libvirt driver already have
++api, by enable this in nova, we can set follows parameters of block device
++on a instance
++
++read_bytes_sec
++read_iops_sec
++total_bytes_sec
++total_iops_sec
++write_bytes_sec
++write_iops_sec
++
++Use Cases
++----------
++
++enable lively change block device io throttling of block device.
++
++Project Priority
++-----------------
++
++None
++
++Proposed change
++===============
++
++Add new libvirt driver to support seting block device io throttling lively
++Add new API to provide get/set operations on instance's block device.
++
++Alternatives
++------------
++
++None
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++Will add new API to get the block device io tune information and set the io
++tune information.
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++user can get/set an block device io tune information from qemu.
++
++Performance Impact
++------------------
++
++None
++
++Other deployer impact
++---------------------
++
++None
++
++Developer impact
++----------------
++
++None
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  Eli Qiao <taget@linux.vnet.ibm.com>
++
++Work Items
++----------
++
++* Add libvirt driver functions
++* Add compute layer api
++* Add REST api
++
++Dependencies
++============
++
++None
++
++
++Testing
++=======
++
++Add unit test cases and fake libvirt driver.
++also tempest cases.
++
++Documentation Impact
++====================
++
++Add new api usage to indicate how to get/set the io-tune information
++
++References
++==========
++
++http://libvirt.org/html/libvirt-libvirt-domain.html
+-- 
+1.9.1
+

@@ -1,0 +1,241 @@
+From a48a009e566cd518336a4a79cecb5ce203079ad7 Mon Sep 17 00:00:00 2001
+From: John Garbutt <john.garbutt@rackspace.com>
+Date: Tue, 11 Nov 2014 10:37:16 +0000
+Subject: [PATCH] Separate kilo and juno specs
+
+Need to split out the different releases so the index page will continue
+to scale past the current two releases.
+
+It required some rework how the specs are symlinked into the doc source
+to allow for the release specific landing pages.
+
+Change-Id: I31fa0b13e400dd202f5db3e63da7b7c8dbd40e68
+---
+ doc/source/conf.py                 |  1 -
+ doc/source/index.rst               | 49 ++++++++++++++++----------------------
+ doc/source/specs                   |  1 -
+ doc/source/specs/juno/approved     |  1 +
+ doc/source/specs/juno/implemented  |  1 +
+ doc/source/specs/juno/index.rst    | 26 ++++++++++++++++++++
+ doc/source/specs/juno/redirects    |  1 +
+ doc/source/specs/juno/template.rst |  1 +
+ doc/source/specs/kilo/approved     |  1 +
+ doc/source/specs/kilo/index.rst    | 18 ++++++++++++++
+ doc/source/specs/kilo/template.rst |  1 +
+ 11 files changed, 71 insertions(+), 30 deletions(-)
+ delete mode 120000 doc/source/specs
+ create mode 120000 doc/source/specs/juno/approved
+ create mode 120000 doc/source/specs/juno/implemented
+ create mode 100644 doc/source/specs/juno/index.rst
+ create mode 120000 doc/source/specs/juno/redirects
+ create mode 120000 doc/source/specs/juno/template.rst
+ create mode 120000 doc/source/specs/kilo/approved
+ create mode 100644 doc/source/specs/kilo/index.rst
+ create mode 120000 doc/source/specs/kilo/template.rst
+
+diff --git a/doc/source/conf.py b/doc/source/conf.py
+index fb56fac..85a2f9d 100644
+--- a/doc/source/conf.py
++++ b/doc/source/conf.py
+@@ -71,7 +71,6 @@ copyright = u'%s, OpenStack Nova Team' % datetime.date.today().year
+ # directories to ignore when looking for source files.
+ exclude_patterns = [
+     '_build',
+-    'specs/juno-template.rst',
+ ]
+ 
+ # The reST default role (used for this markup: `text`) to use for all documents.
+diff --git a/doc/source/index.rst b/doc/source/index.rst
+index d06875f..e539a32 100644
+--- a/doc/source/index.rst
++++ b/doc/source/index.rst
+@@ -1,8 +1,14 @@
+ .. nova-specs documentation master file
+ 
+-========================
+-Nova Project Priorities
+-========================
++============================
++OpenStack Nova Project Plans
++============================
++
++Priorities
++==========
++
++During each design summit, we agree what the whole community wants to focus
++on for the upcoming release. This is the output of those discussions:
+ 
+ .. toctree::
+    :glob:
+@@ -10,44 +16,31 @@ Nova Project Priorities
+ 
+    priorities/*
+ 
++Specifications
++==============
+ 
+-===========================
+-Nova Project Specifications
+-===========================
+-
+-Project Documentation:
+-
+-.. toctree::
+-   :maxdepth: 1
+-
+-   readme
+-   Specification Template (Kilo) <specs/kilo-template>
+-
+-Juno implemented specs:
++Here you can find the specs, and spec template, for each release:
+ 
+ .. toctree::
+    :glob:
+    :maxdepth: 1
+ 
+-   specs/juno/implemented/*
++   specs/kilo/index
++   specs/juno/index
+ 
+-Juno approved (but not implemented) specs:
++Process
++=======
+ 
+-.. toctree::
+-   :glob:
+-   :maxdepth: 1
+-
+-   specs/juno/approved/*
+-
+-Kilo approved (but not implemented) specs:
++Documentation for nova-specs process:
+ 
+ .. toctree::
+-   :glob:
+    :maxdepth: 1
+ 
+-   specs/kilo/approved/*
++   How to submit a spec <readme>
++
++For more details, look at spec template for the specific release, and see the
++wiki page on Blueprints: https://wiki.openstack.org/wiki/Blueprints
+ 
+-==================
+ Indices and tables
+ ==================
+ 
+diff --git a/doc/source/specs b/doc/source/specs
+deleted file mode 120000
+index 87a4030..0000000
+--- a/doc/source/specs
++++ /dev/null
+@@ -1 +0,0 @@
+-../../specs
+\ No newline at end of file
+diff --git a/doc/source/specs/juno/approved b/doc/source/specs/juno/approved
+new file mode 120000
+index 0000000..b37193b
+--- /dev/null
++++ b/doc/source/specs/juno/approved
+@@ -0,0 +1 @@
++../../../../specs/juno/approved/
+\ No newline at end of file
+diff --git a/doc/source/specs/juno/implemented b/doc/source/specs/juno/implemented
+new file mode 120000
+index 0000000..26ac559
+--- /dev/null
++++ b/doc/source/specs/juno/implemented
+@@ -0,0 +1 @@
++../../../../specs/juno/implemented/
+\ No newline at end of file
+diff --git a/doc/source/specs/juno/index.rst b/doc/source/specs/juno/index.rst
+new file mode 100644
+index 0000000..1c5c51a
+--- /dev/null
++++ b/doc/source/specs/juno/index.rst
+@@ -0,0 +1,26 @@
++===========================
++Nova Juno Specifications
++===========================
++
++Template:
++
++.. toctree::
++   :maxdepth: 1
++
++   Specification Template (Juno) <template>
++
++Juno implemented specs:
++
++.. toctree::
++   :glob:
++   :maxdepth: 1
++
++   implemented/*
++
++Juno approved (but not implemented) specs:
++
++.. toctree::
++   :glob:
++   :maxdepth: 1
++
++   approved/*
+diff --git a/doc/source/specs/juno/redirects b/doc/source/specs/juno/redirects
+new file mode 120000
+index 0000000..2285949
+--- /dev/null
++++ b/doc/source/specs/juno/redirects
+@@ -0,0 +1 @@
++../../../../specs/juno/redirects
+\ No newline at end of file
+diff --git a/doc/source/specs/juno/template.rst b/doc/source/specs/juno/template.rst
+new file mode 120000
+index 0000000..8bb5fdf
+--- /dev/null
++++ b/doc/source/specs/juno/template.rst
+@@ -0,0 +1 @@
++../../../../specs/juno-template.rst
+\ No newline at end of file
+diff --git a/doc/source/specs/kilo/approved b/doc/source/specs/kilo/approved
+new file mode 120000
+index 0000000..68f690b
+--- /dev/null
++++ b/doc/source/specs/kilo/approved
+@@ -0,0 +1 @@
++../../../../specs/kilo/approved/
+\ No newline at end of file
+diff --git a/doc/source/specs/kilo/index.rst b/doc/source/specs/kilo/index.rst
+new file mode 100644
+index 0000000..432b44c
+--- /dev/null
++++ b/doc/source/specs/kilo/index.rst
+@@ -0,0 +1,18 @@
++===========================
++Nova Kilo Specifications
++===========================
++
++Template:
++
++.. toctree::
++   :maxdepth: 1
++
++   Specification Template (Kilo) <template>
++
++Kilo approved (but not implemented) specs:
++
++.. toctree::
++   :glob:
++   :maxdepth: 1
++
++   approved/*
+diff --git a/doc/source/specs/kilo/template.rst b/doc/source/specs/kilo/template.rst
+new file mode 120000
+index 0000000..6665e04
+--- /dev/null
++++ b/doc/source/specs/kilo/template.rst
+@@ -0,0 +1 @@
++../../../../specs/kilo-template.rst
+\ No newline at end of file
+-- 
+1.9.1
+

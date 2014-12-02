@@ -1,20 +1,20 @@
-From 67144c2734998e54d8310ef07e1da44d3f28a705 Mon Sep 17 00:00:00 2001
+From 11eaf0340b41014f287877cebae021e2d5f7dc0e Mon Sep 17 00:00:00 2001
 From: Irena Berezovsky <irenab@mellanox.com>
 Date: Wed, 22 Oct 2014 09:39:08 +0300
 Subject: [PATCH] Add spec for VIF Driver for SR-IOV InfiniBand
 
 Change-Id: I5673b2abeb21d16ed7fde553896ac8a32ed3881c
 ---
- specs/kilo/approved/vif-driver-ib-passthrough.rst | 138 ++++++++++++++++++++++
- 1 file changed, 138 insertions(+)
+ specs/kilo/approved/vif-driver-ib-passthrough.rst | 139 ++++++++++++++++++++++
+ 1 file changed, 139 insertions(+)
  create mode 100644 specs/kilo/approved/vif-driver-ib-passthrough.rst
 
 diff --git a/specs/kilo/approved/vif-driver-ib-passthrough.rst b/specs/kilo/approved/vif-driver-ib-passthrough.rst
 new file mode 100644
-index 0000000..d2b41bd
+index 0000000..4bed3f0
 --- /dev/null
 +++ b/specs/kilo/approved/vif-driver-ib-passthrough.rst
-@@ -0,0 +1,138 @@
+@@ -0,0 +1,139 @@
 +..
 + This work is licensed under a Creative Commons Attribution 3.0 Unported
 + License.
@@ -36,8 +36,9 @@ index 0000000..d2b41bd
 +
 +Till Juno Release (including) InfiniBand (IB) SR-IOV networking was possible
 +via out of the tree nova vif driver with neutron Mellanox Ml2 Mechanism Driver.
-+Due to Juno efforts to integrate SR-IOV device scheduling as part of the nova,
-+it is possible to add IB SR-IOV vif plugging to LibvirtGenericVIFDriver.
++Since Juno Ethernet SR-IOV device vNIC is supported by nova, and may be
++leveraged for IB SR-IOV device.
++IB SR-IOV vif plugging logic should be added to LibvirtGenericVIFDriver.
 +
 +Use Cases
 +----------

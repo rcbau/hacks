@@ -1,4 +1,4 @@
-From db1d51caa4a0ac825d45bbd6a849b433db38d926 Mon Sep 17 00:00:00 2001
+From 683b2392751ddca7a7755e7bd489e768ba2c5e6c Mon Sep 17 00:00:00 2001
 From: Sylvain Bauza <sbauza@redhat.com>
 Date: Wed, 8 Oct 2014 15:13:29 +0200
 Subject: [PATCH] Propose Detach Service from ComputeNode
@@ -7,16 +7,16 @@ As this patch series requires DB migrations, a spec is proposed.
 
 Change-Id: Ia261e9e15ac5596a1d0d5057ba5efbb0bab66833
 ---
- .../approved/detach-service-from-computenode.rst   | 169 +++++++++++++++++++++
- 1 file changed, 169 insertions(+)
+ .../approved/detach-service-from-computenode.rst   | 183 +++++++++++++++++++++
+ 1 file changed, 183 insertions(+)
  create mode 100644 specs/kilo/approved/detach-service-from-computenode.rst
 
 diff --git a/specs/kilo/approved/detach-service-from-computenode.rst b/specs/kilo/approved/detach-service-from-computenode.rst
 new file mode 100644
-index 0000000..8cffafb
+index 0000000..70ec085
 --- /dev/null
 +++ b/specs/kilo/approved/detach-service-from-computenode.rst
-@@ -0,0 +1,169 @@
+@@ -0,0 +1,183 @@
 +..
 + This work is licensed under a Creative Commons Attribution 3.0 Unported
 + License.
@@ -36,32 +36,47 @@ index 0000000..8cffafb
 +
 +There is no good reason to keep a dependency in between a service, which is the
 +representation of the message bus and a compute_node, which is a collection of
-+resources for the solely use of the scheduler. It also creates a dependency
-+in the internals of the Scheduler, while it is useless for it.
-+The only reason why such a dependency exists is because there is a 1:N
-+relationship in between a host and multiple nodes, but this representation
-+should be present directly in compute_nodes table as a unique key for
-+(host, node).
++resources for the solely use of the scheduler. The fact that they are related
++to each other means that the resource tracker ends up needing to "find" its
++compute node record by first looking up the service record for the 'compute'
++topic and the host for the resource tracker, and then grabs the first
++compute_node record that is related to the service record that matches that
++query. There is no reason to do this in the resource tracker other than the
++fact that right now the compute_nodes table has a service_id field and a
++relation to the services table.
++
++It also carries a dependency on the compute_nodes table as there is a foreign
++key on a separate table for something totally unrelated to the Scheduler, which
++prevents the Scheduler to be split unless we continue to carry that
++relationship.
++
 +
 +Use Cases
 +---------
 +
-+N/A
++This is a refactoring effort helping out to split the scheduler by reducing the
++dependencies it has to manage.
++
 +
 +Project Priority
 +----------------
 +
-+This work is related to the effort of reducing technical debt.
++This blueprint is part of the 'scheduler' refactoring effort, defined as a 3rd
++priority for the Kilo release.
++
 +
 +Proposed change
 +===============
 +
 +Instead of having a relationship using a foreign key, the proposal will consist
 +of adding a new field called 'host' for compute_nodes and a unique constraint
-+on (host, hypervisor_hostname). Also, service_id field will be removed from
-+compute_nodes table and ComputeNode object field service_id will be left unset.
-+SQLA relationship on service will be deleted and Service object will keep a
-+compute_node field but will actually not use this relationship.
++on (host, hypervisor_hostname). Also, service_id field will be marked as
++deprecated and not updated in the compute_nodes table and ComputeNode object
++field service_id will be left unset. SQLA relationship on service will be
++deleted and Service object will keep a compute_node field but will actually not
++use this relationship.
++
++Implementation proposal can be found in the patch series [1].
 +
 +Alternatives
 +------------
@@ -73,24 +88,20 @@ index 0000000..8cffafb
 +-----------------
 +
 +Most of the change is about changing the model, but let's rephrase it.
-+compute_nodes.service_id and compute_nodes.service relationship
-+will be deleted, and compute_nodes.host will be added as a String (identical
-+to Service.host field).
-+DB migrations will ensure that :
++compute_nodes.service relationship will be deleted, compute_nodes.service_id
++will be marked as deprecated and not updated by Kilo compute nodes and
++compute_nodes.host will be added as a String (identical to Service.host field).
 +
-+ - host will be populated at upgrade using Service.host table thanks to
-+   existing service_id and a unique key will be set on
-+   (host, hypervisor_hostname)
++As it was agreed during Summit, no data migrations will happen for updating
++either when creating the host column (for populating its values) or when
++downgrading by repopulating service_id.
 +
-+ - service_id will be populated at downgrade using host information that
-+   matches Service.host
++Instead, data migration (here service_id to host) will be managed at the Object
++level (here ComputeNode) each time a save operation will happen by querying
++Service object to get the host value and set service_id to NULL.
 +
 +There is no sense to keep a specific ID while the tuple (host, node) is
 +identified as the source of truth for idenfifying compute nodes.
-+
-+When implementing these migrations [1], TurboHipster (aka. DB DataSet migration
-+check) showed no problems with these upgrade and downgrade paths in terms of
-+delay.
 +
 +ComputeNode object will still continue to have a service field but it will
 +no longer use the relationship to get that info. In parallel, Service object
@@ -132,7 +143,10 @@ index 0000000..8cffafb
 +
 +Other deployer impact
 +---------------------
-+None
++
++An external tool could be provided for migrating offline existing compute nodes
++which don't yet have the host field set.
++
 +
 +Developer impact
 +----------------
@@ -162,7 +176,7 @@ index 0000000..8cffafb
 +* Make service info optional when querying compute nodes
 +* Remove query by service_id on compute_nodes
 +* Do not provide by default service info when querying compute nodes
-+* Remove service_id field from compute_nodes and service relationship
++* Deprecate service_id field from compute_nodes and delete service relationship
 +
 +Dependencies
 +============

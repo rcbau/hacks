@@ -1,0 +1,241 @@
+From 7d4b56ceabf4634daf1b47acb7d78ad9a3a7c7e2 Mon Sep 17 00:00:00 2001
+From: Philipp Marek <philipp.marek@linbit.com>
+Date: Wed, 19 Nov 2014 17:02:37 +0100
+Subject: [PATCH] Connecting Nova to DRBD storage nodes directly.
+
+No iSCSI would be needed anymore.
+
+Change-Id: I66dd9feb9435945ab8eb7dcad4d0d5ece2095ccf
+---
+ specs/kilo/approved/drbd-driver.rst | 219 ++++++++++++++++++++++++++++++++++++
+ 1 file changed, 219 insertions(+)
+ create mode 100644 specs/kilo/approved/drbd-driver.rst
+
+diff --git a/specs/kilo/approved/drbd-driver.rst b/specs/kilo/approved/drbd-driver.rst
+new file mode 100644
+index 0000000..640ab81
+--- /dev/null
++++ b/specs/kilo/approved/drbd-driver.rst
+@@ -0,0 +1,219 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++==========================================================
++Implementing a DRBD driver for block device access in Nova
++==========================================================
++
++https://blueprints.launchpad.net/nova/+spec/drbd-driver
++
++We propose to implement a block storage driver for Nova that uses
++the DRBD 9 network protocol to access the storage servers.
++
++
++Problem description
++===================
++
++Typically, Nova nodes use iSCSI to access storage on Cinder nodes.
++In some cases there are better alternatives: when there's a network
++protocol in use on the Cinder nodes in which the Nova nodes can participate
++directly, like it is done for RBD.
++
++So, for Nova nodes running on Linux there's no reason *not* to use DRBD as
++underlying protocol directly; against iSCSI that gives a few advantages:
++
++* Reduced latency: The requests don't need redirection on the iSCSI target,
++  they can be answered directly.
++
++* Better Throughput: DRBD has the notion of "read-balancing" since 8.4.1
++  (see https://blogs.linbit.com/p/246/read-balancing/), so read requests
++  to block storage can be split up to multiple hosts, therefore
++  balancing network utilization.
++
++
++Use Cases
++----------
++
++The primary benefits are:
++
++* Administrator: One less thing to worry about (no iSCSI inbetween)
++
++* User: better performance
++
++
++Project Priority
++-----------------
++
++Performance/Scalability
++
++Proposed change
++===============
++
++The DRBD Cinder driver has to be told (or detects) that the Nova node has
++DRBD 9 in a compatible version installed.
++
++Instead of transmitting iSCSI connection data the DRBD details have to be
++transmitted:
++
++* Authentication information (random shared-secret)
++
++* List of storage nodes: [ ip, port, node-id ], perhaps with optional
++  optimization settings
++
++* Which node-id the Nova node should use
++
++* Perhaps some other configuration items
++
++
++The Nova node would receive this information as before; but instead of
++setting up the iSCSI transport, it writes a DRBD configuration file and
++loads that information into the DRBD 9 kernel module via "drbdadm up".
++
++On detach a "drbdadm down" is done to stop this transport.
++
++
++Alternatives
++------------
++
++The existing iSCSI transport can be used as-is.
++
++This is just a performance optimization.
++
++Data model impact
++-----------------
++
++None - I believe.
++
++A typical DRBD 9 configuration file (including pretty formatting, ie.
++indentation etc.) is (for 3 nodes) from ~400 bytes upwards.
++In more complicated setups (and/or with higher redundancy) it might get
++up to 2kB in size, too.
++
++In case that hits a size limit somewhere, we can also strip the
++representation to the absolutely necessary bits, and/or use compression and
++base64 to get to still smaller sizes (a 969 byte full-blown config file
++I just got to 396 bytes in base64 that way).
++
++
++REST API impact
++---------------
++
++None?
++
++Security impact
++---------------
++
++This change touches block storage user data, so all the corresponding caveats
++apply.
++
++DRBD itself uses a HMAC (with user-chooseable algorithm, typically SHA1) to
++authenticate the nodes when establishing connection, this is similar to what
++other transport mechanisms do, too.
++
++"drbdadm" has to be run as user root.
++
++Notifications impact
++--------------------
++
++None?
++
++Other end user impact
++---------------------
++
++None?
++
++Performance Impact
++------------------
++
++The setup code will only be called once, for passing the connection
++information to the DRBD kernel module.
++
++DRBD itself will then initiate the network connections by itself.
++
++Data transfer to Nova nodes will get faster (lower latency, higher read
++throughput).
++
++
++Other deployer impact
++---------------------
++
++This will only work with hypervisors that provide DRBD 9 client access; at
++the moment, this means Linux only, with a minimum kernel version of 2.6.32.
++
++The Nova nodes will need to have DRBD userspace and a matching kernel
++module installed.
++
++In case the Nova nodes can register this capability somewhere, the Cinder
++code can directly start to use this optimized transport, with no manual
++interaction.
++
++
++Developer impact
++----------------
++
++None
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++   Philipp Marek (LINBIT HA-Solutions GmbH)
++   <philipp.marek@linbit.com>
++   launchpad.net/~philipp-marek
++
++Work Items
++----------
++
++* Cinder-driver for DRBD is due to have a first implementation before
++  milestone 1 of Kilo (Dec. 18th) in order to be merged
++
++* Afterwards, or in parallel, the Nova driver can be implemented
++
++* Make Nova nods register the DRBD transport capability, and the Cinder
++  driver use that automatically
++
++Dependencies
++============
++
++Cinder volume driver using DRBD https://review.openstack.org/#/c/102541/ and
++its implementation.
++
++
++Testing
++=======
++
++For testing a working DRBD/DRBDmanage cluster is needed.
++
++As the only thing the driver will do is to save the passed information in
++a temporary file and run an external command against it, the amount of code
++to test is (or should be) minimal.
++
++For the Cinder driver we aim for providing a CI system; we hope that we can
++use the same thing for Nova, too.
++
++
++Documentation Impact
++====================
++
++Mention that there's another block storage transport mechanism available.
++
++References
++==========
++
++* https://blueprints.launchpad.net/cinder/+spec/cinder-drbd-volume-driver
++  Blueprint for Cinder volume driver
++
++* https://review.openstack.org/133623
++  Spec for Cinder volume driver using DRBD
++
++* http://www.drbd.org/users-guide-9.0/ch-fundamentals.html
++
++* http://www.linbit.com/ for the company developing DRBD, and providing
++  training, consulting, and 24/7 support worldwide
++
+-- 
+1.9.1
+

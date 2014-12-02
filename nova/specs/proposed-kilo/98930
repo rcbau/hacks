@@ -1,4 +1,4 @@
-From 3c99406f630c84e8ff8aed28a7c12adc562bc8d6 Mon Sep 17 00:00:00 2001
+From f48d114621033e75b740bc5f9e894075949da714 Mon Sep 17 00:00:00 2001
 From: Jim Rollenhagen <jim@jimrollenhagen.com>
 Date: Mon, 9 Jun 2014 18:04:40 -0700
 Subject: [PATCH] Use configdrive with Ironic
@@ -9,16 +9,16 @@ deploying a bare metal instance.
 
 Change-Id: Ia4444060c58c86908c680e7401731ec5c26f82c7
 ---
- .../kilo/approved/use-configdrive-with-ironic.rst  | 178 +++++++++++++++++++++
- 1 file changed, 178 insertions(+)
+ .../kilo/approved/use-configdrive-with-ironic.rst  | 208 +++++++++++++++++++++
+ 1 file changed, 208 insertions(+)
  create mode 100644 specs/kilo/approved/use-configdrive-with-ironic.rst
 
 diff --git a/specs/kilo/approved/use-configdrive-with-ironic.rst b/specs/kilo/approved/use-configdrive-with-ironic.rst
 new file mode 100644
-index 0000000..e8394e0
+index 0000000..0261410
 --- /dev/null
 +++ b/specs/kilo/approved/use-configdrive-with-ironic.rst
-@@ -0,0 +1,178 @@
+@@ -0,0 +1,208 @@
 +..
 + This work is licensed under a Creative Commons Attribution 3.0 Unported
 + License.
@@ -66,6 +66,26 @@ index 0000000..e8394e0
 +as the code to generate the image. So, it makes sense for Nova to generate an
 +image and pass it to Ironic.
 +
++Use Cases
++---------
++
++The main use case here is feature parity with other virt drivers. Other
++drivers support configdrive today, and deployers use it. Deployers of
++Ironic should also be able to use configdrives.
++
++There are two main use cases as described above:
++
++* Deployers that do not use the metadata service.
++
++* Deployers that wish to use static IP assignment, where the instance
++  will not have network access to get to the metadata service.
++
++Project Priority
++----------------
++
++The kilo priorities list is currently not defined, however "virt driver
++feature parity" seems important.
++
 +
 +Proposed change
 +===============
@@ -81,15 +101,20 @@ index 0000000..e8394e0
 +
 +* The virt driver generates the configdrive and gzips it.
 +
-+* The virt driver puts the gzipped configdrive image in Swift, with a
-+  configurable TTL.
++* The virt driver puts the gzipped image in some system and holds on to
++  a URI for the image.
 +
-+* If present, Ironic will pass this Swift URL to its DeployDriver, which will
++* The virt driver will pass this URI to Ironic.
++
++* If present, Ironic will pass this URI to its DeployDriver, which will
 +  in turn provide it to the instance during provisioning, by means appropriate
 +  to that driver.
 +
-+* Ironic uses this Swift URL to write a configdrive partition on the
++* Ironic uses this URI to write a configdrive partition on the
 +  instance during provisioning.
++
++* The reference implementation for this will be using Swift, with a
++  configurable TTL.
 +
 +Alternatives
 +------------
@@ -140,9 +165,12 @@ index 0000000..e8394e0
 +Other deployer impact
 +---------------------
 +
-+This will require adding a config option for the TTL to use when uploading
-+the image to Swift, however the default should be a sane amount for a
-+production deployment.
++The reference implementation will add a hard dependency on Swift for
++deployers that wish to use configdrive support with Ironic. Other
++implementations may remove this dependency.
++
++The reference implementation will also add corresponding config options
++for the Swift client.
 +
 +Developer impact
 +----------------
@@ -162,6 +190,9 @@ index 0000000..e8394e0
 +Work Items
 +----------
 +
++* Add a wrapper for python-swiftclient that can, at a minimum, upload objects
++  to Swift.
++
 +* Implement the code and unit tests. This will involve changing the deploy()
 +  function in Ironic's virt driver to generate the configdrive, upload
 +  it to Swift, and pass the Swift URL for the configdrive in the PATCH
@@ -169,21 +200,20 @@ index 0000000..e8394e0
 +  be changed to remove the configdrive key from instance_info. Unit tests will
 +  need to be updated accordingly.
 +
-+* Write Tempest tests - see testing plan below.
++* Configure tempest tests to properly exercise this feature.
 +
 +
 +Dependencies
 +============
 +
 +This change depends on Ironic support for writing the configdrive to the
-+instance.
++instance. [1]
 +
 +
 +Testing
 +=======
 +
-+TODO: need to find out how configdrive things are tested in Tempest today and
-+do something similar.
++Use tempest to test this feature, when configured properly.
 +
 +
 +Documentation Impact
@@ -196,7 +226,7 @@ index 0000000..e8394e0
 +References
 +==========
 +
-+Ironic configdrive spec: https://review.openstack.org/#/c/99235/
++[1] Ironic configdrive spec: https://review.openstack.org/#/c/99235/
 -- 
 1.9.1
 

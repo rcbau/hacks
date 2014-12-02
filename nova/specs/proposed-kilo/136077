@@ -1,0 +1,343 @@
+From 6ce75c7a16bb2fcd2bbe9339484cb3f87b9a1d64 Mon Sep 17 00:00:00 2001
+From: Robert Li <baoli@cisco.com>
+Date: Thu, 20 Nov 2014 12:45:00 -0500
+Subject: [PATCH] Support live migration with macvtap SR-IOV
+
+Change-Id: I23390c3e8e453e3f494f910bc7dd69866a255e51
+Implements: blueprint sriov-live-migration
+---
+ specs/kilo/approved/sriov-live-migration.rst | 322 +++++++++++++++++++++++++++
+ 1 file changed, 322 insertions(+)
+ create mode 100644 specs/kilo/approved/sriov-live-migration.rst
+
+diff --git a/specs/kilo/approved/sriov-live-migration.rst b/specs/kilo/approved/sriov-live-migration.rst
+new file mode 100644
+index 0000000..efa3bb1
+--- /dev/null
++++ b/specs/kilo/approved/sriov-live-migration.rst
+@@ -0,0 +1,322 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++==========================================
++Support live migration with macvtap SR-IOV
++==========================================
++
++Include the URL of your launchpad blueprint:
++
++https://blueprints.launchpad.net/nova/+spec/sriov-live-migration
++
++In Juno release, SR-IOV is added into nova (Refer to [NOVA_SRIOV]_). To boot up
++an instance with neutron SR-IOV ports, the ports need to be first created with
++vnic_type being either direct or macvtap. We'll use the terms direct SR-IOV and
++macvtap SR-IOV, respectively, to differentiate the two vnic types in this spec.
++The port IDs can then be provided in the nova boot API. However, instances
++created with SR-IOV ports can not be live migrated in Juno.
++
++Problem description
++===================
++SR-IOV makes it possible for a VM to directly send packets to the VIC (virtual
++interface card) without having the hypervisor involved. In the case of direct
++SR-IOV, the physical VIC driver is running in the guest VM which directly
++controls the hardware. Live migration requires copying of VM's state including
++the hardware state from the source host to the destination host. Due to the
++lack of visibility of the SR-IOV hardware state in the hypervisor, however,
++live migration with direct SR-IOV is not possible without hypervisor change or
++using other techniques, such as that suggested in [EDWIN_LIVE]_ and
++[COMPS_LIVE]_.  Fortunately, libvirt supports live migration with macvtap
++SR-IOV. With macvtap SR-IOV, a macvtap interface residing on the host is
++directly connected to an ethernet interface that corresponds to a virtaul
++function (VF) on the VIC. the VM runs a virtual ethernet driver (e.g.
++virtio_net) that delivers the packets to the macvtap interface that passes them
++directly to the VIC. With a bit of sacrifice of the packet latency and network
++thoroughput, it's possible to live migrate VMs that use it. In this spec, we'll
++focus on the support of live migration with macvtap SR-IOV. Live migration with
++direct SR-IOV may be addressed in the future.
++
++Also note that VMs with direct PCI passthrough devices can't be live migrated.
++
++Use Cases
++----------
++
++* As an operator, I want to be able to live migrate my instances with macvtap
++  SR-IOV ports
++
++Project Priority
++-----------------
++
++This was mentioned in the Paris summit, and considered as one of Bugs that
++should be tackled in Kilo.
++
++Proposed change
++===============
++
++Check If The VM Is Live Migratable
++----------------------------------
++
++Given that a VM with direct SR-IOV and/or direct PCI passthrough devices can't
++be live migrated, when a user enters the request to live migrate such a VM, the
++request will be rejected with proper reason. Live migration will only be
++attempted on a VM without direct SR-IOV and/or direct PCI passthrough devices.
++
++Renaming Interface to Keep Domain XML Unchanged
++-----------------------------------------------
++
++To live migrate a VM with libvrit, the VM's domain XML must remain unchanged
++after migrating to the destination host. This implies that information that's
++local to the host such as the PCI device address can't be used in the domain
++XML. To meet this requirement, this spec proposes an interface renaming
++mechanism.
++
++An example of the interface XML with macvtap SR-IOV in a domain XML::
++
++  <interface type='direct'>
++    <mac address='fa:16:3e:ae:7f:c5'/>
++    <source dev='eth20' mode='passthrough'/>
++    <model type='virtio'/>
++    <driver name='vhost'/>
++    <alias name='net0'/>
++    <address type='pci' domain='0x0000' bus='0x00' slot='0x03' function='0x0'/>
++  </interface>
++
++Note that in the source dev clause above, eth20 is local to the compute node
++where the domain is hosted. The interface with the same name eth20 on the
++destination host may have been used or may not be used for this VM. Therefore,
++a location independent naming convention for interface names is needed.
++Fortunately, we can use the neutron port ID to rename the interface before
++generating the domain XML. With renaming, when the VM is initially launched,
++the interface XML in the VM's domain XML will look like::
++
++  <interface type='direct'>
++    <mac address='fa:16:3e:ae:7f:c5'/>
++    <source dev='srv<12 chars from neutron-port-id>' mode='passthrough'/>
++    <model type='virtio'/>
++    <driver name='vhost'/>
++    <alias name='net0'/>
++    <address type='pci' domain='0x0000' bus='0x00' slot='0x03' function='0x0'/>
++  </interface>
++
++The maximum length of an interface name is 15 characters.
++
++There is a corner case that runs like this:
++* A VM with macvtap SR-IOV port on Host-1 is migrated to Host-2
++* Later, it is migrated back to Host-1
++
++If it happens that during the second migration, a different port on Host-1 than
++the one the VM originally used is allocated for the VM, then this port would be
++renamed with the same name as the original port if the original port were still
++free after the first migration.
++
++The possible name collision can be resolved by renaming the original port to
++srv<domain>-<bus>-<slot>-<func> after the first migration has been completed.
++For example, if eth20 has the PCI address as 0000:0a:01.1, it will be renamed
++as srv0000-0a-01-1 after migration is completed.
++
++Device/VIF Compatibility
++------------------------
++
++In a multi-vendor cloud environment, SR-IOV capable NIC adaptors may come from
++different vendors. Some adaptors support fabric extender (such as Cisco's
++VMFEX), others support hardware virtual ethernet bridge (such as Intel and
++Mellanox). Nova currently supports two VIF types for SR-IOV: VIF_TYPE_802_QBH
++and VIF_TYPE_HW_VEB. Each type has its own interface XML.
++
++With macvtap, the same virtio driver is used in the VM regardless of the VIF
++types. However, to be live migratable, the domain XML must remain the same.
++This means, the PCI devices on the destination host must be compatible in terms
++of VIF types. It's possible to migrate from a host with intel SR-IOV adpators
++to another with Mellanox's, or vice-versa. Currently, however, it's not
++possible to select the destination host based on compatible VIF types. It is
++possible, though, to relieve this restriction if all the SR-IOV adaptors in a
++cloud are VIF compatible. A nova boolean config option *sriov-vif-compatible*
++will be provided for this purpose.
++
++If *sriov-vif-compatible* is false, live migration is only possible with the
++same type of SR-IOV capable NIC adaptors.
++
++In the future, with enhancement in the nova scheduler, the restriction may be
++relieved.
++
++PCI Requests, Scheduling and SR-IOV Device Allocation
++-----------------------------------------------------
++
++For live migration, the original PCI requests associated with the instance
++cannot be used as is to schedule the destination host and allocate SR-IOV
++devices on it with two reasons:
++
++* they don't contain information To ensure device compatibility
++* they don't contain information to correlate a request with a neutron port
++
++New PCI requests will be created with the flag *is_new* to be true. To ensure
++device compatiblity, and if *sriov-vif-compatible* is false, the original PCI
++requests are added with two new attributes if they are not present in the
++requests: vendor_id and product_id, which can be obtained from the neutron
++ports or PCI devices allocated for the original requests.
++
++The original PCI request ID can be used to correlate the allocated PCI device
++with its requested network. Refer to https://review.openstack.org/#/c/86606/
++for how a PCI request id is initialy created. To correlate a PCI request and
++the allocated SR-IOV device to a neutron port, however, the original PCI
++request ID needs to be modified. The neutron port ID can be used as the new PCI
++request ID, and update to the PCI request with the new PCI request ID can be
++made while updating the neutron port with the PCI device information.
++
++To schedule the destination host, the newly-created PCI requests will be added
++into the filter properties right before the call to select_destinations. The
++newly-created PCI requests are also used to allocate SR-IOV devices in the
++pre_live_migration phase on the destination host.
++
++The management and use of the old, new, current PCI requests are similar to the
++instance type management during migration. Basically,
++
++* the new requests are used for device allocation on the destination host.
++* the old requests are used for rollback.
++* after successful migration, the new is copied to become the current, and both
++  the new and the old are deleted.
++
++If migration to the destination host fails, SR-IOV devices allocated for the
++instance must be freed.
++
++Note that for migration (live or cold or resize), PCI devices are allocated on
++both the original host and the destination host at the same time. The instance
++object is associated with a list of PCI devices allocated for it. The access
++method to retrieve the PCI devices for an instance doesn't use host ID as
++filter. There may be changes needed to make sure that on a particular host, PCI
++devices associated with an instance are actually located on the host itself.
++
++migrate_instance_finish
++-----------------------
++
++This method in the neutronv2 API module is invoked for instance resize, cold
++and live migration. In this method, neutron ports associated with the instance
++will be updated with the new binding information. This method will be enhanced
++so that PCI information is updated for SR-IOV ports as well.
++
++Note that as a result of updating the binding information which includes the
++new PCI information, operations on the hardware or remote devices may be taking
++place. Success of those operations are not guaranteed. This is an existing
++limitation in the current workflow to support migration, and is out of the
++scope of this specification.
++
++
++Alternatives
++------------
++
++There are two other alternative solutions that were discussed among the
++communities. The first one involves creating a network XML per neutron SR-IOV
++port. The second one involves creating a network XML per physical network.
++
++The first alternative is similar to the interface renaming approach as
++described in the **proposed section**. For each neutron SR-IOV port, a netwrok
++XML is created and referenced in the domain XML when the instance is initially
++launchedn. During migration, a network XML with the same name needs to be
++created on the destination host during the pre_live_migration phase.
++
++Currently in the pci_passthrough_whitelist, each SR-IOV pci device is tagged
++with the physical network name which the device is connected to. In the second
++alternative solution, a network XML per physical network can be created during
++the PCI device initialization time. Each network XML contains all the SR-IOV
++PCI devices that belongs to the physical network. The domain XML will only need
++to refer to this network XML when defining SR-IOV interfaces that are on that
++network. Therefore, the requirement for unchanged domain XML is guaranteed.
++There is a problem with this solution, though. By doing so, allocation of
++individual PCI device is managed by libvirt, and there doesn't seem to be a
++libvirt API that can be invoked to get knowledge of the PCI device allocated
++for each port before the instance is launched. However, such knowledge is
++critical in properly configuring the device.
++
++Both alternatives require management of libvirt network XML, which currently is
++not supported by Nova.
++
++Data model impact
++-----------------
++
++N/A
++
++REST API impact
++---------------
++
++N/A
++
++Security impact
++---------------
++N/A
++
++Notifications impact
++--------------------
++
++N/A
++
++Other end user impact
++---------------------
++
++N/A
++
++Performance Impact
++------------------
++
++N/A
++
++Other deployer impact
++---------------------
++
++Deployers need to be aware of the limitations imposed with live migration in an
++SR-IOV capable cloud:
++
++* live migration is only possible with macvtap SR-IOV with a bit of sacrifice
++  of thouroughput compared with direct SR-IOV
++* live migration may only be performed with VIF-compatible SR-IOV capable
++  adaptors.
++
++Developer impact
++----------------
++
++N/A
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  <baoli>
++
++Work Items
++----------
++
++* Check live migratability
++* PCI requests management
++* interface renaming
++* SR-IOV device allocation
++* migrate_instance_finish
++
++Dependencies
++============
++
++N/A
++
++Testing
++=======
++
++TBD
++
++
++Documentation Impact
++====================
++
++TBD
++
++References
++==========
++
++.. [NOVA_SRIOV] `enable a nova instance to be booted up with neutron SRIOV ports <https://blueprints.launchpad.net/nova/+spec/pci-passthrough-sriov>`_
++
++.. [EDWIN_LIVE] `Live Migration with Pass-through Device for Linux VM <http://shikee.net/read/VM_OLS08.pdf>`_
++
++.. [COMPS_LIVE] `CompSC: Live Migration with Pass-through Devices <http://www.cl.cam.ac.uk/research/srg/netos/vee_2012/papers/p109.pdf>`_
+-- 
+1.9.1
+

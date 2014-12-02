@@ -1,0 +1,382 @@
+From 1d2bc84bc7d6d75088c9b6ae984b5fcb41db58b3 Mon Sep 17 00:00:00 2001
+From: Jay Hennessey <henn@users.sourceforge.net>
+Date: Tue, 4 Nov 2014 00:40:15 -0500
+Subject: [PATCH] Submit qualified-uuids Nova spec
+
+This spec enables UUIDs to reference objects located in Cinder and possibly
+Neutron endpoints when multiple endpoints are possible.
+
+Change-Id: Ic76e8be38c32c0e6648de436c333e99e496ce4cf
+---
+ specs/kilo/approved/qualified-uuids.rst | 359 ++++++++++++++++++++++++++++++++
+ 1 file changed, 359 insertions(+)
+ create mode 100644 specs/kilo/approved/qualified-uuids.rst
+
+diff --git a/specs/kilo/approved/qualified-uuids.rst b/specs/kilo/approved/qualified-uuids.rst
+new file mode 100644
+index 0000000..ac24306
+--- /dev/null
++++ b/specs/kilo/approved/qualified-uuids.rst
+@@ -0,0 +1,359 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++===========================================================================
++Qualified UUIDs to support multiple endpoints for a particular service type
++===========================================================================
++
++https://blueprints.launchpad.net/nova/+spec/qualified-uuids
++
++Nova makes the assumption that there is only one endpoint for each type of
++service. This blueprint outlines some use cases on why supporting multiple
++endpoints is a desirable feature and proposes some solutions. Fundamentally,
++the problem is that OpenStack refers to objects (e.g., VMs, volumes and
++networks) using UUIDs. When there is only a single nova, cinder or neutron,
++this is fine since each object type is served from only a single endpoint. When
++there are multiple instances of each of these services with multiple endpoints,
++however, it is undefined which endpoint owns a particular UUID.
++
++This spec is only partially completed. The Mass Open Cloud group, being new to
++the OpenStack community, requests feedback on the best direction for realizing
++our goal of mixing and matching services under Nova. The current proposal
++focuses on cinder, though we suspect that Nova/Neutron interactions are
++similarly scoped.
++
++Problem description
++===================
++
++Nova assumes a single endpoint that services all UUIDs of a given type.
++
++For example, in Nova/Cinder interactions, Nova, via the *cinderclient()*
++function in nova/volume/cinder.py, assumes that for all volumes with which it
++works (with the exception of regions) there is only a single cinder endpoint:
++
++.. code:: python
++
++    if CONF.cinder_endpoint_template:
++        url = CONF.cinder_endpoint_template % context.to_dict()
++    else:
++        if CONF.os_region_name:
++            attr = 'region'
++            filter_value = CONF.os_region_name
++        else:
++            attr = None
++            filter_value = None
++        url = sc.url_for(attr=attr,
++                         filter_value=filter_value,
++                         service_type=service_type,
++                         service_name=service_name,
++                         endpoint_type=endpoint_type)
++
++This will need to change in order to support multiple providers of
++cinder block storage services.
++
++Please note that there is separate work necessary to facilitate the actual
++movement of data: networks for Neutron or blocks for Cinder. This spec is
++limited to only the addressing aspects.
++
++Use Cases
++---------
++
++There are multiple scenarios where different OpenStack services may be
++stood up under different administrative domains, where the consumer
++would like to mix and match between them. For example:
++
++* In a company with an existing OpenStack install, a different department
++  stands up a new service. Users then want to access glance or cinder
++  services from the first service while using Nova from the second service
++* In a shared university environment where some projects span departments or
++  institutions in the same data center due to grant funding
++* The `Massachusetts Open Cloud <http://massopencloud.org>`__
++
++A more specific example would be a customer who has purchased 2 VMs from
++Nova Provider A that are kept in the same project. That same customer
++has also purchased 2 block volumes: one from (cheap) Provider B and
++another on the higher quality Provider C. The customer wants 1 VM to be
++on the cinder instance maintained by Provider B and the other on
++Provider C. Currently, there is no way to identify which of the two
++cinder providers a object is coming from given just the objects UUID.
++
++Project Priority
++----------------
++
++None
++
++Proposed change
++===============
++
++Augmented UUIDs
++---------------
++
++One solution that would preserve much of the existing logic in OpenStack
++(including the REST API) would be to take advantage of the string-based
++storage of UUIDs in order to include an endpoint identifier. This would
++transform UUIDs from being opaque string identifiers into parsed
++strings, which may or may not be desirable.
++
++This would transform a volume's instance_uuid from looking like this:
++
++::
++
++    045a32e7-7eab-4b87-bc87-d7bd148f4558
++
++to:
++
++::
++
++    https://cinder.provider.com:2600/v2/045a32e7-7eab-4b87-bc87-d7bd148f4558
++
++or:
++
++::
++
++    045a32e7-7eab-4b87-bc87-d7bd148f4558@https://cinder.provider.com:2600/v2
++
++There may be an additional database storage cost associated with this,
++as IDs are currently stored as varchar(36).
++
++Though minimal, several pieces of code at the intersections of services that
++assume a single service per type would need to change. One part is
++*cinderclient()* in
++`nova/volume/cinder.py
++<https://raw.githubusercontent.com/openstack/nova/HEAD/nova/volume/cinder.py>`_
++
++This has the advantage of not requiring cinder or neutron changes to start, as
++the provider portion of the UUID could be stripped before sending to the remote
++service.
++
++Other ID modifications
++^^^^^^^^^^^^^^^^^^^^^^
++
++If we are considering changing the format, it might even be desirable to
++make other modifications for better maintainability and error checking
++(like prepending a type) or by switching to a more compact UUID
++representation using base64 or base92 (paying some penance for the
++increased identifier size introduced here). An ID containing these
++attributes might look like:
++
++::
++
++    volume;https://cinder.provider.com:2600/v2/BFoy536rS4e8h9e9FI9FWA==
++
++Alternatives
++------------
++Separate provider string
++^^^^^^^^^^^^^^^^^^^^^^^^
++
++Similar to including a provider instead of an object's UUID, we could add an
++argument to all calls accepting a volume/instance/etc ID that specifies the
++endpoint. This would require more code modifications than Augmented UUIDs and
++changes to the REST APIs to support an extra argument, in addition to the
++changes that would be needed for Augmented UUIDs.
++
++
++Data model impact
++-----------------
++
++For Nova/Cinder interactions, instance_uuid column of Nova's Volume table will
++need to grow from String(36) to something large enough to hold an endpoint URL
+++ UUID. This will require additional DB storage by providers if fully qualified
++endpoints are enabled.
++
++A migration script will need to be included.
++
++Note: Related work in this area is being done as part of `Enforcing unique
++instance UUIDs
++<https://blueprints.launchpad.net/nova/+spec/enforce-unique-instance-uuid-in-db>`__
++
++REST API impact
++---------------
++
++The `os-volume_attachments API
++<http://developer.openstack.org/api-ref-compute-v2-ext.html#ext-os-volume_attachments>`__
++will see the majority of change, in cases where it references qualified Cinder
++UUIDs. This means accepting fully qualified UUIDs in addition to classical
++UUIDs. Compatibility for existing API user programs should be fine due to the
++API's definition of the volumeId and attachment_id parameters as xsd:string.
++Thus, if user programs were already expecting arbitrarily-sized string values,
++they should continue to work even in the presence of qualified UUIDs.
++
++A example flow using qualified UUIDs might consist of::
++
++  # Attach remote volume
++  POST /v2/{tenant_id}/servers/{server_id}/os-volume_attachments
++  [body]
++  {
++     "volumeAttachment": {
++         "volumeId": "\https://cinder.provider.com:2600/v2/a26887c6-c47b-4654-abb5-dfadf7d3f803",
++         "device": "/dev/vdd"
++     }
++  }
++  # View attached volumes
++  GET /v2/{tenant_id}/servers/{server_id}/os-volume_attachments
++  [response]
++  {
++     "volumeAttachments": [
++         {
++             "device": "/dev/sdd",
++             "id": "\https://cinder.provider.com:2600/v2/a26887c6-c47b-4654-abb5-dfadf7d3f803",
++             "serverId": "4d8c3732-a248-40ed-bebc-539a6ffd25c0",
++             "volumeId": "\https://cinder.provider.com:2600/v2/a26887c6-c47b-4654-abb5-dfadf7d3f803"
++         }
++  }
++
++
++The `os-volumes and os-snapshots APIs
++<http://developer.openstack.org/api-ref-compute-v2-ext.html#ext-os-volume>`__
++may also be impacted. Creating a volume through the Nova API may not make sense
++if a customer hasn't purchased block storage from that Nova provider and is a
++question that needs to be answered. The snapshot interface could be made to
++pass calls through to the appropriate cinder instance and should be
++straightforward. It might be sufficient for now to say that end-users employing
++qualified UUIDs simply need to address these types of queries to the block
++storage provider directly.
++
++Format parsers and verifiers for all methods accepting qualified UUIDs will
++need to be updated.
++
++A tunable for providers which enables/disables remote cinder UUIDs will be
++needed. Exposing this flag through an API to end-users might also be beneficial
++so that end-users could check a provider's capabilities. Security aspects are
++discussed in `Security impact`_.
++
++Security impact
++---------------
++
++Auth
++^^^^
++Detailed specifics of how Nova will securely convey authentication and
++authorization, are beyond the scope of this spec, being addressed in
++keystone-related work such as `token restrictions
++<https://review.openstack.org/#/c/123726/>`_ and `rescoping
++<https://review.openstack.org/#/c/123760/>`_.  In general, our view is that a
++user will pass a certificate-based token that is restricted only to those
++endpoints that are needed for a particular operation. Thus, a user mapping a
++volume in Cinder B to a VM running on Nova A would send a token containing the
++endpoints for Nova A and Cinder B. Nova would then use that token as it does
++today to set up the connection to the volume on Cinder B. If Nova A then tried
++to use the token with Cinder C, the operation would fail.
++
++An unresolved problem is how a nova provider speaking with a remote cinder
++endpoint would continue with operations after the original token expired, and
++if that is ever needed. For example, if the user shut down a VM and later
++started it up, would that user need to again pass a token that includes the
++cinder endpoint? What about the case where a VM migrates within a Nova
++provider, and a new session is needed for the block storage on the new node?
++
++Endpoint restrictions
++^^^^^^^^^^^^^^^^^^^^^
++
++There needs to be a strong mechanism by which a Nova provider can restrict the
++Cinder endpoints to which it is willing to speak for two reasons. 1) A Nova
++provider may be concerned about the attack surface of the block sharing
++protocol. 2) A Nova provider must be able to guard against having this feature
++used as a proxy for nefarious attacks. Given that this feature could generate
++outgoing connections, using a qualified UUID could be used to attack private
++addresses that only the host running the Nova service has access to or to cause
++other effects such as DDOS.
++
++One way to accomplish this restriction would be to only allow qualified UUIDs
++where the endpoint is in a valid token's Service Directory (SD). Since the SD
++is signed by something trusted, it would stand to reason that any endpoints in
++the token could also be trusted. Another option for this could be giving
++providers a configurable containing every valid cinder endpoint. To prevent DNS
++poison attacks, we could require https.
++
++
++Notifications impact
++--------------------
++
++Notifications are currently done using the message bus. Would there be more
++work to do for accepting notifications from remote cinders?
++
++Other end user impact
++---------------------
++
++python-novaclient would need to accept qualified UUIDs.
++
++Performance Impact
++------------------
++
++A negligible amount of space would be taken up by the additional characters
++(though a mitigation is offered).
++
++A Nova Provider supporting qualified-uuids would likely see additional network
++load due to the block storage.
++
++Other deployer impact
++---------------------
++
++The config options controlling qualified UUIDs would default to disabled as
++this would be an experimental feature, and there is additional work needed to
++complete the effort.
++
++As mentioned previously, the mechanisms for facilitating remote block storage
++will be covered by other proposals.
++
++Developer impact
++----------------
++
++Cinder will continue to see the same UUIDs, as Nova could strip the
++qualification off. It is TBD how the two will interact in the end, however.
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++	TBD
++
++Other contributors:
++	The Mass Open Cloud consortium
++
++Work Items
++----------
++
++* Expand/test DB schema changes and migrations
++* Modify highlighted API calls where they verify and parse instance_uuids
++    * Check that endpoints are in the Service Directory
++* Include tests that exercise the interfaces
++
++Dependencies
++============
++
++
++These keystone projects are related, though not required for parsing
++functionality:
++
++* `Token constraints <https://review.openstack.org/#/c/123726/>`__
++
++* `Rescope tokens unscoped to scoped only
++  <https://review.openstack.org/#/c/123760/>`__
++
++
++Testing
++=======
++
++Since the plumbing between Nova and remote Cinders will come at a later time,
++unit tests will have to cover much of the functionality.
++
++Full exercise of the API and storage might be possible if the cinder
++communications were stubbed out.
++
++Documentation Impact
++====================
++
++The configurable to enable/disable qualified UUIDs will need to be documented,
++as will the mechanism for restricting domains.
++
++References
++==========
++
++This effort is being led by the `Mass Open Cloud <http://massopencloud.org>`__
++in support of the implementation of an `Open Cloud eXchange (OCX)
++<http://www.cs.bu.edu/fac/best/res/papers/ic14.pdf>`__.
+-- 
+1.9.1
+

@@ -1,4 +1,4 @@
-From d327a62e3b01abda03ed0f5442234ee541cd536b Mon Sep 17 00:00:00 2001
+From 2581b539900bc2e12666249a46eca7c909e07d77 Mon Sep 17 00:00:00 2001
 From: Ken'ichi Ohmichi <oomichi@mxs.nes.nec.co.jp>
 Date: Fri, 24 Oct 2014 05:37:47 +0000
 Subject: [PATCH] Add JSON-Home support for API path discovery
@@ -9,16 +9,16 @@ Partially implements blueprint nova-api-json-home
 
 Change-Id: I66cc077666b41bd337640598e989ec8fd04d501e
 ---
- specs/kilo/approved/nova-api-json-home.rst | 313 +++++++++++++++++++++++++++++
- 1 file changed, 313 insertions(+)
+ specs/kilo/approved/nova-api-json-home.rst | 311 +++++++++++++++++++++++++++++
+ 1 file changed, 311 insertions(+)
  create mode 100644 specs/kilo/approved/nova-api-json-home.rst
 
 diff --git a/specs/kilo/approved/nova-api-json-home.rst b/specs/kilo/approved/nova-api-json-home.rst
 new file mode 100644
-index 0000000..c84f006
+index 0000000..7cad3c4
 --- /dev/null
 +++ b/specs/kilo/approved/nova-api-json-home.rst
-@@ -0,0 +1,313 @@
+@@ -0,0 +1,311 @@
 +..
 + This work is licensed under a Creative Commons Attribution 3.0 Unported
 + License.
@@ -57,7 +57,7 @@ index 0000000..c84f006
 +Project Priority
 +-----------------
 +
-+No priority defined for this feature yet.
++None.
 +
 +Proposed change
 +===============
@@ -105,7 +105,8 @@ index 0000000..c84f006
 +http://docs.openstack.org/api/openstack-compute/2/xsd. So Nova should publish
 +a similar location for consistency. For v2.1 resources, the relationship type
 +link will be http://docs.openstack.org/api/openstack-compute/2.1/rel as the
-+above sample.
++above sample. On v2.1 API + microversions, we will continue using the same
++endpoint(/v2.1) and we can use the same link for all microversions.
 +
 +If querying against a specific URL(eg. GET /v2.1/{project_id}/servers), client
 +can get more detail information(available HTTP methods, format) on "hints"
@@ -172,6 +173,13 @@ index 0000000..c84f006
 +we can implement JSON-Home feature just by arranging the information to
 +JSON-Home format and publishing it to a client.
 +
++We don't need to consider v2.1 + microversions for this JSON-Home spec.
++The scope of approved microversion spec can cover how to change a request/
++response body only. It doesn't cover how to change API paths. On the other
++hand, this spec covers API paths, which are not changed with microversion.
++So each scope of these specs are different now. When adding "JSON-Schema on
++JSON-Home", we will need to consider microversions.
++
 +Alternatives
 +------------
 +
@@ -183,8 +191,6 @@ index 0000000..c84f006
 +-----------------
 +
 +None.
-+Current API router has already contained necessary data for JSON-Home support.
-+So we don't need to change data model.
 +
 +REST API impact
 +---------------
@@ -205,7 +211,6 @@ index 0000000..c84f006
 +
 +  * URL for the resource
 +    /v2.1 and under
-+    /v2 and under. If configuring v2.1 implementation as /v2 on api-paste.ini.
 +
 +  * JSON schema definition for the body data if allowed
 +    A request body is not allowed.
@@ -267,14 +272,7 @@ index 0000000..c84f006
 +Other deployer impact
 +---------------------
 +
-+* What config options are being added?
-+  This feature should be one of common features, so it is not necessary
-+  to add a new config option for disabling/enabling this feature.
-+
-+* Please state anything that those doing continuous deployment, or those
-+  upgrading from the previous release, need to be aware of.
-+  This feature works only if client passes a new option 'application/json-home'
-+  in an accept header, and it doesn't affect to the existing OpenStack clouds.
++None.
 +
 +Developer impact
 +----------------

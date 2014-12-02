@@ -1,4 +1,4 @@
-From dfeeba50d0c0e9a01c507814906a5994275193c8 Mon Sep 17 00:00:00 2001
+From 774ee61b7747a099c9d06c01597099983fdab773 Mon Sep 17 00:00:00 2001
 From: zhangni <zhangni@huawei.com>
 Date: Sat, 25 Oct 2014 10:46:55 +0800
 Subject: [PATCH] Add a new libvirt volume driver for Huawei SDSHypervisor
@@ -12,16 +12,16 @@ methods:
 Change-Id: I1d18fda62b77c5f46eed174fc0699d8bbe14fe92
 Blueprint: huawei-sdshypervisor-volume-driver
 ---
- ...virt-volume-driver-for-Huawei-SDSHypervisor.rst | 161 +++++++++++++++++++++
- 1 file changed, 161 insertions(+)
+ ...virt-volume-driver-for-Huawei-SDSHypervisor.rst | 201 +++++++++++++++++++++
+ 1 file changed, 201 insertions(+)
  create mode 100644 specs/kilo/approved/new-libvirt-volume-driver-for-Huawei-SDSHypervisor.rst
 
 diff --git a/specs/kilo/approved/new-libvirt-volume-driver-for-Huawei-SDSHypervisor.rst b/specs/kilo/approved/new-libvirt-volume-driver-for-Huawei-SDSHypervisor.rst
 new file mode 100644
-index 0000000..17d926f
+index 0000000..9e6727c
 --- /dev/null
 +++ b/specs/kilo/approved/new-libvirt-volume-driver-for-Huawei-SDSHypervisor.rst
-@@ -0,0 +1,161 @@
+@@ -0,0 +1,201 @@
 +..
 + This work is licensed under a Creative Commons Attribution 3.0 Unported
 + License.
@@ -32,9 +32,10 @@ index 0000000..17d926f
 +New libvirt volume driver for Huawei SDSHypervisor
 +==================================================
 +
-+Include the URL of your launchpad blueprint:
-+
 +https://blueprints.launchpad.net/nova/+spec/huawei-sdshypervisor-volume-driver
++
++The purpose of this spec is to add a new libvirt volume driver for
++Huawei SDSHypervisor.
 +
 +Huawei SDSHypervisor is a storage virtualization solution, is a software
 +running in host, just focus on the data plane, the goal is to facilitate
@@ -45,15 +46,6 @@ index 0000000..17d926f
 +storage entity and hypervisor will provide virtual volume based user's QoS
 +and patch advance feature to these Lun such as snapshot, link clone, cache,
 +thin provision and so on.
-+
-+Huawei SDSHypervisor cinder driver spec has been merged into cinder-spec
-+in this url https://review.openstack.org/#/c/101688/
-+
-+Huawei SDSHypervisor cinder driver code is under review in this url
-+https://review.openstack.org/#/c/123394/
-+
-+The purpose of this spec is to add a new libvirt volume driver for
-+Huawei SDSHypervisor.
 +
 +
 +Problem description
@@ -85,6 +77,49 @@ index 0000000..17d926f
 +SDShypervisor data path uses private Key Value protocol for IO
 +and uses private CLI command to attach/detach volume, so we add a new
 +libvirt volume driver to realize attach/detach volume.
++
++The following diagram shows the command and data paths.
++
++::
++
++       +------------------+                +------------------+
++       |                  |                |                  |
++       |  Nova +          |    Rest API    |  Cinder +        |
++       |  Nova compute    | -------------- |  Cinder Volume   |
++       |  (qeumu-kvm)     |                |                  |
++       |                  |                |                  |
++       +------------------+                +------------------+
++
++               |                           |                  |
++               |                           |                  |
++               |                           |                  |
++               |                           |                  |
++
++   +-----------------------+ +----------------------+ +-----------------------+
++   |                       | |                      | |                       |
++   |                       | |                      | |                       |
++   |     SDShypervisor     | |     SDShypervisor    | | SDShypervisor Driver  |
++   | libvirt volume driver | |       connector      | |                       |
++   |                       | |                      | |                       |
++   +-----------------------+ +----------------------+ +-----------------------+
++
++                          |               |                |
++                          |               |                |
++                          |               |                |
++
++                         CLI             CLI         Socket API
++
++                          |               |                |
++                          |               |                |
++                          |               |                |
++
++                       +--------------------------------------+
++                       |                                      |
++                       |                                      |
++                       |            SDShypervisor             |
++                       |              storage                 |
++                       |                                      |
++                       +--------------------------------------+
 +
 +Add a new volume driver in nova/virt/libvirt/volume.py file to realize
 +attach/detach volume to qemu-kvm instance, and realize abstract volume dirver
@@ -160,6 +195,9 @@ index 0000000..17d926f
 +Dependencies
 +============
 +
++Huawei SDSHypervisor cinder driver blueprint has been approved in this url
++https://blueprints.launchpad.net/cinder/+spec/huawei-sdshypervisor-driver
++
 +Huawei SDSHypervisor cinder driver spec has been merged into cinder-spec
 +in this url https://review.openstack.org/#/c/101688/
 +
@@ -171,6 +209,8 @@ index 0000000..17d926f
 +=======
 +
 +Add unit test for Huawei SDShypervisor libvirt volume driver.
++Set a third-party CI to enforce tempest usecase related with Nova API
++and using Huawei SDSHypervisor as cinder volume backend.
 +
 +
 +Documentation Impact

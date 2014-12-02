@@ -1,0 +1,216 @@
+From 420febefca38423f1f0bb9e0ba6aa71cdf177407 Mon Sep 17 00:00:00 2001
+From: zhang john <zhang.john.vmthunder@gmail.com>
+Date: Thu, 16 Oct 2014 21:59:14 -0400
+Subject: [PATCH] We propose to realize cinder-based compute-side local
+ snapshot (called VMT-snapshot) to boot up multiple homogeneous VMs.This will
+ reduce boot-up data transfer and accelerate the boot-up process.
+
+Change-Id: I813e0594e0a1747abf3d3fd923c5eb12f97a296e
+Implements: blueprint local-snapshot-for-reducing-boot-up-data-transfer
+---
+ ...snapshot-for-reducing-boot-up-data-transfer.rst | 193 +++++++++++++++++++++
+ 1 file changed, 193 insertions(+)
+ create mode 100644 specs/kilo/approved/local-snapshot-for-reducing-boot-up-data-transfer.rst
+
+diff --git a/specs/kilo/approved/local-snapshot-for-reducing-boot-up-data-transfer.rst b/specs/kilo/approved/local-snapshot-for-reducing-boot-up-data-transfer.rst
+new file mode 100644
+index 0000000..43a10f4
+--- /dev/null
++++ b/specs/kilo/approved/local-snapshot-for-reducing-boot-up-data-transfer.rst
+@@ -0,0 +1,193 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++======================================================================
++Local snapshot for reducing data transfer when booting up multiple VMs
++======================================================================
++
++https://blueprints.launchpad.net/nova/+spec/local-snapshot-for-reducing-boot-
++up-data-transfer
++
++Nova supports to boot up virtual machines (VMs) through Cinder-based volume or
++snapshot. When multiple homogeneous VMs are booted, the boot-up data has to be
++transferred for each VM even if some of the VMs are on the same host. This is a
++waste of both bandwidth and time. To address this problem, we propose to
++realize cinder-based, compute-side local snapshot (called VMT-snapshot). By
++this means the boot-up data needs to be transferred only once for each host.
++
++Problem description
++===================
++
++Currently, Nova supports to boot up virtual machines (VMs) through Cinder-based
++volume or snapshot. When booting up a single VM, these approaches can reduce
++network load through on-demand transfer of boot-up data. However, when multiple
++homogeneous VMs are booted, the boot-up data has to be transferred seperately
++for each VM even if some of the VMs are on the same host, which results in
++unnecessarily high network load and long boot-up delay.
++
++Use Cases
++----------
++
++We propose a new type of snapshot (VMT-snapshot) to address the above mentioned
++problem. End users will be able to use VMT-snapshot to boot up multiple
++homogeneous VMs. This will reduce boot-up data transfer and accelerate the
++boot-up process.
++
++
++Project Priority
++-----------------
++
++undefined
++
++Proposed change
++===============
++
++We propose to realize cinder-based compute-side local snapshot (called
++VMT-snapshot) to boot up multiple homogeneous VMs. As depicted below, we add a
++(transparent) local cache layer between the remote original volume and the
++VMT-snapshots so that only one copy of boot-up data is needed on one host.
++
++````
++
++remote original volume --> local cache --> VMT-snapshot(s)
++
++````
++
++A compute node creates and uses VMT-snapshot in the following steps, the
++structure of which is depicted below.
++1. Attach the remote original volume (through iSCSI) as a read-only volume
++(VolumeO).
++2. Use local storage of the compute node as a (shared) cache of VolumeO.
++3. Create a writable diff volume (VolumeU) for each VM to store the VM’s
++private data.
++4. Create VMT-snapshot (using Linux device mapper module) upon the cache and
++writable volume.
++5. Boot up a VM on top of the snapshot.
++
++````
++
+++-----------------------------------------+
++|             Snapshot                    |
+++-----------------------------------------+
++
+++----------------------------+  +---------+
++|           Cache            |  | VolumeU |
+++----------------------------+  +---------+
++
+++----------------------------+
++|          VolumeO           |
+++----------------------------+
++
++````
++
++To construct the shared local cache of VolumeO (in the above step 2), the
++following changes are needed.
++* Add the cache module (e.g., bcache) support into nova virt drivers.
++* After the volume attached, create cache for it.
++* Use a database record to indicate whether a volume has cache.
++* Remove cache before detaching the volume.
++
++Besides the operations of VMT-snapshot, the modification to nova itself is
++light-weighted:
++1. creation: We add a driver class extends the original class
++"DriverVolumeBlockDevice" in file "nova/virt/block_device.py" to prepare the
++VMT-snapshot.
++2. deletion: We call the delete method of VMT-snapshot in file"nova/compute/
++manager.py'.
++
++Alternatives
++------------
++
++Direct image access:
++(https://blueprints.launchpad.net/nova/+spec/nova-image-zero-copy).
++This approach uses the direct_url of the Glance v2 API, such that the number of
++hops to transfer an image to a Nova-compute node is decreased. This approach
++cannot reduce the boot-up data transfer for multiple VMs on one host.
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++None
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++We modify Horizon to add an option "boot from VMT-snapshot" in the drop-down
++list. End users can choose "boot from VMT-snapshot" in the drop-down list in
++the dashboard and enter the number of VMs to boot up.
++
++Performance Impact
++------------------
++
++VMT-snapshot can significantly reduce data transfer when multiple homogeneous
++VMs are booted on the same host.
++
++Other deployer impact
++---------------------
++
++To use VMT-snapshot, configure "nova.conf" set "use_vmtsnapshot = true". This
++will enable the option "boot from VMT-snapshot" in the drop-down list in the
++dashboard.
++
++Developer impact
++----------------
++
++None
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee: John Zhang
++
++Work Items
++----------
++
++* Add VMT-snapshot package
++* Add new create/delete functions in nova
++* Test with Nova
++
++Dependencies
++============
++
++(https://wiki.openstack.org/wiki/Cinder/blueprints/multi-attach-volume)
++VMT-snapshot depends on the functionality of multi-attach volume, which allows
++the remote original volume to be attached to more than one host simultaneously.
++
++
++Testing
++=======
++
++In order to show the effectiveness we will add necessary tests into nova's test
++framework.
++* Add unit tests
++* Have CI running tempest for Kilo, which will validate this work.
++
++Documentation Impact
++====================
++
++We need to document how to create many homogeneous virtual machines though our
++new option.
++
++References
++==========
+-- 
+1.9.1
+

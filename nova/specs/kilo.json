@@ -12,8 +12,12 @@
         "Allow all printable characters in resource names": [
             "126696"
         ], 
+        "Expand support for volume filtering in the EC2 API": [
+            "104450"
+        ], 
         "Expose the lock status of an instance as a queryable item": [
-            "85928", "127139"
+            "85928", 
+            "127139"
         ], 
         "Implement instance tagging": [
             "127281"
@@ -23,6 +27,9 @@
         ], 
         "Implement the v2.1 API": [
             "126452"
+        ], 
+        "Improve the return codes for the instance lock APIs": [
+            "135506"
         ], 
         "Microversion support": [
             "127127"
@@ -43,6 +50,23 @@
         ], 
         "Enforce instance uuid uniqueness in the SQL database": [
             "128097"
+        ], 
+        "Implement a daemon version of rootwrap": [
+            "105404"
+        ], 
+        "Refactor ISCSIDriver to support other iSCSI transports besides TCP": [
+            "130721"
+        ], 
+        "Remove the assumption that there is a single endpoint for services that nova talks to": [
+            "132623"
+        ], 
+        "Validate database migrations and model'": [
+            "134984"
+        ]
+    }, 
+    "Cells": {
+        "Implement instance mapping": [
+            "135424"
         ]
     }, 
     "Containers Service": {
@@ -96,6 +120,11 @@
             "127054"
         ]
     }, 
+    "Hypervisor: ironic": {
+        "Pass through flavor capabilities to ironic": [
+            "136104"
+        ]
+    }, 
     "Hypervisor: libvirt": {
         "Add a new linuxbridge VIF type, macvtap": [
             "117465"
@@ -106,14 +135,23 @@
         "Add large page support": [
             "129608"
         ], 
+        "Add support for InfiniBand SR-IOV VIF Driver": [
+            "131729"
+        ], 
         "Add support for SMBFS as a image storage backend": [
             "103203"
         ], 
         "Allow scheduling of instances such that PCI passthrough devices are co-located on the same NUMA node as other instance resources": [
             "128344"
         ], 
+        "Consider PCI offload capabilities when scheduling instances": [
+            "135331"
+        ], 
         "Convert to using built in libvirt disk copy mechanisms for cold migrations on non-shared storage": [
             "126979"
+        ], 
+        "Derive hardware policy from libosinfo": [
+            "133945"
         ], 
         "Implement COW volumes via VMThunder to allow fast boot of large numbers of instances": [
             "128845", 
@@ -124,7 +162,8 @@
             "128813", 
             "129110", 
             "128810", 
-            "129116"
+            "129116", 
+            "137617"
         ], 
         "Implement configurable policy over where virtual CPUs should be placed on physical CPUs": [
             "129606"
@@ -139,14 +178,24 @@
         "Improve total network throughput by supporting virtio-net multiqueue": [
             "128825"
         ], 
+        "Improvements to the cinder integration for snapshots": [
+            "134517"
+        ], 
         "Quiesce instance disks during snapshot": [
-            "128112"
+            "128112", 
+            "131587"
         ], 
         "Support libvirt storage pools": [
             "126978"
         ], 
         "Support quiesce filesystems during snapshot": [
             "126966"
+        ], 
+        "Support using qemu's built in iSCSI initiator": [
+            "133048"
+        ], 
+        "Volume driver for Huawei SDSHypervisor": [
+            "130919"
         ]
     }, 
     "Instance features": {
@@ -155,17 +204,39 @@
         ], 
         "Allow portions of an instance's uuid to be configurable": [
             "130451"
-        ],
-	"Dynamic server groups": [
+        ], 
+        "Attempt to schedule cinder volumes \"close\" to instances": [
+            "130851", 
+            "131051"
+        ], 
+        "Dynamic server groups": [
             "130005"
+        ], 
+        "Enhance iSCSI volume multipath support": [
+            "134299"
+        ], 
+        "Implement support for a DRBD driver for Cinder block device access": [
+            "134153"
+        ], 
+        "Improve the performance of unshelf for those using shared storage for instance disks": [
+            "135387"
+        ], 
+        "Support iSCSI live migration for different iSCSI target": [
+            "132323"
         ]
     }, 
     "Internal": {
+        "Automate the documentation of the virtual machine state transition graph": [
+            "94835"
+        ], 
         "Move flavor data out of the system_metdata table in the SQL database": [
             "126620"
         ], 
         "Transition Nova to using the Glance v2 API": [
             "84887"
+        ], 
+        "Transition to using glanceclient instead of our own home grown wrapper": [
+            "133485"
         ]
     }, 
     "Internationalization": {
@@ -180,7 +251,11 @@
     }, 
     "Scheduler": {
         "Add an IOPS weigher": [
-            "127123"
+            "127123", 
+            "132614"
+        ], 
+        "Add instance count on the hypervisor as a weight": [
+            "127871"
         ], 
         "Allow limiting the flavors that can be scheduled on certain host aggregates": [
             "122530"
@@ -194,6 +269,9 @@
         "Decouple services and compute nodes in the SQL database": [
             "126895"
         ], 
+        "Enable adding new scheduler hints to already booted instances": [
+            "134746"
+        ], 
         "Implement resource objects in the resource tracker": [
             "127609"
         ], 
@@ -202,9 +280,9 @@
         ], 
         "Move select_destinations() to using a request object": [
             "127612"
-        ],
-        "Add instance count on the hypervisor as a weight": [
-            "127871"
+        ], 
+        "Persist scheduler hints": [
+            "88983"
         ]
     }, 
     "Security": {
