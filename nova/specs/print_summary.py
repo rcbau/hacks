@@ -14,6 +14,8 @@ with open('proposed-%s/__merged__' % release) as f:
     merged = json.loads(f.read())
 with open('proposed-%s/__abandoned__' % release) as f:
     abandoned = json.loads(f.read())
+with open('proposed-%s/__implemented__' % release) as f:
+    implemented = json.loads(f.read())
 
 for topic in sorted(j):
     if topic == '__ignore__':
@@ -36,6 +38,8 @@ for topic in sorted(j):
                 attrs.append('approved')
             if review in abandoned:
                 attrs.append('abandoned')
+            if review in implemented:
+                attrs.append('implemented')
             if attrs:
                 attr_str = ' <b>(%s)</b>' % ', '.join(attrs)
 

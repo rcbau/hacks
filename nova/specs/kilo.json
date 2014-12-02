@@ -12,18 +12,12 @@
         "Allow all printable characters in resource names": [
             "126696"
         ], 
-        "Expand support for volume filtering in the EC2 API": [
-            "104450"
-        ], 
         "Expose the lock status of an instance as a queryable item": [
             "85928", 
             "127139"
         ], 
         "Implement instance tagging": [
             "127281"
-        ], 
-        "Implement tags for volumes and snapshots with the EC2 API": [
-            "126553"
         ], 
         "Implement the v2.1 API": [
             "126452"
@@ -37,14 +31,34 @@
         "Move policy validation to just the API layer": [
             "127160"
         ], 
+        "Nova Server Count API Extension": [
+            "134279"
+        ], 
         "Provide a policy statement on the goals of our API policies": [
             "128560"
+        ], 
+        "Sorting enhancements": [
+            "131868"
+        ], 
+        "Support JSON-Home for API extension discovery": [
+            "130715"
         ], 
         "Support X509 keypairs": [
             "105034"
         ]
     }, 
+    "API (EC2)": {
+        "Expand support for volume filtering in the EC2 API": [
+            "104450"
+        ], 
+        "Implement tags for volumes and snapshots with the EC2 API": [
+            "126553"
+        ]
+    }, 
     "Administrative": {
+        "Check that a service isn't running before deleting it": [
+            "131633"
+        ], 
         "Enable the nova metadata cache to be a shared resource to improve the hit rate": [
             "126705"
         ], 
@@ -54,24 +68,41 @@
         "Implement a daemon version of rootwrap": [
             "105404"
         ], 
-        "Refactor ISCSIDriver to support other iSCSI transports besides TCP": [
-            "130721"
+        "Log request id mappings": [
+            "132819"
+        ], 
+        "Monitor the health of hypervisor hosts": [
+            "137768"
         ], 
         "Remove the assumption that there is a single endpoint for services that nova talks to": [
             "132623"
-        ], 
-        "Validate database migrations and model'": [
-            "134984"
         ]
     }, 
     "Cells": {
+        "Create an instance mapping database": [
+            "135644"
+        ], 
         "Implement instance mapping": [
             "135424"
+        ], 
+        "Populate the instance mapping database": [
+            "136490"
         ]
     }, 
     "Containers Service": {
         "Initial specification": [
             "114044"
+        ]
+    }, 
+    "Database": {
+        "Nova db purge utility": [
+            "132656"
+        ], 
+        "Online schema change options": [
+            "102545"
+        ], 
+        "Validate database migrations and model'": [
+            "134984"
         ]
     }, 
     "Hypervisor: Docker": {
@@ -126,23 +157,20 @@
         ]
     }, 
     "Hypervisor: libvirt": {
-        "Add a new linuxbridge VIF type, macvtap": [
-            "117465"
-        ], 
         "Add finetunable configuration settings for virtio-scsi": [
             "103797"
         ], 
         "Add large page support": [
             "129608"
         ], 
-        "Add support for InfiniBand SR-IOV VIF Driver": [
-            "131729"
-        ], 
         "Add support for SMBFS as a image storage backend": [
             "103203"
         ], 
         "Allow scheduling of instances such that PCI passthrough devices are co-located on the same NUMA node as other instance resources": [
             "128344"
+        ], 
+        "Allow specification of the device boot order for instances": [
+            "133254"
         ], 
         "Consider PCI offload capabilities when scheduling instances": [
             "135331"
@@ -183,10 +211,20 @@
         ], 
         "Quiesce instance disks during snapshot": [
             "128112", 
-            "131587"
+            "131587", 
+            "131597"
+        ], 
+        "Support StorPool as a storage backend": [
+            "137830"
+        ], 
+        "Support for live block device IO tuning": [
+            "136704"
         ], 
         "Support libvirt storage pools": [
             "126978"
+        ], 
+        "Support live migration with macvtap SR-IOV": [
+            "136077"
         ], 
         "Support quiesce filesystems during snapshot": [
             "126966"
@@ -199,38 +237,43 @@
         ]
     }, 
     "Instance features": {
-        "Allow direct access to LVM volumes if supported by Cinder": [
-            "127318"
-        ], 
         "Allow portions of an instance's uuid to be configurable": [
             "130451"
         ], 
         "Attempt to schedule cinder volumes \"close\" to instances": [
             "130851", 
-            "131051"
+            "131051", 
+            "131050", 
+            "131151"
         ], 
         "Dynamic server groups": [
             "130005"
         ], 
-        "Enhance iSCSI volume multipath support": [
-            "134299"
-        ], 
-        "Implement support for a DRBD driver for Cinder block device access": [
-            "134153"
-        ], 
-        "Improve the performance of unshelf for those using shared storage for instance disks": [
+        "Improve the performance of unshelve for those using shared storage for instance disks": [
             "135387"
-        ], 
-        "Support iSCSI live migration for different iSCSI target": [
-            "132323"
         ]
     }, 
     "Internal": {
+        "A lock-free quota implementation": [
+            "135296"
+        ], 
         "Automate the documentation of the virtual machine state transition graph": [
             "94835"
         ], 
-        "Move flavor data out of the system_metdata table in the SQL database": [
+        "Flatten Aggregate Metadata in the DB": [
+            "134573"
+        ], 
+        "Flatten Instance Metadata in the DB": [
+            "134945"
+        ], 
+        "Implement a new code coverage API extension": [
+            "130855"
+        ], 
+        "Move flavor data out of the system_metadata table in the SQL database": [
             "126620"
+        ], 
+        "Move to polling for cinder operations": [
+            "135367"
         ], 
         "Transition Nova to using the Glance v2 API": [
             "84887"
@@ -244,12 +287,41 @@
             "126717"
         ]
     }, 
+    "Networking": {
+        "Add a new linuxbridge VIF type, macvtap": [
+            "117465"
+        ], 
+        "Add a plugin mechanism for VIF drivers": [
+            "136827"
+        ], 
+        "Add support for InfiniBand SR-IOV VIF Driver": [
+            "131729"
+        ], 
+        "Neutron DNS Using Nova Hostname": [
+            "90150"
+        ], 
+        "New VIF type to allow routing VM data instead of bridging it": [
+            "130732"
+        ], 
+        "Nova Plugin for OpenContrail": [
+            "126446"
+        ], 
+        "Refactor of the Neutron network adapter to be more maintainable": [
+            "131413"
+        ], 
+        "Use the Nova hostname in Neutron DNS": [
+            "137669"
+        ]
+    }, 
     "Performance": {
         "Dynamically alter the interval nova polls components at based on load and expected time for an operation to complete": [
             "122705"
         ]
     }, 
     "Scheduler": {
+        "Add a filter to take into account hypervisor type and version when scheduling": [
+            "137714"
+        ], 
         "Add an IOPS weigher": [
             "127123", 
             "132614"
@@ -259,6 +331,12 @@
         ], 
         "Allow limiting the flavors that can be scheduled on certain host aggregates": [
             "122530"
+        ], 
+        "Allow the remove of servers from server groups": [
+            "136487"
+        ], 
+        "Convert get_available_resources to use an object instead of dict": [
+            "133728"
         ], 
         "Convert the resource tracker to objects": [
             "128964"
@@ -272,17 +350,32 @@
         "Enable adding new scheduler hints to already booted instances": [
             "134746"
         ], 
+        "Fix the race conditions when migration with server-group": [
+            "135527"
+        ], 
         "Implement resource objects in the resource tracker": [
             "127609"
         ], 
+        "Improve the ComputeCapabilities filter": [
+            "133534"
+        ], 
         "Isolate the scheduler's use of the Nova SQL database": [
             "89893"
+        ], 
+        "Let schedulers reuse filter and weigher objects": [
+            "134506"
         ], 
         "Move select_destinations() to using a request object": [
             "127612"
         ], 
         "Persist scheduler hints": [
             "88983"
+        ], 
+        "Stop direct lookup for host aggregates in the Nova database": [
+            "132065"
+        ], 
+        "Stop direct lookup for instance groups in the Nova database": [
+            "131553"
         ]
     }, 
     "Security": {
@@ -293,12 +386,37 @@
             "92507"
         ]
     }, 
+    "Storage": {
+        "Allow direct access to LVM volumes if supported by Cinder": [
+            "127318"
+        ], 
+        "Enhance iSCSI volume multipath support": [
+            "134299"
+        ], 
+        "Failover to alternative iSCSI portals on login failure": [
+            "137468"
+        ], 
+        "Implement support for a DRBD driver for Cinder block device access": [
+            "134153"
+        ], 
+        "Refactor ISCSIDriver to support other iSCSI transports besides TCP": [
+            "130721"
+        ], 
+        "StorPool volume attachment support": [
+            "115716"
+        ], 
+        "Support iSCSI live migration for different iSCSI target": [
+            "132323"
+        ]
+    }, 
     "__ignore__": {
         "__ignore__": [
             "130482", 
             "129000", 
             "128824", 
-            "128304"
+            "128304", 
+            "133658", 
+            "131740"
         ]
     }, 
     "__previously_approved__": [
@@ -317,6 +435,9 @@
         "128097", 
         "128344", 
         "128964", 
-        "128600"
+        "128600", 
+        "134279", 
+        "131868", 
+        "132819"
     ]
 }
