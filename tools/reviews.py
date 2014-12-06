@@ -42,6 +42,19 @@ def author_reviews(author, reviewer=None):
     return get_reviews(cmd, _filter, author)
 
 
+def reviewed_by(component, reviewer, age='60d'):
+    cmd = ('ssh review.openstack.org gerrit query --format json project:%s '
+           '--patch-sets --all-approvals reviewer:%s age:%s limit:10000'
+           %(component, reviewer, age))
+
+    def _filter(packet, value):
+        if packet.get('project') == value:
+            return True
+        return False
+        
+    return get_reviews(cmd, _filter, component)
+
+
 def get_reviews(cmd, filt, value):
     stdout = utils.runcmd(cmd)
 
