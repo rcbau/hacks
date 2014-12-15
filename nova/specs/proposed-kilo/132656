@@ -1,4 +1,4 @@
-From 4f7fb7a31ec6f8226c8b8b992d2b06ff96bfe6fe Mon Sep 17 00:00:00 2001
+From 1e91e356338cebd9f6f9a02867b6e0c9c6af529e Mon Sep 17 00:00:00 2001
 From: Abel Lopez <abelopez@cisco.com>
 Date: Tue, 4 Nov 2014 12:16:28 +0100
 Subject: [PATCH] Database purge deleted spec
@@ -9,16 +9,16 @@ archive_deleted_rows functionality.
 
 Change-Id: Icd8fa42baa9d9c78677d61b650e6e8c6460e1e84
 ---
- specs/kilo/approved/database-purge.rst | 150 +++++++++++++++++++++++++++++++++
- 1 file changed, 150 insertions(+)
+ specs/kilo/approved/database-purge.rst | 155 +++++++++++++++++++++++++++++++++
+ 1 file changed, 155 insertions(+)
  create mode 100644 specs/kilo/approved/database-purge.rst
 
 diff --git a/specs/kilo/approved/database-purge.rst b/specs/kilo/approved/database-purge.rst
 new file mode 100644
-index 0000000..c1cf220
+index 0000000..68a84ab
 --- /dev/null
 +++ b/specs/kilo/approved/database-purge.rst
-@@ -0,0 +1,150 @@
+@@ -0,0 +1,155 @@
 +..
 + This work is licensed under a Creative Commons Attribution 3.0 Unported
 + License.
@@ -70,6 +70,8 @@ index 0000000..c1cf220
 +This will take a number of days argument, and use that for a data_sub match
 +Like:
 +delete from instances where deleted != 0 and deleted_at > data_sub(NOW()...)
++We can mitigate foreign key constraints by purging tables with FKs last.
++Any other problems raise an exception which we can catch and log.
 +
 +Alternatives
 +------------
@@ -109,6 +111,9 @@ index 0000000..c1cf220
 +This has the potential to improve performance for very large databases.
 +Very long-lived installations can suffer from inefficient operations on
 +large tables.
++
++Very large installations may notice a brief impact during the initial pruge,
++which may delete several thousand rows.
 +
 +Other deployer impact
 +---------------------

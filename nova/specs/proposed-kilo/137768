@@ -1,4 +1,4 @@
-From d3247489c947881cefe45d1d63ecbb1bc54bc2c1 Mon Sep 17 00:00:00 2001
+From aecab484906d0bda8b54ae1362e6428511c5a2fb Mon Sep 17 00:00:00 2001
 From: Roman Dobosz <roman.dobosz@intel.com>
 Date: Fri, 28 Nov 2014 12:03:09 +0100
 Subject: [PATCH] Propose for new way of check for the host condition.
@@ -6,18 +6,20 @@ Subject: [PATCH] Propose for new way of check for the host condition.
 Instead of compute service existence check, new type of check for host state
 is introduced.
 
+APIImpact
+
 Change-Id: I3a3b999233d6220862f07f7e780ef0eef73b3599
 ---
- specs/kilo/host-health-monitoring.rst | 177 ++++++++++++++++++++++++++++++++++
- 1 file changed, 177 insertions(+)
- create mode 100644 specs/kilo/host-health-monitoring.rst
+ specs/kilo/approved/host-health-monitoring.rst | 189 +++++++++++++++++++++++++
+ 1 file changed, 189 insertions(+)
+ create mode 100644 specs/kilo/approved/host-health-monitoring.rst
 
-diff --git a/specs/kilo/host-health-monitoring.rst b/specs/kilo/host-health-monitoring.rst
+diff --git a/specs/kilo/approved/host-health-monitoring.rst b/specs/kilo/approved/host-health-monitoring.rst
 new file mode 100644
-index 0000000..ac63f65
+index 0000000..899265f
 --- /dev/null
-+++ b/specs/kilo/host-health-monitoring.rst
-@@ -0,0 +1,177 @@
++++ b/specs/kilo/approved/host-health-monitoring.rst
+@@ -0,0 +1,189 @@
 +..
 + This work is licensed under a Creative Commons Attribution 3.0 Unported
 + License.
@@ -28,28 +30,35 @@ index 0000000..ac63f65
 +Host health monitoring
 +======================
 +
-+https://blueprints.launchpad.net/nova/+spec/host-health-monitoring/+edit
++https://blueprints.launchpad.net/nova/+spec/host-health-monitoring
 +
 +Provide check for the host condition, instead of compute service check.
 +
 +Problem description
 +===================
 +
-+For the time being, there is no way for distinguish between two really different
++For the time being, there is no way to distinguish between two really different
 +things: host status and nova-compute status, which is deployed on the host.
 +
-+Also, provided host information by API and commands, is service centric - i.e.
++Also, provided host information by API and commands, are service centric - i.e.
 +``nova host-list`` is just another wrapper for ``nova service-list`` with
 +different format (in fact ``service-list`` is superset to ``host-list``). Seems
 +like nova is treating *host* term equally to *compute-host*, which might be
-+misleading. Such situation can be error prone for the case where there is a need
-+to perform host evacuation.
++misleading. Such situation can be error prone for the case where there is a
++need to perform host evacuation.
 +
 +Use Cases
-+----------
++---------
 +
-+As a End User, I want to get clear information about host state, so that I can
-+perform certain steps like evacuation.
++As an End User, I want to get clear information about host state separately
++from certain service state. With such knowledge I can than perform appropriate
++actions, without it I can fail the evacuation like in the scenario described in
++`nova evacuate --on-shared-storage doesn't check actual vm state`_ bug.
++
++Project Priority
++----------------
++
++Bugs
 +
 +Proposed change
 +===============
@@ -62,15 +71,15 @@ index 0000000..ac63f65
 +up. If all of the servicegroups nodes doesn't contain the provided host name,
 +means the host is down.
 +
-+Appropriate logic will go into servicegroup API, as new method to get host state
-+information, and REST API will be affected as well.
++Appropriate logic will go into servicegroup API, as new method to get host
++state information, and REST API will be affected as well.
 +
 +Alternatives
 +------------
 +
-+The other way to get th information is to introduce new node ``hosts`` within
-+servicegroup and append the hostname under it - so there would be only one place
-+to look for the host state. Drawback of that approach would be, that
++The other way to get the information is to introduce new node ``hosts`` within
++servicegroup and append the hostname under it - so there would be only one
++place to look for the host state. Drawback of that approach would be, that
 +implementation will affect servicegroup driver implementations, and complicate
 +``join()`` method for all of them.
 +
@@ -85,8 +94,10 @@ index 0000000..ac63f65
 +Modify ``HostController`` method ``index`` to include also information about
 +hosts state.
 +
-+So the changed output may looks like this:
-+::
++
++
++So the call to ``/v2/{tenant-id}/os-hosts{?service,zone}`` would have changed
++output which may looks like this::
 +
 +   GET /
 +   {
@@ -175,9 +186,9 @@ index 0000000..ac63f65
 +Testing
 +=======
 +
-+* Expand unit tests for the servicegroup for covering new method
++* Expand unit tests for the servicegroup covering new method
 +* Expand unit tests for the for hosts if necessary
-+
++*
 +
 +Documentation Impact
 +====================
@@ -195,6 +206,9 @@ index 0000000..ac63f65
 +At the summit, issues regarding host monitoring was discussed:
 +
 +* https://etherpad.openstack.org/p/kilo-crossproject-ha-integration
++
++.. _nova evacuate --on-shared-storage doesn't check actual vm state:
++   https://bugs.launchpad.net/nova/+bug/1379292
 -- 
 1.9.1
 

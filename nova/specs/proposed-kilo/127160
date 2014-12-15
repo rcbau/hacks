@@ -1,4 +1,4 @@
-From 609e75cceda8e2e080ab90a854269dcf76523bf6 Mon Sep 17 00:00:00 2001
+From 127d4f7fa5a32adaf26d260c787d15be9c22de9d Mon Sep 17 00:00:00 2001
 From: He Jie Xu <xuhj@linux.vnet.ibm.com>
 Date: Thu, 9 Oct 2014 13:12:23 +0800
 Subject: [PATCH] Implement policy should be enforced at REST API layer
@@ -10,16 +10,16 @@ Part of blueprint v3-api-policy
 
 Change-Id: I5bcb24346062219adae49ddafb5c1cd69b8e24b3
 ---
- specs/kilo/approved/nova-api-policy.rst | 283 ++++++++++++++++++++++++++++++++
- 1 file changed, 283 insertions(+)
+ specs/kilo/approved/nova-api-policy.rst | 301 ++++++++++++++++++++++++++++++++
+ 1 file changed, 301 insertions(+)
  create mode 100644 specs/kilo/approved/nova-api-policy.rst
 
 diff --git a/specs/kilo/approved/nova-api-policy.rst b/specs/kilo/approved/nova-api-policy.rst
 new file mode 100644
-index 0000000..6862cb8
+index 0000000..e519e80
 --- /dev/null
 +++ b/specs/kilo/approved/nova-api-policy.rst
-@@ -0,0 +1,283 @@
+@@ -0,0 +1,301 @@
 +..
 + This work is licensed under a Creative Commons Attribution 3.0 Unported
 + License.
@@ -106,10 +106,7 @@ index 0000000..6862cb8
 +Project Priority
 +----------------
 +
-+The kilo priorities list is currently not defined. However under the
-+currently proposed list of priorities it would fall under "User
-+Experience" as it significantly increases the ability for us to
-+improve the Nova API.
++None
 +
 +Proposed change
 +===============
@@ -118,7 +115,7 @@ index 0000000..6862cb8
 +different internal APIs, like compute API, DB API or other internal API, the
 +REST API layer is the place to enforce policy consistently.
 +
-+* Remove policy check from compute API layer
++* Remove policy check from compute API layer for EC2 and Nova V2.1 API
 +
 +  * For V2.1 API, there will only be policy checks in the nova REST API
 +    layer. There will be a parameter 'skip_policy_check' for compute API to
@@ -146,9 +143,11 @@ index 0000000..6862cb8
 +  * For the v2.1 API, we remove all the hard-code permission check from DB
 +    layer. And we should ensure we have policy check at REST API layer.
 +  * For the v2 API, we remove all the hard-code permission check from DB
-+    layer. And with UpgradeImpact flags that notify deployer to update their
-+    development configuration.
-+  * Update policy configuration file to match the existing behavior.
++    layer, and move the hard-code permission checks into REST API layer to
++    keep back-compatibility. V2 API will removed once V2.1 ready, this
++    can reduce the risk we break something existed.
++  * Update policy configuration file to match the existing behavior for
++    EC2 and V2.1 API.
 +
 +* Correct the policy rule name specification for the v2.1 api and ec2 api
 +
@@ -217,7 +216,19 @@ index 0000000..6862cb8
 +
 +Every effort will be made to keep all existing policy permission
 +settings backwards compatible for v2 API, except the db hard-code permission
-+checks.
++checks. Because v2 API will be removed once v2.1 API is ready.
++
++As v2.1 API isn't ready yet, there isn't any user for v2.1 for now, so we
++won't worry about any change will affect the user.
++
++For EC2 API, it will affect the user, need user update their configuration
++files. Because EC2 API is different with Nova V2 API. EC2 API won't be
++removed forever, if we keep the back-compatibility for EC2 API also, that
++means we can't remove the old compute api layer policy checks forever. That
++really confuse for developer maintain the old code. And EC2 API is really
++small than Nova API, it's about 29 APIs without volume and image related API
++(Those policy will be enforced by cinder and glance). It will affect user
++less.
 +
 +The extension will be affect by remove db layer hard-code permission checks
 +as below:
@@ -257,7 +268,7 @@ index 0000000..6862cb8
 +-----------
 +
 +Primary assignee:
-+  Alex Xu <xuhj@linux.vnet.ibm.com>
++  Alex Xu <hejie.xu@intel.com>
 +
 +Other contributors:
 +  Ji Chen <jichenjc@cn.ibm.com>
@@ -266,11 +277,18 @@ index 0000000..6862cb8
 +
 +Work Items
 +----------
-+* Move compute API layer policy checking into REST API layer.
-+* Remove the db layer permission checking.
-+* Move nova network API layer policy checking into REST API layer.
-+* Remove db layer policy checking for nova network related db API.
-+* Rename all the policy rules.
++
++* Add parameter to compute and network API to skip policy checks.
++* Improve the EC2 API policy enforcement
++  * Remove compute API and network API layer policy enforcement
++  * Rename EC2 API rules
++  * Move EC2 API rules into separated file.
++* Improve the V2.1 API policy enforcement
++  * Remove compute API and network API layer policy enforcement
++  * Rename V2.1 API rules
++  * Move V2.1 API rules into separated file.
++* Remove db layer hard-code permission checks.
++* Move V2 API policy out of policy.conf
 +
 +Working list:
 +https://etherpad.openstack.org/p/apipolicycheck

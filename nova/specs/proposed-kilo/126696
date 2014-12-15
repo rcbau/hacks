@@ -1,4 +1,4 @@
-From cec33be15e6203b8a367e535927f79ab3c14bbb5 Mon Sep 17 00:00:00 2001
+From 72b71a7ca9bd77e9797fe88fbd4dff1658f9aa89 Mon Sep 17 00:00:00 2001
 From: "Chris St. Pierre" <stpierre@metacloud.com>
 Date: Tue, 7 Oct 2014 14:29:05 -0500
 Subject: [PATCH] Relax resource name restrictions
@@ -9,16 +9,16 @@ place for resource (instance, flavor, etc.) names.
 APIImpact
 Change-Id: Idd6c56d1ba131f7ac6abaecbf2afc68483b320c8
 ---
- .../approved/relax-resource-name-restrictions.rst  | 160 +++++++++++++++++++++
- 1 file changed, 160 insertions(+)
+ .../approved/relax-resource-name-restrictions.rst  | 184 +++++++++++++++++++++
+ 1 file changed, 184 insertions(+)
  create mode 100644 specs/kilo/approved/relax-resource-name-restrictions.rst
 
 diff --git a/specs/kilo/approved/relax-resource-name-restrictions.rst b/specs/kilo/approved/relax-resource-name-restrictions.rst
 new file mode 100644
-index 0000000..6a346f3
+index 0000000..2df5729
 --- /dev/null
 +++ b/specs/kilo/approved/relax-resource-name-restrictions.rst
-@@ -0,0 +1,160 @@
+@@ -0,0 +1,184 @@
 +..
 + This work is licensed under a Creative Commons Attribution 3.0 Unported
 + License.
@@ -69,6 +69,10 @@ index 0000000..6a346f3
 +  and format characters) and ``Z`` (Separator) categories; and
 +* Characters in the ``Zs`` (Separator, Space) category.
 +
++Fields that have legitimate reasons to be restricted can still impose
++further restrictions. For instance, hostnames can be restricted per
++RFC 1178, which is a strict subset of the restrictions described above.
++
 +Alternatives
 +------------
 +
@@ -85,7 +89,8 @@ index 0000000..6a346f3
 +``nova.api.validation.parameter_types``, the primary module that
 +implements the naming restrictions, defines all of its types as
 +module-level variables; making these configurable would be
-+unnecessarily difficult and fraught.
++unnecessarily difficult and fraught. It could also confuse users
++moving between environments.
 +
 +Moreover, no interest has been expressed in using full four-byte
 +Unicode support; if someone would like to implement that later,
@@ -124,7 +129,21 @@ index 0000000..6a346f3
 +Performance Impact
 +------------------
 +
-+None.
++Minimal. Compiled regexes, even large ones, are embarrassingly
++efficient. The actual performance penalty incurred by this change
++varies by the length of the name used; longer names incur less of a
++penalty than shorter names. Using a random distribution of both valid
++and invalid names between five and two hundred characters long, I
++found that the new approach is approximately 16% slower than the old
++approach.
++
++While 16% may seem like a significant performance impact, it's 16% of
++an operation that is currently measured in microseconds on modern
++hardware. To put the performance impact in pragmatic terms, someone
++would have to create in the neighborhood of fifty million new entities
++(say, fifty million new flavors) to even reach 10 seconds of
++performance penalty due to this change (assuming Nova is running on my
++laptop, which is not recommended in production).
 +
 +Other deployer impact
 +---------------------
@@ -150,8 +169,11 @@ index 0000000..6a346f3
 +
 +#. Create a new name validation regex that allows all printable
 +   three-byte Unicode characters and horizontal spaces.
-+#. Make all JSON Schema documents use the new regex for resource name
-+   validation.
++#. Make all JSON Schema documents use
++   ``nova.api.validation.parameter_types.hostname`` for validating all
++   server name fields.
++#. Make all JSON Schema documents use the new regex for validating all
++   other resource names.
 +
 +Dependencies
 +============
@@ -166,6 +188,8 @@ index 0000000..6a346f3
 +No new tempest tests are required; existing tempest tests that test
 +resource name validation will need to be modified to include names
 +that are now invalid under the new, relaxed, restrictions.
++
++Unit tests will, of course, be added as well.
 +
 +Documentation Impact
 +====================

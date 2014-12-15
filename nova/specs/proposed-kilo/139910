@@ -1,0 +1,220 @@
+From f1325b25b86ae5f04f1ad5c20505f014022485ab Mon Sep 17 00:00:00 2001
+From: ShaoHe Feng <shaohe.feng@intel.com>
+Date: Mon, 8 Dec 2014 17:31:36 +0800
+Subject: [PATCH] Attach/detach SR-IOV interface
+
+This spec describes the blueprint sriov-interface-attach-detach
+
+Change-Id: Ie35558cfc6a8a49df3ec230c18b35a54940d2698
+---
+ .../approved/sriov-interface-attach-detach.rst     | 198 +++++++++++++++++++++
+ 1 file changed, 198 insertions(+)
+ create mode 100644 specs/kilo/approved/sriov-interface-attach-detach.rst
+
+diff --git a/specs/kilo/approved/sriov-interface-attach-detach.rst b/specs/kilo/approved/sriov-interface-attach-detach.rst
+new file mode 100644
+index 0000000..53093a0
+--- /dev/null
++++ b/specs/kilo/approved/sriov-interface-attach-detach.rst
+@@ -0,0 +1,198 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++==========================================
++support sriov interface attach/detach
++==========================================
++
++Include the URL of your launchpad blueprint:
++
++https://blueprints.launchpad.net/nova/+spec/sriov-interface-attach-detach
++
++SR-IOV makes it possible for a VM to directly send packets to the VIC (virtual
++interface card) without having the hypervisor involved.
++Normal network adapter hotplug [NETWORK_ADAPTER_HOTPLUG]_ is supported in Feb,
++2014. And in Juno release, the libvirt driver is enhanced to support SR-IOV
++networking by [LIBVIRT_SUPPORT_SR-IOV]_. Also [PCI_PASSTHROUGH_SRIOV]_ enables
++a nova instance to be booted up with neutron SRIOV ports.
++Now we can support attach or detach SR-IOV interfaces to a living VM if host
++supports SR-IOV base on the above patches.
++
++Problem description
++===================
++
++Right now it is possible to attach/detach a normal interface for a living VM
++by nova attach_interface/detach_interface API.
++However, it's not possible to request access to virtual network dynamicly via
++SR-IOV NICs at present.
++
++There are two variants in connecting a SR-IOV port to its corresponding VF.
++A SR-IOV port may be directly connected to its VF [DIRECT_SR-IOV]_. Or it may
++be connected with a macvtap device that resides on the host, which is then
++connected to the corresponding VF [MACVTAP_SR-IOV]_. Both connecting types have
++been supported by [SUPPORT_SR-IOV_NETWORKING]_.
++
++For example we can create a directly SR-IOV port by:
++  neutron port-create <net-id> --binding:vnic-type direct
++
++Then a user can do the following to attach interface to a VM:
++
++  nova interface-attach [--port-id <port_id>] [--net-id <net_id>]
++                        [--fixed-ip <fixed_ip>] <server>
++
++However currently the nova do not know the SR-IOV profile when attach it,
++so the Nova interface-attach API will not be enhanced to support SR-IOV
++
++
++Use Cases
++----------
++* As an user, I want to request access to a new virtual network via SR-IOV
++  NICs, if host support it.
++* As an user, I want to separate a SR-IOV NICs from a network.
++
++Project Priority
++-----------------
++None
++
++Proposed change
++===============
++
++attach_interface
++----------------
++For SR-IOV networking, special libvirt xml is required. So a PCI request id is
++need to initialy created to get a SR-IOV information.
++We can check the "physical_network" tag for the attached port.
++And we will create a normal interface without "physical_network".
++Or We need to correlate the allocated device with the requested network (NIC)
++[SUPPORT_SR-IOV_NETWORKING]_ before the libvirt dirver attach, in this way we
++can attach a SR-IOV port correctly.
++
++Note that for SR-IOV networking, a pre-defined tag "physical_network" is aready
++used to define the physical network that the devices are attached to, refer to
++[ENHANCE_PCI_WHITELIST]_.
++
++detach_interface
++----------------
++We need to refresh PCI stats after detach a SR-IOV port.
++
++
++Alternatives
++------------
++
++None
++
++
++Data model impact
++-----------------
++
++None
++
++
++REST API impact
++---------------
++None
++
++
++Security impact
++---------------
++
++None
++
++
++Notifications impact
++--------------------
++
++None
++
++
++Other end user impact
++---------------------
++
++None
++
++
++Performance Impact
++------------------
++
++The physical network to which a port is connected needs to be retrieved from
++neutron, which requires additional calls to neutron. Particularly, nova will
++call neutron *show_port* to check the port's *vnic_type*. If the *vnic_type* is
++either *direct* or *macvtap*, it will call neutron *show_network* to retrieve
++the associated physical network. As a consequence, the number of calls to
++neutron will be slightly increased when *port-id* is specified in the --nic
++option in nova boot.
++
++
++Other deployer impact
++---------------------
++
++No known deployer impact other than configuring the PCI whitelist for SR-IOV
++networking devices.
++
++
++Developer impact
++----------------
++
++None
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  <shaohefeng>
++
++
++Work Items
++----------
++
++* nova compute.
++
++
++Dependencies
++============
++
++None
++
++
++Testing
++=======
++
++Both unit and tempest tests need to be created to ensure proper functioning of
++SR-IOV networking. For tempest testing, given the nature of SR-IOV depending on
++hardware, it may require vendor support and use of proper neutron ML2 mechanism
++drivers. Cisco Neutron CI and Mellanox External Testing need to be enhanced in
++support of SR-IOV tempest testing.
++
++
++Documentation Impact
++====================
++
++* a user guide/wiki on how to use SR-IOV networking in openstack
++
++
++References
++==========
++
++.. [LIBVIRT_SUPPORT_SR-IOV] `Support SR-IOV networking in libvirt
++  <https://review.openstack.org/#/c/107466/>`_
++.. [PCI_PASSTHROUGH_SRIOV] `enable a nova instance to be booted up with
++  neutron SRIOV ports
++  <https://blueprints.launchpad.net/nova/+spec/pci-passthrough-sriov>`_
++.. [NETWORK_ADAPTER_HOTPLUG] `support network adapter hotplug
++  <https://blueprints.launchpad.net/nova/+spec/network-adapter-hotplug>`_
++.. [DIRECT_SR-IOV] `PCI network device passthrough
++  <http://www.libvirt.org/formatdomain.html#elementsNICSHostdev>`_
++.. [MACVTAP_SR-IOV] `Direct attachment to physical interface
++  <http://www.libvirt.org/formatdomain.html#elementsNICSDirect>`_
++.. [SUPPORT_SR-IOV_NETWORKING] `Support SR-IOV networking in nova compute api
++  and nova neutronv2
++  <https://review.openstack.org/#/c/98828/>`_
++.. [ENHANCE_PCI_WHITELIST] `Enhance PCI whitelist
++  <https://review.openstack.org/#/c/99043/>`_
+-- 
+1.9.1
+

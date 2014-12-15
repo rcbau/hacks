@@ -1,4 +1,4 @@
-From 5cc6ee24938ea92ed8c5ee87df5ddadda466467e Mon Sep 17 00:00:00 2001
+From ce03343c2b0680c3fa79b9926100537f5e199eea Mon Sep 17 00:00:00 2001
 From: Jay Pipes <jaypipes@gmail.com>
 Date: Fri, 10 Oct 2014 14:13:24 -0400
 Subject: [PATCH] Change select_destinations() to use request spec

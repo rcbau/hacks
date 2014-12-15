@@ -1,0 +1,199 @@
+From a74fb3b717e8c62b2a268e12d8f6c7dda465d597 Mon Sep 17 00:00:00 2001
+From: Brent Eagles <beagles@redhat.com>
+Date: Thu, 11 Dec 2014 15:23:21 -0330
+Subject: [PATCH] Refactor allocate_for_instance
+
+Split allocate_for_instance into logical function groups, make better
+use of the neutron API by coalescing multiple calls into one where
+supported and support asynchronous operations where appropriate.
+
+Change-Id: I32aee20c0bab86242a74ee01f81921a77683565b
+---
+ .../approved/refactor-allocate-for-instance.rst    | 175 +++++++++++++++++++++
+ 1 file changed, 175 insertions(+)
+ create mode 100644 specs/kilo/approved/refactor-allocate-for-instance.rst
+
+diff --git a/specs/kilo/approved/refactor-allocate-for-instance.rst b/specs/kilo/approved/refactor-allocate-for-instance.rst
+new file mode 100644
+index 0000000..4cfce02
+--- /dev/null
++++ b/specs/kilo/approved/refactor-allocate-for-instance.rst
+@@ -0,0 +1,175 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++===============================
++Refactor allocate_for_instance
++===============================
++
++https://blueprints.launchpad.net/nova/+spec/nova-neutron-refactor
++
++`allocate_for_instance` in the Network API adapter for neutron has grown
++prohibitively complex and is a gallery of sins. On the critical path, the
++successful refactoring of this method represents a significant step forward
++towards reducing technical debt.
++
++
++Problem description
++===================
++
++The longest method in terms of lines of code in the Network API adapter,
++`allocate_for_instance` is on the critical path for building all Openstack
++instances. The API method itself is a single point for requesting network
++resources for an instance. The operations that are performed on behalf of this
++API call vary depending on the parameters.
++
++* If no network is requested, neutron is queried for networks that the tenant
++  has access to. An exception is thrown if there is more that one. Port will
++  be created and assigned to the instance if successful.
++
++* If one or more networks are requested by network ID, neutron is queried to
++  verify that the tenant can access these networks. Ports will be created and
++  assigned to the instance.
++
++* If one or more ports are requested, neutron is queried for port information,
++  verifying access to the related network and obtaining the network ID.
++
++* Variants combining the second and third scenarios can also occur.
++
++All of these variants are handled by this single method with the exception of
++a few dedicated helper methods that simply reduce the line count of
++`allocate_for_instance` itself. The serial nature in which these different
++scenarios prevent invoking unrelated operations asynchronously and
++concurrently and batching multiple queries in a single call.
++
++
++Use Cases
++----------
++
++`allocate_for_instance` is one of the most critical integration points between
++nova and neutron and needs to be as maintainable, testable and extensible as
++possible.
++
++Project Priority
++-----------------
++
++This refactoring addresses an issue of significant techncial dept and
++facilitates Nova to Neutron migration.
++
++
++Proposed change
++===============
++
++This refactor splits the principle use cases supported by
++`allocate_for_instance` into separate distinct code paths, refactoring common
++code into helper methods. Operations such as listing ports and networks will
++be done as single neutron calls as well operations for the creation, updating
++and deletion of ports.
++
++.. note::
++   Updating multiple ports at a time may not be supported by the neutron API
++   at this time. If that remains to be the case at the relevant time, the lack
++   of functionality will be hidden in the related neutron client wrapper.
++
++
++Alternatives
++------------
++
++There is no appropriate alternative.
++
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++None
++
++Security impact
++---------------
++
++None.
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++None
++
++Performance Impact
++------------------
++
++None
++
++Other deployer impact
++---------------------
++
++None
++
++Developer impact
++----------------
++
++None
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Brent Eagles (beagles@redhat.com) is leading this refactoring.
++
++One or more sponsors from the core teams should have direct involvement
++in an, at minimum, advisory capacity. Particularly:
++
++* Dan Smith - Nova: objects, data model and migration.
++* Matt Riedemann
++* Gary Kotton
++* Matthew Gillard
++
++Primary assignee:
++* Brent Eagles  beagles@redhat.com
++
++
++Work Items
++----------
++
++1. Reimplement the no requested network case in terms of the neutronclient
++   wrapper. Allocations with requested networks will continue to use existing
++   implementation.
++2. Reimplement requested network case with network ids. Allocations with
++   requested networks involving ports will continue using the existing
++   implementation.
++3. Reimplement requested network case with ports and combinations of request
++   types.
++4. Support asynchronous querying of ports, networks and security groups.
++
++
++Dependencies
++============
++
++* https://review.openstack.org/#/c/141108/ Wrap neutron client calls.
++
++
++Testing
++=======
++
++As this is part of the Nova-Neutron API refactoring, a CI job will in the
++experimental work queue will run the new Tempest tests
++
++Documentation Impact
++====================
++
++None.
++
++References
++==========
+-- 
+1.9.1
+

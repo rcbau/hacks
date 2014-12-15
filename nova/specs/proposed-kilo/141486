@@ -1,0 +1,189 @@
+From 5cc4f4e251d4dcca492b697aa6d320486bc65f65 Mon Sep 17 00:00:00 2001
+From: Andrew Laski <andrew.laski@rackspace.com>
+Date: Fri, 12 Dec 2014 15:34:45 -0500
+Subject: [PATCH] DRAFT Proposal for cells v2 scheduling and build requests
+
+This is the first draft of a proposal for how to handle the build
+process of an instance in cells v2.  It's likely that this needs to be
+split into multiple specs but it may help to discuss the full picture
+first.
+
+blueprint cells-scheduling
+
+Change-Id: I9fbbb107cb148aee4404f6fa3f06021edf3fa5b4
+---
+ specs/kilo/approved/cells-scheduling.rst | 162 +++++++++++++++++++++++++++++++
+ 1 file changed, 162 insertions(+)
+ create mode 100644 specs/kilo/approved/cells-scheduling.rst
+
+diff --git a/specs/kilo/approved/cells-scheduling.rst b/specs/kilo/approved/cells-scheduling.rst
+new file mode 100644
+index 0000000..7b17144
+--- /dev/null
++++ b/specs/kilo/approved/cells-scheduling.rst
+@@ -0,0 +1,162 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++==========================================
++Cells v2 scheduling
++==========================================
++
++https://blueprints.launchpad.net/nova/+spec/cells-scheduling
++
++In order to schedule instance builds to compute hosts Nova and the scheduler
++will need to take into account that hosts are split into cells.
++
++
++Problem description
++===================
++
++When Nova is partitioned into cells, in order to boot an instance a scheduling
++decision will need to be made on both a cell and host to use.  And the decision
++of which cell to use will need to be made before the build process can be sent
++to a cell.
++
++Use Cases
++----------
++
++* Operators want to partition their deployments into cells for scaling, failure
++  domain, and buildout reasons.  When partitioned, we need to have flexible
++  scheduling that can make decisions on cells and hosts.
++
++Project Priority
++-----------------
++
++Cells v2 has been made a project priority for Kilo.
++
++
++Proposed change
++===============
++
++
++The change being proposed has a few components.  Where to call the scheduler,
++the interface for passing the build to a cell, and storing the instance request
++before scheduling.
++
++When an API request is made to build an instance it expects to receive a
++response in a timely manner, and that an instance uuid has been assigned and
++all relevant details of the request stored in a persistent way.  This presents
++a few challenges to overcome.  The API request needs to return before we have
++made a call to the scheduler in order to be responsive.  But since we have not
++called the scheduler we can't place the instance info into a cells instance
++table.  So I'm proposing a table at the api level to store the details of the
++API request so that they can be persisted before the API responds.
++
++The scheduler then needs to be queried in order to pick a cell, or (cell, host)
++tuple.  This could be done in a greenthread in the nova-api service, conductor
++could be modified to run at the api level as well for this, or a new service
++could be added similar to the current cells service.
++
++Then once a scheduling decision has been made the build request needs to be
++sent into the cell.  At that point it's possible that the scheduler has picked
++a host, or that an admin has targeted a host, so there should be an optional
++host argument passed down.  If that host argument is not set then the conductor
++service handling the build process within the cell should query the scheduler
++for a host placement.  The reason for this optionality is that some deployments
++may want a single scheduler that picks a host up front and other deployments
++might want a scheduler to pick a cell and then for schedulers within each cell
++to pick a host.
++
++Alternatives
++------------
++
++We could continue to use the nova-cells model in place today.
++
++Data model impact
++-----------------
++
++A new table would be added to the 'nova_api' database for storing build request
++details and an instance uuid.  This starts to look a little like storing a task
++to be completed.
++
++REST API impact
++---------------
++
++None
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++None
++
++Performance Impact
++------------------
++
++None
++
++Other deployer impact
++---------------------
++
++Lots.  To be detailed later.
++
++Developer impact
++----------------
++
++Lots.  To be detailed later.
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  alaski
++
++Other contributors:
++  None
++
++Work Items
++----------
++
++TBD
++
++
++Dependencies
++============
++
++https://blueprints.launchpad.net/nova/+spec/cells-instance-mapping
++
++
++Testing
++=======
++
++Since this is designed to be an internal re-architecting of Nova with no user
++visible changes the current suite of Tempest or functional tests should
++suffice.  At some point we will want to look at how to test multiple cells or
++potentially exposing the concept of a cell in the API and we will tackle
++testing requirements then.
++
++
++Documentation Impact
++====================
++
++Documentation will be written describing the flow of an instance build and how
++and where scheduling decisions are made.
++
++
++References
++==========
++
++``https://etherpad.openstack.org/p/kilo-nova-cells``
+-- 
+1.9.1
+

@@ -1,4 +1,4 @@
-From f23135a519d53e2dc1a082111b0815a8571c98da Mon Sep 17 00:00:00 2001
+From 77b1e25f90c3a3900896414029324101e378a1e0 Mon Sep 17 00:00:00 2001
 From: "Daniel P. Berrange" <berrange@redhat.com>
 Date: Wed, 12 Nov 2014 12:46:44 +0000
 Subject: [PATCH] Libvirt hardware policy from libosinfo
@@ -13,16 +13,16 @@ using the libosinfo database.
 Change-Id: I49ba47c99b9deb6b1ef5707329075713be33890d
 Blueprint: libvirt-hardware-policy-from-libosinfo
 ---
- .../libvirt-hardware-policy-from-libosinfo.rst     | 291 +++++++++++++++++++++
- 1 file changed, 291 insertions(+)
+ .../libvirt-hardware-policy-from-libosinfo.rst     | 329 +++++++++++++++++++++
+ 1 file changed, 329 insertions(+)
  create mode 100644 specs/kilo/approved/libvirt-hardware-policy-from-libosinfo.rst
 
 diff --git a/specs/kilo/approved/libvirt-hardware-policy-from-libosinfo.rst b/specs/kilo/approved/libvirt-hardware-policy-from-libosinfo.rst
 new file mode 100644
-index 0000000..de845fc
+index 0000000..308a860
 --- /dev/null
 +++ b/specs/kilo/approved/libvirt-hardware-policy-from-libosinfo.rst
-@@ -0,0 +1,291 @@
+@@ -0,0 +1,329 @@
 +..
 + This work is licensed under a Creative Commons Attribution 3.0 Unported
 + License.
@@ -37,7 +37,7 @@ index 0000000..de845fc
 +
 +When launching an instance Nova needs to make decisions about how to configure
 +the virtual hardware. Currently these decisions are often hardcoded, or driven
-+by nova.conf settings, and sometimes by glance image properties. The goal of
++by nova.conf settings, and sometimes by Glance image properties. The goal of
 +this feature is to allow the user to specify the guest OS type and then drive
 +decisions from this fact, using the libosinfo database.
 +
@@ -60,7 +60,7 @@ index 0000000..de845fc
 +
 +While it is possible to continue to allow overrides of config via glance
 +image properties this is not an particularly appealing approach. A number of
-+the settings a pretty low level and so not the kind of thing that a cloud
++the settings are pretty low level and so not the kind of thing that a cloud
 +application should directly expose to users. The more hypervisor specific
 +settings are placed on a glance image, the harder it is for one image to be
 +used to boot VMs across multiple different hypervisors. It also creates a
@@ -73,12 +73,12 @@ index 0000000..de845fc
 +each others work leading to a plethora of incomplete & inconsistent databases.
 +The libosinfo project started as an attempt to provide a common solution for
 +virtualization applications to use when configuring virtual machines. It
-+provides a, user extendable, database of information about operating systems,
++provides a user extendable database of information about operating systems,
 +including facts such as the supported device types, minimum resource level
 +requirements, installation media and more. Around this database is a C API for
 +querying information, made accessible to non-C languages (including python) via
 +the magic of GObject Introspection. This is in use by the virt-manager and
-+GNOME boxes applications for configuring KVM and Xen guests and is easily
++GNOME Boxes applications for configuring KVM and Xen guests and is easily
 +consumable from Nova's libvirt driver.
 +
 +Use Cases
@@ -86,6 +86,43 @@ index 0000000..de845fc
 +
 +The core goal is to make it simpler for an end user to boot a disk image with
 +the optimal virtual hardware configuration for the guest operating system.
++
++Consider that Nova is configured to use virtio disk & network devices by
++default, so optimize performance for the common Linux guests. In modern
++Linux though, there is the option of using a better virtio SCSI driver.
++Currently the user has to set properties like
++
++  # glance image-update \
++     --property hw_disk_bus=scsi \
++     --property hw_scsi_model=virtio-scsi \
++     ...other properties...
++     name-of-my-fedora21-image
++
++There's a similar issue if the user wants to run guests which do not
++support virtio drivers at all:
++
++  # glance image-update \
++     --property hw_disk_bus=ide \
++     --property hw_nic_model=e1000 \
++     ...other properties...
++     name-of-my-windows-xp-image
++
++We also wish to support per-OS timer drift policy settings and do not
++wish to expose them as properties, since it would be even more onerous
++on the user. eg
++
++  # glance image-update \
++     --property hw_rtc_policy=catchup \
++     --property hw_pit_policy=delay \
++     ...other properties...
++     name-of-my-random-os-image
++
++With this feature, in the common case it will be sufficient to just inform
++Nova of the operating system name
++
++  # glance image-update \
++     --property os_name=fedora21 \
++     name-of-my-fedora-image
 +
 +Project Priority
 +-----------------
@@ -99,7 +136,7 @@ index 0000000..de845fc
 +the overall operating system family (windows vs linux vs freebsd). This is too
 +coarse to be able to correctly configure all the different versions of these
 +operating systems. ie the right settings for Windows XP are not the same as the
-+right settings for Windows 2008. The intention is to a declare support for a
++right settings for Windows 2008. The intention is to declare support for a
 +new standard property 'os_name'. The acceptable values for this property will
 +be taken from the libosinfo database, either of these attributes:
 +
@@ -143,7 +180,7 @@ index 0000000..de845fc
 +
 +Where
 +
-+* default - try to use libosinfo, otherwise fallback to fixed defautls
++* default - try to use libosinfo, otherwise fallback to fixed defaults
 +* fixed - always use fixed defaults even if libosinfo is installed
 +* libosinfo - always use libosinfo and abort if not installed
 +
@@ -255,10 +292,10 @@ index 0000000..de845fc
 +-----------
 +
 +Primary assignee:
-+  berrange
++  vladikr
 +
 +Other contributors:
-+  None at this time.
++  berrange
 +
 +Work Items
 +----------
@@ -269,7 +306,7 @@ index 0000000..de845fc
 +* Extend devstack to install the libosinfo & object introspection packages
 +
 +* Work with libosinfo community to define metadata for clock and timer
-+  perferences per OS type
++  preferences per OS type
 +
 +* Extend Nova libvirt driver to configure clock/timer base on libosinfo
 +  database
@@ -281,7 +318,8 @@ index 0000000..de845fc
 +project/library. This will be accessed by the GObject introspection Python
 +bindings. On Fedora / RHEL systems this will entail installation of the
 +'libosinfo' packages and either the 'pyobject2' or 'python3-gobject' packages
-+(yes, both Python 2 and 3 are supported).
++(yes, both Python 2 and 3 are supported). Other modern Linux distros also
++have these packages commonly available.
 +
 +Note that although the GObject Introspection framework was developed under the
 +umbrella of the GNOME project, it does not have any direct requirements for the

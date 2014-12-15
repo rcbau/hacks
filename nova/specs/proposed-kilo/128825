@@ -1,4 +1,4 @@
-From f425f7baba83b8eabb77e52ad1a89253d4a0733b Mon Sep 17 00:00:00 2001
+From ace6873492778897feb01c3979ed63b5a397df6c Mon Sep 17 00:00:00 2001
 From: Vladik Romanovsky <vladik.romanovsky@enovance.com>
 Date: Wed, 15 Oct 2014 14:36:43 -0400
 Subject: [PATCH] libvirt: virtio-net multiqueue
@@ -9,16 +9,16 @@ blueprint libvirt-virtio-net-multiqueue
 
 Change-Id: I0fbe9321889bdaa7e91c73e3fa9b19966c0f05d8
 ---
- specs/kilo/approved/libvirt-virtiomq.rst | 173 +++++++++++++++++++++++++++++++
- 1 file changed, 173 insertions(+)
+ specs/kilo/approved/libvirt-virtiomq.rst | 185 +++++++++++++++++++++++++++++++
+ 1 file changed, 185 insertions(+)
  create mode 100644 specs/kilo/approved/libvirt-virtiomq.rst
 
 diff --git a/specs/kilo/approved/libvirt-virtiomq.rst b/specs/kilo/approved/libvirt-virtiomq.rst
 new file mode 100644
-index 0000000..45f1879
+index 0000000..c69651a
 --- /dev/null
 +++ b/specs/kilo/approved/libvirt-virtiomq.rst
-@@ -0,0 +1,173 @@
+@@ -0,0 +1,185 @@
 +..
 +   This work is licensed under a Creative Commons Attribution 3.0 Unported
 + License.
@@ -39,7 +39,7 @@ index 0000000..45f1879
 +===================
 +
 +Today's high-end servers have more processors, and guests running on them often
-+have an increasing number of vCPUs. In single virtio-net queue, the scale of
++have an increasing number of vCPUs. In а single virtio-net queue, the scale of
 +the protocol stack in a guest is restricted, as the network performance does
 +not scale as the number of vCPUs increases. Guests cannot transmit or
 +retrieve packets in parallel, as virtio-net has only one TX and RX queue.
@@ -54,29 +54,40 @@ index 0000000..45f1879
 +  selection in order to make a specific queue private to a specific vCPU.
 +
 +Although the virtio-net multiqueue feature provides a performance benefit,
-+it has some limitations, therefor should not be unconditionally enabled:
++it has some limitations and therefore should not be unconditionally enabled:
 +
-+- Guest OS is limited to 256 MSI vectors. Each NIC queue requires a MSI vector.
++- Guest OS is limited to ~200 MSI vectors. Each NIC queue requires a MSI
++  vector, as well as any virtio device or assigned PCI device.
 +  Defining an instance with multiple virtio NICs and vCPUs might lead to a
 +  possibility of hitting the guest MSI limit.
 +- virtio-net multiqueue works well for incoming traffic, but can
 +  occasionally cause a performance degradation, for outgoing traffic.
 +- Enabling virtio-net multiqueue increases the total network throughput,
-+  and in parallel increases the CPU consumption.
-+- Enabling virtio-net multiqueue in the host QEMU config, does not enables
++  but in parallel it also increases the CPU consumption.
++- Enabling virtio-net multiqueue in the host QEMU config, does not enable
 +  the functionality in the guest OS. The guest OS administrator needs to
-+  manually turn it on for each guest NIC that wants it, using ethtool.
++  manually turn it on for each guest NIC that requires this feature, using
++  ethtool.
 +- MSI vectors would still be consumed (wasted), if multiqueue was enabled
 +  in the host, but has not been enabled in the guest OS by the administrator.
-+- In cases when the number of vNICs in a guest instance is proportional to the
++- In case the number of vNICs in a guest instance is proportional to the
 +  number of vCPUs, enabling the multiqueue feature is less important.
 +- Each virtio-net queue consumes 64 KB of kernel memory for the vhost driver.
 +
 +
 +Use Cases
 +---------
-+Guest instance users may benefit from an increased network
-+performance and throughput.
++Guest instance users may benefit from increased network performance and
++throughput.
++
++Considering the limited amount of MSI vectors in the guest,
++users will have the ability to create instances with vNICs operating at
++various traffic rates, by controlling the use of the multiqueue feature.
++
++For example, one NIC might be used solely for administrative traffic
++and so will not need multiqueue enabled, while other NICs might be used for
++high throughput traffic and will require multiple queues.
++
 +
 +Project Priority
 +-----------------
@@ -101,7 +112,8 @@ index 0000000..45f1879
 +The default number of queues will match the number of vCPUs, defined for the
 +instance.
 +
-+    nova boot -nic -port_id -port_queues=#
++    nova boot -nic net_id=<id>,queues=#
++    nova interface-attach --net-id=<id> --queues=#
 +
 +NOTE: Virtio-net multiqueue should be enabled in the guest OS manually, using
 +ethtool.
@@ -163,7 +175,7 @@ index 0000000..45f1879
 +Work Items
 +----------
 +
-+* Update the vif config file to set the correct number of VCPUs to
++* Update the vif config to set the correct number of vCPUs to
 +  virtio-net devices
 +* Update the NetworkRequest object to add number of queues per port
 +

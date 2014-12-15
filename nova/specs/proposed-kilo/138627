@@ -1,0 +1,170 @@
+From 0efac3e5e212238747c4c8aad62c866f13f5cede Mon Sep 17 00:00:00 2001
+From: warewang <wangguangcai@huawei.com>
+Date: Wed, 3 Dec 2014 12:14:30 +0800
+Subject: [PATCH] Support the detection and alarm of orphans
+
+In existing OpenStack cluster, there are some orphans on many compute node,
+these orphans consumes a lot of resources, but the OpenStack can not manage
+these orphans, and also can't timely detection and notify the user to clean up,
+so I think that the nova should be able to manage these orphans, and can notify
+the admin or user to process it.
+
+Change-Id: I935aff27d8c5e3a36f75f673824f0ae671845292
+---
+ specs/kilo/approved/support-orphans-manage.rst | 143 +++++++++++++++++++++++++
+ 1 file changed, 143 insertions(+)
+ create mode 100644 specs/kilo/approved/support-orphans-manage.rst
+
+diff --git a/specs/kilo/approved/support-orphans-manage.rst b/specs/kilo/approved/support-orphans-manage.rst
+new file mode 100644
+index 0000000..cc65541
+--- /dev/null
++++ b/specs/kilo/approved/support-orphans-manage.rst
+@@ -0,0 +1,143 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++==========================================
++Support the detection and alarm of orphans
++==========================================
++
++https://blueprints.launchpad.net/nova/+spec/support-orphans-manage
++
++The orphans is a VM is on the hypervisor, but it didn't been managed by
++OpenStack.
++
++In existing OpenStack cluster, there are some orphans on many compute node,
++these orphans consumes a lot of resources, but the OpenStack can not manage
++these orphans, and also can't timely detection and notify the user to clean up,
++so I think that the nova should be able to manage these orphans, and can notify
++the admin or user to process it.
++
++
++Problem description
++===================
++
++At present, in the use of a period of time in the cluster found many orphans,
++it waste a lot of resources, but the OpenStack can not manage these orphans,
++the user or admin_user can't find them in time, and also don't know which host
++they are on. So, I think that the openstack can manage these orphans, and
++notify the admin_user to process it.
++
++Use Cases
++----------
++
++Orphans-alarm can run in the computer node, it can regularly check orphans, and
++discovered promptly to notify the monitoring module.
++
++
++Project Priority
++-----------------
++
++None
++
++
++Proposed change
++===============
++
++* In the nova-compute, we can add a timer task to check orphans, and in the
++  ceilometer, we should add a monitoring items to record the information.
++
++* The nova found the orphans and send the message to the ceilometer, then the
++  ceilometer collected the message and push the message to the user or admin.
++
++* The nova-compute reported the orphans information into database, nova-api
++  can support the user to query the orphans and whether the openstack manager
++  the orphans.
++
++* If the user decide the openstack to manager the orphans, the nova created the
++  the record into instance table, from this time, the orphans same as the
++  instance.
++
++Alternatives
++------------
++
++None
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++None
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++None
++
++Performance Impact
++------------------
++
++Add the timer task, it will use some resourses, but the impact is negligible.
++
++Other deployer impact
++---------------------
++
++None
++
++Developer impact
++----------------
++
++None
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  warewang
++
++Work Items
++----------
++
++Add a timer task on nova-compute.
++
++
++Dependencies
++============
++
++Need ceilometer support the orphans information process.
++
++
++Testing
++=======
++
++New unit tests and tempest about 'timer task' will be added.
++
++
++Documentation Impact
++====================
++
++The docs about 'timer task' need to be drafted.
++
++
++References
++==========
++
++None
+\ No newline at end of file
+-- 
+1.9.1
+

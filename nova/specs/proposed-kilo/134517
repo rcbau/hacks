@@ -1,4 +1,4 @@
-From cbc9031c8619c57e79d511e16f0b461f07ad7485 Mon Sep 17 00:00:00 2001
+From 30177bcfa616e3534f934d6ee3c597f31b638ecb Mon Sep 17 00:00:00 2001
 From: Eric Harney <eharney@redhat.com>
 Date: Fri, 14 Nov 2014 07:27:31 -0500
 Subject: [PATCH] Volume snapshot improvements
@@ -18,7 +18,7 @@ Change-Id: If9ab6976d7bd2cfbfeca7e2a731c50233a77beee
 
 diff --git a/specs/kilo/approved/volume-snapshot-improvements.rst b/specs/kilo/approved/volume-snapshot-improvements.rst
 new file mode 100644
-index 0000000..f00b584
+index 0000000..c7a5ad4
 --- /dev/null
 +++ b/specs/kilo/approved/volume-snapshot-improvements.rst
 @@ -0,0 +1,202 @@
@@ -73,7 +73,7 @@ index 0000000..f00b584
 +Project Priority
 +-----------------
 +
-+Low - this is primarily a maintainablity/reliability issue.
++None. This is primarily a maintainablity/reliability issue.
 +
 +Proposed change
 +===============

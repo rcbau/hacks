@@ -1,4 +1,4 @@
-From da9609b626465014a0adff6fbdda5551b9e55999 Mon Sep 17 00:00:00 2001
+From 12fbfe8831c9dfb8bf11fe97e136396904514b1a Mon Sep 17 00:00:00 2001
 From: Jay Pipes <jaypipes@gmail.com>
 Date: Tue, 18 Nov 2014 09:15:20 -0500
 Subject: [PATCH] Adds lock-free-quota-management spec
@@ -15,16 +15,16 @@ of doing quota reservations.
 Change-Id: I9af4fafd5821b657a11b1d02bf8f1e846852b563
 Blueprint: lock-free-quota-management
 ---
- specs/kilo/approved/lock-free-quota-management.rst | 239 +++++++++++++++++++++
- 1 file changed, 239 insertions(+)
+ specs/kilo/approved/lock-free-quota-management.rst | 269 +++++++++++++++++++++
+ 1 file changed, 269 insertions(+)
  create mode 100644 specs/kilo/approved/lock-free-quota-management.rst
 
 diff --git a/specs/kilo/approved/lock-free-quota-management.rst b/specs/kilo/approved/lock-free-quota-management.rst
 new file mode 100644
-index 0000000..d703175
+index 0000000..9bf815d
 --- /dev/null
 +++ b/specs/kilo/approved/lock-free-quota-management.rst
-@@ -0,0 +1,239 @@
+@@ -0,0 +1,269 @@
 +..
 + This work is licensed under a Creative Commons Attribution 3.0 Unported
 + License.
@@ -242,7 +242,37 @@ index 0000000..d703175
 +Work Items
 +----------
 +
-+TODO
++* Add a new quota driver `nova.quota.ConcurrentDbDriver` class that we can use
++  to isolate testing of this new functionality and ensure that the existing
++  quota DB driver can remain the default quota driver while this work is
++  completed.
++
++* Add new DB API methods that perform the update of a single resource usage
++  record that returns the number of rows affected by the UPDATE statement to
++  the caller. The UPDATE statement shall construct a WHERE condition that
++  includes the expected usage amount.
++
++* Add a new DB API method that returns the set of quota usage records for
++  a project, but does not call lock_mode('update').
++
++* Change the reserve() method of the new quota DB driver to call the new DB
++  API method to retrieve the usage records, loop over each usage record,
++  calling the new compare-and-swap update usage amounts DB API method for
++  each resource reservation. The method should implement a while loop
++  that detects when the usage record was not updated and retries the update
++  after reading the updated usage record information. The method should keep
++  track of the records that were updated successfully. If on any retry loop
++  of any resource, a quota exceeded is detected, then the successfully-updated
++  usage records should be updated to undo the reservation.
++
++* Do a similar implementation for the commit() method of the new quota DB
++  driver.
++
++* Do a similar implementation for the rollback() method of the new quota DB
++  driver.
++
++* Provide solid reference documentation in the developer reference docs about
++  the concurrent quota DB driver.
 +
 +Dependencies
 +============

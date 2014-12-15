@@ -1,4 +1,4 @@
-From fe787b376a8b3e522ffcaaba17855977504dbffb Mon Sep 17 00:00:00 2001
+From 6584e48fd8691b15d1f021b4d6bbdd1349126149 Mon Sep 17 00:00:00 2001
 From: Jay Pipes <jaypipes@gmail.com>
 Date: Fri, 10 Oct 2014 14:01:53 -0400
 Subject: [PATCH] Add resource object models
@@ -9,16 +9,16 @@ generalized class interface.
 Change-Id: I37b8a1c8b0bbf73bbcf2ee2c2d29018039eb1a9a
 Blueprint: resource-objects
 ---
- specs/kilo/approved/resource-objects.rst | 347 +++++++++++++++++++++++++++++++
- 1 file changed, 347 insertions(+)
+ specs/kilo/approved/resource-objects.rst | 370 +++++++++++++++++++++++++++++++
+ 1 file changed, 370 insertions(+)
  create mode 100644 specs/kilo/approved/resource-objects.rst
 
 diff --git a/specs/kilo/approved/resource-objects.rst b/specs/kilo/approved/resource-objects.rst
 new file mode 100644
-index 0000000..8f4b478
+index 0000000..cfb8411
 --- /dev/null
 +++ b/specs/kilo/approved/resource-objects.rst
-@@ -0,0 +1,347 @@
+@@ -0,0 +1,370 @@
 +..
 + This work is licensed under a Creative Commons Attribution 3.0 Unported
 + License.
@@ -174,7 +174,7 @@ index 0000000..8f4b478
 +Project Priority
 +-----------------
 +
-+This blueprint is part of the ‘scheduler’ refactoring effort, defined as a 3rd
++This blueprint is part of the `scheduler` refactoring effort defined as a
 +priority for the Kilo release.
 +
 +Proposed change
@@ -297,6 +297,11 @@ index 0000000..8f4b478
 +        # node, which might eventually call:
 +        compute_node.usages[resource_type].update(amount)
 +
++The conductor RPC API should have a new `update_compute_node_resource_usages()`
++method added to it that passes the new `nova.objects.ResourceUsageCollection`
++object to the conductor, that the conductor decomposes and updates the
++compute node records in the database.
++
 +Assignee(s)
 +-----------
 +
@@ -306,9 +311,13 @@ index 0000000..8f4b478
 +Work Items
 +----------
 +
-+- Add classes for requested and usage amount representation w/ unit tests
++- Add classes for requested and usage amount representation
 +
-+- Add classes for resource type representation w/ unit tests
++- Add classes for resource type representation
++
++- Add a class representing a collection of requested resource amounts
++
++- Add a class representing a collection of resource usages
 +
 +- Add translation methods to `nova.objects.ComputeNode` to construct and
 +  decompose a set of `UsageSpec` objects w/ unit tests
@@ -325,7 +334,21 @@ index 0000000..8f4b478
 +
 +- Convert resource tracker to use usage amount objects instead of 'pci_devices'
 +  and 'pci_passthrough_devices' keys and a `nova.pci.pci_stats.PciDeviceStats`
-+  object in the `pci_tracker` attribute of the resource tracker
++  object in the `pci_tracker` attribute of the resource tracker.
++
++- Convert the virt driver's `get_available_resources` method to return a
++  dictionary of resource objects.
++
++- Add a new conductor RPC API (and scheduler client) method called
++  `update_compute_node_resource_usages()` that supplies the new
++  `nova.objects.ResourceUsageCollection` object representation of resource
++  usages.
++
++- Deprecate the old update_resource_stats() conductor RPC API method.
++
++- Convert the scheduler's `HostStateManager` to utilize the new
++  `ComputeNode.get_resource_usages()` method and
++  `ComputeNode.update_from_resource_usages` method.
 +
 +- Add developer reference documentation for how resources are modeled.
 +

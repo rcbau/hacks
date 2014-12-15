@@ -1,4 +1,4 @@
-From b1d965365fd21f9e47346cd92b6b632ed7c861f9 Mon Sep 17 00:00:00 2001
+From cd7ebb8877ae7309b69f05feee2b1e7c13f3c297 Mon Sep 17 00:00:00 2001
 From: Jay Pipes <jaypipes@gmail.com>
 Date: Fri, 10 Oct 2014 14:08:33 -0400
 Subject: [PATCH] Adds RequestSpec object model

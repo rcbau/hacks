@@ -1,4 +1,4 @@
-From 778d01d67c7e3aa6ccc73df4184ddc61c6fd929e Mon Sep 17 00:00:00 2001
+From b1f40f46dd98af9843750033b1591be8b5e076fb Mon Sep 17 00:00:00 2001
 From: warewang <wangguangcai@huawei.com>
 Date: Fri, 28 Nov 2014 11:25:51 +0800
 Subject: [PATCH] Add drivertype priority scheduling on migration
@@ -13,15 +13,15 @@ situation.
 
 Change-Id: I16851fe368a58574b183f5273da7686dd13d64f2
 ---
- specs/kilo/support-driver-filter.rst | 124 +++++++++++++++++++++++++++++++++++
+ specs/kilo/approved/support-driver-filter.rst | 124 ++++++++++++++++++++++++++
  1 file changed, 124 insertions(+)
- create mode 100644 specs/kilo/support-driver-filter.rst
+ create mode 100644 specs/kilo/approved/support-driver-filter.rst
 
-diff --git a/specs/kilo/support-driver-filter.rst b/specs/kilo/support-driver-filter.rst
+diff --git a/specs/kilo/approved/support-driver-filter.rst b/specs/kilo/approved/support-driver-filter.rst
 new file mode 100644
-index 0000000..938f27f
+index 0000000..dc2baa9
 --- /dev/null
-+++ b/specs/kilo/support-driver-filter.rst
++++ b/specs/kilo/approved/support-driver-filter.rst
 @@ -0,0 +1,124 @@
 +..
 + This work is licensed under a Creative Commons Attribution 3.0 Unported
@@ -92,9 +92,9 @@ index 0000000..938f27f
 +No impact.
 +
 +Other end user impact
++---------------------
 +
 +No impact.
-+---------------------
 +
 +Performance Impact
 +------------------
@@ -120,7 +120,7 @@ index 0000000..938f27f
 +-----------
 +
 +Primary assignee:
-+  warewang
++  warewang<wangguangcai@huawei.com>
 +
 +Work Items
 +----------

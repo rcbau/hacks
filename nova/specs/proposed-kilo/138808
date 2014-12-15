@@ -1,0 +1,259 @@
+From 6c9ad1913418a33cb60a148f6625a721f5e1ba04 Mon Sep 17 00:00:00 2001
+From: Przemyslaw Czesnowicz <przemyslaw.czesnowicz@intel.com>
+Date: Wed, 3 Dec 2014 17:57:21 +0000
+Subject: [PATCH] Api add vnic_type support
+
+This specification proposes to add support for specifing
+vnic_type to v3 Nova api.
+
+APIImpact
+
+Change-Id: I4c22df01fc1dd7b1fb934aa974eb39a119576853
+Blueprint: api-specify-vnic-type
+---
+ specs/kilo/approved/api-specify-vnic-type.rst | 233 ++++++++++++++++++++++++++
+ 1 file changed, 233 insertions(+)
+ create mode 100644 specs/kilo/approved/api-specify-vnic-type.rst
+
+diff --git a/specs/kilo/approved/api-specify-vnic-type.rst b/specs/kilo/approved/api-specify-vnic-type.rst
+new file mode 100644
+index 0000000..d33bf18
+--- /dev/null
++++ b/specs/kilo/approved/api-specify-vnic-type.rst
+@@ -0,0 +1,233 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++========================================
++Extend api to allow specifying vnic_type
++========================================
++
++https://blueprints.launchpad.net/neutron/+spec/api-specify-vnic-type
++
++This specification proposes to extend the Nova v2.1 api to allow
++specifying vnic_type for nic's attached to the instance.
++
++Problem description
++===================
++
++To boot a VM with an SRIOV port the vnic_type of the port needs to be set to
++"direct" or "macvtap". Currently to do that a Neutron port has to be
++precreated, vnic_type has to be set accordingly by the user and then port
++uuid is passed to nova boot. This is inconvenient and prevents the user from
++booting multiple VM's with SRIOV ports using :
++nova boot --min-count=x
++
++Use Cases
++----------
++
++Use case 1: Boot a VM with SRIOV port without precreating the port in Neutron
++Use case 2: Boot multiple VM's with SRIOV ports using nova boot --min-count=x
++
++Project Priority
++-----------------
++
++No
++
++Proposed change
++===============
++
++We propose to modify the Nova api and python-novaclient to allow:
++nova boot -nic vnic_type=<type>
++
++Where <type> is one of:
++normal
++direct
++macvtap
++
++The way Nova is building pci_requests for ports with vnic_type
++"direct" or "macvtap" will be changed to support vnic_type passed
++from the api. The setting vnic_type on a Neutron port will still be
++supported. In case when both api and Neutron port will have a vnic_type
++setting, the setting from api will take precedence.
++
++Alternatives
++------------
++
++* Setting default vnic_type for Neutron network
++  https://blueprints.launchpad.net/neutron/+spec/network-settings-support-vnic-type
++
++  This could mitigate the problem for networks that have the right vnic_type
++  set as default. But wouldn't help if the User had to override the default.
++
++* Using flavor extra_spec or image properties to store vnic_type.
++  Both flavor and image approaches would be very inflexible as new
++  flavor or image would be needed to support different configurations
++  (i.e first nic uses direct and the second normal)
++
++* PCI flavors
++  https://wiki.openstack.org/wiki/PCI_passthrough_SRIOV_support
++
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++An optional vnic_type parameter will be added to os_devices_boot in
++networks and port section.
++Method description, method type, normal http response code(s), expected error
++http response code(s), URL for the resource will not change
++
++Method Type : POST
++
++URL : /v2/?{tenant_id}?/os_devices_boot
++
++Description : Create server
++
++
++**JSON schema definition of the parameter**
++
++::
++
++  base_create = {
++    'type': 'object',
++    'properties': {
++        'server': {
++            'type': 'object',
++            'properties': {
++                'name': parameter_types.name,
++                'imageRef': parameter_types.image_ref,
++                'flavorRef': parameter_types.flavor_ref,
++                'adminPass': parameter_types.admin_password,
++                'metadata': parameter_types.metadata,
++                'networks': {
++                    'type': 'array',
++                    'items': {
++                        'type': 'object',
++                        'properties': {
++                            'fixed_ip': {
++                                'type': ['string', 'null'],
++                                'oneOf': [
++                                    {'format': 'ipv4'},
++                                    {'format': 'ipv6'}
++                                ]
++                            },
++                            'port': {
++                                'type': ['string', 'null'],
++                                'format': 'uuid'
++                            },
++                            'uuid': {'type': 'string'},
++                            'vnic_type': {
++                                'type': 'string'
++                                'enum': [ "normal", "direct", "macvtap" ]
++                            }
++                        },
++                        'additionalProperties': False,
++                    }
++                }
++            },
++            'required': ['name', 'flavorRef'],
++        },
++    },
++    'required': ['server'],
++  }
++
++**Example use case: JSON Request**
++
++::
++
++ {
++       "server": {
++           "name": "server-test-1",
++           "flavorRef": "2",
++           "max_count": 1,
++           "min_count": 1,
++           "networks": [
++               {
++                    "uuid": "d32019d3-bc6e-4319-9c1d-6722fc136a22"
++                    "vnic_type" : "macvtap"
++               },
++               {
++                    "port" : "d32019d3-bc6e-4319-9c1d-6722fc136a23"
++                    "vnic_tye" : "direct"
++               },
++           ],
++       }
++  }
++
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++The additional api options will add functionality. The current behaviour will
++not be changed.
++
++Performance Impact
++------------------
++
++None
++
++Other deployer impact
++---------------------
++
++None
++
++Developer impact
++----------------
++
++None
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++
++Primary assignee:
++      pczesno
++
++
++Work Items
++----------
++
++* Implement api changes to support specifying vnic_type.
++* Implement changes in Nova to build pci_request when "direct" or
++  "macvtap" vnic_type is passed from api
++* Implement changes in python-novaclient to use new api options.
++
++Dependencies
++============
++
++None
++
++Testing
++=======
++
++This change would be tested by SRIOV 3rd party testing.
++
++Documentation Impact
++====================
++
++The new api options would have to documented.
++New changes to python-novaclient would have to be documented.
++
++References
++==========
++
++* Setting default vnic_type for Neutron network
++  https://blueprints.launchpad.net/neutron/+spec/network-settings-support-vnic-type
+-- 
+1.9.1
+

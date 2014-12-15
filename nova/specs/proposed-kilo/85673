@@ -1,4 +1,4 @@
-From 3e0aa7247906503c1afa4752dcfe3799bc617aa8 Mon Sep 17 00:00:00 2001
+From bbf0cbc127e3dce1bb07f718b8cc15b8610eab04 Mon Sep 17 00:00:00 2001
 From: Josh Gachnang <josh@pcsforeducation.com>
 Date: Thu, 26 Jun 2014 11:32:39 -0700
 Subject: [PATCH] API: Proxy neutron configuration to guest instance
@@ -13,16 +13,16 @@ blueprint metadata-service-network-info
 Change-Id: Ia6967af4b4147ad4dcf6ae3ae5f4b6d9c1fda246
 Co-Authored-By: Josh Gachnang <josh@servercobra.com>
 ---
- .../approved/metadata-service-network-info.rst     | 299 +++++++++++++++++++++
- 1 file changed, 299 insertions(+)
+ .../approved/metadata-service-network-info.rst     | 300 +++++++++++++++++++++
+ 1 file changed, 300 insertions(+)
  create mode 100644 specs/kilo/approved/metadata-service-network-info.rst
 
 diff --git a/specs/kilo/approved/metadata-service-network-info.rst b/specs/kilo/approved/metadata-service-network-info.rst
 new file mode 100644
-index 0000000..639033f
+index 0000000..b6f60ea
 --- /dev/null
 +++ b/specs/kilo/approved/metadata-service-network-info.rst
-@@ -0,0 +1,299 @@
+@@ -0,0 +1,300 @@
 +..
 + This work is licensed under a Creative Commons Attribution 3.0 Unported
 + License.
@@ -117,7 +117,7 @@ index 0000000..639033f
 +
 +Sample API for getting network information from metadata service
 +
-+GET: http://169.254.169.254/openstack/latest/metadata/network_data.json
++GET: http://169.254.169.254/openstack/$VERSION/metadata/network_data.json
 +
 +JSON Response::
 +
@@ -292,6 +292,7 @@ index 0000000..639033f
 +
 +Other contributors:
 +  claxton
++  JayF
 +
 +Work Items
 +----------

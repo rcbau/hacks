@@ -1,0 +1,265 @@
+From c4e0066f3ceb94e08e87d24fcd3f4e12ebec6243 Mon Sep 17 00:00:00 2001
+From: Jerry Wheeler <jwheeler@intel.com>
+Date: Thu, 6 Nov 2014 10:13:56 -0800
+Subject: [PATCH] Nova trusted geo-asset tag
+
+This spec covers how geo and asset tagging can be incorporated
+to OpenStack Nova to provide location and boundary control of
+workloads/OpenStack images. With Geo/Asset Tags, you can enforce
+policies to control placement, migration or bursting of workloads
+to trusted systems in specific geographical locations or boundaries.
+
+Spec for https://blueprints.launchpad.net/openstack/?searchtext=nova-trusted-geo-asset-tag
+
+Change-Id: I3c42769ca808aa3180c2c246e47a1ba145fe6996
+---
+ specs/kilo/approved/nova-trusted-geo-asset-tag.rst | 237 +++++++++++++++++++++
+ 1 file changed, 237 insertions(+)
+ create mode 100644 specs/kilo/approved/nova-trusted-geo-asset-tag.rst
+
+diff --git a/specs/kilo/approved/nova-trusted-geo-asset-tag.rst b/specs/kilo/approved/nova-trusted-geo-asset-tag.rst
+new file mode 100644
+index 0000000..21de3c4
+--- /dev/null
++++ b/specs/kilo/approved/nova-trusted-geo-asset-tag.rst
+@@ -0,0 +1,237 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++==========================================
++nova-trusted-geo-asset-tag.rst
++==========================================
++
++Include the URL of your launchpad blueprint:
++
++https://blueprints.launchpad.net/nova/+spec/nova-trusted-geo-asset-tag
++
++This blueprint details how geo and asset tagging can be incorporated and
++taken advantage of in OpenStack clouds to provide location and boundary
++control of workloads/OpenStack images. With Geo/Asset Tags, you can enforce
++policies to control placement, migration or bursting of workloads to trusted
++systems in specific geographical locations or boundaries, provide visibility
++and compliance of your workload policies to ensure tenants that of its
++compliance to Trust and location policies.
++
++Extensions from this solution enable associating geo and asset tags with
++hardware at provision time. Intel Trusted Execution Environment (TXT) and
++other measured launch environments (MLEs) facilitate measurement of provision
++time information into the Trusted Platform Module (TPM). Remote attestation
++services can then be used to ascertain that provision time meta-data have not
++been tampered. Geo and Asset tagging builds on the Trusted Compute Pools
++feature, covered in TrustedComputingPools
++
++
++Problem description
++===================
++
++While the cloud enables workloads and data to reside anywhere, users may be
++constrained to run their workloads and save their data in certain geographies
++due to regulatory requirements. This solution will extend to include trusting
++the location and boundary of the hardware resources, extending the current
++functionality of trusting the integrality of the compute platform to be free
++of malware and rootkits.
++
++Use Cases
++----------
++
++Use case 1
++The end-user can enforce VM/Images policies to control placement,
++migration or bursting of workloads to trusted systems within specific
++geographical locations or boundaries
++
++
++Project Priority
++-----------------
++
++Does this blueprint fit under one of the :ref:`kilo-priorities`? If so which one
++and how?
++
++Proposed change
++===============
++
++Create a new nova-scheduler filter which supports both trust and geo-tag filters.
++
++Geo and asset tag solution:
++To create and add Geo-Location/Asset-tag Policies to VM Image Properties in
++Open Stack
++
++If Trust Policy for Location is selected, Platform Integrity is automatically
++selected.
++When selecting the Location Trust; user will have option to create policy of
++one or more of the 5 Key name and value pairs.
++key names include: Country, State, City. Region and Classification.
++Acceptable values for each Key Name will need to be selected from a drop down
++list. The acceptable values are fetched from the Remote Attestation Solution
++
++Asset/Location Filter in Scheduler to orchestrate and control Trust Policies.
++
++When a user selects an image to be launched for an instance, the scheduler
++retrieves the Trust Policy for the Glance database
++Scheduler iterates through the available host and fetches the SAML assertion
++from the Remote Attestation Service using Restful API.
++SAML Assertion is parsed to determine match to the Trust Policy and once
++these iterations are completed, scheduler will complete the remaining filter
++operation and then picks the best ranked host to launch the instance.
++
++Trust Visibility within OpenStack Horizon
++
++Horizon dashboards have been updated to display Trust Status in 2 dashboards
++under the Admin Tab  Hypervisor and Instances
++The Hypervisor dashboard displays trust status of all Policies (Platform and Location).
++In addition, when you mouse over the location icon it will show the Asset/Geo tag
++provisioned in the Hardware of the host.
++Every time the Hypervisor dashboard is loaded, Trust Status is updated by
++fetching the SAML assertion from the Remote Attestation Service using Restful API.
++The Instance dashboard displays trust status of all Policies (Platform and Location).
++In addition, when you mouse over the location icon it will show the
++Location/ Tag Policy applied.
++if there are no Trust policies associated to the image the Instance is using,
++then the Trust Status for that instance will be empty.
++Trusted Icons for each policy will be displayed in green and untrusted in Red
++
++Files added or modified:
++
++New file:
++asset_tag_filter.py
++
++Modified files:
++nova.conf
++
++[trusted_computing]
++
++  asset_tag_server=
++  asset_tag_server_url=
++  asset_tag_server_port=
++  asset_tag_server_auth_blob=
++
++Image attributes changes
++Image attributes are stored in the Glance DB
++
++id | image_id                             | name        | value
++
++47 | 934bf0cd-82ab-4edb-b6ff-1407d99c0386 | trust       | true
++
++Alternatives
++------------
++
++What other ways could we do this thing? Why aren't we using those? This doesn't
++have to be a full literature review, but it should demonstrate that thought has
++been put into why the proposed solution is an appropriate one.
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++Here is the format that we are expecting with the glance image create command
++glance image-create --name cirros --disk-format qcow2 --min-disk 10
++--min-ram 1024 --file cirros-0.3.1-x86_64-disk.img  --property trust=true
++--property tags="{'country': 'US', 'state': 'CA'}}" --container-format bare
++
++
++Security impact
++---------------
++
++Yes, the purpose of this BP is to make the cloud more secure
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++Trust status and Geo-location policies are now visible in the horizon dashboard
++
++4 image files are added that represent geo-location, platform trusted,
++platform un-trusted and platform trusted with geo-location policy
++
++The user will be able to add Geo-Location/Asset-tag Policies to VM Image Properties
++in horizon
++
++Performance Impact
++------------------
++
++We dont have a local cache at this point. When a user launches an instance,
++the new trust filter checks the geo Tags of each of the compute nodes in
++sequential order. (No local cache is maintained). So, the instance creation wait
++time is directly proportional to the number of compute nodes available in the Cloud.
++
++Other deployer impact
++---------------------
++
++Modifications required after the user deploys and configured OpenStack
++
++Configuration changes for Nova.conf
++
++[trusted_computing]
++
++  asset_tag_server =
++  asset_tag_port
++  asset_tag_server_url =
++  asset_tag_server_auth_blob=
++
++Developer impact
++----------------
++
++None
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Naresh Gadepalli
++
++Primary assignee:
++  <launchpad-id>
++
++Other contributors:
++  <launchpad-id or None>
++
++Work Items
++----------
++
++None
++
++Dependencies
++============
++
++The end user will need of attestation authority appliance for this new nova
++filter to work.  If the feature does not exist instances would not launch
++if trust policy is set to true, If false, instances would launch and our new
++trust filter would not play a role in the decision.
++
++Testing
++=======
++
++Intel will test end-end functionality internally at our test facility.
++We will provide all the test cases and test results along with code submissions.
++
++Others who want to download and test can access Attestation server appliance
++by contacting Intel:  jwheeler at intel dot com
++
++
++Documentation Impact
++====================
++
++Use case, Code, deployment and test case documentation will provided at a later date.
++
++
++References
++==========
++
++http://www.Intel.com/txt
+-- 
+1.9.1
+

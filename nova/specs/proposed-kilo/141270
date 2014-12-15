@@ -1,0 +1,208 @@
+From 7c94fc31993c0faa015077d075e37f32ec9b0ae9 Mon Sep 17 00:00:00 2001
+From: Yongli He <yongli.he@intel.com>
+Date: Fri, 12 Dec 2014 13:03:38 +0800
+Subject: [PATCH] test cases for third party CI
+
+PCI pass-through need third part CI to running test cases on
+real HW. need create test cases, find place to hold the test
+cases and share the test cases among all the third party CI.
+
+Implements blueprint pci-test-cases-for-third-party-ci
+
+Change-Id: Ieae7899e1e913f10715ee74427a5fc5ccd89c89b
+---
+ .../approved/pci-testcases-for-third-party-CI.rst  | 182 +++++++++++++++++++++
+ 1 file changed, 182 insertions(+)
+ create mode 100644 specs/kilo/approved/pci-testcases-for-third-party-CI.rst
+
+diff --git a/specs/kilo/approved/pci-testcases-for-third-party-CI.rst b/specs/kilo/approved/pci-testcases-for-third-party-CI.rst
+new file mode 100644
+index 0000000..045636c
+--- /dev/null
++++ b/specs/kilo/approved/pci-testcases-for-third-party-CI.rst
+@@ -0,0 +1,182 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unsorted
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++================================================================
++PCI test cases for third party CI
++================================================================
++
++https://blueprints.launchpad.net/nova/+spec/pci-test-cases-for-third-party-ci
++
++
++Provide the PCI test cases, enable them share among third party CI.
++
++
++Problem description
++===================
++
++The existing feature PCI and SRIOV need to be fully tested by CI,but for
++now, running a tempest in a VM can not well provide a simulated PCI devices
++and iommu. Third party CI is a reasonable choice
++
++To enable third party CI, problems bellowing need be addressed:
++
++1. What test cases should be created to covering the features
++
++2. Where is the best place to hold the test cases
++
++3. How third party CI running the specific test cases.
++
++
++Use Cases
++---------
++
++Testing feature which need real HW to run.
++
++
++Project Priority
++----------------
++
++None
++
++
++Proposed change
++===============
++
++Test cases should cover:
++
++1. PCI pass-through basic testing: create, reboot, suspending and resume server
++with PCI devices allocated.
++
++2. PCI pass-through resizing.
++
++3. PCI pass-through pressure testing like allocation all devices cloud have,
++exhausting all pci devices.
++
++4. PCI pass-through error handling and compute service rebooting.
++
++
++Where the test cases should located:
++
++the nova functional testing cases is the reasonable choice. new test cases use
++tempest-lib construct tempest like test cases.
++
++
++How running the specific test cases on a third party CI:
++
++nova unit test cases run_tests.sh could specify which test cases you want to
++running:
++./run_tests.py  functional/pci
++for each test cases there should some conditional decoration checking
++facility to check if the test cases should be running or not, just like
++tempest.
++
++
++Alternatives
++------------
++
++1) The mocked libvirt or mocked qemu
++
++a) Not really verify the HW and hypervisor's functionality.
++
++b) Most likely fake libvirt is not only nova project, maybe need a new
++project.
++
++c) Fake a libvirt/qemu could be time consuming, testing for currently features
++is kind of urgent task.
++
++
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++None
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++None
++
++Performance Impact
++------------------
++
++None
++
++Other deployer impact
++---------------------
++
++None
++
++Developer impact
++----------------
++
++None
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  Joe Gordon
++  Yongli He
++
++Work Items
++----------
++
++1. test cases for PCI pass-through using tempest-lib.
++   assignee: Yongli He
++
++2. third party CI test bed:
++   assignee: Yongli He, Jiang Yu
++
++3. bring up the tempest-lib
++   assignee: Joe Gordon
++
++
++Dependencies
++============
++
++* Software versions:
++  - Linux kernel: 3.10 or higher
++
++
++Testing
++=======
++
++these test cases should be verified on real HW.
++
++Documentation Impact
++====================
++
++* Doc how third part CI can run these specify test cases.
++
++
++References
++==========
++
++1. faked libvirt alternative:
++https://review.openstack.org/#/c/139927/1
++
++2. test cases proposal:
++https://review.openstack.org/#/c/139000/
++
++
+-- 
+1.9.1
+

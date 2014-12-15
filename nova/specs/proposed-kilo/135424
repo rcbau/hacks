@@ -1,4 +1,4 @@
-From 207eca82b859ea6fedb8b81a8cf52887cf7cfb51 Mon Sep 17 00:00:00 2001
+From 9775e90de458ee49a0ece14c83b14dc85663ea1f Mon Sep 17 00:00:00 2001
 From: Andrew Laski <andrew.laski@rackspace.com>
 Date: Tue, 18 Nov 2014 15:56:03 -0500
 Subject: [PATCH] Cells v2 mapping
@@ -9,16 +9,16 @@ database layers able to communicate with an arbitrary cell per call.
 bp cells-v2-mapping
 Change-Id: I64f530d84b56b7e2365dc041689dc034f9b91f42
 ---
- specs/kilo/approved/cells-v2-mapping.rst | 189 +++++++++++++++++++++++++++++++
- 1 file changed, 189 insertions(+)
+ specs/kilo/approved/cells-v2-mapping.rst | 217 +++++++++++++++++++++++++++++++
+ 1 file changed, 217 insertions(+)
  create mode 100644 specs/kilo/approved/cells-v2-mapping.rst
 
 diff --git a/specs/kilo/approved/cells-v2-mapping.rst b/specs/kilo/approved/cells-v2-mapping.rst
 new file mode 100644
-index 0000000..ed3a82c
+index 0000000..10d5884
 --- /dev/null
 +++ b/specs/kilo/approved/cells-v2-mapping.rst
-@@ -0,0 +1,189 @@
+@@ -0,0 +1,217 @@
 +..
 + This work is licensed under a Creative Commons Attribution 3.0 Unported
 + License.
@@ -63,15 +63,23 @@ index 0000000..ed3a82c
 +===============
 +
 +The change being proposed is a new database and table for storing a mapping of
-+cell to database and message queue.  This is similar to the current cells
-+table, but the concepts of weight and is_parent are not needed and a database
-+connection is needed.  A new database is being proposed because the new tables
-+that will be added to it belong with the compute api layer of Nova, compared to
-+some of the current tables which belong in a cells database.  The exact split
-+of which information belongs where is an in-progress effort.
++cell to database and message queue.  A new database is being proposed because
++the new tables that will be added to it belong with the compute api layer of
++Nova, as compared to some of the current tables which belong in a cells
++database.  The exact split of which information belongs where is an in-progress
++effort.
 +
-+Although the weights are being removed here the capability to weight cells will
-+be addressed at a later time.
++The new database will require a separate line of migrations to be applied to
++it.  Since there have been discussions for a while now around potential
++benefits of using alembic to handle db migrations this might be a good
++opportunity to do so.  I think it should be researched and used if there's
++consensus that it would be beneficial and continue to use sqlaclhemy-migrate if
++not.
++
++Nova will need a connection string to connect to this new database and at the
++same time continue to connect to the current 'nova' database until we can fully
++migrate away from that.  A new config option will be introduced to store the
++connection info for the 'nova_api' database.
 +
 +Additionally the database and rpc abstractions in Nova need to be capable of
 +communicating with an arbitrary endpoint for every call/query.
@@ -79,23 +87,37 @@ index 0000000..ed3a82c
 +There is nothing in place to use this yet so the scope of work ends at just
 +having the capability to do it.
 +
++The following diagram may help visualize it.  When a request comes in for an
++instance in a cell nova-api will query the cell_mapping table to get the
++necessary information for interacting with the cell database or message queue.
++The instance to cell mapping is described in another spec.::
++
++              api/cell boundary
++                    |
++                    |
++            +------------>cell-db
++            |       |
++        nova-api+--------->cell-mq
++            +       |
++            |       |
++            |       |
++            v       |
++    cell_mapping    |
++
++
 +Alternatives
 +------------
 +
-+We could continue to use the nova-cells model in place today.  The downsides of
-+this have been described above.
++We could continue to use the nova-cells model in place today.
 +
 +Data model impact
 +-----------------
 +
-+A new 'cell_mapping' table will be added.  And it should be added outside of
-+the current 'nova' database in a new 'nova_api' database.  This will be
-+configurable by a deployer in the same way the current database is configured.
-+So while this table could be put into the same database as current tables via
-+configuration, it should be made clear that this table is used by different
-+services than other current tables.
++A new 'cell_mapping' table will be added.  And it will be added outside of the
++current 'nova' database in a new 'nova_api' database.  This new database will
++have deployment ramifications as described below
 +
-+The table will look approximately like:
++The table will look like:
 +
 +CREATE TABLE `cell_mapping` (
 +  `created_at` datetime DEFAULT NULL,
@@ -116,7 +138,8 @@ index 0000000..ed3a82c
 +Security impact
 +---------------
 +
-+None
++The transport_url and database_connection fields in the database could contain
++sensitive data.
 +
 +Notifications impact
 +--------------------
@@ -134,7 +157,9 @@ index 0000000..ed3a82c
 +On its own this change does not introduce a performance impact.  When it is
 +used by later specs it does introduce another database lookup for many actions
 +within Nova.  For example a 'nova show <uuid>' will require Nova to look up the
-+database that an instance is in before it can query it for instance data.
++database that an instance is in before it can query it for instance data.  This
++data will remain relatively stable and could be cached quite easily to help
++offset any performance penalty.
 +
 +Other deployer impact
 +---------------------
@@ -142,7 +167,8 @@ index 0000000..ed3a82c
 +This blueprint introduces the concept of a database that is conceptually
 +distinct from the current nova database.  Deployers will need to consider how
 +they want to manage a second database, whether it resides on the same host as
-+their current nova database or not.
++their current nova database or not.  It will be used primarily by the nova-api
++service so that should be considered when considering how to deploy it.
 +
 +Developer impact
 +----------------
@@ -171,6 +197,8 @@ index 0000000..ed3a82c
 +
 +* Ensure Nova database API can communicate with an arbitrary database on each
 +  call.
++
++* Add config option for connecting to the new database.
 +
 +* Research how to have a separate migration path within Nova for a new
 +  database.

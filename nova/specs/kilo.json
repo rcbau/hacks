@@ -12,9 +12,15 @@
         "Allow all printable characters in resource names": [
             "126696"
         ], 
+        "Consolidate all console access APIs into one": [
+            "141065"
+        ], 
         "Expose the lock status of an instance as a queryable item": [
             "85928", 
             "127139"
+        ], 
+        "Extend api to allow specifying vnic_type": [
+            "138808"
         ], 
         "Implement instance tagging": [
             "127281"
@@ -56,14 +62,15 @@
         ]
     }, 
     "Administrative": {
+        "Actively hunt for orphan instances and remove them": [
+            "138627", 
+            "137996"
+        ], 
         "Check that a service isn't running before deleting it": [
             "131633"
         ], 
         "Enable the nova metadata cache to be a shared resource to improve the hit rate": [
             "126705"
-        ], 
-        "Enforce instance uuid uniqueness in the SQL database": [
-            "128097"
         ], 
         "Implement a daemon version of rootwrap": [
             "105404"
@@ -78,9 +85,48 @@
             "132623"
         ]
     }, 
+    "Block Storage": {
+        "Cache data from volumes on local disk": [
+            "138292", 
+            "138619"
+        ], 
+        "Give additional info in BDM when source type is \"blank\"": [
+            "140133"
+        ], 
+        "Support Cinder Volume Multi-attach": [
+            "139580"
+        ],
+	"Allow direct access to LVM volumes if supported by Cinder": [
+            "127318"
+        ], 
+        "Enhance iSCSI volume multipath support": [
+            "134299"
+        ], 
+        "Failover to alternative iSCSI portals on login failure": [
+            "137468"
+        ], 
+        "Implement support for a DRBD driver for Cinder block device access": [
+            "134153"
+        ], 
+        "Refactor ISCSIDriver to support other iSCSI transports besides TCP": [
+            "130721"
+        ], 
+        "StorPool volume attachment support": [
+            "115716"
+        ], 
+        "Support iSCSI live migration for different iSCSI target": [
+            "132323"
+        ]
+    }, 
     "Cells": {
+        "Cells Scheduling": [
+            "141486"
+        ], 
         "Create an instance mapping database": [
             "135644"
+        ], 
+        "Flexible cell selection": [
+            "140031"
         ], 
         "Implement instance mapping": [
             "135424"
@@ -103,6 +149,12 @@
         ], 
         "Validate database migrations and model'": [
             "134984"
+        ],
+        "Enforce instance uuid uniqueness in the SQL database": [
+            "128097"
+        ], 
+        "Support DB2 as a SQL database": [
+            "141097"
         ]
     }, 
     "Hypervisor: Docker": {
@@ -118,11 +170,17 @@
     "Hypervisor: Hyper-V": {
         "Allow volumes to be stored on SMB shares instead of just iSCSI": [
             "102190"
+        ],
+	"Instance hot resize": [
+            "141219"
         ]
     }, 
     "Hypervisor: Ironic": {
         "Add config drive support": [
             "98930"
+        ],
+	"Pass through flavor capabilities to ironic": [
+            "136104"
         ]
     }, 
     "Hypervisor: VMWare": {
@@ -151,12 +209,17 @@
             "127054"
         ]
     }, 
-    "Hypervisor: ironic": {
-        "Pass through flavor capabilities to ironic": [
-            "136104"
-        ]
-    }, 
     "Hypervisor: libvirt": {
+        "Add Quobyte USP support": [
+            "138372", 
+            "138373"
+        ], 
+        "Add VIF_VHOSTUSER vif type": [
+            "138736"
+        ], 
+        "Add a Quobyte Volume Driver": [
+            "138375"
+        ], 
         "Add finetunable configuration settings for virtio-scsi": [
             "103797"
         ], 
@@ -171,6 +234,9 @@
         ], 
         "Allow specification of the device boot order for instances": [
             "133254"
+        ], 
+        "Allow the administrator to explicitly set the version of the qemu emulator to use": [
+            "138731"
         ], 
         "Consider PCI offload capabilities when scheduling instances": [
             "135331"
@@ -213,6 +279,15 @@
             "128112", 
             "131587", 
             "131597"
+        ], 
+        "Real time instances": [
+            "139688"
+        ], 
+        "Stop dm-crypt device when an encrypted instance is suspended or stopped": [
+            "140847"
+        ], 
+        "Support SR-IOV interface attach and detach": [
+            "139910"
         ], 
         "Support StorPool as a storage backend": [
             "137830"
@@ -260,6 +335,9 @@
         "Automate the documentation of the virtual machine state transition graph": [
             "94835"
         ], 
+        "Fake Libvirt driver for simulating HW testing": [
+            "139927"
+        ], 
         "Flatten Aggregate Metadata in the DB": [
             "134573"
         ], 
@@ -274,6 +352,9 @@
         ], 
         "Move to polling for cinder operations": [
             "135367"
+        ], 
+        "PCI test cases for third party CI": [
+            "141270"
         ], 
         "Transition Nova to using the Glance v2 API": [
             "84887"
@@ -311,6 +392,9 @@
         ], 
         "Use the Nova hostname in Neutron DNS": [
             "137669"
+        ], 
+        "Wrap the Python NeutronClient": [
+            "141108"
         ]
     }, 
     "Performance": {
@@ -319,6 +403,9 @@
         ]
     }, 
     "Scheduler": {
+        "A nested quota driver API": [
+            "129420"
+        ], 
         "Add a filter to take into account hypervisor type and version when scheduling": [
             "137714"
         ], 
@@ -328,6 +415,9 @@
         ], 
         "Add instance count on the hypervisor as a weight": [
             "127871"
+        ], 
+        "Allow extra spec to match all values in a list by adding the ALL-IN operator": [
+            "138698"
         ], 
         "Allow limiting the flavors that can be scheduled on certain host aggregates": [
             "122530"
@@ -359,6 +449,9 @@
         "Improve the ComputeCapabilities filter": [
             "133534"
         ], 
+        "Isolate Scheduler DB for Filters": [
+            "138444"
+        ], 
         "Isolate the scheduler's use of the Nova SQL database": [
             "89893"
         ], 
@@ -371,11 +464,25 @@
         "Persist scheduler hints": [
             "88983"
         ], 
+        "Refactor allocate_for_instance": [
+            "141129"
+        ], 
         "Stop direct lookup for host aggregates in the Nova database": [
             "132065"
         ], 
         "Stop direct lookup for instance groups in the Nova database": [
             "131553"
+        ], 
+        "Support scheduling based on more image properties": [
+            "138937"
+        ], 
+        "Trusted computing support": [
+            "133106"
+        ]
+    }, 
+    "Scheduling": {
+        "Dynamic Management of Server Groups": [
+            "139272"
         ]
     }, 
     "Security": {
@@ -384,29 +491,22 @@
         ], 
         "Strongly validate the tenant and user for quota consuming requests with keystone": [
             "92507"
+        ],
+        "Make key manager interface interoperable with Barbican": [
+            "140144"
         ]
     }, 
-    "Storage": {
-        "Allow direct access to LVM volumes if supported by Cinder": [
-            "127318"
+    "Service Groups": {
+        "Pacemaker service group driver": [
+            "139991"
         ], 
-        "Enhance iSCSI volume multipath support": [
-            "134299"
-        ], 
-        "Failover to alternative iSCSI portals on login failure": [
-            "137468"
-        ], 
-        "Implement support for a DRBD driver for Cinder block device access": [
-            "134153"
-        ], 
-        "Refactor ISCSIDriver to support other iSCSI transports besides TCP": [
-            "130721"
-        ], 
-        "StorPool volume attachment support": [
-            "115716"
-        ], 
-        "Support iSCSI live migration for different iSCSI target": [
-            "132323"
+        "Transition service groups to using the new oslo Tooz library": [
+            "138607"
+        ]
+    }, 
+    "Sheduler": {
+        "Add soft affinity support for server group": [
+            "140017"
         ]
     }, 
     "__ignore__": {
@@ -416,7 +516,9 @@
             "128824", 
             "128304", 
             "133658", 
-            "131740"
+            "131740", 
+            "137995",
+	    "138065"
         ]
     }, 
     "__previously_approved__": [
@@ -438,6 +540,9 @@
         "128600", 
         "134279", 
         "131868", 
-        "132819"
+        "132819", 
+        "141097", 
+        "140144", 
+        "138698"
     ]
 }

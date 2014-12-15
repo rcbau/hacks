@@ -1,0 +1,242 @@
+From d759030f40753e727bead2f748ce6f6e82320836 Mon Sep 17 00:00:00 2001
+From: "Daniel P. Berrange" <berrange@redhat.com>
+Date: Fri, 5 Dec 2014 17:26:08 +0000
+Subject: [PATCH] Libvirt real time instances
+
+The CPU pinning feature added to the ability to assigned guest
+virtual CPUs to dedicated host CPUs, providing guarantees for
+CPU time and improved worst case latency for CPU scheduling.
+The real time feature builds on that work to provide stronger
+guarantees for worst case schedular latency for vCPUs.
+
+Blueprint: libvirt-real-time
+Change-Id: I79b3bfc555ba7ca1651685434b7136deed49515c
+---
+ specs/kilo/approved/libvirt-real-time.rst | 215 ++++++++++++++++++++++++++++++
+ 1 file changed, 215 insertions(+)
+ create mode 100644 specs/kilo/approved/libvirt-real-time.rst
+
+diff --git a/specs/kilo/approved/libvirt-real-time.rst b/specs/kilo/approved/libvirt-real-time.rst
+new file mode 100644
+index 0000000..95ac16f
+--- /dev/null
++++ b/specs/kilo/approved/libvirt-real-time.rst
+@@ -0,0 +1,215 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++===========================
++Libvirt real time instances
++===========================
++
++https://blueprints.launchpad.net/nova/+spec/libvirt-real-time
++
++The CPU pinning feature added to the ability to assigned guest virtual CPUs
++to dedicated host CPUs, providing guarantees for CPU time and improved worst
++case latency for CPU scheduling. The real time feature builds on that work
++to provide stronger guarantees for worst case schedular latency for vCPUs.
++
++Problem description
++===================
++
++The CPU pinning feature allowed guest vCPUs to be given dedicated access to
++individual host pCPUs. This means virtual instances will no longer suffer
++from "steal time" where their vCPU is pre-empted in order to run a vCPU
++belonging to another guest. This improves the worst case latency for a guest
++somewhat, but there is still scope to go even better in the way the guest
++is configured to run.
++
++Assigning the guest vCPU threads a real time scheduling priority will ensure
++that the guest vCPUs cannot be pre-empted by kernel threads that might other-
++wise wish to run on the assigned host pCPUs.
++
++Assigning huge pages to a guest ensures that guest RAM cannot be swapped out
++on the host, but there are still other arbitrary memory allocations for the
++QEMU emulator. Locking all these into RAM ensures that no part of the QEMU
++process can be swapped out too.
++
++There will be a number of more general host OS setup tasks that can be done
++too. For example, host interrupt affinity can be set to move avoid interrupt
++handlers running on pCPUs assigned to guests. Many of these setup tasks will
++not be the responsiblity of Nova, but rather documented deployment
++pre-requisites to be dealt with by the external OpenStack deployment tool
++or cloud operator.
++
++Merely enabling real time in the host OS and guest emulator is not on its own
++sufficient. The guest workload and operating system must also be suitably
++configured to take advantage of it. Such configuration is considered to be out
++of scope for Nova, rather it the responsibility of the tenant user to setup.
++
++Use Cases
++----------
++
++Tenants who wish to run workloads where CPU execution latency is important
++need to have the performance guarantees offered by a real time KVM guest
++configuration. The NFV appliances commonly deployed by members of the
++telco community are one such use case, but there are plenty of other
++potential users. For example, stock market trading applications greatly
++care about scheduling latency, as may scientific processing workloads.
++
++Project Priority
++-----------------
++
++None
++
++Proposed change
++===============
++
++The flavour extra specs will permit a new property to be set
++
++* hw:cpu_realtime=yes|no
++
++This property is only valid if the 'hw:cpu_policy' is set to 'dedicated'. ie
++the guest must have exclusive pCPUs assigned to it, you cannot give it a real
++time policy if it is sharing pCPUs with other guests as that would be unfairly
++advantageous.
++
++Similarly this policy could also be set against the image metadata properties
++with the name 'hw_cpu_realtime'.
++
++When this setting is enabled at least two extra libvirt configuration options
++will be set.
++
++* Memory locking will be enabled
++* CPU schedular priority will be set to realtime
++
++Alternatives
++------------
++
++One option would be to always enable a real time schedular policy when the
++guest is using dedicated CPU pinning and always enable memory locking when
++the guest has huge pages. This is considered undesirable though because a
++real time schedular does have potential downsides too, for example, kernel
++threads may suffer worse latency overall. As a result it is considered
++perferrable to have an opt-in mechanism for enabling real time.
++
++Do nothing is always an option. In the event of doing nothing, guests would
++have to put up with the latencies inherant in non-real time scheduling, even
++with dedicated pCPUs. Some of those latencies could be further mitigated by
++careful host OS configuration, but it will never match what's achievable by
++fully configuring real time.
++
++Data model impact
++-----------------
++
++None required
++
++REST API impact
++---------------
++
++None required
++
++Security impact
++---------------
++
++The enablement of real time will only affect the pCPUs that are assigned to
++the guest. Thus if the tenant is already permitted to use dedicated pCPUs
++by the operator, enabling real time does not imply any further privileges.
++Thus real time is not considered to introduce any new security concerns.
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++The tenant will have the ability to request real time via an image property.
++
++Performance Impact
++------------------
++
++There will be no new performance impact to Nova as a whole. This is building
++on the existing CPU pinning and huge pages features, so the schedular logic is
++already in place. Likewise the impact on the host is restricted to pCPUs which
++are already assigned to a guest.
++
++Other deployer impact
++---------------------
++
++The operator will have the ability to define real time flavours by setting a
++flavour extra spec property.
++
++The operator will likely wish to make use of host aggregates to assign a
++certain set of compute nodes for use in combination with huge pages and CPU
++pinning. This is a pre-existing impact from those features, and real time does
++not alter that.
++
++There will be a number of host OS setup tasks that will be strongly recommended
++and/or mandatory to perform. The details for these are yet to be finalized,
++pending feedback from the KVM maintainers, and will be covered in the updates
++made to the documentation. They will include things such as booting the host
++with "isolcpus" to reserve CPUs exclusively for guest usage, setting interrupt
++affinity and so forth.
++
++Some distributions may require use of a different kernel image for running real
++time virtual machines too.
++
++Developer impact
++----------------
++
++Other virt drivers may wish to support the flavour/image properties for
++enabling real time scheduling of their instances, if their hypervisor has
++such a feature.
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  berrange
++
++Other contributors:
++  None at this time
++
++Work Items
++----------
++
++The primary work items are
++
++* Update the libvirt guest XML configuration when the real time flavour or
++  image properties are present
++* Update the Nova deployment documentation to outline what host OS setup
++  steps are required in order to make best use of the real time feature
++
++Dependencies
++============
++
++* The libvirt project needs to add support for the XML feature to enable
++  real time schedular priority for guests.
++* The KVM project needs to produce recommendations for optimal host OS
++  setup
++
++Testing
++=======
++
++None of the current OpenStack community test harnesses check the performance
++characteristics of guests deployed by Nova, which is what would be needed to
++validate this feature.
++
++The key functional testing requirement is around correct opertion of the
++existing Nova CPU pinning and huge pages features and their schedular
++integration. This is outside the scope of this particular blueprint.
++
++Documentation Impact
++====================
++
++The deployment documentation will need to be updated to describe how to setup
++a host to take advantage of real time schedular prioritization.
++
++References
++==========
++
++None at this time
+-- 
+1.9.1
+

@@ -1,4 +1,4 @@
-From b0b56109e3e0de1181b428340ac03107220db43b Mon Sep 17 00:00:00 2001
+From d92924937b5f4b6d37b65f476af671274df5978b Mon Sep 17 00:00:00 2001
 From: Johannes Erdfelt <johannes@erdfelt.com>
 Date: Wed, 25 Jun 2014 07:21:04 -0700
 Subject: [PATCH] Online Schema Changes
@@ -10,16 +10,16 @@ database schema changes when services are running.
 
 Change-Id: Ibbab7cb29911d52b57c467c6bfbc5876d1102e79
 ---
- specs/kilo/approved/online-schema-changes.rst | 276 ++++++++++++++++++++++++++
- 1 file changed, 276 insertions(+)
+ specs/kilo/approved/online-schema-changes.rst | 302 ++++++++++++++++++++++++++
+ 1 file changed, 302 insertions(+)
  create mode 100644 specs/kilo/approved/online-schema-changes.rst
 
 diff --git a/specs/kilo/approved/online-schema-changes.rst b/specs/kilo/approved/online-schema-changes.rst
 new file mode 100644
-index 0000000..ac58ad6
+index 0000000..a17ad05
 --- /dev/null
 +++ b/specs/kilo/approved/online-schema-changes.rst
-@@ -0,0 +1,276 @@
+@@ -0,0 +1,302 @@
 +..
 + This work is licensed under a Creative Commons Attribution 3.0 Unported
 + License.
@@ -63,10 +63,18 @@ index 0000000..ac58ad6
 +Proposed change
 +===============
 +
-+A parallel workflow to the existing 'db sync' command to nova-manage will
-+be added. This will dynamically determine the differences between the
-+running schema and the database model in Nova and generate DDL statements
-+to make the running schema match the model.
++Database migrations are currently managed by sqlalchemy-migrate and applied
++using the 'db sync' command to nova-manage. A new workflow that expands
++the schema, then contracts the schema (expand/contract workflow) will
++be added. This new workflow will dynamically determine the differences
++between the running schema and the database model defined in Nova. DDL
++statements will be generated, and optionally executed, to make the
++running schema match the model.
++
++Until the sqlalchemy-migrate workflow can be deprected, all schema
++changes will still need sqlalchemy-migrate migrations to be written.
++It is intended that at some future point, the use of sqlalchemy-migrate
++will dropped in a way transparent to deployers.
 +
 +Three new nova-manage commands will be added:
 +
@@ -107,10 +115,12 @@ index 0000000..ac58ad6
 +- Column drops
 +- Non-Unique Index drops
 +
-+Those schema changes that cannot be generated automatically will be
-+forbidden. As an example, column type changes will no longer be allowed
-+because it is generally not safe to be executed online and it is
-+difficult to automate on all databases.
++Some schema changes that aren't currently used or are difficult to
++automate will not be allowed initially. For instance, column type
++changes will not be allowed initially. This is because not all column
++type changes can be automated because of complexity and database
++restrictions. A subset of column type changes may be implemented in
++the future if they can be automated on all databases.
 +
 +The migrate and contract phases would verify that the previous phases
 +(expand in the case of migrate, expand and migrate in the case of
@@ -127,12 +137,11 @@ index 0000000..ac58ad6
 +not generate that DDL statement since the running schema does not
 +have that difference anymore.
 +
-+When 'db contract' is finally run, the version in the migrate_version
-+table would be updated to the latest version. This would maintain
-+compatibility with the existing sqlalchemy-migrate based migrations.
-+
-+It is intended that eventually the use of sqlalchemy-migrate would
-+be dropped in the future.
++When 'db contract' is finally run and the running schema has been
++verified to match the models, the version in the migrate_version
++table would be updated to the latest shipped sqlalchemy-migrate
++migration version. This would maintain compatibility with the
++existing sqlalchemy-migrate workflow.
 +
 +
 +Alternatives
@@ -201,17 +210,29 @@ index 0000000..ac58ad6
 +Other deployer impact
 +---------------------
 +
-+The expand and contract phases are optional. If not explicitly run
-+otherwise, the existing call to 'nova-manage db sync' would execute all
-+necessary schema changes, as is the existing behavior.
++Using the new expand/contract workflow is optional. If the deployer
++does not want to perform database schema changes online, then they
++can continue using the 'db sync' with nova-manage.
 +
 +Those deployers that want to take advantage of the online schema changes
 +will need to run the 'db expand', 'db migrate' and 'db contract' commands
 +at the appropriate steps in their deployment process.
 +
++The sqlalchemy-migrate and expand/contract workflow are compatible, but
++only if 'db contract' is finally run.
++
++If the expand/contract workflow is used, then 'db contract' is required
++to be execute once for each formal release of Nova. This is to ensure
++that SQL namespaces (table, column, etc) can be reused in the future.
++
 +Deployers that have made local schema changes (extra indexes, columns,
 +tables, etc) will need to update the model to ensure those additions
 +aren't dropped during the contract phase.
++
++If using the expand/contract workflow, then deployers can run 'db expand'
++before stopping or restarting any services. 'db migrate' might acquire
++locks in the database and may affect running services. 'db contract' can
++be run after all Nova services are running the new code.
 +
 +
 +Developer impact
@@ -227,6 +248,10 @@ index 0000000..ac58ad6
 +restricted to schema changes that cannot be reasonably automated but
 +those schema changes are generally the ones with the most downtime
 +anyway.
++
++Namespaces (table, column, index, etc) are not reusable in a formal
++release cycle. The contract phase is only required to be executed once
++per formal release, pinning old names until the next formal release.
 +
 +
 +Implementation
@@ -274,9 +299,10 @@ index 0000000..ac58ad6
 +are necessary. This will be compared with the result of 'db sync' to
 +ensure that upgrades from past commits end up semantically identical.
 +
-+turbo-hipster tests upgrades using production database snapshots. No
-+changes are necessary since it currently uses 'nova-manage db sync' as
-+well.
++turbo-hipster tests upgrades using production database snapshots. It
++currently uses the 'db sync' command to nova-manage. The new
++expand/contract workflow will be tested as well to ensure that both
++workflows function correctly.
 +
 +
 +Documentation Impact

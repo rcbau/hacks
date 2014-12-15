@@ -8,8 +8,9 @@ import psycopg2.extras
 import sys
 import time
 
-# Try to connect
+DEBUG = True
 
+# Try to connect
 password = getpass.getpass('DB password: ')
 
 try:
@@ -68,6 +69,12 @@ for invoice_id in invoice_totals:
     if invoice_totals[invoice_id] == 0 and not invoice_id in paid_invoices:
         paid_invoices.append(invoice_id)
         payment_dates[invoice_id] = invoice_dates[invoice_id]
+
+if DEBUG:
+    str_invoices = []
+    for invoice in paid_invoices:
+        str_invoices.append(str(invoice))
+    print 'Paid invoices: %s' % ','.join(sorted(str_invoices))
 
 # Find what those invoices paid for
 products_by_date = {}

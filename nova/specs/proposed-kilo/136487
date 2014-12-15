@@ -1,4 +1,4 @@
-From ed14ac86abfe8a4a4a09d1aeff5f0d4c7cc4b813 Mon Sep 17 00:00:00 2001
+From 512bf71cc1d0332a560010fe5ce50f898ba3adc2 Mon Sep 17 00:00:00 2001
 From: Jennifer Mulsow <jmulsow@us.ibm.com>
 Date: Fri, 21 Nov 2014 14:52:03 -0600
 Subject: [PATCH] Nova specs doc for dynamic server groups - remove
@@ -8,16 +8,16 @@ https://blueprints.launchpad.net/nova/+spec/dynamic-server-groups-remove
 
 Change-Id: I1728e3b347b4ae0364785d167ac530bf4109f3bf
 ---
- .../kilo/approved/dynamic-server-groups-remove.rst | 220 +++++++++++++++++++++
- 1 file changed, 220 insertions(+)
+ .../kilo/approved/dynamic-server-groups-remove.rst | 292 +++++++++++++++++++++
+ 1 file changed, 292 insertions(+)
  create mode 100644 specs/kilo/approved/dynamic-server-groups-remove.rst
 
 diff --git a/specs/kilo/approved/dynamic-server-groups-remove.rst b/specs/kilo/approved/dynamic-server-groups-remove.rst
 new file mode 100644
-index 0000000..ef19ac2
+index 0000000..ef36b00
 --- /dev/null
 +++ b/specs/kilo/approved/dynamic-server-groups-remove.rst
-@@ -0,0 +1,220 @@
+@@ -0,0 +1,292 @@
 +..
 + This work is licensed under a Creative Commons Attribution 3.0 Unported
 + License.
@@ -55,15 +55,28 @@ index 0000000..ef19ac2
 +Proposed change
 +===============
 +
-+A new action to be performed on server groups will be added to remove an
-+instance from a server group. This will be added in the form of a new Nova API
-+and a new Nova CLI.
++New server group member level APIs will be added to the server group APIs in
++nova/api/openstack/compute/contrib/server_groups. There will be a new API to
++retrieve a list of members in a server group and another to perform a DELETE
++on a specific member in a server group.
 +
-+The API will be added to nova/api/openstack/compute/contrib/server_groups.py.
-+Also, a new delete_member() method will need to be added to the
++A Nova CLI will also be added to delete a server from a server group.
++
++A new delete_member() method will need to be added to the
 +nova/objects/instance_group.py:InstanceGroup class that will call the existing
 +Nova database API method instance_group_member_delete() to soft delete the
 +instance in the INSTANCE_GROUP_MEMBER database table.
++
++A new get_members() method will need to be added to the
++nova/objects/instance_group.py:InstanceGroup class that will call the existing
++Nova database API method instance_group_members_get() to return a list of UUIDs
++for each instance that is a member of the server group.
++
++Note: The server group member level APIs can be expanded on to also allow a
++user to add an existing instance to a server group. This functionality is
++covered under a different specification document,
++dynamic-server-groups-add.rst. It will most likely be targeted for the
++L release and can be found at: https://review.openstack.org/#/c/139272/
 +
 +Alternatives
 +------------
@@ -80,31 +93,97 @@ index 0000000..ef19ac2
 +REST API impact
 +---------------
 +
-+New remove server API
++New list servers in a server group v2.1 API
 +
 +* Specification for the method
 +
-+  * Removes a server from a server group
++  * Lists servers in a server group
 +
-+  * Method type: POST
++  * Method type: GET
 +
 +  * Normal http response code: 200
 +
 +  * Expected error http response codes:
-+
-+    * 400 - invalid request::
-+
-+          This response code will be returned if the request body is formatted
-+          incorrectly, a required parameter is missing from the request, or if
-+          the server passed in the request body does not belong to the server
-+          group.
 +
 +    * 404 - not found::
 +
 +          This response code will be returned if the server group does not
 +          exist.
 +
-+  * URL: /v2/{tenant_id}/os-server-groups/{ServerGroup_id}/action
++  * URL: /v2.1/os-server-groups/{ServerGroup_id}/members
++
++  * Parameters:
++
++    +----------------+-------+------------+-----------------------------------+
++    |  Parameter     | Style |   Type     |  Description                      |
++    +================+=======+============+===================================+
++    | tenant_id      | URI   | xsd:string | The ID for the tenant or          |
++    |                |       |            | account in a multi-tenancy cloud. |
++    +----------------+-------+------------+-----------------------------------+
++    | ServerGroup_id | URI   | String     | The server group ID.              |
++    +----------------+-------+------------+-----------------------------------+
++
++  * JSON schema definition for the body data::
++
++        This operation does not accept a request body
++
++  * JSON schema definition for the response data::
++
++        {
++            "members": [
++                {
++                    "server": {
++                        "id": "40797b78-5ac6-41d3-ba45-39d2b661b5d9",
++                        "links": [
++                            {
++                                "href": "http://openstack.example.com/"
++                                        "openstack/servers/"
++                                        "40797b78-5ac6-41d3-ba45-39d2b661b5d9",
++                                "rel": "bookmark"
++                            }
++                        ],
++                        "name": "get-members-test"
++                    },
++                    "links": [
++                        {
++                            "href": "http://openstack.example.com/v2/"
++                                    "openstack/os-server-groups/"
++                                    "227c6f51-e94c-4b5d-baec-3516123485db/"
++                                    "members/"
++                                    "40797b78-5ac6-41d3-ba45-39d2b661b5d9",
++                            "rel": "self"
++                        },
++                        {
++                            "href": "http://openstack.example.com/"
++                                    "openstack/os-server-groups"
++                                    "227c6f51-e94c-4b5d-baec-3516123485db/"
++                                    "members/"
++                                    "40797b78-5ac6-41d3-ba45-39d2b661b5d9",
++                            "rel": "bookmark"
++                        }
++                    ]
++                }
++            ]
++        }
++
++New delete member from a server group v2.1 API
++
++* Specification for the method
++
++  * Removes a server from a server group
++
++  * Method type: DELETE
++
++  * Normal http response code: 200
++
++  * Expected error http response codes:
++
++    * 404 - not found::
++
++          This response code will be returned if the server group does not
++          exist, or if the server is not a member of the server group.
++
++  * URL: /v2.1/os-server-groups/{ServerGroup_id}/members/{server_id}
 +
 +  * Parameters:
 +
@@ -122,34 +201,23 @@ index 0000000..ef19ac2
 +
 +  * JSON schema definition for the body data::
 +
-+            {
-+                "remove_server": {
-+                    "server_id": "324dfb7d-f4a9-419a-9a19-237df04b443b"
-+                }
-+            }
++        This operation does not accept a request body
 +
 +  * JSON schema definition for the response data::
 +
-+            {
-+                "server_group": {
-+                    "id": "5bbcc3c4-1da2-4437-a48a-66f15b1b13f9",
-+                    "name": "test",
-+                    "policies": [
-+                        "anti-affinity"
-+                    ],
-+                    "members": [],
-+                    "metadata": {}
-+                }
-+           }
++        This operation does not return a response body
 +
-+* Policy Changes: Right now, the server group APIs only apply role checking
-+  at the compute_extension:server_groups level. A new action-level
-+  authorization will be added so that the Nova policy.json file has the ability
-+  to distinctly enumerate what roles can remove servers from a server group.
++* Policy Changes: Two new authorizations will be added so that the Nova
++  policy.json file has the ability to distinctly enumerate what roles can list
++  the servers in a server group an what roles can remove servers from a server
++  group.
++  The following action will be required in the policy to list the server
++  members in a server group:
++  * compute_extension:server_group_members:index
++
 +  The following action will be required in the policy to remove a server from
 +  a server group:
-+
-+  * compute_extension:server_groups:remove_server
++  * compute_extension:server_group_members:delete
 +
 +Security impact
 +---------------
@@ -206,10 +274,12 @@ index 0000000..ef19ac2
 +
 +Work items or tasks:
 +
-+* Add 'remove a server from a server group' API to the v2 Server Group APIs.
-+  v2 extensions.
-+* Add 'remove a server from a server group' API to the v3 Server Group APIs.
-+* Add Nova CLI removing a server from a server group.
++* Add new get_members() and delete_member() methods to the Nova instance group
++  object.
++* Add member level index and delete APIs to Server Group API v2.1 extensions.
++* Add Nova CLI for removing a server from a server group.
++* Add Nova integration API sample tests to cover the new APIs.
++* Add new tempest tests.
 +
 +Dependencies
 +============
@@ -225,8 +295,9 @@ index 0000000..ef19ac2
 +Documentation Impact
 +====================
 +
-+Documentation will be needed to the Nova APIs and Nova CLIs for the new 'remove
-+server' action being added for server groups.
++Documentation will be needed to the Nova APIs for the new member level index
++and delete APIS. Documentation for the new Nova CLI to remove a server from
++a server group will also be needed.
 +
 +References
 +==========
@@ -235,7 +306,8 @@ index 0000000..ef19ac2
 +http://lists.openstack.org/pipermail/openstack-dev/2014-September/045636.html
 +
 +This topic was also discussed during the Nova Unconference session at the
-+Kilo OpenStack Summit on November 6, 2014.
++Kilo OpenStack Summit on November 6, 2014, where it was decided that the
++add and remove APIs be separated into two separate specificiation documents.
 +https://etherpad.openstack.org/p/kilo-nova-summit-unconference
 +
 -- 

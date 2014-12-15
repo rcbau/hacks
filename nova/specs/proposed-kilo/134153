@@ -1,6 +1,6 @@
-From 7d4b56ceabf4634daf1b47acb7d78ad9a3a7c7e2 Mon Sep 17 00:00:00 2001
+From 80713670f33e306920407a3b0e34d0bd741b35c9 Mon Sep 17 00:00:00 2001
 From: Philipp Marek <philipp.marek@linbit.com>
-Date: Wed, 19 Nov 2014 17:02:37 +0100
+Date: Wed, 3 Dec 2014 07:17:19 +0100
 Subject: [PATCH] Connecting Nova to DRBD storage nodes directly.
 
 No iSCSI would be needed anymore.
@@ -13,7 +13,7 @@ Change-Id: I66dd9feb9435945ab8eb7dcad4d0d5ece2095ccf
 
 diff --git a/specs/kilo/approved/drbd-driver.rst b/specs/kilo/approved/drbd-driver.rst
 new file mode 100644
-index 0000000..640ab81
+index 0000000..7ed9519
 --- /dev/null
 +++ b/specs/kilo/approved/drbd-driver.rst
 @@ -0,0 +1,219 @@
@@ -200,7 +200,7 @@ index 0000000..640ab81
 +Dependencies
 +============
 +
-+Cinder volume driver using DRBD https://review.openstack.org/#/c/102541/ and
++Cinder volume driver using DRBD https://review.openstack.org/133623 and
 +its implementation.
 +
 +

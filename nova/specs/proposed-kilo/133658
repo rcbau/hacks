@@ -1,4 +1,4 @@
-From a48a009e566cd518336a4a79cecb5ce203079ad7 Mon Sep 17 00:00:00 2001
+From 297babe3671d20a365be8a3fa77975be29dafe5d Mon Sep 17 00:00:00 2001
 From: John Garbutt <john.garbutt@rackspace.com>
 Date: Tue, 11 Nov 2014 10:37:16 +0000
 Subject: [PATCH] Separate kilo and juno specs

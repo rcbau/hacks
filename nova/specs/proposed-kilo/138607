@@ -1,0 +1,446 @@
+From 9a0e8ef8df91932572fc3a95d49ca58681932f38 Mon Sep 17 00:00:00 2001
+From: Joshua Harlow <harlowja@yahoo-inc.com>
+Date: Wed, 19 Nov 2014 15:31:52 -0800
+Subject: [PATCH] Replace service groups with the tooz groups
+
+This specification proposes replacing (or depreciating and
+later replacing) the service group and associated drivers
+in nova with the usage of tooz (a new oslo library) to provide
+the same functionality through tooz's own group membership
+abstraction.
+
+Implements: blueprint tooz-for-service-groups
+
+Change-Id: I65198fe507a11a1efd9f90e2f56d91023b689099
+---
+ specs/kilo/service-group-using-tooz.rst | 418 ++++++++++++++++++++++++++++++++
+ 1 file changed, 418 insertions(+)
+ create mode 100644 specs/kilo/service-group-using-tooz.rst
+
+diff --git a/specs/kilo/service-group-using-tooz.rst b/specs/kilo/service-group-using-tooz.rst
+new file mode 100644
+index 0000000..4bf3fea
+--- /dev/null
++++ b/specs/kilo/service-group-using-tooz.rst
+@@ -0,0 +1,418 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++=======================
++Tooz for service groups
++=======================
++
++https://blueprints.launchpad.net/nova/+spec/tooz-for-service-groups
++
++Instead of having nova maintain, test its own group membership code which
++is used to determine what services are up & down which is frequently used to
++determine which the members of a given group [compute, scheduler...] are and
++if they are alive or dead (typically the member information includes what
++topic can be used to contact the member as well) we propose to retain a similar
++API in nova but instead using `tooz`_ (a new oslo library that has been under
++development for around a year) to provide the grouping concepts.
++
++Problem description
++===================
++
++The service group code in nova is used to determine what services are up & down
++and used to introspect liveness of those services by other members of the
++groups that all services belong to. To reduce nova from having to maintain,
++test, and support code that does these group membership concepts (currently
++supporting [db, memcache, zookeeper] drivers) the `tooz`_ library can instead
++be used as the entrypoint and driver provider/maintainer that provides
++equivalent concepts.
++
++This will have the following benefits (not an all inclusive listing):
++
++- Increase the robustness of implementation (by utilizing the tooz
++  test suite which is specialized to test the grouping concepts).
++- Provide a cleaner abstraction (since how tooz maintains the grouping
++  concept(s) is now an internal API implementation).
++- Reduce the burdon on the nova team around testing, management, maintenance
++  and general upkeep of the servicegroup concepts (seeing as this is something
++  that is not a direct feature of a compute project it seems like this burdon
++  should just be placed on a external project instead).
++- Keep the code less stale (ex, the zookeeper driver is using an
++  outdated/dead? `evzookeeper`_ driver from 2012 with a `zookeeper unit test`_
++  that likely isn't/hasn't(?) ever been tested in an automated fashion).
++- World peace...
++
++Use Cases
++----------
++
++- Developer (nova team has to maintain, test, own less code).
++- Deployer (they can *potentially* configure tooz to use a backend of there
++  choosing).
++
++Project Priority
++-----------------
++
++It doesn't appear to be listed in the current `kilo priorities`_ but it does
++feel like an exception should be made for something that *could* bring world
++peace...
++
++Proposed change
++===============
++
++The proposed change would be to refactor the ``servicegroup/api.py`` API
++to have only a single implementation that is backed by tooz. Instead of
++having an API (shown below) that would be backed by custom implementations
++in nova (one of [db, memcache, zookeeper]) there would be a single API that
++would just use tooz.
++
++The API that *currently* exists::
++
++    class ServiceGroupDriver(object):
++
++        def join(self, member_id, group_id, service=None):
++            raise NotImplementedError()
++
++        def is_up(self, member):
++            raise NotImplementedError()
++
++        def leave(self, member_id, group_id):
++            raise NotImplementedError()
++
++        def get_all(self, group_id):
++            raise NotImplementedError()
++
++        def get_one(self, group_id):
++            members = self.get_all(group_id)
++            if members is None:
++                return None
++            length = len(members)
++            if length == 0:
++                return None
++            return random.choice(members)
++
++The idea for this implementation is that it *could* be something like::
++
++    class ToozServiceGroupDriver(ServiceGroupDriver):
++        def __init__(self, backend_url):
++            self._impl = tooz.get_coordinator(backend_url)
++            self._impl.start()
++
++        def join(self, member_id, group_id, service=None):
++            # Call into impl to join (and handle/translate the
++            # appropriate errors)...
++
++        def is_up(self, member):
++            # Call into impl to check if the member is up... (and
++            # handle/translate the appropriate errors)...
++
++        def leave(self, member_id, group_id):
++            # Call into impl to leave (and handle/translate the appropriate
++            # errors)...
++
++        def get_all(self, group_id):
++            # Call into impl to get all the members of the given group (and
++            # handle/translate appropriate errors)...
++
++        def get_one(self, group_id):
++            # Call into impl to get one the members of the given group (and
++            # handle/translate appropriate errors)...
++
++Following this change (and perhaps in the release after this change?) the
++older implementation(s) would be marked as deprecated/no longer supported and
++then in a release after this depreciation they could/would be removed (leaving
++only the tooz implementation).
++
++Alternatives
++------------
++
++- Retain the custom implementations (sadness throughout the land), let them
++  continue to become stale/rot; or update them and continue to maintain
++  them (thus avoiding said staleness and rot).
++
++Data model impact
++-----------------
++
++Lets split this up and consider the three in-tree drivers that exist in nova.
++
++db.py
++~~~~~
++
++This driver uses tables and a data model that is intrinsically tied to the
++internals of nova::
++
++    mysql> describe services;
++    +-----------------+--------------+------+-----+---------+----------------+
++    | Field           | Type         | Null | Key | Default | Extra          |
++    +-----------------+--------------+------+-----+---------+----------------+
++    | created_at      | datetime     | YES  |     | NULL    |                |
++    | updated_at      | datetime     | YES  |     | NULL    |                |
++    | deleted_at      | datetime     | YES  |     | NULL    |                |
++    | id              | int(11)      | NO   | PRI | NULL    | auto_increment |
++    | host            | varchar(255) | YES  | MUL | NULL    |                |
++    | binary          | varchar(255) | YES  |     | NULL    |                |
++    | topic           | varchar(255) | YES  |     | NULL    |                |
++    | report_count    | int(11)      | NO   |     | NULL    |                |
++    | disabled        | tinyint(1)   | YES  |     | NULL    |                |
++    | deleted         | int(11)      | YES  |     | NULL    |                |
++    | disabled_reason | varchar(255) | YES  |     | NULL    |                |
++    +-----------------+--------------+------+-----+---------+----------------+
++    11 rows in set (0.00 sec)
++
++Options for what to do about this driver:
++
++#. Leave the driver in nova (and don't deprecate it).
++#. Have tooz have a *new* (no such driver currently exists in tooz) driver that
++   can read from and write to an agreed upon database format/data model (this
++   makes changing the nova internal data model harder as now there is an format
++   binding the two projects). Then have tooz test using its own version of that
++   format/data model (which *should* work transparently with the nova
++   format/data model as long as compatability is retained).
++#. Something else?
++
++mc.py
++~~~~~
++
++This driver uses a ``memorycache`` from oslo (to be replaced with `dogpile`_
++sometime soon?) that then saves data using the backends that ``memorycache``
++module supports (this being memcache or a local memory implementation that is
++typically/hopefully used just for testing; when a memcache server can not be
++made available to integrate against).
++
++This driver uses keys of the format::
++
++    key = "%(topic)s:%(host)s" % service_ref
++
++Things to note:
++
++- This driver only uses the ``memorycache`` (and subsequently
++  memcache) to check liveness via the ``is_up`` implementation (liveness is
++  maintained by a periodic ``set`` call into memcache for each group member).
++  The service group members come from the database (using the same
++  tables that the ``db.py`` driver uses). This is IMHO *confusing* and means
++  that the database ``services`` table (described above) is used but the
++  fields [updated_at, report_count, ...] are not actually used (the
++  fields [disabled, deleted, topic] though are).
++- Memcache is a *cache* and IMHO should *not* be used for this kind of
++  *critical* service liveness information (if the cache gets cleared or a
++  memcache server goes down, you may have just lost a portion of your
++  services/cluster); tooz does provide a memcache driver but it also provides
++  a redis one which can be made/setup in a more consistent and reliable
++  manner (redis supports and/or is building support for `clustering`_,
++  `sharding`_, more consistent/durable strategies while memcache just
++  provides a non-durable cache, unless the deployer starts to use things
++  like `memcachedb`_, but let's not consider that as the deployment
++  solution).
++
++Options for what to do about this driver:
++
++- Remove it/deprecate it, tooz provides the equivalent/better functionality
++  using its own memcache (or redis) implementation. The primary difference
++  would be that tooz does not use nova-conductor (and by side-effect the
++  database) to fetch the members of a group, as tooz maintains this
++  information in memcache (or redis) itself.
++
++  - This disconnect of the database from tooz will be a functionality
++    difference that needs to be documented and tested (and hopefully is a
++    welcome change that reduces the coupling between the ``services`` table,
++    the database, and the various drivers).
++
++- Something else?
++
++zk.py
++~~~~~
++
++This driver uses `evzookeeper`_ (seemingly unmaintained?) to store members
++under the path formed by ``"/".join(CONF.zookeeper.sg_prefix, group)`` in
++zookeeper by placing a ephemeral node representing the member under that
++path. Since zookeeper will remove ephemeral node(s) automatically when the
++client connected to zookeeper has not *reported in* after a given amount of
++time this driver also *internally* uses a green thread that will
++periodically *report in* to zookeeper to ensure that the ephemeral node is
++not automatically removed.
++
++Options for what to do about this driver:
++
++- Remove it/deprecate it, tooz provides the equivalent functionality using its
++  own zookeeper implementation using `kazoo`_ (which is maintained and is more
++  active in the python community). The functionality translation should be
++  relatively simple and straight-forward.
++
++Things to note:
++
++- The `evzookeeper`_ doesn't seem to well tested or used in nova, in fact it
++  has conditional imports around using `evzookeeper`_ so it doesn't seem like
++  this driver is well maintained/tested or integrated with in the nova code
++  base (ie ``evzookeeper`` isn't in the global requirements repo...) so
++  deprecating it would seem like a benefit for all.
++- This driver doesn't use the conductor + database to maintain what members
++  are in what group (so IMHO is less *confusing* then the memcache one which
++  does); although it does use a zookeeper driver that isn't easy to
++  understand.
++
++REST API impact
++---------------
++
++N/A
++
++Security impact
++---------------
++
++It doesn't appear that there would be any security impact as none of the
++current drivers (outside of ``db.py``) use any secured connection into the
++backend services (memcache doesn't have any security in the first place;
++although the ``mc.py`` driver is a mixed-mode driver anyway so this statement
++may not be completely fair, and zookeeper has security but it's not being
++used in ``zk.py``). The usage of tooz would have the potential to increase
++security (as tooz itself can configure and interact with those backends
++in a more secure manner when/if it implements said security interactions).
++
++Notifications impact
++--------------------
++
++N/A
++
++Other end user impact
++---------------------
++
++N/A
++
++Performance Impact
++------------------
++
++None expected, there will still need to be periodic heartbeats into memcache
++to ensure the memcache key is not expired, zookeeper clients (even using
++`kazoo`_ also need to periodically check-in with zookeeper) so nothing should
++be drastically different in this arena.
++
++Other deployer impact
++---------------------
++
++Configs
++~~~~~~~
++
++There will need to be a new way to configure the service group driver using
++a url that is formatted according to how tooz expects it to be. An few example
++of this url format::
++
++    url = "kazoo://127.0.0.1:2181?timeout=5"
++    url = "memcached://localhost:11211?timeout=5"
++    url = "redis://localhost:6379?timeout=5"
++
++To configure this a new ``cfg.CONF`` option would need to be created (perhaps
++named ``servicegroup_coordination_url``) that would be used to configure what
++driver tooz uses internally and what options it provides to that
++driver. Depending on how the existing drivers are deprecated this should be
++mostly transparent and can be accomplished by making it possible to transition
++from the existing drivers to the tooz one in a manner that will work with
++those who use continuous deployment.
++
++The existing data
++~~~~~~~~~~~~~~~~~
++
++The other main deployer concern will be around what happens with the existing
++data that exists in zookeeper or memcache (excluding the db driver for now)
++when they switch from the existing drivers to this new tooz one. To accomodate
++this change in a way that does not cause service(s) to report downtime and/or
++disappear (since group membership will change to the tooz model) it would
++likely be advantegous to have or be able to run the old service group driver
++and the new tooz driver for a period of time (and then after this period has
++elapsed stop running the old service group driver).
++
++Developer impact
++----------------
++
++- Nova developers may have to interact more with the oslo community (and
++  the tooz subcommunity) when learning, understanding, and integrating with
++  tooz.
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Currently throwing it up there, but likely candiates exist...
++
++Work Items
++----------
++
++#. Implement stated *new* tooz servicegroup driver that derives from the
++   existing ``ServiceGroupDriver`` base class, adding a new configuration
++   option ``servicegroup_coordination_url`` that is used to configure the
++   tooz backed driver.
++#. Create/add tests for tooz servicegroup driver.
++#. Add new ability to run two service group drivers for a given period of
++   time and then remove the *old* one after the period has elapsed (this
++   allows those who are using CD to switch over if they choose).
++#. Test that ability and ensure that it continues to work as expected.
++#. Document the new driver and migration pattern.
++#. Document and form some agreement on a depreciation strategy/plan for the
++   existing *legacy* drivers.
++#. Followup on said depreciation strategy/plan when appropriate.
++
++Dependencies
++============
++
++- Tooz
++
++*Current* dependencies (all but ``pymemcache`` are in the global
++requirements repo, this should be fixed before it becomes a further issue)::
++
++    pbr>=0.6,!=0.7,<1.0
++    Babel>=1.3
++    stevedore>=0.14
++    six>=1.7.0
++    iso8601
++    kazoo>=1.3.1
++    pymemcache>=1.2
++    zake>=0.1.6
++    msgpack-python
++    retrying!=1.3.0
++    futures>=2.1.6
++    oslo.utils>=1.0.0
++    redis>=2.10.0
++
++Testing
++=======
++
++- Tooz already has integration testing with memcache, redis, zookeeper so
++  there shouldn't be a need for nova to reimplement that
++  functionality/integration in its own internal testing suite.
++- Tempest tests will be used/added to test tooz + nova + [redis, memcache,
++  zookeeper] to ensure the whole system works together as expected.
++
++Documentation Impact
++====================
++
++- The *legacy* driver depreciation and associated migration strategy/plan
++  needs to be documented and explained to operators.
++- How to use the new driver and how to configure it needs to be documented
++  appropriatlely.
++
++References
++==========
++
++Tooz adoption by oslo:
++
++- https://review.openstack.org/#/c/122439/
++
++Tooz rtd:
++
++- http://tooz.readthedocs.org
++
++Others:
++
++- https://wiki.openstack.org/wiki/Oslo/blueprints/service-sync
++- http://specs.openstack.org/openstack/ceilometer-specs/specs/juno/central-agent-partitioning.html
++
++.. _memcachedb: http://memcachedb.org/
++.. _tooz: https://pypi.python.org/pypi/tooz
++.. _evzookeeper: https://pypi.python.org/pypi/evzookeeper
++.. _kazoo: http://kazoo.readthedocs.org/
++.. _kilo priorities: https://github.com/openstack/nova-specs/blob/master/priorities/kilo-priorities.rst
++.. _zookeeper unit test: https://github.com/openstack/nova/blob/stable/juno/nova/tests/servicegroup/test_zk_driver.py
++.. _dogpile: https://review.openstack.org/#/c/124776/
++.. _clustering: http://redis.io/topics/cluster-spec
++.. _sharding: http://redis.io/topics/sentinel
+-- 
+1.9.1
+

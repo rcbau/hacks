@@ -1,24 +1,24 @@
-From df926d9abc7d6e2dedac4ec2c4ac241aa8b14970 Mon Sep 17 00:00:00 2001
+From 61f7e407de9c3a90b0b1733b8dd61e599514c3ff Mon Sep 17 00:00:00 2001
 From: Sylvain Bauza <sbauza@redhat.com>
 Date: Wed, 23 Apr 2014 18:26:55 +0200
 Subject: [PATCH] Propose Isolate Scheduler DB for Aggregates
 
-Defines a clear way on how to update HostState thru a new RPCAPI endpoint.
+Defines a clear way on how to get Aggregate information from the filters
 
 Implements: blueprint isolate-scheduler-db
 
 Change-Id: I489ab606341ed406024fff0c7e302fc158d20be2
 ---
- .../approved/isolate-scheduler-db-aggregates.rst   | 216 +++++++++++++++++++++
- 1 file changed, 216 insertions(+)
+ .../approved/isolate-scheduler-db-aggregates.rst   | 320 +++++++++++++++++++++
+ 1 file changed, 320 insertions(+)
  create mode 100644 specs/kilo/approved/isolate-scheduler-db-aggregates.rst
 
 diff --git a/specs/kilo/approved/isolate-scheduler-db-aggregates.rst b/specs/kilo/approved/isolate-scheduler-db-aggregates.rst
 new file mode 100644
-index 0000000..7b70d59
+index 0000000..28dbaaa
 --- /dev/null
 +++ b/specs/kilo/approved/isolate-scheduler-db-aggregates.rst
-@@ -0,0 +1,216 @@
+@@ -0,0 +1,320 @@
 +..
 + This work is licensed under a Creative Commons Attribution 3.0 Unported
 + License.
@@ -70,66 +70,164 @@ index 0000000..7b70d59
 +Project Priority
 +-----------------
 +
-+This blueprint is part of the 'scheduler' refactoring effort identified as the
-+3rd priority for Kilo (see footnote [1]).
++This blueprint is part of the 'scheduler' refactoring effort identified as a
++priority for Kilo.
 +
 +
 +Proposed change
 +===============
 +
 +The strategy will consist in updating the scheduler each time a change comes
-+to an Aggregate (adding or removing a host or changing metadata)
++to an Aggregate (adding or removing a host or changing metadata).
 +
-+For that, we propose to add a new method to the current Scheduler client
-+which could be having the following structure ::
++As the current Scheduler design scales with the number of requests (for each
++request, a new HostState object is generated using get_all_host_states method
++in the HostManager module), we can't hardly ask the Scheduler to update a DB
++each time a new compute comes in an aggregate. It would then create a new
++paradigm where the Scheduler would scale with the number of computes added
++to aggregates and which could create some race conditions.
 +
-+    update_aggregate(context, AggregateResource)
++Instead, we propose to keep the current update model where a call is made to
++the conductor (thru NovaObject or not) for updating a state in the DB (here,
++it's the compute_nodes table which serves to populate the HostState object) but
++where each entry in the table is not related to an host but instead to an
++aggregate.
 +
-+where AggregateResource would be a clear defined object
-+(see bp/resource-objects) including the following fields:
++That would consequently require to create a new table in the Nova DB,
++considered as a duplicate or a close sibling of the aggregates table,
++but fully owned by the Scheduler in the eventuality where the Scheduler lifts
++off from Nova and becomes a separate entity.
 +
-+  - metadata
-+  - list of hosts belonging to it
++We also understand that the problem of providing aggregate information to the
++Scheduler can be tied to a more global problem where some contextual
++information is needed by the Scheduler that is not a "Resource", ie. something
++that compute nodes can claim. As a consequence, we feel that the table that
++we need to create for providing aggregate information can be more generic and
++related to any location information. As an example, we can imagine in a next
++future some information related to physical racks (for affinity purpose) that
++could be populated to the scheduler using the same table so that a
++potential RackAffinityFilter (I'm very poor at naming things) could actually
++filter out hosts based on that info.
 +
-+That method would be called at the aggregates helper module level, in each
-+method responsible for actually updating the Aggregate object.
++This table would get the following model ::
++
++  class TopologyInformation(BASE, NovaBase):
++      """Represents a set of placement information that the Scheduler can
++      consume
++      """
++
++      __tablename__ = 'topology_informations'
++      __table_args__ = (Index('topology_informations_type_idx', 'type'),)
++      id = Column(Integer, primary_key=True, autoincrement=True)
++      name = Column(String(255))
++      # type is a string as we want to not ALTER the scheme when adding a new
++      # type (like Rack) but is indexed for fast querying
++      type = Column(String(255))
++      _hosts = orm.relationship(
++          TopologyHost,
++          primaryjoin='and_('
++              'TopologyInformation.id == TopologyHost.topology_id,'
++              'TopologyHost.deleted == 0,'
++              'TopologyInformation.deleted == 0)')
++
++      _metadata = orm.relationship(
++          TopologyMetadata,
++          primaryjoin='and_('
++              'TopologyInformation.id == TopologyMetadata.topology_id,'
++              'TopologyMetadata.deleted == 0,'
++              'TopologyInformation.deleted == 0)')
 +
 +
-+The implementation proposal for that method would consist in updating HostState
-+using the corresponding Resource.usage(). That will require to update the
-+Scheduler RPC API to add update_aggregate() so that the Manager can directly
-+access HostState.
++Of course, we plan to follow the existing normalization and have foreign keys
++on the two other tables that we would be created with the following respective
++models ::
 +
-+Once all of that would be done, filters would just have to look into HostState
-+to access what they need.
++  class TopologyHost(BASE, NovaBase):
++      """Represents a host that is member of an topology."""
++      __tablename__ = 'topology_hosts'
++      __table_args__ = (schema.UniqueConstraint(
++          "host", "topology_id", "deleted",
++           name="uniq_topology_hosts0host0topology_id0deleted"
++          ),
++      )
++      id = Column(Integer, primary_key=True, autoincrement=True)
++      host = Column(String(255))
++      topology_id = Column(Integer, ForeignKey('topology_informations.id'),
++                           nullable=False)
++
++  class TopologyMetadata(BASE, NovaBase):
++      """Represents a metadata key/value pair for a topology."""
++      __tablename__ = 'topology_metadata'
++      __table_args__ = (
++          schema.UniqueConstraint("topology_id", "key", "deleted",
++              name="uniq_topology_metadata0topology_id0key0deleted"
++              ),
++          Index('topology_metadata_key_idx', 'key'),
++      )
++      id = Column(Integer, primary_key=True)
++      key = Column(String(255), nullable=False)
++      value = Column(String(255), nullable=False)
++      topology_id = Column(Integer, ForeignKey('topology_informations.id'),
++                           nullable=False)
++
++
++DB API would be amended accordingly with all CRUD/members/metadata methods,
++a new NovaObject would be created (TopologyInformation) with mapped methods
++and nova.scheduler.client would expose this object with the save method
++for the persistence.
++
++Every time that an Aggregate would be updated, we would hook the existing
++nova.compute.api.AggregateAPI class and each method in it by adding another
++call to nova.scheduler.client in a context manager so we would be sure that
++this would be transactional.
++
++On the other side, a new class nova.scheduler.topology.TopologyManager would
++be created so that it would be called in the FilterScheduler._schedule and
++CachingScheduler._get_up_hosts methods like does get_all_host_states and
++would instantiate a new TopologyState object attach to the driver so
++that the filters could consume.
++
++Once all of that would be done, filters would just have to look into
++TopologyState to access what they need.
 +
 +In order to provide compatibility in between distinct releases of compute nodes
-+and scheduler, the idea is, for each filter, to check HostState if the field
-+is there, and if not failback to calling the corresponding Aggregate object.
-+That also allows to manage the case when the Scheduler service is restarted, as
-+HostState is not persisted yet.
-+
-+For information only, we plan to move the Aggregate objects to the Scheduler DB
-+in the next Lxxx cycle so the compatibility layer could be removed.
++and scheduler, the idea is, for each filter, to check TopologyState if the
++field is there, and if not failback to calling the corresponding Aggregate
++object.
 +
 +
 +Alternatives
 +------------
 +
-+Instead of passing data to the scheduler either thru RT or request property, we
-+could let the scheduler place a call to conductor for having these values. That
-+said, the problem here is that it increases response time (external call
-+instead of direct DB access) and also creates an external dependency with Nova
-+objects that would require to be turned into python-novaclient call once Gantt
-+forklifted.
++Obviously, the main concern is about duplicating aggregates information and the
++potential race conditions that can occur. In our humble opinion, duplicating
++the information in the DB is a small price to pay for making sure that the
++Scheduler could one day live by its own.
++
++A corollar would be to consider that if duplication is not good, then the
++Scheduler should fully *own* the Aggregates table. Consequently, all the calls
++in the nova.compute.api.AggregatesAPI would be treated as "external" calls and
++once the Scheduler would be splitted out, the Aggregates would no longer reside
++in Nova.
++
++Another mid-term approach would be to envisage a second service for the
++Scheduler (like nova-scheduler-updater - still very bad at naming...) which
++would accept RPC API calls and write the Scheduler DB separatly from the
++nova-scheduler service which would actually be treated like a "nova-api"-ish
++thing.
++
++Finally, we definitely are against calling Aggregates API from the Scheduler
++each time a filter needs information because it doesn't scale.
++
 +
 +Data model impact
 +-----------------
 +
-+None. There is no extra information to persist, as we will provide extra
-+required data for filters either in request_spec or filter_properties, or
-+direcly update HostState.
-+
++See above, it implies to create 3 fresh new tables. Migration would only be
++additive (deletions would be managed directly by the AggregateAPI) and could
++be handled on-the-fly by the TopologyInformation object each time a save()
++operation would be requested (so it would loopback to Aggregate for populating
++the missing fields)
 +
 +REST API impact
 +---------------
@@ -141,10 +239,12 @@ index 0000000..7b70d59
 +
 +None
 +
++
 +Notifications impact
 +--------------------
 +
-+None
++None. The atomicity of the operation (adding/modifying an Aggregate) remains
++identical, we don't want to add 2 notifications for the same operation.
 +
 +
 +Other end user impact
@@ -156,14 +256,14 @@ index 0000000..7b70d59
 +------------------
 +
 +Possibly some little increases in performance as the scheduler won't no longer
-+access other Nova objects thru conductor but rather will look at
-+filter_properties or request_spec that are passed thru RPC payload.
-+
++access other Nova objects thru conductor but rather will introspect an
++in-memory object.
 +
 +Other deployer impact
 +---------------------
 +
-+None
++Apart from creating 3 new tables, nothing else.
++
 +
 +Developer impact
 +----------------
@@ -173,7 +273,7 @@ index 0000000..7b70d59
 +* Filters should no longer place calls to other bits of code except Scheduler.
 +  This will be done by modifying Scheduler component to proxy conductor calls
 +  to a Singleton which will refuse anything but scheduler-related objects.
-+  See footnote [2] as example. As said above, we will still provide a failback
++  See footnote [1] as example. As said above, we will still provide a failback
 +  mode for Kilo release in order to have compatibility with N-1 release.
 +
 +
@@ -194,14 +294,20 @@ index 0000000..7b70d59
 +Work Items
 +----------
 +
-+* Write AggregateResource objects
++* Create DB tables, migration and DB API methods for TopologyInformation
 +
-+* Add a RPC API endpoint for update_aggregate()
++* Create TopologyInformation object
 +
-+* Implement update_aggregate() on the Scheduler Manager so that it updates
-+  HostState
++* Create nova.scheduler.client methods for CRUD/etc. the Object
 +
-+* Modify filters to look at HostState (and failback to Nova object)
++* Modify nova.api.AggregateAPI methods to call the scheduler client methods
++
++* Create TopologyManager class for populating TopologyState
++
++* Modify FilterScheduler and CachingScheduler to call TopologyManager
++
++* Modify filters so they can look either to TopologyState or failback to
++  nova.objects.Aggregate
 +
 +* Modify scheduler entrypoint to block conductor accesses to Aggregates
 +  (once Lxxx release development will be open)
@@ -210,7 +316,7 @@ index 0000000..7b70d59
 +Dependencies
 +============
 +
-+* https://blueprints.launchpad.net/nova/+spec/resource-objects
++None
 +
 +
 +Testing
@@ -232,9 +338,7 @@ index 0000000..7b70d59
 +
 +* http://eavesdrop.openstack.org/meetings/gantt/2014/gantt.2014-03-18-15.00.html
 +
-+[1] https://etherpad.openstack.org/p/kilo-nova-priorities
-+
-+[2] http://git.openstack.org/cgit/openstack/nova/commit/?id=e5cbbcfc6a5fa31565d21e6c0ea260faca3b253d
++[1] http://git.openstack.org/cgit/openstack/nova/commit/?id=e5cbbcfc6a5fa31565d21e6c0ea260faca3b253d
 -- 
 1.9.1
 

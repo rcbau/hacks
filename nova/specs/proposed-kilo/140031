@@ -1,0 +1,181 @@
+From b4d524803c4c9f35949167f3f8664e8c76698b42 Mon Sep 17 00:00:00 2001
+From: Mateusz Blaszkowski <mateusz.blaszkowski@intel.com>
+Date: Wed, 10 Dec 2014 12:31:10 +0100
+Subject: [PATCH] Flexible cells selection.
+
+The aim of this blueprint is to extend filtering capabilities
+so that the user can tag his cells and schedule VMs to the cells
+which meet the requirements provided in flavor's extra specs.
+
+blueprint flexible-cells-selection
+Change-Id: I03fe1631ad8df92e8d3d4e212d813f87d30df358
+---
+ specs/kilo/approved/flexible-cells-selection.rst | 156 +++++++++++++++++++++++
+ 1 file changed, 156 insertions(+)
+ create mode 100644 specs/kilo/approved/flexible-cells-selection.rst
+
+diff --git a/specs/kilo/approved/flexible-cells-selection.rst b/specs/kilo/approved/flexible-cells-selection.rst
+new file mode 100644
+index 0000000..f693d8b
+--- /dev/null
++++ b/specs/kilo/approved/flexible-cells-selection.rst
+@@ -0,0 +1,156 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++==========================================
++Flexible cell selection
++==========================================
++
++https://blueprints.launchpad.net/nova/+spec/example
++
++Current scheduling in cells seems to be a very simple mechanism lacking
++a lot of features added recently to Nova scheduler. For the user it might be
++important to have a possibility of filtering out cells which do not meet some
++requirements. The aim of this blueprint is to extend filtering capabilities
++so that the user can tag his cells and schedule VMs to the cells which meet
++the requirements provided in flavor's extra specs.
++
++Problem description
++===================
++
++When talking about scheduling VMs in multi-cell environment, there is no
++flexible mechanism of tagging cells so that the cell-scheduler can filter out
++these which do not meet the requirements provided in flavor's extra specs.
++
++Use Cases
++----------
++
++The end user may wish to have a possibility of tagging/grouping his cells.
++He can then append extra specs to his flavor saying that VMs which will be
++scheduled with this flavor, will be placed within the cells with the specified
++tag.
++
++Currently user may pick up a target cell (see TargetCellFilter) but there is
++no possibility of selection a group of cells.
++
++Project Priority
++-----------------
++
++It fits into the 'Cells v2' priority as it adds a major feature into Cells
++which is already present in Nova-scheduler where you can aggregate hosts
++(AggregateInstanceExtraSpecsFilter) or make use of computes capabilities
++(ComputeCapabilitiesFilter) to filter out computes which do not meet the
++requirements from extra specs.
++
++Proposed change
++===============
++
++The blueprint proposes to add CellCapabilitiesFilter to cell-scheduler. Some
++work in this area has already been done. Cell capabilities are currently read
++from nova.conf and are passed up to the parrent cell. So each cell can have
++multiple capabilities and each capability may be assigned to multiple cells.
++CellCapabilitiesFilter algorithm would be analogous to
++ComputeCapabilitiesFilter: it would check if the extra specs associated with
++the flavor match the currently filtered cell capabilities. extra_specs_ops
++would be used to compare extra spec with the capabilities list.
++
++Alternatives
++------------
++
++Another solution is to add AggregateCellExtraSpecsFilter
++(similar to AggregateInstanceExtraSpecsFilter). But this seems to require
++a lot more effort than the first proposal because it means that the API
++would have to be extended with the features similar to hosts aggregates:
++creating/listing/showing details/updating/removing cell-aggregates,
++adding/removing cells to/from cell-aggregates and setting cell-aggregates
++metadata. Thus it seems more natural to get it done by CellCapabilitiesFilter
++(especially because some prework has already been done and it looks like this
++is the functionality which ought to be added in the past).
++
++Data model impact
++-----------------
++
++None.
++
++REST API impact
++---------------
++
++None.
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++None.
++
++Performance Impact
++------------------
++
++The only affected area is cell-scheduler. New filter would be added so
++additional check for each cell would be needed if the filter is included
++in nova.conf. However, it is unlikely to have a lot of cells grouped together
++so it should be pretty fast to filter a couple of cells.
++
++Other deployer impact
++---------------------
++
++Additional filter in scheduler_filter_classes has to be added unless
++nova.cells.filters.all_filters is specified - this is the default behavior
++so this change will take immediate effect after it is merged.
++
++Developer impact
++----------------
++
++None
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++None
++
++Work Items
++----------
++
++ * New filter CellCapabilitiesFilter
++
++Dependencies
++============
++
++None
++
++Testing
++=======
++
++No additional Tempest tests needed (as it takes place when adding new
++filters - unit tests are sufficient).
++
++
++Documentation Impact
++====================
++
++I am not aware of any documentation for cell scheduler. If such documentation
++exists (similar to filter_scheduler documentation), new filter description
++should be added there.
++
++References
++==========
++
++It looks like others have already proposed some similar blueprints:
++https://blueprints.launchpad.net/nova/+spec/flavor-specific-cells
++https://blueprints.launchpad.net/nova/+spec/cells-metadata
++so there is an interest in this kind of functionality.
++
+-- 
+1.9.1
+

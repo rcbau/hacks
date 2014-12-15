@@ -1,55 +1,55 @@
-From 93b2cae2227a30301e703e62670cc19a0ef7c503 Mon Sep 17 00:00:00 2001
+From c553baa4168cf564d24788f1f99ddae67b4725e3 Mon Sep 17 00:00:00 2001
 From: Kanagaraj Manickam <kanagaraj.manickam@hp.com>
 Date: Wed, 2 Jul 2014 20:14:02 +0530
-Subject: [PATCH] vmware: Enable VCDriver with NFS glance source datastore
+Subject: [PATCH] nova boot optimization using NFS glance image store
 
-It enables the VmwareVCDriver to improve the image
-copying process from glance to vmware_temp by
-exposing glace image file store as NFS share and
-mount it on the vCenter cluster as NFS datastore
+This blueprint enables nova to optimize the instance
+boot process by using NFS with glance file system
+based image store and all hypervisors.
 
 Change-Id: Ia9244cd53dd43af7b7777aa994a4e99b5ca95150
 ---
- .../nova-vmware-vcdriver-nfs-image-copy.rst        | 160 +++++++++++++++++++++
- 1 file changed, 160 insertions(+)
- create mode 100644 specs/kilo/approved/nova-vmware-vcdriver-nfs-image-copy.rst
+ .../approved/nova-boot-optimzation-using-nfs.rst   | 161 +++++++++++++++++++++
+ 1 file changed, 161 insertions(+)
+ create mode 100644 specs/kilo/approved/nova-boot-optimzation-using-nfs.rst
 
-diff --git a/specs/kilo/approved/nova-vmware-vcdriver-nfs-image-copy.rst b/specs/kilo/approved/nova-vmware-vcdriver-nfs-image-copy.rst
+diff --git a/specs/kilo/approved/nova-boot-optimzation-using-nfs.rst b/specs/kilo/approved/nova-boot-optimzation-using-nfs.rst
 new file mode 100644
-index 0000000..27d4fad
+index 0000000..99cf171
 --- /dev/null
-+++ b/specs/kilo/approved/nova-vmware-vcdriver-nfs-image-copy.rst
-@@ -0,0 +1,160 @@
++++ b/specs/kilo/approved/nova-boot-optimzation-using-nfs.rst
+@@ -0,0 +1,161 @@
 +..
 + This work is licensed under a Creative Commons Attribution 3.0 Unported
 + License.
 +
 + http://creativecommons.org/licenses/by/3.0/legalcode
 +
-+======================================================
-+Enable VmwareVCDriver with NFS glance image datastore
-+======================================================
++============================================
++Nova boot optimization using NFS image store
++============================================
 +
 +https://blueprints.launchpad.net/nova/+spec/vmware-vc-driver-nfs-datastore-image-copy
 +
-+This blueprint enables VmwareVCDrvier to copy the image from the glance by
-+using NFS image store configured in the glance.
++This blueprint enables all hypervisor nova drivers to copy the glance image
++directly through NFS by using glance file system image store enabled with NFS.
 +
 +
 +Problem description
 +===================
 +
-+When instance is booted from an image, the VmwareVCDriver copies the image
-+from glance into 'vmware_temp' caching by means of glance REST API. It makes
-+image copying process to be slower and consumes the nova-compute CPU and
-+memory resource. This can be improved by using NFS image store on the glance as
-+mentioned in below section.
++When instance is booted from an image, the all hypervisor drivers (including
++VmwareVCDriver) copies the image from glance into respective hypervisor
++image cache by means of glance REST API. It makes image copying process
++to be slower and consumes more CPU, RAM and network resources in both
++glance-api and nova-compute. This can be improved by using NFS image
++store on the glance as detailed below.
 +
 +Use Cases
 +---------
 +
-+* Performance improvement: Cloud providers wants to improve the boot process
-+  by configuring NFS appropriately
++* Performance improvement: Cloud providers wants to improve the nova instance
++  boot process by using NFS
 +
 +
 +Project Priority
@@ -60,20 +60,26 @@ index 0000000..27d4fad
 +Proposed change
 +===============
 +
-+Assume that admin has made following setup:
++(For VMWare VC driver, details are provided here and for other hypervisor
++drivers same approach is applicable)
++
++Pre-requisites:
 +
 +* Once Glance is installed with file system as image store, install and
 +  configure NFS on the glance image store
-+* On the vCenter cluster, which is consumed as compute node, create the NFS
-+  datastore from the glance image store configured in above step and let the
-+  name be 'glance_image_store'.
++* For example, create the datastore in ESX Cluster from the NFS glance
++  image store and name as 'glance_image_store'.
 +
-+Then following are the changes in the nova:
++Update the driver with below functionality:
 +
-+* In nova.conf, under [vmware] section, add a new config parameter named,
-+  'nfs_glance_datastore' and set the value as 'glance_image_store'
 +* update the driver code to copy the image from the NFS glance datastore
-+  instead of using glance API.
++  instead of using glance python-client, which will trigger the hypervisor
++  to copy the image directly from NFS into hypervisor image-cache.
++* get(include_locations=True) method in nova/image/api.py will provide the
++  image location on the NFS image store, and use it for identifying the
++  image in the 'glance_image_store'.
++
++NOTE: The same can be done for all other hypervisors.
 +
 +Alternatives
 +------------
@@ -107,9 +113,7 @@ index 0000000..27d4fad
 +Performance Impact
 +------------------
 +
-+If both the glance store and the destination temporary directory are on NFS,
-+then the copy can happen in vCenter itself, instead of going through
-+nova-compute and its very faster approach compared to existing one.
++In case of VMWare VC driver, a POC of this blueprint reported below metrics:
 +
 +With MS Windows vCenter, followings are the improvement shown up during the
 +testing phase:
@@ -148,12 +152,8 @@ index 0000000..27d4fad
 +Work Items
 +----------
 +
-+* Add new variable 'nfs_glance_datastore' to to nova.conf and set default to
-+  None.
-+* Add a new utility method in vim_utils to copy the image file from
-+  'nfs_glance_datastore' to 'vmware_temp'
-+* update the image copying logic to use the above defined new method
-+  if 'nfs_glance_datastore' is configured, otherwise use existing logic
++* Add required config change in nova.conf to refer 'glance_image_store'
++* update all the hypervisor driver to incorporate required changes
 +
 +
 +Dependencies
@@ -166,20 +166,20 @@ index 0000000..27d4fad
 +
 +* provide required unit tests to test the image copy with and without
 +  nfs_glance_datastore in place
-+* add required tempest test cases.
-+* Vmware minesweeper to be updated with required NFS setup in place in
-+  both glance and vCenter. The same should be tested without using NFS.
 +
 +
 +Documentation Impact
 +====================
 +
-+As mentioned the "proposed change" section, the nova.conf will be updated.
++Add required guidelines for admin to configure NFS for glance image store
++and how to configure nova.conf
 +
 +
 +References
 +==========
 +None
++
++
 -- 
 1.9.1
 

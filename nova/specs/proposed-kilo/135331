@@ -1,29 +1,29 @@
-From e08ebb1493b821ff0ff95aeab97daaa39625293d Mon Sep 17 00:00:00 2001
+From 70c54e806fda0fedeb78a4c69b2ae9c3d7001617 Mon Sep 17 00:00:00 2001
 From: James Chapman <james.p.chapman@intel.com>
-Date: Tue, 18 Nov 2014 15:03:55 +0000
+Date: Fri, 5 Dec 2014 15:00:59 +0000
 Subject: [PATCH] SRIOV scheduling with stateless offloads
 
 This feature will add support for the consideration of PCI
 device HW offload capabilities during guest placement. The
-user can request PCI device offload functionality for their
-guest, this feature will enable the placement of the guest
-on a compute node that provides these capabilities.
+user can request PCI network device offload functionality
+for their guest, this feature will enable the placement of
+the guest on a compute node that provides these capabilities.
 
 Implements blueprint sriov-sched-with-stateless-offloads
 
 Change-Id: I382eff5873e5ac053d6ee1b7732aefaf8bc2097c
 Co-Authored-By: Adrian Hoban <adrian.hoban@intel.com>
 ---
- .../sriov-sched-with-stateless-offloads.rst        | 212 +++++++++++++++++++++
- 1 file changed, 212 insertions(+)
+ .../sriov-sched-with-stateless-offloads.rst        | 221 +++++++++++++++++++++
+ 1 file changed, 221 insertions(+)
  create mode 100644 specs/kilo/approved/sriov-sched-with-stateless-offloads.rst
 
 diff --git a/specs/kilo/approved/sriov-sched-with-stateless-offloads.rst b/specs/kilo/approved/sriov-sched-with-stateless-offloads.rst
 new file mode 100644
-index 0000000..47c7531
+index 0000000..14f0c54
 --- /dev/null
 +++ b/specs/kilo/approved/sriov-sched-with-stateless-offloads.rst
-@@ -0,0 +1,212 @@
+@@ -0,0 +1,221 @@
 +..
 + This work is licensed under a Creative Commons Attribution 3.0 Unported
 + License.
@@ -121,20 +121,29 @@ index 0000000..47c7531
 +when gathering the available resources.
 +
 +The user can request PCI device offloads for their guest using the image
-+properties. This gives the user the opportunity to tune their custom image for
-+the optimal performance.
++properties. The offload properties will then be translated into pci
++requests. This gives the user the opportunity to tune their custom image for
++optimal performance.
++
++The properties in the image will be matched against sriov ports specified in
++--nics. The format will allow specifying different properties for different
++ports.
 +
 +E.g
-+    glance image-update <IMAGE> --property sriov-nic-caps.0=csum,tso
++    glance image-update <IMAGE> --property sriov-nic-caps.0=rx,tx,tso
++
++    glance image-update <IMAGE> --property sriov-nic-caps.1=rx,tx
 +
 +
-+The PCI device model will be extended to add a list of HW offload attributes. A
-+comma separated list will contain the devices offload information.
++The list of HW offload attributes will be stored in PCI device extra_info, this
++will consist of a comma separated string.
 +
-+Using image properties to change how the image will be scheduled, might involve
++create_pci_requests_for_sriov_ports() will be modified to support the new pci
++network device offload requests.
 +
-+The PCI passthrough filter will be modified to take consideration of a PCI
-+devices offload capabilities during guest placement.
++nova/pci/stats.py will be modified to manage the new PCI network device offload
++attributes.
++
 +
 +Alternatives
 +------------

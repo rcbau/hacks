@@ -1,0 +1,51 @@
+From c7c16f33a5a4d6be750b7f5c8229b86717b71145 Mon Sep 17 00:00:00 2001
+From: Matthew Gilliard <matthew.gilliard@hp.com>
+Date: Mon, 1 Dec 2014 13:45:23 +0000
+Subject: [PATCH] cleanup: api-microversions spec
+
+The spec was using some unsupported formatting:
+
+* A list
+** This is not how to indent to the next level
+    * This is
+
+Also, dropped the link to semver.org from the references as
+we have decided to pursue an approach which does not use
+that.
+
+Change-Id: I777cc98a10d82c0e3e28b8324aeaf56e7ff4c160
+---
+ specs/kilo/approved/api-microversions.rst | 12 ++++--------
+ 1 file changed, 4 insertions(+), 8 deletions(-)
+
+diff --git a/specs/kilo/approved/api-microversions.rst b/specs/kilo/approved/api-microversions.rst
+index 17889ea..92f081a 100644
+--- a/specs/kilo/approved/api-microversions.rst
++++ b/specs/kilo/approved/api-microversions.rst
+@@ -83,10 +83,10 @@ Design Priorities:
+ 
+ * How will the code be internally structured. How do we make it:
+ 
+-** Easy to see in the code that you are about to break API compatibility.
+-** Make it easy to make backwards compatible changes
+-** Make it possible to make backwards incompatible changes
+-** Minimise code duplication to minimise maintenance overhead
++    * Easy to see in the code that you are about to break API compatibility.
++    * Make it easy to make backwards compatible changes
++    * Make it possible to make backwards incompatible changes
++    * Minimise code duplication to minimise maintenance overhead
+ 
+ * How will we test this both for unittests and in integration. And
+   what limits does that impose.
+@@ -473,8 +473,4 @@ though.
+ References
+ ==========
+ 
+-* Semver http://semver.org
+-
+-* Links to mailing list or IRC discussions
+-
+ * https://etherpad.openstack.org/p/kilo-nova-microversions
+-- 
+1.9.1
+

@@ -1,4 +1,4 @@
-From a02bb646f15cca26bee36d1b6bf98d1c9036d4d5 Mon Sep 17 00:00:00 2001
+From e6c155ee322b853f4bb37e8ebe6e028e8cc34c93 Mon Sep 17 00:00:00 2001
 From: James Carey <jecarey@us.ibm.com>
 Date: Tue, 7 Oct 2014 20:15:23 +0000
 Subject: [PATCH] i18n lazy translation enablement
@@ -7,20 +7,20 @@ Enable lazy translation of messages to support the
 Accept-Language header
 
 Previously-approved: juno
-Part of blueprint i18n-enablement
+Part of blueprint i18n-enablement-juno
 
 Change-Id: I17002abf79157d108b649b6e0a58c4b50ea9ebae
 ---
- specs/kilo/approved/i18n-enablement.rst | 230 ++++++++++++++++++++++++++++++++
- 1 file changed, 230 insertions(+)
+ specs/kilo/approved/i18n-enablement.rst | 240 ++++++++++++++++++++++++++++++++
+ 1 file changed, 240 insertions(+)
  create mode 100644 specs/kilo/approved/i18n-enablement.rst
 
 diff --git a/specs/kilo/approved/i18n-enablement.rst b/specs/kilo/approved/i18n-enablement.rst
 new file mode 100644
-index 0000000..98ff980
+index 0000000..8a46da8
 --- /dev/null
 +++ b/specs/kilo/approved/i18n-enablement.rst
-@@ -0,0 +1,230 @@
+@@ -0,0 +1,240 @@
 +..
 + This work is licensed under a Creative Commons Attribution 3.0 Unported
 + License.
@@ -31,7 +31,7 @@ index 0000000..98ff980
 +i18n Lazy Translation Enablement for Nova
 +==========================================
 +
-+https://blueprints.launchpad.net/nova/+spec/i18n-enablement
++https://blueprints.launchpad.net/nova/+spec/i18n-enablement-juno
 +
 +This BluePrint/Spec proposes completing the enablement of i18n
 +(internationalization) support for Nova by turning on the "lazy" translation
@@ -87,7 +87,8 @@ index 0000000..98ff980
 +None
 +
 +Note that it needs to be enabled as early as possible to provide as much
-+'burn in' time as possible.
++'burn in' time as possible.  Also, lazy translation is currently in the
++other projects.
 +
 +Proposed change
 +===============
@@ -108,15 +109,19 @@ index 0000000..98ff980
 +removal of the two remaining cases where str() is being called on
 +translatable messages.
 +
-+The second patch will be to add an non-voting experimental case which
-+sets this new configuration value to True and runs the tests.
++The second patch will be to add an non-voting experimental tempest test which
++sets this new configuration value to True and runs the tests.  Note that as an
++experimental tempest test, this test will not be run for every commit.
 +
-+The third patch will be to add a specific tempest test that validates
++The third patch will be to add a specific functional test that validates
 +that lazy enablement is working for Nova.
 +
 +The fourth patch, would change the default value for the
 +configuration to True.   We would not remove the configuration
 +support until the next release.
++
++The fifth and final patch would be to remove the non-voting experimental
++tempest test added with the second patch.
 +
 +Alternatives
 +------------
@@ -132,9 +137,9 @@ index 0000000..98ff980
 +---------------
 +
 +There is no additional changes to the REST API other than the fact
-+that the change enables the user to specify the language they
-+wish REST API responses to be returned in using the Accept-Language
-+option.
++that the change will allow the API to correctly respond when the user
++to specify the language they wish REST API responses to be returned in
++using the Accept-Language option.
 +
 +Security impact
 +---------------
@@ -179,11 +184,9 @@ index 0000000..98ff980
 +
 +* replacement text cannot be specified using just self.__dict__
 +
-+A new hacking check in Kilo added and need to be adhered to to ensure that
-+incorrect translations don't occur:
-+
++A new hacking check in Kilo was added:
 +* unicode() cannot be used on exceptions being used as replacement text
-+
++https://review.openstack.org/#/c/129473/
 +
 +Implementation
 +==============
@@ -208,34 +211,40 @@ index 0000000..98ff980
 +
 +Patch two
 +
-+* Add experimental non-voting test case using lazy translation
++* Add non-voting experimental tempest test case configured to use
++  lazy translation
 +
 +Patch three
 +
-+* Add tempest test of Nova lazy enablement
++* Add functional test to Nova for lazy enablement
 +
 +Patch four
 +
 +* Change configuration control default to True (use lazy translation)
 +
++Patch five
++
++* Remove non-voting experimental tempest test case added by patch two
 +
 +Dependencies
 +============
 +
-+This depends on a new version of the oslo.vmware library which contains
++This depends on version 0.6.0 or newer of the oslo.vmware library
++which contains
 +https://review.openstack.org/#/c/122193/
-+which fixes lazy enablement support.
++which fixes lazy enablement support.  Nova currently requires at least
++this version.
 +
 +In order to prevent incorrect translations when lazy translation is
 +enabled, this spec depends on removing use of unicode() on exceptions
-+used as replacement text which is being fixed under bug
++used as replacement text which was fixed under bug
 +https://bugs.launchpad.net/nova/+bug/1380806.
 +
 +
 +Testing
 +=======
 +
-+* There will be a tempest test added for Nova that will ensure that
++* There will be a Nova functional test added that will ensure that
 +  lazy translation is working properly.
 +
 +* The hacking checks listed under Developer Impacts above.
@@ -244,7 +253,8 @@ index 0000000..98ff980
 +Documentation Impact
 +====================
 +
-+None.
++Need to ensure that the API documentation correctly indicates that the
++Accept-Language option will now be used.
 +
 +
 +References

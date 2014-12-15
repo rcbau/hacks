@@ -1,4 +1,4 @@
-From 1f220e5e8c15725b1cbd5a2fe2b7bf06f8f7faed Mon Sep 17 00:00:00 2001
+From ef30f880bb56f972b8a4d2dffd62c66461f1fc28 Mon Sep 17 00:00:00 2001
 From: Radoslav Gerganov <rgerganov@vmware.com>
 Date: Thu, 9 Oct 2014 19:03:42 +0300
 Subject: [PATCH] VMware: Native HTML5 consoles for VMware
@@ -13,16 +13,16 @@ blueprint vmware-webmks-console
 
 Change-Id: Ie8e4d6f1091e2e48848952d6e0018e20990188aa
 ---
- specs/kilo/approved/vmware-webmks-console.rst | 175 ++++++++++++++++++++++++++
- 1 file changed, 175 insertions(+)
+ specs/kilo/approved/vmware-webmks-console.rst | 174 ++++++++++++++++++++++++++
+ 1 file changed, 174 insertions(+)
  create mode 100644 specs/kilo/approved/vmware-webmks-console.rst
 
 diff --git a/specs/kilo/approved/vmware-webmks-console.rst b/specs/kilo/approved/vmware-webmks-console.rst
 new file mode 100644
-index 0000000..c0b1747
+index 0000000..38c237b
 --- /dev/null
 +++ b/specs/kilo/approved/vmware-webmks-console.rst
-@@ -0,0 +1,175 @@
+@@ -0,0 +1,174 @@
 +..
 + This work is licensed under a Creative Commons Attribution 3.0 Unported
 + License.
@@ -109,13 +109,13 @@ index 0000000..c0b1747
 +REST API impact
 +---------------
 +
-+There will be a new server action that will return WebMKS console.
++We will leverage the new API for getting console access:
 +
 +Sample request:
-+{ "os-getWebMKSConsole": { "type": "webmks" } }
++{ "get_console": { "protocol": "webmks" } }
 +
 +Sample response:
-+{ "console": { "type": "webmks", "url": "http://example.com:6090/?token=c88be357-0992-40e8-8dd7-afc918ad34d5" } }
++{ "console": { "protocol": "webmks", "url": "http://example.com:6090/?token=c88be357-0992-40e8-8dd7-afc918ad34d5" } }
 +
 +The URL in the response points to a WebMKS proxy which authorizes the given
 +token by calling nova-consoleauth and then starts proxying between the client
@@ -135,8 +135,7 @@ index 0000000..c0b1747
 +Other end user impact
 +---------------------
 +
-+There will be a new 'get-webmks-console' subcommand for the Nova CLI that will
-+return the WebMKS console URL for a given instance.
++None
 +
 +Performance Impact
 +------------------
@@ -179,7 +178,7 @@ index 0000000..c0b1747
 +Dependencies
 +============
 +
-+None
++blueprint: consolidate-console-api
 +
 +Testing
 +=======

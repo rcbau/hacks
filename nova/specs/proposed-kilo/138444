@@ -1,0 +1,224 @@
+From 8cb736c484943086dc6be74da434fa40dae82055 Mon Sep 17 00:00:00 2001
+From: EdLeafe <ed@leafe.com>
+Date: Tue, 2 Dec 2014 11:12:17 -0600
+Subject: [PATCH] Remove direct nova DB/API access in Scheduler Filters
+
+Some filters currently get their filtering criteria by either accessing
+the nova DB or API directly. This spec proposes replacing those
+occurrences with the use of the HostState objects. These HostState
+objects will need to be updated from compute nodes whenever their
+instances change.
+
+Change-Id: Id90a699ab8d456e7a8a66637b738aa373e12e736
+---
+ .../kilo/approved/isolate-scheduler-db-filters.rst | 198 +++++++++++++++++++++
+ 1 file changed, 198 insertions(+)
+ create mode 100644 specs/kilo/approved/isolate-scheduler-db-filters.rst
+
+diff --git a/specs/kilo/approved/isolate-scheduler-db-filters.rst b/specs/kilo/approved/isolate-scheduler-db-filters.rst
+new file mode 100644
+index 0000000..222313e
+--- /dev/null
++++ b/specs/kilo/approved/isolate-scheduler-db-filters.rst
+@@ -0,0 +1,198 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++================================
++Isolate Scheduler DB for Filters
++================================
++
++https://blueprints.launchpad.net/nova/+spec/isolate-scheduler-db
++
++As part of the above blueprint, several scheduler filters have been identified
++as directly accessing the nova db, or calling the nova compute API. These need
++to be changed in order to allow the eventual separation of the scheduler into
++its own service (i.e., the Gantt effort).
++
++
++Problem description
++===================
++
++The scheduler currently directly accesses the nova db, either by calling the db
++module directly, or by calling the nova compute API, which prevents it from
++being separated as an indpendent service. There are three filters that need
++updating:
++
++* TypeAffinityFilter
++* SameHostFilter
++* DifferentHostFilter
++
++These filters need to be updated to use HostState objects in the scheduler
++instead of accessing the db directly or calling the nova compute API.
++
++
++Use Cases
++----------
++
++Nova contributors wish to extend the functionality of the scheduler and intend
++to break the scheduler out into the Gantt project. In order to do this
++effectively, the internal interfaces around the scheduler and its filters must
++be cleaned up to use structured objects.
++
++Project Priority
++-----------------
++
++This blueprint is part of the 'scheduler' refactoring effort, defined as a 3rd
++priority for the Kilo release.
++
++
++Proposed change
++===============
++
++Replace the db/api calls with code that filters based on the HostState objects.
++
++In order for that to work, the Scheduler client will need a new method with the
++following structure:
++
++    update_host_instances(context, instance, action)
++
++This method will be called by a compute node whenever there is a change in its
++instances that would affect filtering decisions, such as create/delete/resize.
++The simplest thing would be to pass an Instance object to the scheduler client
++through RPC, and the object would then be passed to the HostManager, which
++would then update the corresponding HostState object. In the case of an
++instance being deleted, only its UUID would need to be passed. The HostState
++object would store these objects in a new `instances` attribute, which would be
++a dict with the UUID as the key, and the Instance object as the value.
++
++While passing entire Instance objects might be considered a 'heavy' approach,
++it would be preferred over just passing the instance_type_id and UUID, for two
++reasons:
++
++  - Future filters that may be created which would rely on the instances on a
++    particular host would be able to work with these objects, rather than
++    having to modify the entire reporting system between the compute nodes and
++    the scheduler to pass and store the new instance information.
++
++  - For qualities such as the instance_type_id, it would be cumbersome to have
++    to store a list of all such values, which would have to be tied to the
++    instance so that, for example, if an instance is deleted, the correct
++    instance_type_id count is reduced.  host change. With objects being stored,
++    determining the instance_type_id values on a host is a simple matter of:
++
++    `set([inst.instance_type_id for inst in host_state.instances.values()])`
++
++The filters could then be changed to only use the HostState object's
++`instances` attribute, instead of making db/api calls.
++
++
++Alternatives
++------------
++
++As mentioned above, an alternative would be to only pass the distinct values
++currently used by the existing filters (instance_type_id and uuid), and the
++HostState object would be modified to add an attribute to store these values.
++The attribute would be a dict keyed on the UUID, with the value being the
++instance_type_id. As instances are created/resized/destroyed, the corresponding
++key/values would be updated to reflect these changes. This would be lighter
++weight than passing the full object, but would be more fragile to future
++changes, requiring changes throughout the code in order to filter on some other
++aspect of a host's instances.
++
++
++Data model impact
++-----------------
++
++None. There is no extra information to persist, as we will provide the required
++data for filters by direcly updating the HostState as needed.
++
++REST API impact
++---------------
++
++None.
++
++Security impact
++---------------
++
++None.
++
++Notifications impact
++--------------------
++
++None.
++
++Other end user impact
++---------------------
++
++None.
++
++Performance Impact
++------------------
++
++It might make the filters perform better, as they would not be making db/api
++calls for each host, but that would be minimal and not the primary reason for
++this change.
++
++Other deployer impact
++---------------------
++
++None.
++
++Developer impact
++----------------
++
++None.
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  edleafe
++
++Other contributors:
++  None.
++
++Work Items
++----------
++
++  - Update the compute manager to call `update_host_instances()` when an
++    instance is created, destroyed, or resized.
++  - Update the current db/api calls in the filters to only check the
++    host_state.
++
++
++Dependencies
++============
++
++None.
++
++
++Testing
++=======
++
++The filters already have sufficient test coverage, but these tests currently
++mock out the db/api calls. They will have to be updated to reflect the new
++implementation.
++
++Tests will have to be added to cover the new `update_host_instances()` call.
++
++
++Documentation Impact
++====================
++
++None.
++
++
++References
++==========
++
++This work is a subset of the effort outlined in this spec:
++
++http://bit.ly/1yci2Cd (actual link is too long for 79 cols:
++  [https://review.openstack.org/#/c/89893/12/specs/kilo/approved/
++  isolate-scheduler-db.rst,cm])
+-- 
+1.9.1
+

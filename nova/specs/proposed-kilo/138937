@@ -1,0 +1,283 @@
+From 0c639951f0bcef00a1f398d5197e99cca60e4a6c Mon Sep 17 00:00:00 2001
+From: yunhong jiang <yunhong.jiang@intel.com>
+Date: Wed, 3 Dec 2014 11:36:33 -0700
+Subject: [PATCH] More image properties support
+
+Currently nova checks for only a limited image properties, such as
+'architecture', 'hypervisor_type', 'vm_mode'.
+
+However, an image may have other constrainsts, to ensure optimal
+performance, and/or to meet regulatory requirements. For instance,
+an image may require a specific CPU capability such as Intel
+AES-NI instruction set support, or be constrained to run in only
+certain geographic localities because it uses a crypto algorithm
+that may not be exported or because certain data may not leave the
+country, or there is need for special purpose PCIe device support
+such as for digital signal processing or crypto acceleration.
+
+Such constraints are typically known by the image creator/appliance
+vendor and readily provided as image metadata. Directly using such
+metadata avoids the need to specify the same via flavor
+extra-specs.
+
+Blueprint: more-image-properties
+
+Co-Authored-By: Bhandaru, Malini K <malini.k.bhandaru@intel.com>
+Co-Authored-By: Jiang, Yunhong <yunhong.jiang@intel.com>
+
+Change-Id: I1cef6d7e84500791b733db6ae2addf808ec8edd4
+---
+ specs/kilo/approved/more-image-properties.rst | 241 ++++++++++++++++++++++++++
+ 1 file changed, 241 insertions(+)
+ create mode 100644 specs/kilo/approved/more-image-properties.rst
+
+diff --git a/specs/kilo/approved/more-image-properties.rst b/specs/kilo/approved/more-image-properties.rst
+new file mode 100644
+index 0000000..8be8b85
+--- /dev/null
++++ b/specs/kilo/approved/more-image-properties.rst
+@@ -0,0 +1,241 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++==========================================
++More image properties
++==========================================
++
++Include the URL of your launchpad blueprint:
++
++https://blueprints.launchpad.net/nova/+spec/more-image-properties
++
++Currently nova checks for only a limited number of image properties,
++such as 'architecture', 'hypervisor_type', 'vm_mode'.
++
++However, an image may have other constrainsts to ensure optimal performance
++and/or to meet regulatory requirements. For instance, an image may require a
++specific CPU capability such as Intel AES-NI instruction set support, or be
++constrained to run in only certain geographic localities because it uses a
++crypto algorithm that may not be exported or because certain data may not
++leave the country, or there is a need for special purpose PCIe device support
++such as for digital signal processing or crypto acceleration.
++
++Such constraints are typically known by the image creator/appliance vendor
++and readily provided as image metadata. Directly using such metadata avoids
++the need to specify the same via flavor extra-specs.
++
++Problem description
++===================
++
++An image can have specific requirements of the host environment. For example,
++an image may need some specific CPU capability, or need PCI devices like
++encryption or DSP card.
++
++Currently Glance supports associating a rich set of properties, as metadata,
++with an image, but Nova checks only for a limited number of these such as
++'architecture', 'hypervisor_type', and 'vm_mode'.
++
++Use Cases
++----------
++
++1) An appliance vendor releases a VPN image, which utilizes the IPSec library.
++To achieve an advertised quality of VPN service, the vendor recommends
++launching the virtual appliance on a compute node that provides AES-NI support.
++
++2) An ISV releases an image that uses strong, export restricted, encryption.
++The ISV will tag the image to restrict the geos where it may run.
++
++Project Priority
++-----------------
++
++This is not in the kilo priorities, but these changes should be small and only
++impact the specific scheduler filters.
++
++Proposed change
++===============
++
++We will add several image properties and enhance the scheduler/filters to
++support these image properties. Below we list the properties and the
++corresponding changes.
++
++1) Name:
++        trust_host:
++   Data:
++        A string with 'true' or 'false', case insensitive.
++   Usage:
++        The image should only be executed on a trusted host
++   Changes required:
++        The request for trusted_host from image properties and from flavor
++        extra_spec are reconciled and saved in filter_properties before
++        sending to scheduler.
++
++        The trusted_filter will be updated to fetch the request from the
++        filter properties, instead of the flavor.
++
++2) Name:
++        pci_request:
++   Data:
++        A string with format  "count:vendor_id:product_id,
++        count:vendor_id:product_id".
++        The ',' separates requests for different PCI devices.
++   Changes required:
++        The compute/api.py currently reconciles the request
++        from 'flavor' and 'requested_network' already. We simply need to
++        include a  check for image properties.
++        The check will translate the image properties format to a list of
++        dict. For example, image properties expressed as "3_v1_p1, 6_v2_p2"
++        will be translated to:
++
++         [{'count': 3, 'vendor_id': 'v1', 'product_id': 'p1' },
++          {'count': 6, 'vendor_id': 'v2', 'product_id': 'p2'}]
++
++3) Name:
++        capability_cpuinfo_vendor
++   DataType:
++        String
++   Changes:
++        See cpu_info filter description below.
++
++4) Name:
++        capability_cpuinfo_model
++   DataType:
++        String
++   Changes:
++        See cpu_info filter description below.
++
++5) Name:
++        capability_cpuinfo_feature
++   DataType:
++        A list of cpu features separated by ','. The cpu feature definition
++        is the same as those used in libvirt.
++   Changes:
++        See cpu_info filter description below.
++
++The support for the three cpu_info related image properties is composed of two
++parts. First, the requests from image properties is parsed and saved into
++filter_properties before passing to the scheduler. Below is a example:
++
++    filter_properties['cpu_info'] = {'vendor': 'intel', 'model': 'sandybridge',
++                                     'feature': ['sse3', 'pge']}
++
++The only keys supported are 'vendor', 'model' or 'feature'. Not all of them are
++required to be present.
++
++Second, a new cpu_info filter will be added. the cpu_info filter fetches the
++cpu_info request from filter_properties, and compares it with the  host state,
++which has the following structure:
++
++ {cpu_info: {"vendor": "Intel", "model": "SandyBridge",
++             "features": ["ssse3", "pge", "avx", "clflush",
++                          "sep", "syscall"]}}.
++
++The host passes the filter test only if:
++    host_state['cpu_info']['vendor'] == filter_properties['cpu_info']['vendor']
++and
++    host_state['cpu_info']['model'] == filter_properties['cpu_info']['model']
++and
++    host_state['cpu_info']['features'] includes all the features in
++    filter_properties['cpu_info']['feature'].
++
++In the future, we will move the flavor extra specs's cpu_info request handling
++out of the compute_capability filter into this cpu_info filter.
++
++We need to address reconciling constraints from the flavor and image sources
++when they do not match exactly or possibly even conflict. The default
++will be flavor constraints taking precedence over image constraints with
++some constraint specific exceptions. In the case of the trusted filter,
++the more restrictive constraint, namely "trusted" will be enforced, if either
++constraint source requests "trusted". With the ComputeCapability and
++PciPassthrough filters, a combination of the two will be used.
++
++Alternatives
++------------
++
++1) One of the arguments is that all constraints should come from the 'flavor'
++object. This view has detractors evidenced by the fact that today we support
++associating properties with an image. Also, as discussed, often times the
++appliance vendor has a better idea of minimal requirements to ensure a certain
++quality of service, performance, or regulatory requirements.
++
++2) Modifying just the image_properties filter versus all three of Compute,
++Trusted, and PciPassthrough. This would result in significant code duplication.
++
++3) Enhance the compute_capability filter to support "cpu_info" request.
++We eschew this path because the compute_capability filter is currently not
++well defined and documented. Enhancing the compute_capability to be well
++organized will be tricky and have backward compatibility challenges.
++
++Data model impact
++-----------------
++
++N/A
++
++REST API impact
++---------------
++
++N/A
++
++Security impact
++---------------
++
++N/A
++
++Notifications impact
++--------------------
++
++N/A
++
++Other end user impact
++---------------------
++
++End user can now tag image properties for the instance constraints.
++
++Performance Impact
++------------------
++
++There should be no performance impact.
++
++Other deployer impact
++---------------------
++
+++The deployer should be made aware of the new image properties support in Nova.
++
++Developer impact
++----------------
++
++N/A
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++yunhong-jiang <yunhong.jiang@intel.com>
++
++Work Items
++----------
++
++Changes to the different filters.
++
++Dependencies
++============
++
++N/A
++
++Testing
++=======
++
++We need to add testing to make sure the image properties are respected in nova.
++
++Documentation Impact
++====================
++
++The document should be updated to reflect the new image properties supported.
++
++References
++==========
++N/A
+-- 
+1.9.1
+

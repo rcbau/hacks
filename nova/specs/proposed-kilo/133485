@@ -1,4 +1,4 @@
-From c00bc4e70b47be52a75563bb2f6b08c3b5a15aea Mon Sep 17 00:00:00 2001
+From 5e62be30abdaf0567db3c362d3c8905b78af8ba4 Mon Sep 17 00:00:00 2001
 From: Flavio Percoco <flaper87@gmail.com>
 Date: Mon, 10 Nov 2014 15:11:45 +0100
 Subject: [PATCH] Deprecate `.image.glance` in favor of glanceclient
@@ -17,7 +17,7 @@ Change-Id: I1a86fcf3f2321f2b16b8787faecd099d80c1e3c4
 
 diff --git a/specs/kilo/approved/remove-glanceclient-wrapper.rst b/specs/kilo/approved/remove-glanceclient-wrapper.rst
 new file mode 100644
-index 0000000..25748e2
+index 0000000..207f16c
 --- /dev/null
 +++ b/specs/kilo/approved/remove-glanceclient-wrapper.rst
 @@ -0,0 +1,185 @@
@@ -73,7 +73,7 @@ index 0000000..25748e2
 +to get rid of `nova.image.download` too.
 +
 +The `nova.image.glance` modules contains the code for the
-+abovementioned wrapper that we'd like to cleanup. This code contains
++above mentioned wrapper that we'd like to cleanup. This code contains
 +some logic duplications from glanceclient and most of it is not
 +needed. The bits that are needed - those that at least could be
 +reused - are the ones enhancing image downloads. That is, the piece of
@@ -102,10 +102,10 @@ index 0000000..25748e2
 +Keep the wrapper and clean it up until it matches exactly glance's
 +client API. Please, don't! :)
 +
-+Another way to make this transition to use v2 more lightweigth is by
++Another way to make this transition to use v2 more lightweight is by
 +removing the wrapper code but keep using the v1 of the API. This will
 +allow users to opt-in to glance v2 by just changing the glance api url
-+in Nova's conf. Although conservatices may like this option better,
++in Nova's conf. Although conservatives may like this option better,
 +I'd recommend to move straight to v2. The main reason being that
 +Glance's v1 has some issues, including security ones - see unchecked
 +image membership - that are not going to be fixed since

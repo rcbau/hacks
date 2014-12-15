@@ -1,0 +1,46 @@
+From 8d5d1d59ba001f13aceab6180ab2a8a15f98187c Mon Sep 17 00:00:00 2001
+From: warewang <wangguangcai@huawei.com>
+Date: Fri, 28 Nov 2014 15:16:52 +0800
+Subject: [PATCH] OpenStack should support the alarm of orphans
+
+In existing OpenStack cluster, there are some orphans on many compute
+node, these orphans consumes a lot of resources, but the OpenStack can not
+manage these orphans, and also can't timely detection and notify the user
+to clean up, so I think that the nova should be able to manage these
+orphans, and can notify the admin or user to process it.
+
+Implements blueprint support-orphans-manage
+
+Change-Id: I1a1697b20d8ba86b1e732d9c280baa5b801f4cc8
+---
+ specs/kilo/support-orphans-manage.rst | 17 +++++++++++++++++
+ 1 file changed, 17 insertions(+)
+ create mode 100644 specs/kilo/support-orphans-manage.rst
+
+diff --git a/specs/kilo/support-orphans-manage.rst b/specs/kilo/support-orphans-manage.rst
+new file mode 100644
+index 0000000..d363f40
+--- /dev/null
++++ b/specs/kilo/support-orphans-manage.rst
+@@ -0,0 +1,17 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++===========================================================
++OpenStack should support the detection and alarm of orphans
++===========================================================
++
++https://blueprints.launchpad.net/nova/+spec/support-orphans-manage
++
++In existing OpenStack cluster, there are some orphans on many compute node,
++these orphans consumes a lot of resources, but the OpenStack can not manage
++these orphans, and also can't timely detection and notify the user to clean up,
++so I think that the nova should be able to manage these orphans, and can notify
++the admin or user to process it.
+\ No newline at end of file
+-- 
+1.9.1
+

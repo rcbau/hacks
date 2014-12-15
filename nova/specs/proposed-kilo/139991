@@ -1,0 +1,153 @@
+From df5025a029c62b84f0d6f4d90c3592d14068332e Mon Sep 17 00:00:00 2001
+From: Roman Dobosz <roman.dobosz@intel.com>
+Date: Mon, 8 Dec 2014 14:06:25 +0100
+Subject: [PATCH] Introduce Pacemaker driver for the servicegroup.
+
+Apart of providing servicegroup information just like the other drivers, it'll
+be also able to provide other information, like host status in reliable way.
+
+Change-Id: Ic7a65083d7cfabf4218f110009c549c0d8c7361d
+---
+ .../approved/pacemaker-servicegroup-driver.rst     | 130 +++++++++++++++++++++
+ 1 file changed, 130 insertions(+)
+ create mode 100644 specs/kilo/approved/pacemaker-servicegroup-driver.rst
+
+diff --git a/specs/kilo/approved/pacemaker-servicegroup-driver.rst b/specs/kilo/approved/pacemaker-servicegroup-driver.rst
+new file mode 100644
+index 0000000..b6e124a
+--- /dev/null
++++ b/specs/kilo/approved/pacemaker-servicegroup-driver.rst
+@@ -0,0 +1,130 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++=============================
++Pacemaker servicegroup driver
++=============================
++
++https://blueprints.launchpad.net/nova/+spec/pacemaker-servicegroup-driver
++
++Introduce `Pacemaker`_ driver for the servicegroup. Apart of providing
++servicegroup information just like the other drivers, it'll be also able to
++provide other information, like host status in reliable way.
++
++Problem description
++===================
++
++Currently, while performing some actions like evacuation, Nova is checking for
++the compute service. If the service is down, it is assumed the host is down.
++This is not exactly true, since there is a possibility to only have compute
++service down, while all VMs that are run on the host, are actually up.
++
++Use Cases
++----------
++
++As an operator, I want to have reliable information about status of the
++evacuated host, so that I can safely perform evacuation on multinode
++environment with shared storage.
++
++Project Priority
++-----------------
++
++Bugs
++
++Proposed change
++===============
++
++Introduce new servicegroup driver, which will utilize Pacemaker to provide all
++the information.
++
++Other than that using Pacemaker can provide the real status of the host,
++besides the state of the OpenStack services, and fencing. Pacemaker can be
++configured to shut down the system or perform any other desired actions
++
++Alternatives
++------------
++None
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++None
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++None
++
++Performance Impact
++------------------
++
++None
++
++Other deployer impact
++---------------------
++
++Pacemaker configuration is required, otherwise servicegroups will not contain
++necessary information.
++
++Developer impact
++----------------
++
++None
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  roman-dobosz
++
++Work Items
++----------
++
++* Introduce new servicegroup driver
++
++Dependencies
++============
++
++* This blueprint is dependent on
++  https://blueprints.launchpad.net/nova/+spec/host-health-monitoring
++* `Pacemaker`_ cluster resource management installation and configuration.
++
++Testing
++=======
++
++* Introduce new unit tests for the new driver
++
++Documentation Impact
++====================
++
++Documentation on how to use the driver will be documented.
++
++References
++==========
++
++* This bug may be invalidated after this BP implementation:
++  https://bugs.launchpad.net/nova/+bug/1379292
++* Pacemaker home: http://clusterlabs.org
++
++.. _Pacemaker: http://clusterlabs.org/
+-- 
+1.9.1
+

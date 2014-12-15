@@ -1,0 +1,190 @@
+From f6312c973badaba7394c043443f751dfffe9d863 Mon Sep 17 00:00:00 2001
+From: "Chris St. Pierre" <stpierre@metacloud.com>
+Date: Wed, 3 Dec 2014 08:03:06 -0600
+Subject: [PATCH] Allow setting the emulator for libvirt guests
+
+This will allow the administrator to explicitly set the libvirt
+emulator, which can make upgrades easier.
+
+Change-Id: I52408968249424ce6cbb2a7d4e8f6a932b3dfd86
+---
+ specs/kilo/approved/libvirt-set-emulator.rst | 167 +++++++++++++++++++++++++++
+ 1 file changed, 167 insertions(+)
+ create mode 100644 specs/kilo/approved/libvirt-set-emulator.rst
+
+diff --git a/specs/kilo/approved/libvirt-set-emulator.rst b/specs/kilo/approved/libvirt-set-emulator.rst
+new file mode 100644
+index 0000000..63ffa57
+--- /dev/null
++++ b/specs/kilo/approved/libvirt-set-emulator.rst
+@@ -0,0 +1,167 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++=============================================
++Allow setting the emulator for libvirt guests
++=============================================
++
++Include the URL of your launchpad blueprint:
++
++https://blueprints.launchpad.net/nova/+spec/example
++
++This will allow the administrator to explicitly set the libvirt
++emulator, which can make upgrades easier.
++
++Problem description
++===================
++
++If no emulator is specified in the guest configuration passed to
++libvirt, it will determine the "best" emulator to use. This is usually
++correct, but Nova supplies no facility for overriding this on the
++occasions that it is not.
++
++Use Cases
++----------
++
++When upgrading an emulator (e.g., qemu), having this option available
++could be very useful. Without such an option, an upgrade plan might
++look like:
++
++#. Down the compute node.
++#. Upgrade qemu.
++#. Perform tests to ensure qemu sanity.
++#. Bring the compute node up.
++
++Rollback might require again downing the compute node, downgrading
++qemu (which presumably your package manager makes easy, but perhaps
++not), re-testing, and bringing the node back up.
++
++With this option, the upgrade can be done with less downtime:
++
++#. Set the emulator option to the current (older) version of qemu.
++#. Install the new qemu in parallel.
++#. Perform tests to ensure sanity of the new qemu.
++#. Change or remove the emulator option.
++#. Restart nova compute.
++
++And rollback becomes easier as well: Simply restore the emulator
++option to its previous value and restart nova-compute. Depending on
++the change management process, re-testing the older qemu may not even
++be necessary because it was never removed from the system or changed,
++so it remains in a known-working state.
++
++qemu has been used here for conciseness, but this will work for any
++emulator.
++
++Project Priority
++-----------------
++
++This does not align directly with any of the kilo priorities, but it
++solves a similar pain point as the "No downtime DB upgrades."
++
++Proposed change
++===============
++
++We will add a single option, ``emulator``, in the ``[libvirt]``
++section, which may be set to the full path to the desired emulator to
++use. This will be added to the guest config that is passed off to
++libvirt.
++
++Alternatives
++------------
++
++The desired emulator could be set on a per-instance basis, but that's
++quite a bit more complicated and it's unclear how much benefit that
++would have. It might be able to slightly increase confidence in
++emulator upgrades -- for instance, the administrator could install the
++new qemu, spawn a few instances using it, then perform the upgrade en
++masse -- but it could also cause problems if instances remained pinned
++to older emulators. In the absence of any obvious demand for such a
++feature, it will be left as a single global option, which does not
++preclude setting the emulator for individual instances if a need
++arises in the future.
++
++Data model impact
++-----------------
++
++None.
++
++REST API impact
++---------------
++
++None.
++
++Security impact
++---------------
++
++None.
++
++Notifications impact
++--------------------
++
++None.
++
++Other end user impact
++---------------------
++
++None.
++
++Performance Impact
++------------------
++
++None.
++
++Other deployer impact
++---------------------
++
++One new configuration option will be added, but its default will be
++the same as the current behavior. It will never be *necessary* to set
++this option, and deployers will only need to consider setting it
++during well-managed emulator upgrades.
++
++Developer impact
++----------------
++
++None.
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  stpierre
++
++Other contributors:
++  rkhardalian
++
++Work Items
++----------
++
++As this is a very simple change, it would be performed as a single
++review that adds the option and its implementation.
++
++Dependencies
++============
++
++None.
++
++Testing
++=======
++
++New unit tests would be sufficient to ensure that the guest
++configuration is as expected.
++
++Documentation Impact
++====================
++
++Docs needed for the new option.
++
++References
++==========
++
++None.
+-- 
+1.9.1
+

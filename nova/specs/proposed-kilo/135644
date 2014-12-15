@@ -1,4 +1,4 @@
-From 29daf4248542b4407620f993ac7691ce8da3c8df Mon Sep 17 00:00:00 2001
+From c6728ab973a31d976e1ca18825a56b402cdcb54c Mon Sep 17 00:00:00 2001
 From: Andrew Laski <andrew.laski@rackspace.com>
 Date: Wed, 19 Nov 2014 08:17:23 -0500
 Subject: [PATCH] Cells instance mapping
@@ -10,16 +10,16 @@ bp cells-instance-mapping
 
 Change-Id: I9e8e760497122d120e9c4fbf690993747281c30a
 ---
- specs/kilo/approved/cells-instance-mapping.rst | 155 +++++++++++++++++++++++++
- 1 file changed, 155 insertions(+)
+ specs/kilo/approved/cells-instance-mapping.rst | 179 +++++++++++++++++++++++++
+ 1 file changed, 179 insertions(+)
  create mode 100644 specs/kilo/approved/cells-instance-mapping.rst
 
 diff --git a/specs/kilo/approved/cells-instance-mapping.rst b/specs/kilo/approved/cells-instance-mapping.rst
 new file mode 100644
-index 0000000..f4c6581
+index 0000000..85d54f1
 --- /dev/null
 +++ b/specs/kilo/approved/cells-instance-mapping.rst
-@@ -0,0 +1,155 @@
+@@ -0,0 +1,179 @@
 +..
 + This work is licensed under a Creative Commons Attribution 3.0 Unported
 + License.
@@ -60,34 +60,55 @@ index 0000000..f4c6581
 +Proposed change
 +===============
 +
-+The change being proposed is a new table for storing a mapping of instance to
-+cell.  The database APIs and objects that interact with this table will be
-+updated to use it.  Migration of data into this table will be tackled in a
-+separate spec.
++The change being proposed is a new table in the 'nova_api' database for storing
++a mapping of instance to cell.  The database APIs and objects that interact
++with this table will be updated to use it.  Migration of data into this table
++will be tackled in a separate spec.
++
++The following diagram may help visualize it.::
++
++                             api/cell boundary
++     nova show <uuid>               |
++                 |                  |
++                 v                  |
++            nova-api+-------------------->cell-db
++             +     +                |
++             |     +----+           |
++             |          |           |
++             v          v           |
++    instance_mapping  cell_mapping  |
++
 +
 +Alternatives
 +------------
 +
-+We could continue to use the nova-cells model in place today.  The downsides of
-+this have been discussed in the etherpad link in the references section.
++We could continue to use the nova-cells model in place today.
 +
 +Data model impact
 +-----------------
 +
-+A new 'instance_mapping' table will be added.  And it should be added to the
-+'nova_api' database.
++A new 'instance_mapping' table will be added to the 'nova_api' database.
 +
-+The table will look approximately like:
++The table will look like:
 +
 +CREATE TABLE `instance_mapping` (
 +  `created_at` datetime DEFAULT NULL,
 +  `updated_at` datetime DEFAULT NULL,
-+  `deleted_at` datetime DEFAULT NULL,
 +  `id` int(11) NOT NULL AUTO_INCREMENT,
 +  `instance_uuid` varchar(36) NOT NULL,
 +  `cell_uuid` varchar(36) NOT NULL,
-+  `project_id` varchar(255) NOT NULL,
-+  `deleted` int(11) DEFAULT NULL)
++  `project_id` varchar(255) NOT NULL)
++
++And instance_uuid will be an indexed column.  Other indexes are likely as well
++and can be discussed in the code review.
++
++It should be noted that there is no 'deleted' or 'deleted_at' column here.  An
++instance that exists within a cell database, whether it's deleted or not,
++should have a row in this table.  If an instance row is removed from a cell
++database via some cleanup mechanism then the mapping row for that instance can
++be removed from this table as well.  There is currently no mechanism in Nova to
++do this so rows in instance_mapping will only be removed via an out-of-band
++deployer cleanup.
 +
 +REST API impact
 +---------------
@@ -121,7 +142,10 @@ index 0000000..f4c6581
 +Other deployer impact
 +---------------------
 +
-+This introduces a new table into the 'nova_api' database.
++This introduces a new table into the 'nova_api' database.  And as described in
++the "Data model impact" section above it should be considered when running any
++cleanup on the instances table.  If instances are removed from the instances
++table they can be removed from the instance_mapping table as well.
 +
 +Developer impact
 +----------------

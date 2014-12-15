@@ -1,0 +1,219 @@
+From e220c5c213ebefeef0d14b7a7a5bcfaf3f5a9854 Mon Sep 17 00:00:00 2001
+From: Ken Burger <burgerk@us.ibm.com>
+Date: Mon, 8 Dec 2014 11:18:16 -0500
+Subject: [PATCH] Add a Cinder volume type for a blank volume during server
+ create.
+
+blueprint: vol-type-with-blank-vol
+Change-Id: Id0cc59bae48035ec1e709fec475f1b6ce9511bd7
+---
+ specs/kilo/vol-type-with-blank-vol.rst | 196 +++++++++++++++++++++++++++++++++
+ 1 file changed, 196 insertions(+)
+ create mode 100644 specs/kilo/vol-type-with-blank-vol.rst
+
+diff --git a/specs/kilo/vol-type-with-blank-vol.rst b/specs/kilo/vol-type-with-blank-vol.rst
+new file mode 100644
+index 0000000..a6d19bb
+--- /dev/null
++++ b/specs/kilo/vol-type-with-blank-vol.rst
+@@ -0,0 +1,196 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++==========================================================================
++Add a new field to give additional info in BDM when source type is "blank"
++==========================================================================
++
++https://blueprints.launchpad.net/nova/+spec/vol-type-with-blank-vol
++
++In order to support virtual server creation with additional new volumes
++attached during deploy time, a design change to BDM is requested which
++can enable the user to specify information when source_type is blank.
++This would allow environments with multiple choices for that volume
++to give needed information about that choice.  The variations
++could include backend storage type, thick vs thin provisioning,
++compression, etc.
++
++Problem description
++===================
++
++A user boots a Nova instance specifying multiple volumes in the BDM
++section, one of which is source_type: "blank"
++Example:
++"block_device_mapping_v2": [
++            {
++                "boot_index": "1",
++                "delete_on_termination": false,
++                "destination_type": "volume",
++                "source_type": "volume",
++                "uuid": "3c27995f-d267-429c-acf0-ef5e8a30275e"
++            },
++            {
++                "boot_index": "2",
++                "delete_on_termination": true,
++                "destination_type": "volume",
++                "source_type": "blank",
++                "volume_size": "5"
++            }
++        ]
++
++When source_type is blank, there is no details or additional
++information about how to create that volume other than it being
++size "5".   In environments with multiple Cinder volume type
++options, currently Cinder will determine a default volume_type.
++
++Use Case
++----------
++A server is being created with multiple volumes, at least one of
++which is a new, blank volume.   The user would like to specify a
++Cinder volume type for this new volume.
++
++Project Priority
++-----------------
++This does not fall under one of the project priorities
++
++Proposed change
++===============
++
++This proposal would add an additional field, that
++is only available when source_type is "blank", to give a Cinder
++volume type for that new blank volume being created.  The
++volume_type value should be the UUID of the desired volume type.
++This would also require the new field to be represented in the
++Nova database.
++
++Example:
++"block_device_mapping_v2": [
++            {
++                "boot_index": "1",
++                "delete_on_termination": false,
++                "destination_type": "volume",
++                "source_type": "volume",
++                "uuid": "3c27995f-d267-429c-acf0-ef5e8a30275e"
++            },
++            {
++                "boot_index": "2",
++                "delete_on_termination": true,
++                "destination_type": "volume",
++                "source_type": "blank",
++	        "volume_type" : "<vol_type_uuid>",
++                "volume_size": "5"
++            }
++        ],
++
++
++
++Alternatives
++------------
++
++One alternative is to limit all new blank volumes to be the same
++Cinder volume type, the default volume_type.
++
++Another alternative is to make the caller pre-allocate the volume
++with a Cinder call using their desired volume_type and then call
++Nova boot and specify to attach the volume as is done in the
++boot_index = 1 example above.  The downside to this alternative is
++that it requires the caller to monitor the VM creation and delete the
++volumes it created if the VM creation fails.  Even that might not be
++true if they specify "delete_on_termination=true" and the VM deploy
++gets far enough into the compute manager.  Regardless, if the caller
++has to allocate multiple volumes from Cinder before calling Nova they
++are still left with issues if one of the volume allocations fails
++before the Nova call,  They have to keep track of and clean them all up.
++
++Data model impact
++-----------------
++
++This would also require the new field ("volume_type") to be
++represented in the Nova database in the block_device_mapping table.
++
++REST API impact
++---------------
++
++A new field ("volume_type") would be allowed in the BDM when
++source_type is "blank".
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++None
++
++Performance Impact
++------------------
++
++None
++
++Other deployer impact
++---------------------
++
++None
++
++Developer impact
++----------------
++
++None
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  burgerk
++
++Other contributors:
++  None
++
++Work Items
++----------
++
++* API changes for new field in the API
++
++* Nova schema and database changes to reflect the new field
++
++* Nova BDM object class changes to add the new field
++
++* nova/virt BDM class changes
++
++Dependencies
++============
++
++None
++
++
++Testing
++=======
++
++The change will be tested by adding testcases for the situation where
++source_type is blank and the new field ("volume_type") is allowed.
++Also negative testcases will be needed for when source_type is not
++blank.
++
++
++Documentation Impact
++====================
++
++The new field ("volume_type") and its usage should be documented.
++
++References
++==========
++
++None
+\ No newline at end of file
+-- 
+1.9.1
+

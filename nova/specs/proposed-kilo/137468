@@ -1,4 +1,4 @@
-From 59cba72ea46ddb74bc73f8b1aaad5e02f8d6de1b Mon Sep 17 00:00:00 2001
+From a2fa177bea42d5bc1510f22586ec5fbdb70b6053 Mon Sep 17 00:00:00 2001
 From: Tomoki Sekiyama <tomoki.sekiyama@hds.com>
 Date: Wed, 26 Nov 2014 15:38:46 -0500
 Subject: [PATCH] Add spec for 'Failover to alternative iSCSI portals on login
@@ -19,7 +19,7 @@ blueprint: iscsi-alternative-portal
 
 diff --git a/specs/kilo/approved/iscsi-alternative-portal.rst b/specs/kilo/approved/iscsi-alternative-portal.rst
 new file mode 100644
-index 0000000..2cd797a
+index 0000000..6a325fc
 --- /dev/null
 +++ b/specs/kilo/approved/iscsi-alternative-portal.rst
 @@ -0,0 +1,151 @@
@@ -77,7 +77,7 @@ index 0000000..2cd797a
 +
 +Note that this proposal is for single iSCSI data path use-case, which is
 +applied in the case CONF.libvirt.iscsi_use_multipath = False.
-+Multiple data path (multipath) use-case should be covered with another spec.
++Multiple data path (multipath) use-case is covered with another spec.
 +
 +Alternatives
 +------------
@@ -143,7 +143,7 @@ index 0000000..2cd797a
 +----------
 +
 +- Implement this feature in Cinder
-+- Modify nova and brick library to fail-over to alternative portals
++- Modify Nova and Cinder brick library to fail-over to alternative portals
 +
 +Dependencies
 +============

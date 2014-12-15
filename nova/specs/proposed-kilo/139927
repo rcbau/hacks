@@ -1,0 +1,205 @@
+From 39559b18a6e0ecbb1acf53a038ce6f78fd58cc21 Mon Sep 17 00:00:00 2001
+From: Yongli He <yongli.he@intel.com>
+Date: Mon, 8 Dec 2014 15:24:58 +0800
+Subject: [PATCH] Fake libvirt for testing feature need real HW
+
+Add a fake libvirt driver to supporting features testing
+which require real HW existing for running, i.e. PCI and
+SRIOV.
+
+Implements blueprint fake-libvirt-hw-testing-driver
+
+Change-Id: Ic8461cd5e75118f6832e12f02d018d48381d1a5d
+---
+ .../approved/fake-libvirt-hw-testing-driver.rst    | 179 +++++++++++++++++++++
+ 1 file changed, 179 insertions(+)
+ create mode 100644 specs/kilo/approved/fake-libvirt-hw-testing-driver.rst
+
+diff --git a/specs/kilo/approved/fake-libvirt-hw-testing-driver.rst b/specs/kilo/approved/fake-libvirt-hw-testing-driver.rst
+new file mode 100644
+index 0000000..1d319ed
+--- /dev/null
++++ b/specs/kilo/approved/fake-libvirt-hw-testing-driver.rst
+@@ -0,0 +1,179 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unsorted
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++================================================================
++Fake Libvirt driver for simulating HW testing
++================================================================
++
++https://blueprints.launchpad.net/nova/+spec/fake-libvirt-hw-testing-driver
++
++Add a fake libvirt driver to supporting features testing which require real
++HW existing for running, i.e. PCI and SRIOV.
++
++
++Problem description
++===================
++
++The existing feature like PCI and SRIOV need to be fully tested by CI,but for
++now, running a tempest in a VM can not well provide a simulated PCI devices
++and iommu.
++
++The issues currently known, are:
++
++
++1. PCI and SRIOV lack of CI testing facility, just unit testing which is
++obvious not enough.
++
++2. CI running tempest in Virtual Machine, testing PCI pass-through or SRIOV
++means need pass-through the simulated PCI devices to secondary level of
++virtual machines. nested visualization is not mature.
++
++3. There might more and more features likely need real HW(hardware) to fully
++tested, we need a common way to verify such features.
++
++
++Use Cases
++---------
++
++Testing feature which need real HW to run.
++
++
++Project Priority
++----------------
++
++None
++
++
++Proposed change
++===============
++
++Provide a fake libvirt python library, assume name is 'mocklibvirt'. then
++make the nova libvirt driver use the 'mocklibvirt' instead of 'libvirt'.
++
++mocklibvirt provide minimal setting up for testing a PCI pass-through or
++SRIOV.
++
++1. Provide all necessary informations to nova libvirt driver to make it
++could running with the mocklibvirt.
++
++2. Log needed informations to help analysis the feature of Nova does
++work or not.
++
++3. make easy interface to feature testing, i.e provide method easy provide
++information to nova libvirt, provide interface to retrieve the information
++nova generated.
++
++
++Alternatives
++------------
++
++The mocklibvirt had it's own pitfall:
++
++a) Not really verify the HW and hypervisor's functionality.
++
++b) Most likely fake libvirt is not only nova project, maybe need a new
++project.
++
++c) Fake a libvir could be time consuming, testing for currently features
++is kind of urgent task.
++
++the available alternatives include:
++
++1. Third-Party CI is a major and fast way to provide test features like PCI
++pass-through and the SRIOV. but need setting up new CI for every different
++HW.
++
++2.    Instead fake the libvirt, another choice is fake a nova libvirt driver.
++in this way, there are some code in the nova libvirt driver can not be
++tested. so this way is UN-likely to testing all codes.
++
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++None
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++None
++
++Performance Impact
++------------------
++
++None
++
++Other deployer impact
++---------------------
++
++Provide configuration option to make nova can choose the normal libvirt or
++mocked version to running with.
++
++Developer impact
++----------------
++
++None
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  Yongli He
++
++
++Work Items
++----------
++
++1. In ``nova/virt/libvirt/driver.py``:
++Making the libvirt importing configurable.
++
++2. Creating a new project/or nova sub project to implementing the mocklibvirt.
++
++
++
++Dependencies
++============
++
++* Software versions:
++  - Linux kernel: 3.10 or higher
++
++
++Testing
++=======
++
++Unit test:
++* Existing Nova unit tests should suffice for changed to Nova.
++
++
++Documentation Impact
++====================
++
++* Doc changes for the libvirt choice will be made as needed.
++
++
++References
++==========
++
++None
++
+-- 
+1.9.1
+

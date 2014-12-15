@@ -1,0 +1,210 @@
+From d2c8b62ed4d07980d18b5c6ff499cbdc70744ec6 Mon Sep 17 00:00:00 2001
+From: Claudiu Belu <cbelu@cloudbasesolutions.com>
+Date: Fri, 12 Dec 2014 01:53:19 +0200
+Subject: [PATCH] Adds spec for Hyper-V instance hot resize
+
+https://blueprints.launchpad.net/nova/+spec/hyper-v-hot-resize
+
+In Windows Hyper-V / Server 2012 R2 a new feature was introduced,
+allowing users to resize both memory and local disks (but not vCPUs)
+of the VMs while they are still running. Because of this,
+no down time for the spawned instances is necessary when
+nova resize is performed on the same host.
+
+Implements: blueprint hyper-v-hot-resize
+
+Change-Id: Ic7b798da05ba89958b46f6e3f32ea1e788b6288e
+---
+ specs/kilo/hyper-v-hot-resize.rst | 180 ++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 180 insertions(+)
+ create mode 100644 specs/kilo/hyper-v-hot-resize.rst
+
+diff --git a/specs/kilo/hyper-v-hot-resize.rst b/specs/kilo/hyper-v-hot-resize.rst
+new file mode 100644
+index 0000000..1d1523d
+--- /dev/null
++++ b/specs/kilo/hyper-v-hot-resize.rst
+@@ -0,0 +1,180 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++============================
++Hyper-V: Instance hot resize
++============================
++
++https://blueprints.launchpad.net/nova/+spec/hyper-v-hot-resize
++
++In Windows Hyper-V / Server 2012 R2 a new feature was introduced, allowing
++users to resize both memory and local disks (but not vCPUs) of the VMs while
++they are still running. Because of this, no down time for the spawned instances
++is necessary when nova resize is performed on the same host.
++
++Problem description
++===================
++
++The main disadvantage for resizing an instance is the required down time
++necessary to do so. This spec will allow users to resize their Hyper-V
++instances while they are still running.
++
++Use Cases
++----------
++
++There are 2 use cases, depending on what OS the nova-compute service is
++running on:
++
++* Windows Hyper-V / Server 2012 R2 / Windows 8.1:
++  * Virtual hard disks can be hot resized.
++  * Memory can be hot resized, if the VM has Dynamic Memory enabled.
++
++* Windows Hyper-V / Server 10 Technical Preview or newer:
++  * Virtual hard disks can be hot resized.
++  * Memory can be hot resized, even if Dynamic Memory is not enabled.
++
++For more details regarding the hot resize, check the sources [1], [2] and [3].
++
++In any case, changing the number of vCPUs on a live instance is not supported,
++which implies that a cold resize will be performed.
++
++There are a few restrictions that apply to this feature, as mentioned in the
++references:
++* Any existing constraints (e.g.: disk downsizing is not admitted).
++* Dynamic Memory must be enabled, if the nova-compute service runs on
++  Windows Hyper-V / Server 2012 R2 / Windows 8.1.
++* The disk format must be VHDX.
++* For disk hot resize, the disk to be resized must be attached to a SCSI
++  controller and the instance must be a Generation 2 VM. [4]
++* The resize must occur on the same host.
++
++Project Priority
++-----------------
++
++None
++
++Proposed change
++===============
++
++There are a few changes that needs to be applied to the Hyper-V driver in order
++to support this feature:
++* Add virtual hard disk online resize support to a subclass of VHDUtilsV2,
++  which will be used in Windows Hyper-V / Server 2012 R2 or newer.
++* Add support for memory resize in a subclass of VMUtilsV2, which will be used
++  in Windows Hyper-V / Server 10 Technical Preview or newer.
++* Add the appropriate changes to utilsfactory to accommodate the new utils
++  classes mentioned above.
++
++If hot resize is not applicable because of the restrictions defined in the
++'Use Cases' section above, cold resize is performed instead, meaning there
++would be no change in functionality.
++
++If a hot resize is appropriate, during resize, the Hyper-V driver must:
++* migrate_disk_and_power_off:
++  *Avoid stoping and destroying the instance.
++* finish_migration:
++  * Avoid creating another ephemeral disk.
++  * Avoid creating a new instance and attaching a config drive to it, since it
++    was never destroyed.
++  * Avoid starting the instance, since it was never stoped.
++  * Perform hot resize.
++* finish_revert_migration:
++  * Avoid creating a new instance and attaching a config drive to it, since it
++    was never destroyed.
++  * Avoid starting the instance, since it was never stoped.
++
++If hot resize is appropriate, the following changes to ComputeManager's
++resize_instance method should be considered:
++* It should not terminate the connection for any of the instance's volumes,
++since they are still in use and the instance can actively use them.
++* Since the resize occurs on the same host, avoid calling finish_resize through
++compute_rpcapi and call the method locally.
++
++Alternatives
++------------
++
++None
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++None, the user will use the same command as before.
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++The guest OS must have a mechanism to detect when the disk size changes in
++order to do a "growroot" style operation. At the moment, cloud-init and
++cloudbase-init performs this check on boot.
++
++Performance Impact
++------------------
++
++None
++
++Other deployer impact
++---------------------
++
++To use this feature, the users will have to enable it from the compute node's
++nova.conf, setting the config option hyperv.allow_live_resize‏ to True.
++
++Developer impact
++----------------
++
++None
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  <cbelu@cloudbasesolutions.com>
++
++Work Items
++----------
++
++As described in the 'Proposed change' section.
++
++Dependencies
++============
++
++None
++
++Testing
++=======
++
++CI testing will be performed by Hyper-V CI.
++
++Documentation Impact
++====================
++
++The possibility to perform hot resize on Hyper-V instances will be documented,
++as well as the config option for Hyper-V.
++
++References
++==========
++
++[1] http://technet.microsoft.com/en-us/library/dn282286.aspx
++[2] http://technet.microsoft.com/en-us/library/dn282278.aspx#bkmk_linux
++[3] http://technet.microsoft.com/en-us/library/dn765471.aspx#BKMK_hot
++[4] https://blueprints.launchpad.net/nova/+spec/hyper-v-generation-2-vms
+-- 
+1.9.1
+

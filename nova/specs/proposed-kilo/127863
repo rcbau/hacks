@@ -1,4 +1,4 @@
-From 59a25072f831c79f3b0fc17f1af378bbe47c851f Mon Sep 17 00:00:00 2001
+From f7d89f264c86545cfec39297eac22ded66161d2c Mon Sep 17 00:00:00 2001
 From: He Jie Xu <xuhj@linux.vnet.ibm.com>
 Date: Thu, 9 Oct 2014 15:46:08 +0800
 Subject: [PATCH] Add separated policy rule for each v2.1 api
@@ -11,16 +11,16 @@ Part of blueprint separated-policy-rule-v3-api
 
 Change-Id: I0a8d43ac3ae56b65e598fc0dc0fab40a36ee1a00
 ---
- .../kilo/approved/separated-policy-rule-v3-api.rst | 180 +++++++++++++++++++++
- 1 file changed, 180 insertions(+)
+ .../kilo/approved/separated-policy-rule-v3-api.rst | 189 +++++++++++++++++++++
+ 1 file changed, 189 insertions(+)
  create mode 100644 specs/kilo/approved/separated-policy-rule-v3-api.rst
 
 diff --git a/specs/kilo/approved/separated-policy-rule-v3-api.rst b/specs/kilo/approved/separated-policy-rule-v3-api.rst
 new file mode 100644
-index 0000000..bc7b9e7
+index 0000000..263acf7
 --- /dev/null
 +++ b/specs/kilo/approved/separated-policy-rule-v3-api.rst
-@@ -0,0 +1,180 @@
+@@ -0,0 +1,189 @@
 +..
 + This work is licensed under a Creative Commons Attribution 3.0 Unported
 + License.
@@ -82,7 +82,8 @@ index 0000000..bc7b9e7
 +Add policy rule for each API in v2.1 API. Then it get finer granularity
 +permission control. And Cloud Operator is easy to know how to write a
 +policy rule. Because all the policy rule follow the pattern:
-+[prefix]:[extension_name]:[action_name]
++[prefix]:[extension_name]:[action_name] like
++'os_compute_api:os-lock-server:lock'.
 +
 +Alternatives
 +------------
@@ -130,11 +131,19 @@ index 0000000..bc7b9e7
 +separated in this BP, deployer need update their rules into those new
 +separated rules.
 +
++But this bp is just for Nova v2.1 API, there isn't any user for v2.1 now.
++So the impact is small.
++
++There will be more configurable API policy rules for the operator. But
++the Operator should only make the policy rule more permissive, not to
++be more restricted. If the API permission is become more restricted, that
++will break back-compatibility.
++
 +Developer impact
 +----------------
 +
 +When developer add new extension, developer should provide policy rule
-+for each API, not share an policy rule for the API in that extension.
++for each action, not share an policy rule for the API in that extension.
 +
 +Implementation
 +==============
@@ -143,7 +152,7 @@ index 0000000..bc7b9e7
 +-----------
 +
 +Primary assignee:
-+  Alex Xu <xuhj@linux.vnet.ibm.com>
++  Alex Xu <hejie.xu@intel.com>
 +
 +Other contributors:
 +  Ji Chen <jcjichen@cn.ibm.com>
