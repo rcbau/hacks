@@ -1,21 +1,22 @@
-From b9360cb2271215b86e13f455cb285fc32216a04d Mon Sep 17 00:00:00 2001
+From 385e10f8efbd32aad9ea3c4c09c0504d562416d6 Mon Sep 17 00:00:00 2001
 From: Eli Qiao <taget@linux.vnet.ibm.com>
 Date: Mon, 24 Nov 2014 16:42:48 +0800
 Subject: [PATCH] Add support live set block device io tune.
 
-APIImpact
+Propose to add supporting to live set block device io tune.
+
 Change-Id: I5bef61675e47346f2975e263ed86048e02ca0d30
 ---
- .../kilo/approved/support-live-io-tune-on-blk.rst  | 128 +++++++++++++++++++++
- 1 file changed, 128 insertions(+)
+ .../kilo/approved/support-live-io-tune-on-blk.rst  | 161 +++++++++++++++++++++
+ 1 file changed, 161 insertions(+)
  create mode 100644 specs/kilo/approved/support-live-io-tune-on-blk.rst
 
 diff --git a/specs/kilo/approved/support-live-io-tune-on-blk.rst b/specs/kilo/approved/support-live-io-tune-on-blk.rst
 new file mode 100644
-index 0000000..abf903b
+index 0000000..9d00dc8
 --- /dev/null
 +++ b/specs/kilo/approved/support-live-io-tune-on-blk.rst
-@@ -0,0 +1,128 @@
+@@ -0,0 +1,161 @@
 +..
 + This work is licensed under a Creative Commons Attribution 3.0 Unported
 + License.
@@ -26,17 +27,16 @@ index 0000000..abf903b
 +Add support for live block device I/O tune
 +=============================================
 +
-+https://blueprints.launchpad.net/nova/+spec/support-live-iotun-on-blk
++https://blueprints.launchpad.net/nova/+spec/support-live-io-tune-on-blk
 +
-+Libvirt supports live change block device io tune, we can enable this in nova,
++Libvirt supports live change block device io-tune, we can enable this in nova,
 +to provide flexible control of io usage of an instance.
 +
 +Problem description
 +===================
 +
-+QEMU supports live change io throttling, and libvirt driver already have
-+api, by enable this in nova, we can set follows parameters of block device
-+on a instance
++Currently, nova supports setting qemu io-tune from flavor extra_specs,
++but we can not change these parameters when the instance is active.
 +
 +read_bytes_sec
 +read_iops_sec
@@ -45,10 +45,18 @@ index 0000000..abf903b
 +write_bytes_sec
 +write_iops_sec
 +
++Libvirt supports live changing io throttling, and libvirt driver already have
++api, by enable this in nova, we can set above parameters of block device
++on an active instance.
++
 +Use Cases
 +----------
 +
-+enable lively change block device io throttling of block device.
++Alice has five virtual machines deployed already in her cloud.
++In order to control costs related to block device I/O,
++Alice wishes to throttle I/O write and read rates on a couple of her
++instances. She wants to be able to make a REST API call that tells
++the underlying hypervisor to adjust I/O QoS on a specified instance.
 +
 +Project Priority
 +-----------------
@@ -58,24 +66,48 @@ index 0000000..abf903b
 +Proposed change
 +===============
 +
-+Add new libvirt driver to support seting block device io throttling lively
-+Add new API to provide get/set operations on instance's block device.
++Currently, user can set io-tune information in flavor before instance bootup,
++these values can not be changed when the instance is active.
++
++This specification propose a change to let user can change the io-tune
++information when the instance is active.
++
++User can update server_metadata to change block io-tune information, these
++server_metadata changes will be reflect to libvirt driver, libvirt driver
++will change the block device io-tune info per server_metadata changes.
++
++Check if io-tune information in server_metadata exist before rebuild/
++resize/restart an instance (if io-tune information has already in
++flavor extra_specs, overwrite them).
++
++Implement change_instance_metadata function of libvirt driver to support
++change io-tune information when doing instance metadata update.
++
++And the io-tune setting can't exceed the limited set by flavor extra_spec.
 +
 +Alternatives
 +------------
 +
-+None
++Another way is add new rest api to update the io-tune setting. With that way,
++it still need some way to persist the io-tune setting.
 +
 +Data model impact
 +-----------------
 +
-+None
++There are some metadata will effort on the io-tune in the server metadata:
++
++quota:read_bytes_sec
++quota:read_iops_sec
++quota:total_bytes_sec
++quota:total_iops_sec
++quota:write_bytes_sec
++quota:write_iops_sec
++
 +
 +REST API impact
 +---------------
 +
-+Will add new API to get the block device io tune information and set the io
-+tune information.
++None
 +
 +Security impact
 +---------------
@@ -90,12 +122,13 @@ index 0000000..abf903b
 +Other end user impact
 +---------------------
 +
-+user can get/set an block device io tune information from qemu.
++user can get/set block device io-tune information by update server metadata.
 +
 +Performance Impact
 +------------------
 +
-+None
++Every time geting guest config from libvirt driver will do the check of
++quota information in instance.metadata and overwrite flavor's extra specs.
 +
 +Other deployer impact
 +---------------------
@@ -116,12 +149,13 @@ index 0000000..abf903b
 +Primary assignee:
 +  Eli Qiao <taget@linux.vnet.ibm.com>
 +
++Other contributors:
++  Alex Xu <hejie.xu@intel.com>
++
 +Work Items
 +----------
 +
-+* Add libvirt driver functions
-+* Add compute layer api
-+* Add REST api
++* implement libvirt driver functions
 +
 +Dependencies
 +============
@@ -138,7 +172,7 @@ index 0000000..abf903b
 +Documentation Impact
 +====================
 +
-+Add new api usage to indicate how to get/set the io-tune information
++User can change block io-tune information by update server metadata.
 +
 +References
 +==========

@@ -1,4 +1,4 @@
-From 12fbfe8831c9dfb8bf11fe97e136396904514b1a Mon Sep 17 00:00:00 2001
+From 074106210ec1bee9c6be08d748c16c81f31be361 Mon Sep 17 00:00:00 2001
 From: Jay Pipes <jaypipes@gmail.com>
 Date: Tue, 18 Nov 2014 09:15:20 -0500
 Subject: [PATCH] Adds lock-free-quota-management spec

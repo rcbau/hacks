@@ -1,20 +1,30 @@
-From 17313dd40e27f8e19a243b92702fdb27c5f18640 Mon Sep 17 00:00:00 2001
+From 0b609f0585f31820e6ba0f22fa3b23514752a99f Mon Sep 17 00:00:00 2001
 From: jichenjc <jichenjc@cn.ibm.com>
-Date: Wed, 29 Oct 2014 02:53:23 +0800
+Date: Fri, 5 Dec 2014 20:11:47 +0800
 Subject: [PATCH] Add ephemeral disk when instance is created bp
+
+Currently nova only allow to create eph disks when boot, but
+nova don't allow create eph disk after instance is created.
+
+Usually nova create eph disks according to boot options, if
+no boot options supplied, it will use flavor to decide whether
+a eph disk need to be created or not. But after boot, we don't
+have a API to let user create additional eph disks.
+
+https://blueprints.launchpad.net/nova/+spec/add-eph-disk
 
 Change-Id: I05eb8bd0d83d3ce1515374d74bd0c8975cafd428
 ---
- specs/kilo/approved/add-eph-disk.rst | 135 +++++++++++++++++++++++++++++++++++
- 1 file changed, 135 insertions(+)
+ specs/kilo/approved/add-eph-disk.rst | 189 +++++++++++++++++++++++++++++++++++
+ 1 file changed, 189 insertions(+)
  create mode 100644 specs/kilo/approved/add-eph-disk.rst
 
 diff --git a/specs/kilo/approved/add-eph-disk.rst b/specs/kilo/approved/add-eph-disk.rst
 new file mode 100644
-index 0000000..f8ddbac
+index 0000000..04e0a83
 --- /dev/null
 +++ b/specs/kilo/approved/add-eph-disk.rst
-@@ -0,0 +1,135 @@
+@@ -0,0 +1,189 @@
 +..
 + This work is licensed under a Creative Commons Attribution 3.0 Unported
 + License.
@@ -33,40 +43,92 @@ index 0000000..f8ddbac
 +Problem description
 +===================
 +
-+Currently nova only allow to create eph disks when boot, but
-+nova don't allow create eph disk after instance is created.
++Currently nova only allow to create ephemeral disks when boot, but
++nova don't allow create ephemeral disk after instance is created.
 +
-+Usually nova create eph disks according to boot options, if
++Usually nova create ephemeral disks according to boot options, if
 +no boot options supplied, it will use flavor to decide whether
-+a eph disk need to be created or not. But after boot, we don't
-+have a API to let user create additional eph disks.
++a ephemeral disk need to be created or not. But after boot, we don't
++have a API to let user create additional ephemeral disks.
 +
-+E.g someone create an instance with flavor A while flavor
-+A has ephemeral disk as 20G now he create an instance with 2G with
-+--ephemeral disk then he don't have cinder support now and he want
-+to create additional disk ,he can resize but resize
-+don't increase the disk created with --ephemeral flag.
++step 1: create a flavor with ephemeral disk 20G
++[jichen@compute1 ~]$ nova flavor-create --ephemeral 20 jit2 122 512 1 1
+++-----+------+-----------+------+-----------+------+-------+-------------+
++| ID  | Name | Memory_MB | Disk | Ephemeral | Swap | VCPUs | RXTX_Factor |
+++-----+------+-----------+------+-----------+------+-------+-------------+
++| 122 | jit2 | 512       | 1    | 20        |      | 1     | 1.0         |
+++-----+------+-----------+------+-----------+------+-------+-------------+
 +
-+resize is another story, you can resize an instance but that
-+won't affect existing eph disks.
++step 2:
++nova boot --image e088edb0-5109-4d1c-896d-4b2937522007 --flavor 122
++--nic net-id=71bda547-4346-438b-b494-06f257d8f749 --ephemeral size=1
++--ephemeral size=1 j4
++
++[jichen@compute1 ~]$ nova list
+++--------------------------------------+----+---------+-------------------+
++| ID                                   | N  | Status  | Networks          |
+++--------------------------------------+----+---------+-------------------+
++| aab7d856-c9a5-4fc3-b646-82c23c96f049 | j1 | SHUTOFF | private=10.0.0.3  |
++| 36d101fd-6f43-4ad6-840f-e1208c0dfc7c | j4 | ACTIVE  | private=10.0.0.13 |
+++--------------------------------------+----+---------+-------------------+
++
++/opt/stack/data/nova/instances/36d101fd-6f43-4ad6-840f-e1208c0dfc7c
++disk.eph0 and disk.eph1 are there and the disk size is 1G
++
++step 3:
++We can create multiple ephemeral disks when boot instance but we have no
++method to create additional ephemeral disks after the instance
++is created.
++
++step 4:
++create another flavor with following command
++nova flavor-create --ephemeral 30 jit3 123 512 1 1
++
++use following resize command to resize instance:
++nova resize 36d101fd-6f43-4ad6-840f-e1208c0dfc7c 123
++
++Return back to the folder and check the disk size.
++/opt/stack/data/nova/instances/36d101fd-6f43-4ad6-840f-e1208c0dfc7c
++disk.eph0 and disk.eph1 are there and the disk size is 1G
++
++So resize didn't make change to ephemeral disk.
 +
 +Use Cases
 +----------
 +
-+User who has lot of local disks but don't have persistent disk can
-+enlarge their disk through this command if they create their
-+instance with --ephemeral option.
++As Problem description paragraphe states, the spec proposes to solve
++the problem stated at #3.
++
++When user created 2 ephemeral disks when he boots the instance, he is
++able to create additional ephemeral disks with added API.
++
++For example, if the user already have disk.eph0 and disk.eph1 under
++the instance folder, he will get additional disk.eph2, disk.ephx files
++and the disk will be used in the instance he already had.
++
++This is useful to users especially who is lack of cinder or other
++storage support.
 +
 +Project Priority
 +-----------------
 +
-+None
++Not applicable
 +
 +Proposed change
 +===============
 +
 +From API layer to virt layer, add functions just like we did for
 +--ephemeral options in boot.
++
++The disk will reuse part of ephemeral disk create process of a
++the instance boot process, so it won't be an issue
++we can think it's a abstract method when you boot an instance,
++call it to create ephemeral disk, when you find you need
++additional ephemeral disk you can call it again to create it
++
++the quota won't be a problem since we don't have quota for
++ephemeral disks now and the limit check from the flavor
++still takes effect.
 +
 +Alternatives
 +------------
@@ -81,7 +143,9 @@ index 0000000..f8ddbac
 +REST API impact
 +---------------
 +
-+API to create eph disk for instance.
++API to create ephemeral disk for instance.
++Not added here because want reviewer to agree with idea itself
++then will consider the API changes, thanks.
 +
 +Security impact
 +---------------
@@ -96,7 +160,7 @@ index 0000000..f8ddbac
 +Other end user impact
 +---------------------
 +
-+End user is able to create eph disk as they want.
++End user is able to create ephemeral disk as they want.
 +
 +Performance Impact
 +------------------
@@ -126,20 +190,20 @@ index 0000000..f8ddbac
 +Work Items
 +----------
 +
-+Add libvirt code to create eph disk for instance
-+Add compute layer code for eph disk
-+Add compute api layer code to add eph disk for instance
-+Add nova api layer code to add eph disk
++Add libvirt code to create ephemeral disk for instance
++Add compute layer code for ephemeral disk
++Add compute api layer code to add ephemeral disk for instance
++Add nova api layer code to add ephemeral disk
 +
 +Dependencies
 +============
 +
-+None
++APIMicroVersion should be completed.
 +
 +Testing
 +=======
 +
-+Add test for eph disk through API layer
++Add test for ephemeral disk through API layer
 +
 +Documentation Impact
 +====================

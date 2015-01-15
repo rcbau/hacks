@@ -1,4 +1,4 @@
-From 29d6e7deda1d23c51cdb9708c4e4897e34ea866d Mon Sep 17 00:00:00 2001
+From 3ff3a629463e0775e6abd0c5c4d19bd5b8cab383 Mon Sep 17 00:00:00 2001
 From: Radoslav Gerganov <rgerganov@vmware.com>
 Date: Thu, 11 Dec 2014 16:48:21 +0200
 Subject: [PATCH] Consolidate the APIs for getting consoles
@@ -13,16 +13,16 @@ blueprint consolidate-console-api
 
 Change-Id: I428caa125f2fb9d454f828249680857f090f4372
 ---
- specs/kilo/approved/consolidate-console-api.rst | 149 ++++++++++++++++++++++++
- 1 file changed, 149 insertions(+)
+ specs/kilo/approved/consolidate-console-api.rst | 150 ++++++++++++++++++++++++
+ 1 file changed, 150 insertions(+)
  create mode 100644 specs/kilo/approved/consolidate-console-api.rst
 
 diff --git a/specs/kilo/approved/consolidate-console-api.rst b/specs/kilo/approved/consolidate-console-api.rst
 new file mode 100644
-index 0000000..a7145ca
+index 0000000..3c2239b
 --- /dev/null
 +++ b/specs/kilo/approved/consolidate-console-api.rst
-@@ -0,0 +1,149 @@
+@@ -0,0 +1,150 @@
 +..
 + This work is licensed under a Creative Commons Attribution 3.0 Unported
 + License.
@@ -81,16 +81,14 @@ index 0000000..a7145ca
 +REST API impact
 +---------------
 +
-+The new API wil be only in v2.1 and it will have the following definition:
++The new API will be only in v2.1 and it will have the following definition:
 +
 +Request::
 +
-+    POST /servers/<uuid>/action
++    POST /servers/<uuid>/consoles
 +    {
-+        "get_console": {
-+            "protocol": ["vnc"|"rdp"|"serial"|"spice"],
-+            "type": ["novnc"|"xpvnc"|"rdp-html5"|"spice-html5"]
-+        }
++        "protocol": ["vnc"|"rdp"|"serial"|"spice"],
++        "type": ["novnc"|"xpvnc"|"rdp-html5"|"spice-html5"]
 +    }
 +
 +The 'type' parameter in the request is optional and should be used when the
@@ -98,14 +96,17 @@ index 0000000..a7145ca
 +
 +Response::
 +
++    200 OK
 +    {
-+        "console": {
-+            "url": string,
-+            "protocol": ["vnc"|"rdp"|"serial"|"spice"],
-+            "type": ["novnc"|"xpvnc"|"rdp-html5"|"spice-html5"]
-+        }
++        "url": string,
++        "protocol": ["vnc"|"rdp"|"serial"|"spice"],
++        "type": ["novnc"|"xpvnc"|"rdp-html5"|"spice-html5"]
 +    }
 +
++Some of failure scenarios and their corresponding error code include:
++* wrong values for protocol/type in the request - "400 Bad Request"
++* the instance is not yet ready - "409 Conflict"
++* the virt driver doesn't support this console type - "501 Not Implemented"
 +
 +Security impact
 +---------------
@@ -120,7 +121,7 @@ index 0000000..a7145ca
 +Other end user impact
 +---------------------
 +
-+There will be a new 'get-console' subcommand for the Nova CLI that will support
++There will be a new 'console-get' subcommand for the Nova CLI that will support
 +all of the console types.
 +
 +Performance Impact

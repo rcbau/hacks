@@ -1,4 +1,4 @@
-From e220c5c213ebefeef0d14b7a7a5bcfaf3f5a9854 Mon Sep 17 00:00:00 2001
+From 327107d8c28d95821eeda5c073f4a463e3709585 Mon Sep 17 00:00:00 2001
 From: Ken Burger <burgerk@us.ibm.com>
 Date: Mon, 8 Dec 2014 11:18:16 -0500
 Subject: [PATCH] Add a Cinder volume type for a blank volume during server
@@ -7,16 +7,16 @@ Subject: [PATCH] Add a Cinder volume type for a blank volume during server
 blueprint: vol-type-with-blank-vol
 Change-Id: Id0cc59bae48035ec1e709fec475f1b6ce9511bd7
 ---
- specs/kilo/vol-type-with-blank-vol.rst | 196 +++++++++++++++++++++++++++++++++
- 1 file changed, 196 insertions(+)
- create mode 100644 specs/kilo/vol-type-with-blank-vol.rst
+ specs/kilo/approved/vol-type-with-blank-vol.rst | 203 ++++++++++++++++++++++++
+ 1 file changed, 203 insertions(+)
+ create mode 100644 specs/kilo/approved/vol-type-with-blank-vol.rst
 
-diff --git a/specs/kilo/vol-type-with-blank-vol.rst b/specs/kilo/vol-type-with-blank-vol.rst
+diff --git a/specs/kilo/approved/vol-type-with-blank-vol.rst b/specs/kilo/approved/vol-type-with-blank-vol.rst
 new file mode 100644
-index 0000000..a6d19bb
+index 0000000..be44416
 --- /dev/null
-+++ b/specs/kilo/vol-type-with-blank-vol.rst
-@@ -0,0 +1,196 @@
++++ b/specs/kilo/approved/vol-type-with-blank-vol.rst
+@@ -0,0 +1,203 @@
 +..
 + This work is licensed under a Creative Commons Attribution 3.0 Unported
 + License.
@@ -40,39 +40,47 @@ index 0000000..a6d19bb
 +Problem description
 +===================
 +
-+A user boots a Nova instance specifying multiple volumes in the BDM
++Currently user boots a Nova instance specifying multiple volumes in the BDM
 +section, one of which is source_type: "blank"
 +Example:
 +"block_device_mapping_v2": [
-+            {
-+                "boot_index": "1",
-+                "delete_on_termination": false,
-+                "destination_type": "volume",
-+                "source_type": "volume",
-+                "uuid": "3c27995f-d267-429c-acf0-ef5e8a30275e"
-+            },
-+            {
-+                "boot_index": "2",
-+                "delete_on_termination": true,
-+                "destination_type": "volume",
-+                "source_type": "blank",
-+                "volume_size": "5"
-+            }
-+        ]
-+
++{
++"boot_index": "1",
++"delete_on_termination": false,
++"destination_type": "volume",
++"source_type": "volume",
++"uuid": "3c27995f-d267-429c-acf0-ef5e8a30275e"
++},
++{
++"boot_index": "2",
++"delete_on_termination": true,
++"destination_type": "volume",
++"source_type": "blank",
++"volume_size": "5"
++}
++]
 +When source_type is blank, there is no details or additional
 +information about how to create that volume other than it being
 +size "5".   In environments with multiple Cinder volume type
 +options, currently Cinder will determine a default volume_type.
 +
-+Use Case
++Use Cases
 +----------
-+A server is being created with multiple volumes, at least one of
++
++An instance is being created with multiple volumes, at least one of
 +which is a new, blank volume.   The user would like to specify a
 +Cinder volume type for this new volume.
++Currently, as part of the BDM infomation given for this new, blank volume,
++there is no way to specify a Cinder volume type.   This change would allow
++the user to provide a Cinder volume type for this new volume and not be
++forced to use the default volume type.   When just creating a new, blank
++volume ( outside of instance creation ) the option to specify a Cinder volume
++type is available.   This change would make it consistent for the user to
++create a new volume whether it is during instance creation or not.
 +
 +Project Priority
 +-----------------
++
 +This does not fall under one of the project priorities
 +
 +Proposed change
@@ -87,23 +95,22 @@ index 0000000..a6d19bb
 +
 +Example:
 +"block_device_mapping_v2": [
-+            {
-+                "boot_index": "1",
-+                "delete_on_termination": false,
-+                "destination_type": "volume",
-+                "source_type": "volume",
-+                "uuid": "3c27995f-d267-429c-acf0-ef5e8a30275e"
-+            },
-+            {
-+                "boot_index": "2",
-+                "delete_on_termination": true,
-+                "destination_type": "volume",
-+                "source_type": "blank",
-+	        "volume_type" : "<vol_type_uuid>",
-+                "volume_size": "5"
-+            }
-+        ],
-+
++{
++"boot_index": "1",
++"delete_on_termination": false,
++"destination_type": "volume",
++"source_type": "volume",
++"uuid": "3c27995f-d267-429c-acf0-ef5e8a30275e"
++},
++{
++"boot_index": "2",
++"delete_on_termination": true,
++"destination_type": "volume",
++"source_type": "blank",
++"volume_type" : "<vol_type_uuid>",
++"volume_size": "5"
++}
++]
 +
 +
 +Alternatives

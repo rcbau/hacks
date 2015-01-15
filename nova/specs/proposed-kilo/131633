@@ -1,4 +1,4 @@
-From b2253966943fe1d1370b08ed4af5360a0f8e7bf7 Mon Sep 17 00:00:00 2001
+From 138f0bb5a39c01fcbf752f34039b8e9dcdd83ddd Mon Sep 17 00:00:00 2001
 From: Eli Qiao <taget@linux.vnet.ibm.com>
 Date: Wed, 29 Oct 2014 12:34:35 +0800
 Subject: [PATCH] Judge the service state when perform a deleting on it
@@ -9,16 +9,16 @@ APIImpact
 Implements: blueprint judge-service-state-when-deleting
 Change-Id: I4dfa38d3432cb4516fd93e386f288412d78ec5c6
 ---
- .../approved/judge-service-state-when-deleting.rst | 146 +++++++++++++++++++++
- 1 file changed, 146 insertions(+)
+ .../approved/judge-service-state-when-deleting.rst | 148 +++++++++++++++++++++
+ 1 file changed, 148 insertions(+)
  create mode 100644 specs/kilo/approved/judge-service-state-when-deleting.rst
 
 diff --git a/specs/kilo/approved/judge-service-state-when-deleting.rst b/specs/kilo/approved/judge-service-state-when-deleting.rst
 new file mode 100644
-index 0000000..775a518
+index 0000000..1ba7605
 --- /dev/null
 +++ b/specs/kilo/approved/judge-service-state-when-deleting.rst
-@@ -0,0 +1,146 @@
+@@ -0,0 +1,148 @@
 +..
 + This work is licensed under a Creative Commons Attribution 3.0 Unported
 + License.
@@ -33,7 +33,9 @@ index 0000000..775a518
 +
 +Currently, when performing a delete operation on a service, nova will not
 +check whether the service is running or not -- we just destroy the service
-+regarless. This can lead to unexpected results.
++regardless. This can lead to unexpected results.
++
++This is a bug reported against this, please check References section.
 +
 +Problem description
 +===================
@@ -83,8 +85,8 @@ index 0000000..775a518
 +* http://cloudcontroller:8774/v2/<id>/os-services/1?force=False
 +* http://cloudcontroller:8774/v2/<id>/os-services/1?force=True
 +
-+The default vaule of force is False, and if pass a bad value to 'force'
-+will raise a HTTPBadRequest.
++The default value of force is False, and if pass a bad value to 'force'
++will raise a HTTPConflict(409).
 +
 +
 +Security impact

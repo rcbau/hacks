@@ -478,6 +478,9 @@
         ], 
         "Trusted computing support": [
             "133106"
+        ],
+        "Add soft affinity support for server group": [
+            "140017"
         ]
     }, 
     "Scheduling": {
@@ -502,11 +505,6 @@
         ], 
         "Transition service groups to using the new oslo Tooz library": [
             "138607"
-        ]
-    }, 
-    "Sheduler": {
-        "Add soft affinity support for server group": [
-            "140017"
         ]
     }, 
     "__ignore__": {

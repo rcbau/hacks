@@ -1,4 +1,4 @@
-From bc91ab9752f1e9aea94338c61b4e420457e177e2 Mon Sep 17 00:00:00 2001
+From 293cbf30f6c9899b4964f11886176be408c6c241 Mon Sep 17 00:00:00 2001
 From: Neil Jerram <Neil.Jerram@metaswitch.com>
 Date: Fri, 24 Oct 2014 11:27:31 +0100
 Subject: [PATCH] New VIF type to allow routing VM data instead of bridging it
@@ -12,16 +12,16 @@ scope of the initial TAP interface setup that Nova needs to provide.
 
 Change-Id: I7bd6e07b8e4e1279e2c4098d2c75896a470dcfef
 ---
- specs/kilo/approved/vif-type-tap.rst | 243 +++++++++++++++++++++++++++++++++++
- 1 file changed, 243 insertions(+)
+ specs/kilo/approved/vif-type-tap.rst | 242 +++++++++++++++++++++++++++++++++++
+ 1 file changed, 242 insertions(+)
  create mode 100644 specs/kilo/approved/vif-type-tap.rst
 
 diff --git a/specs/kilo/approved/vif-type-tap.rst b/specs/kilo/approved/vif-type-tap.rst
 new file mode 100644
-index 0000000..1b394d7
+index 0000000..5a4c603
 --- /dev/null
 +++ b/specs/kilo/approved/vif-type-tap.rst
-@@ -0,0 +1,243 @@
+@@ -0,0 +1,242 @@
 +..
 + This work is licensed under a Creative Commons Attribution 3.0 Unported
 + License.
@@ -45,7 +45,7 @@ index 0000000..1b394d7
 +Problem description
 +===================
 +
-+For Project Calico (http://www.projectcalico.org/), I'd like the host
++For Project Calico (http://www.projectcalico.org/), we'd like the host
 +side of the pipe into a VM to be a simple, unbridged TAP interface,
 +and currently there is no VIF_TYPE that I can use to get this.
 +
@@ -102,9 +102,15 @@ index 0000000..1b394d7
 +type="ethernet"> element with a null script, just as for the existing
 +VIF_TYPE_MIDONET and VIF_TYPE_IOVISOR cases, prepared by calling
 +self.get_base_config and
-+designer.set_vif_host_backend_ethernet_config.  After libvirt has
-+launched the VM, Nova would create the TAP interface, in plug_tap(),
-+by calling linux_net.create_tap_dev.
++designer.set_vif_host_backend_ethernet_config.
++
++When a VM is to be launched using VIF_TYPE_TAP:
++
++- Nova creates the TAP interface, in plug_tap(), by calling
++  linux_net.create_tap_dev
++
++- libvirt launches the VM, with the config described just above, to
++  match the created TAP interface.
 +
 +Alternatives
 +------------
@@ -227,26 +233,19 @@ index 0000000..1b394d7
 +Testing
 +=======
 +
-+This change will be tested in three ways.
-+
-+1. At unit-test level, by adding a test case to
++Within the OpenStack ecosystem, this change will be tested at
++unit-test level, by adding a test case to
 +nova/tests/virt/libvirt/test_vif.py, that creates and verifies a
 +virtual interface with type VIF_TYPE_TAP.
 +
-+2. By a third-party CI system, to be set up and operated as described
-+at https://wiki.openstack.org/wiki/NeutronThirdPartyTesting, that
-+tests the combination of (i) this spec, (ii) a related Neutron spec
-+[A] to enable DHCP agent function for routed VIF_TYPE_TAP interfaces,
-+and
-+(iii) a Neutron/ML2 mechanism driver [B] that implements networking
-+based on routing and VIF_TYPE_TAP interfaces.
++(It will also be extensively tested at the system level by continuing
++related development and testing at Project Calico
++(http://www.projectcalico.org/), which uses VIF_TYPE_TAP, and such
++work will generally be conducted and reported in public.
 +
-+3. By continuing related development and testing at Project Calico
-+(http://www.projectcalico.org/).
-+
-+[A] https://blueprints.launchpad.net/neutron/+spec/dhcp-for-routed-ifs
-+
-+[B] https://blueprints.launchpad.net/neutron/+spec/calico-mechanism-driver
++We understand, though, that this is not formally verifiable testing
++within the OpenStack ecosystem; so it is mentioned here for
++information only.)
 +
 +
 +Documentation Impact

@@ -1,4 +1,4 @@
-From a74fb3b717e8c62b2a268e12d8f6c7dda465d597 Mon Sep 17 00:00:00 2001
+From c814b0221976826f186a6da53fdc9ea0ada7bd1c Mon Sep 17 00:00:00 2001
 From: Brent Eagles <beagles@redhat.com>
 Date: Thu, 11 Dec 2014 15:23:21 -0330
 Subject: [PATCH] Refactor allocate_for_instance
@@ -9,16 +9,16 @@ supported and support asynchronous operations where appropriate.
 
 Change-Id: I32aee20c0bab86242a74ee01f81921a77683565b
 ---
- .../approved/refactor-allocate-for-instance.rst    | 175 +++++++++++++++++++++
- 1 file changed, 175 insertions(+)
+ .../approved/refactor-allocate-for-instance.rst    | 174 +++++++++++++++++++++
+ 1 file changed, 174 insertions(+)
  create mode 100644 specs/kilo/approved/refactor-allocate-for-instance.rst
 
 diff --git a/specs/kilo/approved/refactor-allocate-for-instance.rst b/specs/kilo/approved/refactor-allocate-for-instance.rst
 new file mode 100644
-index 0000000..4cfce02
+index 0000000..08edda6
 --- /dev/null
 +++ b/specs/kilo/approved/refactor-allocate-for-instance.rst
-@@ -0,0 +1,175 @@
+@@ -0,0 +1,174 @@
 +..
 + This work is licensed under a Creative Commons Attribution 3.0 Unported
 + License.
@@ -63,7 +63,7 @@ index 0000000..4cfce02
 +a few dedicated helper methods that simply reduce the line count of
 +`allocate_for_instance` itself. The serial nature in which these different
 +scenarios prevent invoking unrelated operations asynchronously and
-+concurrently and batching multiple queries in a single call.
++concurrently as well as batching multiple queries in a single call.
 +
 +
 +Use Cases
@@ -76,8 +76,8 @@ index 0000000..4cfce02
 +Project Priority
 +-----------------
 +
-+This refactoring addresses an issue of significant techncial dept and
-+facilitates Nova to Neutron migration.
++This refactoring addresses an issue of significant techncial debt and
++is a step towards deprecating nova-network.
 +
 +
 +Proposed change
@@ -155,7 +155,7 @@ index 0000000..4cfce02
 +* Dan Smith - Nova: objects, data model and migration.
 +* Matt Riedemann
 +* Gary Kotton
-+* Matthew Gillard
++* Matthew Gilliard
 +
 +Primary assignee:
 +* Brent Eagles  beagles@redhat.com
@@ -184,8 +184,7 @@ index 0000000..4cfce02
 +Testing
 +=======
 +
-+As this is part of the Nova-Neutron API refactoring, a CI job will in the
-+experimental work queue will run the new Tempest tests
++The changes will be exercised through the existing CI.
 +
 +Documentation Impact
 +====================

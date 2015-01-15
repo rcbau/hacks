@@ -1,0 +1,153 @@
+From 2ee7a148d356e9d6f43690ed91a957be23e50716 Mon Sep 17 00:00:00 2001
+From: Eli Qiao <taget@linux.vnet.ibm.com>
+Date: Thu, 8 Jan 2015 13:56:46 +0800
+Subject: [PATCH] Add totalSecurityGroupRulesUsed to used_limit api
+
+APIImpact
+Change-Id: I32ec19b6a35b0df662728ec24c6a21ab7798134e
+---
+ specs/kilo/approved/add-security-group-rules.rst | 132 +++++++++++++++++++++++
+ 1 file changed, 132 insertions(+)
+ create mode 100644 specs/kilo/approved/add-security-group-rules.rst
+
+diff --git a/specs/kilo/approved/add-security-group-rules.rst b/specs/kilo/approved/add-security-group-rules.rst
+new file mode 100644
+index 0000000..3619823
+--- /dev/null
++++ b/specs/kilo/approved/add-security-group-rules.rst
+@@ -0,0 +1,132 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++=================================================
++Add totalSecurityGroupRulesUsed to used_limit api
++=================================================
++
++https://blueprints.launchpad.net/nova/+spec/add-security-group-rules
++
++Adding totalSecurityGroupRulesUsed mapping to security_group_rules.
++user will get totalSecurityGroupRulesUsed by calling
++nova absolute-limits in python-novaclient
++
++Problem description
++===================
++
++Current absolute-limits don't have totalSecurityGroupRulesUsed property
++
++Use Cases
++---------
++
++Admin need to know totalSecurityGroupRulesUsed when he requires absolute-limits
++information.
++
++Project Priority
++----------------
++
++None
++
++Proposed change
++===============
++
++Add totalSecurityGroupRulesUsed mapping to security_group_rules in used
++limits api, this will be applied on api-microversion
++
++Alternatives
++------------
++
++None
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++GET (uuid)/limits will return totalSecurityGroupRulesUsed in absolute as
++follow:
++
++{ "limits": {
++        "rate": [],
++        "absolute": { ...
++
++            "totalSecurityGroupRulesUsed": 0
++
++        }
++
++    }
++
++}
++
++Security impact
++---------------
++
++None.
++
++Notifications impact
++--------------------
++
++None.
++
++Other end user impact
++---------------------
++
++None.
++
++Performance Impact
++------------------
++
++None
++
++Other deployer impact
++---------------------
++
++None
++
++Developer impact
++----------------
++
++None
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++    taget@linux.vnet.ibm.com
++
++Work Items
++----------
++
++* Add totalSecurityGroupRulesUsed in used limit api response
++
++Dependencies
++============
++
++* Need to apply on api-microverisons
++
++https://blueprints.launchpad.net/nova/+spec/api-microversions
++
++
++Testing
++=======
++
++* Add unit/functional test case
++
++Documentation Impact
++====================
++
++* absolute-limits api will return totalSecurityGroupRulesUsed property
++
++References
++==========
++
++None
+-- 
+1.9.1
+

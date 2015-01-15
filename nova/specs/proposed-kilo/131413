@@ -1,4 +1,4 @@
-From e47e4c3d37a4d3922d78d232daac9b4ae9720f60 Mon Sep 17 00:00:00 2001
+From c4a953a60f63ca12933735c2b2a4901bd548ad90 Mon Sep 17 00:00:00 2001
 From: Brent Eagles <beagles@redhat.com>
 Date: Mon, 27 Oct 2014 19:36:39 -0230
 Subject: [PATCH] Refactor of the Neutron network adapter
@@ -10,16 +10,16 @@ current data practices in nova.
 Change-Id: If98aa01031fcdfa46fd59a511f16175892a9baea
 Blueprint: nova-neutron-refactor
 ---
- specs/kilo/approved/nova-neutron-refactor.rst | 275 ++++++++++++++++++++++++++
- 1 file changed, 275 insertions(+)
+ specs/kilo/approved/nova-neutron-refactor.rst | 272 ++++++++++++++++++++++++++
+ 1 file changed, 272 insertions(+)
  create mode 100644 specs/kilo/approved/nova-neutron-refactor.rst
 
 diff --git a/specs/kilo/approved/nova-neutron-refactor.rst b/specs/kilo/approved/nova-neutron-refactor.rst
 new file mode 100644
-index 0000000..7432839
+index 0000000..fd86426
 --- /dev/null
 +++ b/specs/kilo/approved/nova-neutron-refactor.rst
-@@ -0,0 +1,275 @@
+@@ -0,0 +1,272 @@
 +..
 + This work is licensed under a Creative Commons Attribution 3.0 Unported
 + License.
@@ -29,8 +29,6 @@ index 0000000..7432839
 +==========================================
 +Refactor of the Neutron network adapter
 +==========================================
-+
-+Include the URL of your launchpad blueprint:
 +
 +https://blueprints.launchpad.net/nova/+spec/nova-neutron-refactor
 +
@@ -61,8 +59,8 @@ index 0000000..7432839
 +  difficult to create and maintain effective unit tests.
 +
 +* Data type and organization were simply added to (e.g. adding another
-+  element to a tuple) accommodate new requirements as opposed toh
-+  refactoring to a more appropriate data structure such as class type.
++  element to a tuple) accommodate new requirements instead of
++  refactoring to more appropriate data structures such as class type.
 +
 +* While Neutron client API calls are accompanied by try/catch blocks, the
 +  Neutron exceptions are not translated to Nova exceptions so they can be
@@ -70,7 +68,7 @@ index 0000000..7432839
 +  Nova/Neutron boundary obviates the potential for networking backend agnostic
 +  code.
 +
-+* Certain APIs methods have become entry points for logically divergent
++* Certain API methods have become entry points for logically divergent
 +  operations (i.e. candy machine interfaces). This is easily identifiable
 +  by the complexity and size of their implementation.
 +  `allocate_for_instance` is another good example of this. It has several
@@ -233,9 +231,8 @@ index 0000000..7432839
 +
 +Developers working with the existing code will be lightly impacted by
 +incremental patches that land during the refactoring process. These patches
-+primarily impact the Network API and its consumers as the existing
-+implementation is adapted to match improvements in parameters and return
-+values
++primarily impact the Network API and its consumers as API signatures are
++adapted to match improvements in parameters and return values.
 +
 +
 +Implementation
@@ -252,6 +249,7 @@ index 0000000..7432839
 +
 +* Dan Smith - Nova: objects, data model and migration.
 +* Matt Riedemann
++* Gary Kotton
 +* (interested neutron cores?)
 +
 +
@@ -277,8 +275,7 @@ index 0000000..7432839
 +Testing
 +=======
 +
-+A CI job will be added to the experimental work queue to run Tempest with
-+the new implementation in place.
++The existing CI job will exercise the refactorings underway.
 +
 +Additional functional tests may be required to provide sufficient rigor
 +for validating the new implementation.

@@ -1,0 +1,185 @@
+From d643187d8586a0a42c551892c678039f3200a819 Mon Sep 17 00:00:00 2001
+From: jichenjc <jichenjc@cn.ibm.com>
+Date: Wed, 7 Jan 2015 14:23:09 +0800
+Subject: [PATCH] Allow resize an ephemeral disk
+
+Allow increase ephemeral disk during resize operation if the disk
+is created from --ephemeral param when nova boot the instance.
+
+Change-Id: I206d3312907148b832ebd63c366213fc675b6512
+---
+ ...allow_increase_ephemeral_disk_during_resize.rst | 162 +++++++++++++++++++++
+ 1 file changed, 162 insertions(+)
+ create mode 100644 specs/kilo/approved/allow_increase_ephemeral_disk_during_resize.rst
+
+diff --git a/specs/kilo/approved/allow_increase_ephemeral_disk_during_resize.rst b/specs/kilo/approved/allow_increase_ephemeral_disk_during_resize.rst
+new file mode 100644
+index 0000000..11924b9
+--- /dev/null
++++ b/specs/kilo/approved/allow_increase_ephemeral_disk_during_resize.rst
+@@ -0,0 +1,162 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++=====================================
++Allow increase ephemeral disk during resize
++=====================================
++
++https://blueprints.launchpad.net/nova/+spec/allow_increase_ephemeral_disk_during_resize
++
++Allow increase ephemeral disk during resize
++
++NOTE: this bp is in early stage, only want to collect info and opinion
++on whether it's worthy to do so and additional work will be done on the bp
++such as API changes and work items etc.
++
++
++Problem description
++===================
++
++This idea is coming from discussion during [1].
++
++Currently we allow resize an instance to a flavor with bigger ephemeral
++disk size. However, if the previous disks are created through
++--ephemeral parameter, the resize operation will not affect them and
++user have no way to update those disks.
++
++step 1: create a flavor with ephemeral disk 20G
++[jichen@compute1 ~]$ nova flavor-create --ephemeral 20 jit2 122 512 1 1
+++-----+------+-----------+------+-----------+------+-------+-------------+
++| ID  | Name | Memory_MB | Disk | Ephemeral | Swap | VCPUs | RXTX_Factor |
+++-----+------+-----------+------+-----------+------+-------+-------------+
++| 122 | jit2 | 512       | 1    | 20        |      | 1     | 1.0         |
+++-----+------+-----------+------+-----------+------+-------+-------------+
++
++step 2:
++nova boot --image e088edb0-5109-4d1c-896d-4b2937522007 --flavor 122
++--nic net-id=71bda547-4346-438b-b494-06f257d8f749 --ephemeral size=1
++--ephemeral size=1 j4
++
++[jichen@compute1 ~]$ nova list
+++--------------------------------------+----+---------+-------------------+
++| ID                                   | N  | Status  | Networks          |
+++--------------------------------------+----+---------+-------------------+
++| aab7d856-c9a5-4fc3-b646-82c23c96f049 | j1 | SHUTOFF | private=10.0.0.3  |
++| 36d101fd-6f43-4ad6-840f-e1208c0dfc7c | j4 | ACTIVE  | private=10.0.0.13 |
+++--------------------------------------+----+---------+-------------------+
++
++step 3:
++create another flavor with following command
++nova flavor-create --ephemeral 30 jit3 123 512 1 1
++
++use following resize command to resize instance:
++nova resize 36d101fd-6f43-4ad6-840f-e1208c0dfc7c 123
++
++Return back to the folder and check the disk size.
++/opt/stack/data/nova/instances/36d101fd-6f43-4ad6-840f-e1208c0dfc7c
++disk.eph0 and disk.eph1 are there and the disk size is 1G
++
++So resize didn't make change to ephemeral disk and nova can't change
++the size of the existing ephemeral disk.
++
++Use Cases
++----------
++
++This is different to [1]; [1] is talking about create ephemeral
++disk after it is booted, this bp suggest to allow input params
++to resize operation so that the ephemeral disk size can be changed
++if the ephemeral disk is created through --ephemeral parameter.
++
++Project Priority
++-----------------
++
++Not applicable
++
++Proposed change
++===============
++
++TBD
++
++Alternatives
++------------
++
++None
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++TBD
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++End user is able to resize ephemeral disk as they want.
++
++Performance Impact
++------------------
++
++None
++
++Other deployer impact
++---------------------
++
++None
++
++Developer impact
++----------------
++
++None
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++    jichenjc
++
++Work Items
++----------
++
++TBD
++
++Dependencies
++============
++
++None
++
++Testing
++=======
++
++Functional cases for resize an ephemeral disk
++created from --ephemeral param.
++
++Documentation Impact
++====================
++
++Doc need to be updated to indicate API changes.
++
++References
++==========
++
++[1] https://review.openstack.org/#/c/132614/
+-- 
+1.9.1
+

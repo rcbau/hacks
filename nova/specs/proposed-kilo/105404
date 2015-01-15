@@ -1,22 +1,24 @@
-From f4c64a61fa116a48cd6f4326686faf7a7b9c523d Mon Sep 17 00:00:00 2001
+From b133e125103451c61dd6e6a0f8fce45f3428bfc1 Mon Sep 17 00:00:00 2001
 From: Yuriy Taraday <yorik.sar@gmail.com>
 Date: Tue, 8 Jul 2014 13:34:20 +0400
 Subject: [PATCH] Add rootwrap-daemon-mode blueprint
 
 blueprint rootwrap-daemon-mode
 
+Co-authored-by: Mike Durnosvistov <mdurnosvistov@mirantis.com>
+
 Change-Id: Ib61a72adfa1a0296f63d3856c22cd94b2481c01e
 ---
- specs/kilo/approved/rootwrap-daemon-mode.rst | 147 +++++++++++++++++++++++++++
- 1 file changed, 147 insertions(+)
+ specs/kilo/approved/rootwrap-daemon-mode.rst | 159 +++++++++++++++++++++++++++
+ 1 file changed, 159 insertions(+)
  create mode 100644 specs/kilo/approved/rootwrap-daemon-mode.rst
 
 diff --git a/specs/kilo/approved/rootwrap-daemon-mode.rst b/specs/kilo/approved/rootwrap-daemon-mode.rst
 new file mode 100644
-index 0000000..596efc5
+index 0000000..d1de019
 --- /dev/null
 +++ b/specs/kilo/approved/rootwrap-daemon-mode.rst
-@@ -0,0 +1,147 @@
+@@ -0,0 +1,159 @@
 +..
 + This work is licensed under a Creative Commons Attribution 3.0 Unported
 + License.
@@ -44,6 +46,18 @@ index 0000000..596efc5
 +Neutron. Impact on Nova is not as signigicant since most of the work is done
 +with libvirt's API but it is still there.
 +Details of the overhead are covered in [#rw_bp]_.
++
++Use Cases
++----------
++
++This will eliminate bottleneck in nova-network, nova-compute at boot large of
++number of nodes.
++
++Project Priority
++-----------------
++
++The kilo priorities list is currently not defined. However under the currently
++proposed list of priorities it would fall under "Performance".
 +
 +Proposed change
 +===============
@@ -128,7 +142,7 @@ index 0000000..596efc5
 +-----------
 +
 +Primary assignee:
-+  yorik-sar (Yuriy Taraday, YorikSar @ freenode)
++  Mike Durnosvistov (Mike_D_wk, Mike_D_laptop @ freenode)
 +
 +Work Items
 +----------
@@ -157,7 +171,7 @@ index 0000000..596efc5
 +==========
 +
 +.. [#rw_bp] oslo.rootwrap blueprint:
-+   https://blueprints.launchpad.net/oslo/+spec/rootwrap-daemon-mode
++   https://blueprints.launchpad.net/oslo.rootwrap/+spec/rootwrap-daemon-mode
 +
 +.. [#ne_ml] Original mailing list thread:
 +   http://lists.openstack.org/pipermail/openstack-dev/2014-March/029017.html

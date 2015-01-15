@@ -1,4 +1,4 @@
-From 64a8f0431a62aae6bd819e6549bd6e864599099f Mon Sep 17 00:00:00 2001
+From fb67b3c64dc0451c4a33f4ccefc0fe946aa1ce31 Mon Sep 17 00:00:00 2001
 From: Eli Qiao <taget@linux.vnet.ibm.com>
 Date: Wed, 19 Nov 2014 13:21:11 +0800
 Subject: [PATCH] Improve return code of lock_server api
@@ -16,7 +16,7 @@ Change-Id: Iae4b196fef35edb5701c9e62a678cf7e9d734850
 
 diff --git a/specs/kilo/approved/improve-lock-api.rst b/specs/kilo/approved/improve-lock-api.rst
 new file mode 100644
-index 0000000..96fd925
+index 0000000..00229c5
 --- /dev/null
 +++ b/specs/kilo/approved/improve-lock-api.rst
 @@ -0,0 +1,130 @@
@@ -77,7 +77,7 @@ index 0000000..96fd925
 +
 +This is a backwards incompatible changes.
 +* Change return code from 202 to 200.
-+* Raise HTTPConflict(209) when try to lock/unlock a locked/unlocked instance.
++* Raise HTTPConflict(409) when try to lock/unlock a locked/unlocked instance.
 +
 +Security impact
 +---------------

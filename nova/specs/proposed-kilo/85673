@@ -1,4 +1,4 @@
-From bbf0cbc127e3dce1bb07f718b8cc15b8610eab04 Mon Sep 17 00:00:00 2001
+From c43781f4fe40dffeef31012397363d2a29c21028 Mon Sep 17 00:00:00 2001
 From: Josh Gachnang <josh@pcsforeducation.com>
 Date: Thu, 26 Jun 2014 11:32:39 -0700
 Subject: [PATCH] API: Proxy neutron configuration to guest instance
@@ -13,16 +13,16 @@ blueprint metadata-service-network-info
 Change-Id: Ia6967af4b4147ad4dcf6ae3ae5f4b6d9c1fda246
 Co-Authored-By: Josh Gachnang <josh@servercobra.com>
 ---
- .../approved/metadata-service-network-info.rst     | 300 +++++++++++++++++++++
- 1 file changed, 300 insertions(+)
+ .../approved/metadata-service-network-info.rst     | 301 +++++++++++++++++++++
+ 1 file changed, 301 insertions(+)
  create mode 100644 specs/kilo/approved/metadata-service-network-info.rst
 
 diff --git a/specs/kilo/approved/metadata-service-network-info.rst b/specs/kilo/approved/metadata-service-network-info.rst
 new file mode 100644
-index 0000000..b6f60ea
+index 0000000..e3e5037
 --- /dev/null
 +++ b/specs/kilo/approved/metadata-service-network-info.rst
-@@ -0,0 +1,300 @@
+@@ -0,0 +1,301 @@
 +..
 + This work is licensed under a Creative Commons Attribution 3.0 Unported
 + License.
@@ -76,9 +76,9 @@ index 0000000..b6f60ea
 +
 +Project Priority
 +----------------
-+This, combined with Neutron support for bonding, will increase the fault
-+tolerance of Ironic nodes. In the case of Triple O, that would also increase
-+the fault tolerance of the hardware running Nova in the overcloud.
++None, but this combined with Neutron support for bonding, will increase the
++fault tolerance of Ironic nodes. In the case of Triple O, that would also
++increase the fault tolerance of the hardware running Nova in the overcloud.
 +
 +Proposed change
 +===============
@@ -105,7 +105,8 @@ index 0000000..b6f60ea
 +Alternatives
 +------------
 +
-+None
++* Neutron could create the network_data.json and have Nova simply download
++  the file and add it to the metadata service and configdrive.
 +
 +Data model impact
 +-----------------

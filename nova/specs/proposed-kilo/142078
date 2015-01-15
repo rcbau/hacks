@@ -1,0 +1,192 @@
+From 40504a4ab6c2e15ec06a6474ef1b0e8b8441d125 Mon Sep 17 00:00:00 2001
+From: Sergey Nikitin <snikitin@mirantis.com>
+Date: Tue, 16 Dec 2014 14:44:43 +0300
+Subject: [PATCH] Adds specification for SQL profiler
+
+Develop and implement a profiler for SQL requests.
+
+Design for blueprint sql-profiler
+
+Change-Id: Id03a998f82c13d9f168d1b7cd20e0dd460d5ef0c
+---
+ specs/kilo/approved/sql-profiler.rst | 168 +++++++++++++++++++++++++++++++++++
+ 1 file changed, 168 insertions(+)
+ create mode 100644 specs/kilo/approved/sql-profiler.rst
+
+diff --git a/specs/kilo/approved/sql-profiler.rst b/specs/kilo/approved/sql-profiler.rst
+new file mode 100644
+index 0000000..454607a
+--- /dev/null
++++ b/specs/kilo/approved/sql-profiler.rst
+@@ -0,0 +1,168 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++=================================================
++Develop and implement a profiler for SQL requests
++=================================================
++
++https://blueprints.launchpad.net/nova/+spec/sql-profiler
++
++Blueprint aims to develop a SQL profiler for logging and performance
++estimation of SQL requests, done in the context of execution of a given
++REST API request. It will be implemented as an optional WSGI middleware,
++which can be enabled in the PasteDeploy config.
++
++
++Problem description
++===================
++
++Performance is an important aspect of every project, including Openstack.
++By the means of the developed profiler developers will be able to see how
++fast and effectively SQL requests are processed, how many of them are issued
++for every REST API request. Optional launching of the profiler in PasteDeploy
++in tempest jobs will make it possible to estimate the performance of all
++REST API requests.
++
++Use Cases
++----------
++
++The developer will be able to see either the performance of the code
++is better or worse after the changes the developer has made.
++
++There are two variants of the profiler usage:
++
++1. All API requests will be profiled.
++2. Only API requests with special token (like profile_sql=1) will be profiled.
++
++In the second case the user will be able to profile only the API requests he
++wants. Besides, this token will make it possible to use the profiler when
++needed without the restart of the service. In this case the profiler will
++always be enabled, but it will work only when the special token will be
++in API request.
++
++The initialisation of the profiler in paste.ini defines the way it works.
++
++
++Project Priority
++-----------------
++
++None
++
++
++Proposed change
++===============
++
++Develop an optional WSGI middleware SQL profiler.
++
++Enable the middleware in gate jobs.
++
++Alternatives
++------------
++
++Rally/osprofiler can be used for performance tracking of SQL requests.
++But that would require Ceilometer to be installed. Besides Rally/osprofiler
++bundle is a cross-service profiler, while the proposed profiler will track
++the performance of SQL requests and group them by REST API requests.
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++None
++
++Security impact
++---------------
++
++To protect profiler from DDOS attacks it is necessary to implement a message
++authentication code like OSProfiler does. During the initialisation of the
++profiler a special message will be passed to it, like hmac_keys in OSProfiler.
++The headers will be generated on the basis of this message and only
++API requests with generated headers will be profiled.
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++The profiler will generate an HTML report. This report will contain
++the following information: which REST API requests were called, for each
++REST API request: which SQL requests were performed while the given REST API
++request was processed, the time of execution of each SQL request, the place
++where the SQL request was called from and the SQL request itself.
++
++This report will be given to user as output file for tempest jobs in which
++the profiler is enabled.
++
++Performance Impact
++------------------
++
++The proposed middleware will be completely optional and disabled by default.
++When it’s enabled (e.g. in tempest gate jobs) the performance overhead
++will be negligible.
++
++Other deployer impact
++---------------------
++
++Operators can optionally enable the WSGI middleware in api-paste.ini,
++if they want to profile SQL requests.
++
++Developer impact
++----------------
++
++The profiler will help the developers improve the performance of SQL requests.
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  snikitin
++
++Other contributors:
++  None
++
++Work Items
++----------
++
++1. Develop SQL Profiler WSGI middleware.
++2. Enabled the middleware in PasteDeploy config for tempest gate jobs.
++
++Dependencies
++============
++
++The profiler will be developed on the base of SQLTap profiler.
++
++https://github.com/inconshreveable/sqltap
++
++http://sqltap.inconshreveable.com/
++
++SQLTap profiler has Apache License, Version 2.0.
++This profiler was chosen because it has user friendly interface and it
++will be easy to modify SQLTap for our needs.
++
++
++Testing
++=======
++
++Would need new unit tests.
++
++Documentation Impact
++====================
++
++Docs needed to explain how to enable profiler in api-paste.ini
++
++References
++==========
++None
+-- 
+1.9.1
+

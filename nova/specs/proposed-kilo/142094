@@ -1,0 +1,184 @@
+From 58cae5e806fb1c1f1e5091022dff965621172c6b Mon Sep 17 00:00:00 2001
+From: Brent Eagles <beagles@redhat.com>
+Date: Tue, 16 Dec 2014 09:22:23 -0330
+Subject: [PATCH] Distribute PCI Requests Across Multiple Devices
+
+PCI requests are provisioned in a list based fashion. In SR-IOV
+networking devices, a set of candidate virtual functions can span
+multiple physical functions and physical ports. Distributing single and
+multiple device requests across multiple physical functions provides:
+
+* Better load distribution across available links.
+
+* Provides L2 redundancy when multiple devices are allocated on behalf
+  of a single guest.
+
+Change-Id: I4af2a35de9ece709b774df9c05da33fef47157db
+---
+ specs/kilo/approved/distribute-pci-allocations.rst | 154 +++++++++++++++++++++
+ 1 file changed, 154 insertions(+)
+ create mode 100644 specs/kilo/approved/distribute-pci-allocations.rst
+
+diff --git a/specs/kilo/approved/distribute-pci-allocations.rst b/specs/kilo/approved/distribute-pci-allocations.rst
+new file mode 100644
+index 0000000..523bba2
+--- /dev/null
++++ b/specs/kilo/approved/distribute-pci-allocations.rst
+@@ -0,0 +1,154 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++===============================================
++Distribute PCI Requests Across Multiple Devices
++===============================================
++
++Include the URL of your launchpad blueprint:
++
++https://blueprints.launchpad.net/nova/+spec/distribute-pci-allocation.rst
++
++PCI requests are provisioned in a list based fashion. In SR-IOV networking
++devices, a set of candidate virtual functions can span multiple physical
++functions and physical ports. Distributing single and multiple device requests
++across multiple physical functions provides:
++
++* Better load distribution across available links.
++
++* Provides L2 redundancy when multiple devices are allocated on behalf of a
++  single guest.
++
++
++Problem description
++===================
++
++Simple queue based device selection for PCI SR-IOV devices does not distribute
++load across physical connections nor does it permit guests to achieve L2
++redundancy by requesting multiple SR-IOV based ports.
++
++Use Cases
++----------
++
++Creating an Openstack instance with multiple SR-IOV ports where the ports are
++instantiated across diverse physical links provides more even device and link
++utilisation and allows guests to take advantage of L2 redundant links for
++bonding, etc.
++
++Project Priority
++-----------------
++
++Does not directly address listed Kilo priorities.
++
++Proposed change
++===============
++
++The proposed change is twofold:
++
++* Alter the PCI device request scheduling to, in the SR-IOV case, distributed
++  PCI device requests evenly across available multiple physical functions for
++  the same associated label.
++
++* Extend the PCI device request API to support multiple requests, signifying
++  that the requests are on behalf of a single guest instance. This
++  implementation supports failure if the only available virtual functions are
++  on the same physical function.
++
++Alternatives
++------------
++
++There are no alternatives that directly satisfy distribution of requests for
++more even utilization. Ensuring multiple SR-IOV device requests for a guest
++span multiple physical links could employ additional port detail information
++but would still require PCI request scheduling changes.
++
++Data model impact
++-----------------
++
++The current model should be sufficient as it contains the required
++bookkeeping.
++
++REST API impact
++---------------
++
++The implementation is an internal change only and has no impact.
++
++Security impact
++---------------
++
++None.
++
++Notifications impact
++--------------------
++
++None.
++
++Other end user impact
++---------------------
++
++None.
++
++Performance Impact
++------------------
++
++There is an increase in complexity in scheduling guest creation that may
++increase the amount of time taken to schedule guests that are connected to
++multiple PCI similar SR-IOV devices. It has no effect on other cases.
++
++Other deployer impact
++---------------------
++
++None.
++
++Developer impact
++----------------
++
++None.
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Assignee: Brent Eagles
++
++Other contributors/principle reviewers:
++* Yongli He <yongli.he@intel.com>
++* Baodong (Robert) Li <baoli@cisco.com>
++
++Work Items
++----------
++
++* Alter PCI device selection logic to support distribution across multiple PCI
++  roots (physical functions)
++* Extend PCI request API to support multiple device requests.
++* Modify scheduler code to employ the new API.
++* Support through 3rd party CI.
++
++Dependencies
++============
++
++None.
++
++Testing
++=======
++
++The changes to the selection logic are testable through unit testing, as is
++the extension to the PCI request API.
++
++Integration and system testing will require 3rd party CI as it will require
++specific hardware configurations to properly test.
++
++Documentation Impact
++====================
++
++None.
++
++References
++==========
++
++None.
+-- 
+1.9.1
+

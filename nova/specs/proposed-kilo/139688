@@ -1,4 +1,4 @@
-From d759030f40753e727bead2f748ce6f6e82320836 Mon Sep 17 00:00:00 2001
+From 9b0f17ae162cdd65dbf33e74ac4bb9590df17dc2 Mon Sep 17 00:00:00 2001
 From: "Daniel P. Berrange" <berrange@redhat.com>
 Date: Fri, 5 Dec 2014 17:26:08 +0000
 Subject: [PATCH] Libvirt real time instances
@@ -12,16 +12,16 @@ guarantees for worst case schedular latency for vCPUs.
 Blueprint: libvirt-real-time
 Change-Id: I79b3bfc555ba7ca1651685434b7136deed49515c
 ---
- specs/kilo/approved/libvirt-real-time.rst | 215 ++++++++++++++++++++++++++++++
- 1 file changed, 215 insertions(+)
+ specs/kilo/approved/libvirt-real-time.rst | 223 ++++++++++++++++++++++++++++++
+ 1 file changed, 223 insertions(+)
  create mode 100644 specs/kilo/approved/libvirt-real-time.rst
 
 diff --git a/specs/kilo/approved/libvirt-real-time.rst b/specs/kilo/approved/libvirt-real-time.rst
 new file mode 100644
-index 0000000..95ac16f
+index 0000000..49038db
 --- /dev/null
 +++ b/specs/kilo/approved/libvirt-real-time.rst
-@@ -0,0 +1,215 @@
+@@ -0,0 +1,223 @@
 +..
 + This work is licensed under a Creative Commons Attribution 3.0 Unported
 + License.
@@ -37,7 +37,7 @@ index 0000000..95ac16f
 +The CPU pinning feature added to the ability to assigned guest virtual CPUs
 +to dedicated host CPUs, providing guarantees for CPU time and improved worst
 +case latency for CPU scheduling. The real time feature builds on that work
-+to provide stronger guarantees for worst case schedular latency for vCPUs.
++to provide stronger guarantees for worst case scheduler latency for vCPUs.
 +
 +Problem description
 +===================
@@ -104,20 +104,28 @@ index 0000000..95ac16f
 +will be set.
 +
 +* Memory locking will be enabled
-+* CPU schedular priority will be set to realtime
++* CPU scheduler priority will be set to realtime
++
++Note that the property is represented as a simple boolean on/off, in order
++to allow the Nova hypervisor drivers maximum flexibility in how they decide
++to implement a real-time schedular policy. Even in Linux there are a number
++of possible schedular policy choices, and these may change over time. So
++this allows us the scope to switch to a different schedular policy in the
++future if the kernel developers provide a better one. Likewise it avoids
++exposing any Linux specific terminology on other virtualization drivers.
 +
 +Alternatives
 +------------
 +
-+One option would be to always enable a real time schedular policy when the
++One option would be to always enable a real time scheduler policy when the
 +guest is using dedicated CPU pinning and always enable memory locking when
 +the guest has huge pages. This is considered undesirable though because a
-+real time schedular does have potential downsides too, for example, kernel
++real time scheduler does have potential downsides too, for example, kernel
 +threads may suffer worse latency overall. As a result it is considered
 +perferrable to have an opt-in mechanism for enabling real time.
 +
 +Do nothing is always an option. In the event of doing nothing, guests would
-+have to put up with the latencies inherant in non-real time scheduling, even
++have to put up with the latencies inherent in non-real time scheduling, even
 +with dedicated pCPUs. Some of those latencies could be further mitigated by
 +careful host OS configuration, but it will never match what's achievable by
 +fully configuring real time.
@@ -154,7 +162,7 @@ index 0000000..95ac16f
 +------------------
 +
 +There will be no new performance impact to Nova as a whole. This is building
-+on the existing CPU pinning and huge pages features, so the schedular logic is
++on the existing CPU pinning and huge pages features, so the scheduler logic is
 +already in place. Likewise the impact on the host is restricted to pCPUs which
 +are already assigned to a guest.
 +
@@ -212,7 +220,7 @@ index 0000000..95ac16f
 +============
 +
 +* The libvirt project needs to add support for the XML feature to enable
-+  real time schedular priority for guests.
++  real time scheduler priority for guests.
 +* The KVM project needs to produce recommendations for optimal host OS
 +  setup
 +
@@ -224,14 +232,14 @@ index 0000000..95ac16f
 +validate this feature.
 +
 +The key functional testing requirement is around correct opertion of the
-+existing Nova CPU pinning and huge pages features and their schedular
++existing Nova CPU pinning and huge pages features and their scheduler
 +integration. This is outside the scope of this particular blueprint.
 +
 +Documentation Impact
 +====================
 +
 +The deployment documentation will need to be updated to describe how to setup
-+a host to take advantage of real time schedular prioritization.
++a host to take advantage of real time scheduler prioritization.
 +
 +References
 +==========

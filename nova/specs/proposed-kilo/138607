@@ -1,4 +1,4 @@
-From 9a0e8ef8df91932572fc3a95d49ca58681932f38 Mon Sep 17 00:00:00 2001
+From 05d5b73451c7adcd1ceab667b2b4dca55647cc66 Mon Sep 17 00:00:00 2001
 From: Joshua Harlow <harlowja@yahoo-inc.com>
 Date: Wed, 19 Nov 2014 15:31:52 -0800
 Subject: [PATCH] Replace service groups with the tooz groups
@@ -13,16 +13,16 @@ Implements: blueprint tooz-for-service-groups
 
 Change-Id: I65198fe507a11a1efd9f90e2f56d91023b689099
 ---
- specs/kilo/service-group-using-tooz.rst | 418 ++++++++++++++++++++++++++++++++
- 1 file changed, 418 insertions(+)
- create mode 100644 specs/kilo/service-group-using-tooz.rst
+ specs/kilo/approved/service-group-using-tooz.rst | 518 +++++++++++++++++++++++
+ 1 file changed, 518 insertions(+)
+ create mode 100644 specs/kilo/approved/service-group-using-tooz.rst
 
-diff --git a/specs/kilo/service-group-using-tooz.rst b/specs/kilo/service-group-using-tooz.rst
+diff --git a/specs/kilo/approved/service-group-using-tooz.rst b/specs/kilo/approved/service-group-using-tooz.rst
 new file mode 100644
-index 0000000..4bf3fea
+index 0000000..8561eb1
 --- /dev/null
-+++ b/specs/kilo/service-group-using-tooz.rst
-@@ -0,0 +1,418 @@
++++ b/specs/kilo/approved/service-group-using-tooz.rst
+@@ -0,0 +1,518 @@
 +..
 + This work is licensed under a Creative Commons Attribution 3.0 Unported
 + License.
@@ -37,7 +37,7 @@ index 0000000..4bf3fea
 +
 +Instead of having nova maintain, test its own group membership code which
 +is used to determine what services are up & down which is frequently used to
-+determine which the members of a given group [compute, scheduler...] are and
++determine which members of a given group [compute, scheduler...] are and
 +if they are alive or dead (typically the member information includes what
 +topic can be used to contact the member as well) we propose to retain a similar
 +API in nova but instead using `tooz`_ (a new oslo library that has been under
@@ -60,9 +60,9 @@ index 0000000..4bf3fea
 +  test suite which is specialized to test the grouping concepts).
 +- Provide a cleaner abstraction (since how tooz maintains the grouping
 +  concept(s) is now an internal API implementation).
-+- Reduce the burdon on the nova team around testing, management, maintenance
++- Reduce the burden on the nova team around testing, management, maintenance
 +  and general upkeep of the servicegroup concepts (seeing as this is something
-+  that is not a direct feature of a compute project it seems like this burdon
++  that is not a direct feature of a compute project it seems like this burden
 +  should just be placed on a external project instead).
 +- Keep the code less stale (ex, the zookeeper driver is using an
 +  outdated/dead? `evzookeeper`_ driver from 2012 with a `zookeeper unit test`_
@@ -185,15 +185,9 @@ index 0000000..4bf3fea
 +    +-----------------+--------------+------+-----+---------+----------------+
 +    11 rows in set (0.00 sec)
 +
-+Options for what to do about this driver:
++What to do about this driver:
 +
 +#. Leave the driver in nova (and don't deprecate it).
-+#. Have tooz have a *new* (no such driver currently exists in tooz) driver that
-+   can read from and write to an agreed upon database format/data model (this
-+   makes changing the nova internal data model harder as now there is an format
-+   binding the two projects). Then have tooz test using its own version of that
-+   format/data model (which *should* work transparently with the nova
-+   format/data model as long as compatability is retained).
 +#. Something else?
 +
 +mc.py
@@ -207,7 +201,8 @@ index 0000000..4bf3fea
 +
 +This driver uses keys of the format::
 +
-+    key = "%(topic)s:%(host)s" % service_ref
++    key = "%(topic)s:%(host)s" % service_ref (the ``service_ref`` object
++                                              is from the database layer)
 +
 +Things to note:
 +
@@ -271,10 +266,17 @@ index 0000000..4bf3fea
 +  this driver is well maintained/tested or integrated with in the nova code
 +  base (ie ``evzookeeper`` isn't in the global requirements repo...) so
 +  deprecating it would seem like a benefit for all.
-+- This driver doesn't use the conductor + database to maintain what members
-+  are in what group (so IMHO is less *confusing* then the memcache one which
-+  does); although it does use a zookeeper driver that isn't easy to
-+  understand.
++- It still does depend on having its ``is_up`` function being provided
++  a ``service_ref`` object that does appear to come from the database
++  initially (the entity calling that function will have at one point
++  fetched that ``service_ref`` object from the database ORM/conductor layer).
++  This mixed usage is IMHO confusing (and it will hopefully be adjusted
++  and made better when `detach-service-from-computenode`_ is completed) and
++  will likely mean that even if the tooz driver maintains the listing of
++  the groups that there will still be a connection into the ``services``
++  database table for this information for a period of time. We will have to
++  consider how to make this better after the initial migration and deprecation
++  work is completed...
 +
 +REST API impact
 +---------------
@@ -314,6 +316,115 @@ index 0000000..4bf3fea
 +Other deployer impact
 +---------------------
 +
++Migration plan/strategy
++~~~~~~~~~~~~~~~~~~~~~~~
++
++The other main deployer concern will be around what happens with the existing
++data that exists in zookeeper or memcache (excluding the ``db`` driver for now)
++when they switch from the existing drivers to this new tooz one. To accomodate
++this change in a way that does *not* cause service(s) to report downtime and/or
++disappear (since group membership will change to the tooz model) it would
++be advantegous to have or be able to run the old service group driver
++and the new tooz driver for a period of time (and then after this period has
++elapsed stop running the old service group driver).
++
++For example this would require a variation of the service group driver that
++would/could potentially look something like::
++
++    class MultiServiceGroupDriver(ServiceGroupDriver):
++        def __init__(self, backend_url,
++                           existing_backend, parallel_run_for=86400):
++            self._impls = [
++                existing_backend,
++                tooz.get_coordinator(backend_url),
++            ]
++            for be in self._impls:
++                be.start()
++            # How long we will be running the old and the new, instead of
++            # just running the new...
++            self.end_old = time.time() + parallel_run_for
++
++        def join(self, member_id, group_id, service=None):
++            # Find out which backends we should be running with...
++            if time.time() < self.end_old:
++                call_into = self._impls[:]
++            else:
++                call_into = self._impls[1:]
++            # Call into impl(s) to join (and handle/translate the
++            # appropriate errors); both drivers will be called into there
++            # join() methods; if either fails, a warning will be logged...
++
++        def is_up(self, member):
++            # Find out which backends we should be running with...
++            if time.time() < self.end_old:
++                call_into = self._impls[:]
++            else:
++                call_into = self._impls[1:]
++            # Call into impl(s) to check if the member is up... (and
++            # handle/translate the appropriate errors); if one of the drivers
++            # reports it is up while the other doesn't log a warning...
++
++        def leave(self, member_id, group_id):
++            # Find out which backends we should be running with...
++            if time.time() < self.end_old:
++                call_into = self._impls[:]
++            else:
++                call_into = self._impls[1:]
++            # Call into impl(s) to leave (and handle/translate the appropriate
++            # errors); if one of the drivers reports it is up while the other
++            # doesn't log a warning...
++
++        def get_all(self, group_id):
++            # Find out which backends we should be running with...
++            if time.time() < self.end_old:
++                call_into = self._impls[:]
++            else:
++                call_into = self._impls[1:]
++            # Call into impl(s) to get all the members (join the groups from
++            # the multiple backends if many) of the given group (and
++            # handle/translate appropriate errors).
++
++        def get_one(self, group_id):
++            # Find out which backends we should be running with...
++            if time.time() < self.end_old:
++                call_into = self._impls[:]
++            else:
++                call_into = self._impls[1:]
++            # Call into impl(s) to get one the members (join the groups from
++            # the multiple backends if many) of the given group (and
++            # handle/translate appropriate errors).
++
++The general idea would be that a driver implementation would be provided
++that would exist for this migration period/cycle (not as an offically supported
++driver), it would have the capabilities to internally use *two* drivers for
++providing the service group implementation (one driver would be the legacy
++driver and the secondary driver would be the tooz driver). During the migration
++period the functions that this driver would provide would read/save/write to
++both drivers (and combine results to make it appear as if one driver is being
++used). Then after a period of time (or a release cycle) this *multi* driver
++would be removed and/or stop proxying to both the old and new driver (and then
++the newer tooz driver would take over as the primary driver). This would allow
++for a more seamless transition by allowing the saved data to propagate to the
++tooz drivers backend before the tooz driver becomes the primary driver (thus
++avoiding the sudden transition and lack of data problem that would occur if
++the tooz driver was made the primary driver immediately).
++
++**TLDR:** This special and *temporary* implementation would be used to
++transition away from the old implementation and move the the new
++implementation; avoiding a sudden transition to the tooz driver that would
++likely cause services to stop reporting that they are up and running.
++
++A secondary/fallback option (which only really works for the zookeeper driver
++that exists) is to have tooz be able to read/write the data that the existing
++zookeeper driver reads/writes; this allows for a transition over to the new
++driver in a seamless manner (since no data format changes will occur). This
++would *not* work for the memcache or redis tooz driver since those drivers
++would alter the location & format of the data they are storing (they do not use
++the database like the ``mc.py`` and ``db.py`` drivers do). Overall I am not
++recommending this option since it is fragile, sensitive to data formats
++and it doesn't work for drivers that tooz has no way to support (aka any
++driver that uses the internal ``services`` database table mentioned above).
++
 +Configs
 +~~~~~~~
 +
@@ -333,18 +444,6 @@ index 0000000..4bf3fea
 +from the existing drivers to the tooz one in a manner that will work with
 +those who use continuous deployment.
 +
-+The existing data
-+~~~~~~~~~~~~~~~~~
-+
-+The other main deployer concern will be around what happens with the existing
-+data that exists in zookeeper or memcache (excluding the db driver for now)
-+when they switch from the existing drivers to this new tooz one. To accomodate
-+this change in a way that does not cause service(s) to report downtime and/or
-+disappear (since group membership will change to the tooz model) it would
-+likely be advantegous to have or be able to run the old service group driver
-+and the new tooz driver for a period of time (and then after this period has
-+elapsed stop running the old service group driver).
-+
 +Developer impact
 +----------------
 +
@@ -358,7 +457,7 @@ index 0000000..4bf3fea
 +Assignee(s)
 +-----------
 +
-+Currently throwing it up there, but likely candiates exist...
++Currently throwing it up there, but likely candidates exist...
 +
 +Work Items
 +----------
@@ -411,7 +510,7 @@ index 0000000..4bf3fea
 +Documentation Impact
 +====================
 +
-+- The *legacy* driver depreciation and associated migration strategy/plan
++- The *legacy* driver deprecation and associated migration strategy/plan
 +  needs to be documented and explained to operators.
 +- How to use the new driver and how to configure it needs to be documented
 +  appropriatlely.
@@ -432,6 +531,7 @@ index 0000000..4bf3fea
 +- https://wiki.openstack.org/wiki/Oslo/blueprints/service-sync
 +- http://specs.openstack.org/openstack/ceilometer-specs/specs/juno/central-agent-partitioning.html
 +
++.. _detach-service-from-computenode: http://specs.openstack.org/openstack/nova-specs/specs/kilo/approved/detach-service-from-computenode.html
 +.. _memcachedb: http://memcachedb.org/
 +.. _tooz: https://pypi.python.org/pypi/tooz
 +.. _evzookeeper: https://pypi.python.org/pypi/evzookeeper

@@ -1,24 +1,24 @@
-From b0b502292b49234e539801cac2ad5df0bfeaf2ce Mon Sep 17 00:00:00 2001
+From 059d95ecce343d2e9fb4428868ab8d4861610a3f Mon Sep 17 00:00:00 2001
 From: Tobias Engelbert <tobias.engelbert@ericsson.com>
-Date: Tue, 18 Nov 2014 02:07:32 +0100
+Date: Fri, 12 Dec 2014 18:55:10 +0100
 Subject: [PATCH] Change the handling for volume operation timeouts
 
-Described a new mechanism and alternative.
-Added more details.
+Moved the spec from the wrong folder ../ to here.
 
-Change-Id: Ic9ad8e2f9723465ef61c795cf1f4a730d7accb71
-Implements: blueprint volume-staus-polling-nova
+Change-Id: I15fe09c03263f2678733bf7570fd55d4cd4c984d
 ---
- specs/kilo/approved/volume-status-polling-nova.rst | 189 +++++++++++++++++++++
- 1 file changed, 189 insertions(+)
+ specs/kilo/approved/volume-status-polling-nova.rst | 190 +++++++++++++++++++++
+ specs/kilo/volume-status-polling-nova.rst          | 183 --------------------
+ 2 files changed, 190 insertions(+), 183 deletions(-)
  create mode 100644 specs/kilo/approved/volume-status-polling-nova.rst
+ delete mode 100644 specs/kilo/volume-status-polling-nova.rst
 
 diff --git a/specs/kilo/approved/volume-status-polling-nova.rst b/specs/kilo/approved/volume-status-polling-nova.rst
 new file mode 100644
-index 0000000..33ecc21
+index 0000000..696ad7a
 --- /dev/null
 +++ b/specs/kilo/approved/volume-status-polling-nova.rst
-@@ -0,0 +1,189 @@
+@@ -0,0 +1,190 @@
 +..
 + This work is licensed under a Creative Commons Attribution 3.0 Unported
 + License.
@@ -207,7 +207,197 @@ index 0000000..33ecc21
 +References
 +==========
 +
++http://review.openstack.org/#/c135367/
 +http://blueprints.launchpad.net/cinder/+spec/volume-status-polling
+diff --git a/specs/kilo/volume-status-polling-nova.rst b/specs/kilo/volume-status-polling-nova.rst
+deleted file mode 100644
+index 61970e8..0000000
+--- a/specs/kilo/volume-status-polling-nova.rst
++++ /dev/null
+@@ -1,183 +0,0 @@
+-..
+- This work is licensed under a Creative Commons Attribution 3.0 Unported
+- License.
+-
+- http://creativecommons.org/licenses/by/3.0/legalcode
+-
+-==========================================
+-Volume Status Polling TODO change name
+-==========================================
+-
+-https://blueprints.launchpad.net/nova/+spec/volume-status-polling
+-
+-Parallel volume operations like attach volume to VM lead to
+-inconsistencies between the OpenStack database and the
+-deployed view on the centralized storage backend.
+-
+-
+-Problem description
+-===================
+-
+-When performing multiple volume operation on a centralized storage
+-backend it can come to timeouts on the OpenStack side. These
+-timeouts can be the RPC timeout or e.g. in high availability
+-scenarios, the HA proxy timeout.
+-
+-When nova wants to attach a volume, it triggers the status change from
+-available to attaching and sends initialize_connection via cinderclient
+-to cinder API via the REST API.
+-Cinder API performs a synchronous CALL to cinder volume, then
+-via the driver the centralized storage backend is contacted. When now a
+-timeout occurs, nova triggers the database to change the volume status
+-from attaching to available. Meanwhile the centralized storage
+-backend performs what was originally requested.
+-Here we can have a mismatch between database and the real view of the
+-centralized storage backend.
+-
+-The described behaviour might be suitable for all CALLs.
+-
+-Use Cases
+----------
+-
+--
+-
+-Project Priority
+-----------------
+-
+--
+-
+-
+-Proposed change
+-===============
+-
+-The proposed solution is to catchup timeouts. Cinder-Volume will
+-answer before the RPC_response_timeout will occur. Before this timeout
+-Nova will get the notification to recall.
+-
+-This recall can happen as often as wanted. As a reply Nova
+-will get the notification that the backend is still in progress.
+-
+-In current implementation the long lasting requests which are CALLs
+-(synchronic) are initialize_connection and terminate_connection.
+-
+-The information that the backend is still in progress is gathered
+-by cinder-volume. A finished request is an signal that the backend
+-still progresses. As long as there are finishing requests cinder-volume
+-will reply to Nova “in progress”.
+-
+-In the case of initialize_connection Nova will receive the
+-connection information when the request is full filled.
+-
+-In the case of terminate_connection Nova will receive a “request
+-completed”.
+-
+-To be backward compatible the option to recall is given as a flag in the
+-connector dictionary. Only if Nova and cinder-volume are able to handle it,
+-the recall it will be done.
+-
+-In case of failure Nova will be notified with an “request failed”.
+-
+-If the backend does not fulfill any request in a maximum service time
+-and an open requests times out “request failed” is send to Nova.
+-This time will be configurable.
+-
+-
+-Alternatives
+-------------
+-
+-Implement a callback push mechanism like neutron's NIC
+-attachment interface.
+-
+-Data model impact
+------------------
+-
+-A new flag in the connector dictionary saying able to recall.
+-
+-Connection_info will contain “in progress” until the connection
+-is initialized.
+-
+-In case of terminate_connection a response option has to be added.
+-
+-REST API impact
+----------------
+-
+--
+-
+-Security impact
+----------------
+-
+--
+-
+-Notifications impact
+---------------------
+-
+--
+-
+-Other end user impact
+----------------------
+-
+--
+-
+-Performance Impact
+-------------------
+-
+-Since the rpc_response_timeout would timeout anyway the amount of
+-Requests to the API and the backend is not increased. The call will answer
+-directly when it finishes and a recall only has to be done every time
+-cinder-volume response to recall.
+-That time is a little bit lower than the rpc_response_timeout time.
+-
+-Other deployer impact
+----------------------
+-
+--
+-
+-Developer impact
+-----------------
+-
+--
+-
+-
+-Implementation
+-==============
+-
+-Assignee(s)
+------------
+-
+-Tobias Engelbert
+-
+-Work Items
+-----------
+-
+-- Nova
+-
+-
+-Dependencies
+-============
+-
+-http://blueprints.launchpad.net/cinder/+spec/volume-status-polling
+-
+-
+-Testing
+-=======
+-
+-Unittests have to be written with enable recall flag true. These unittests
+-should cover the new call flow.
+-
+-With this advanced feature no rpc_response_timeout should occur anymore.
+-A Tempsttest could be done to test that the functionality is given on the
+-backend.
+-And to test that the backend has no other limiting factors. Short high
+-amount of initialize and terminate connection
+-
+-
+-Documentation Impact
+-====================
+-
+--
+-
+-
+-References
+-==========
+-
+-http://blueprints.launchpad.net/cinder/+spec/volume-status-polling
 -- 
 1.9.1
 

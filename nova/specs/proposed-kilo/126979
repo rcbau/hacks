@@ -1,4 +1,4 @@
-From 1a6ca57ff9a0dcf5d0439d33e4f03181569d5015 Mon Sep 17 00:00:00 2001
+From d97c19fae4619bbf07cb429f2d51f17ed3d4ba3d Mon Sep 17 00:00:00 2001
 From: Solly Ross <sross@redhat.com>
 Date: Wed, 8 Oct 2014 15:42:02 -0400
 Subject: [PATCH] Blueprint to migrate libvirt volumes
@@ -18,7 +18,7 @@ Previously-approved: juno
 
 diff --git a/specs/kilo/approved/migrate-libvirt-volumes.rst b/specs/kilo/approved/migrate-libvirt-volumes.rst
 new file mode 100644
-index 0000000..0965df8
+index 0000000..2060005
 --- /dev/null
 +++ b/specs/kilo/approved/migrate-libvirt-volumes.rst
 @@ -0,0 +1,224 @@
@@ -80,7 +80,7 @@ index 0000000..0965df8
 +At migration time, a new volume would be created in the destination node's
 +storage pool, and the methods virStorageVolDowload and virStorageVolUpload
 +would be used to stream the contents of the disk between compute nodes
-+(http://libvirt.org/html/libvirt-libvirt.html#virStorageVolUpload).
++(http://libvirt.org/html/libvirt-libvirt-storage.html#virStorageVolUpload).
 +
 +In order to ensure secure migrations, libvirt should be configured to use one
 +of the various forms of authentication and encryption that it supports, such as
@@ -142,7 +142,7 @@ index 0000000..0965df8
 +
 +There are a couple potential performance issues:
 +
-+* Rsync compresses compress the contents to be transfered, but AFAIK libvirt
++* Rsync compresses the contents to be transfered, but AFAIK libvirt
 +  does not (although this is being worked on in conjunction with the libvirt
 +  developers).  This could result in more data being transfered over the
 +  network.

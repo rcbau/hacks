@@ -1,4 +1,4 @@
-From f1325b25b86ae5f04f1ad5c20505f014022485ab Mon Sep 17 00:00:00 2001
+From 821f77a771e4fca935fb2e215f87e13cacf2773f Mon Sep 17 00:00:00 2001
 From: ShaoHe Feng <shaohe.feng@intel.com>
 Date: Mon, 8 Dec 2014 17:31:36 +0800
 Subject: [PATCH] Attach/detach SR-IOV interface
@@ -7,16 +7,16 @@ This spec describes the blueprint sriov-interface-attach-detach
 
 Change-Id: Ie35558cfc6a8a49df3ec230c18b35a54940d2698
 ---
- .../approved/sriov-interface-attach-detach.rst     | 198 +++++++++++++++++++++
- 1 file changed, 198 insertions(+)
+ .../approved/sriov-interface-attach-detach.rst     | 196 +++++++++++++++++++++
+ 1 file changed, 196 insertions(+)
  create mode 100644 specs/kilo/approved/sriov-interface-attach-detach.rst
 
 diff --git a/specs/kilo/approved/sriov-interface-attach-detach.rst b/specs/kilo/approved/sriov-interface-attach-detach.rst
 new file mode 100644
-index 0000000..53093a0
+index 0000000..f24297b
 --- /dev/null
 +++ b/specs/kilo/approved/sriov-interface-attach-detach.rst
-@@ -0,0 +1,198 @@
+@@ -0,0 +1,196 @@
 +..
 + This work is licensed under a Creative Commons Attribution 3.0 Unported
 + License.
@@ -27,8 +27,6 @@ index 0000000..53093a0
 +support sriov interface attach/detach
 +==========================================
 +
-+Include the URL of your launchpad blueprint:
-+
 +https://blueprints.launchpad.net/nova/+spec/sriov-interface-attach-detach
 +
 +SR-IOV makes it possible for a VM to directly send packets to the VIC (virtual
@@ -37,40 +35,51 @@ index 0000000..53093a0
 +2014. And in Juno release, the libvirt driver is enhanced to support SR-IOV
 +networking by [LIBVIRT_SUPPORT_SR-IOV]_. Also [PCI_PASSTHROUGH_SRIOV]_ enables
 +a nova instance to be booted up with neutron SRIOV ports.
-+Now we can support attach or detach SR-IOV interfaces to a living VM if host
++Now we can support attach or detach SR-IOV interfaces to an active VM if host
 +supports SR-IOV base on the above patches.
-+
-+Problem description
-+===================
-+
-+Right now it is possible to attach/detach a normal interface for a living VM
-+by nova attach_interface/detach_interface API.
-+However, it's not possible to request access to virtual network dynamicly via
-+SR-IOV NICs at present.
 +
 +There are two variants in connecting a SR-IOV port to its corresponding VF.
 +A SR-IOV port may be directly connected to its VF [DIRECT_SR-IOV]_. Or it may
 +be connected with a macvtap device that resides on the host, which is then
-+connected to the corresponding VF [MACVTAP_SR-IOV]_. Both connecting types have
-+been supported by [SUPPORT_SR-IOV_NETWORKING]_.
++connected to the corresponding VF [MACVTAP_SR-IOV]_. Both connecting types will
++be supported.
++
++Problem description
++===================
++
++Right now it is possible to attach/detach a normal interface for an active VM
++by nova attach_interface/detach_interface API.
++However, it's not possible to request access to virtual network dynamically via
++SR-IOV NICs at present.
++
 +
 +For example we can create a directly SR-IOV port by:
 +  neutron port-create <net-id> --binding:vnic-type direct
 +
-+Then a user can do the following to attach interface to a VM:
++Then we can do the following to attach interface to a VM:
 +
-+  nova interface-attach [--port-id <port_id>] [--net-id <net_id>]
-+                        [--fixed-ip <fixed_ip>] <server>
++  nova interface-attach [--port-id <port_id>] [--fixed-ip <fixed_ip>] <server>
 +
-+However currently the nova do not know the SR-IOV profile when attach it,
-+so the Nova interface-attach API will not be enhanced to support SR-IOV
++Nova attach interface api hotplug an interface to an existing server.
++The normal pci allocation has already finished after the server boot up.
++If the port to be hotplugged for this server is "direct' or 'macvtap', it just
++not works because no pci device allocated for it yet.
++
++The Nova interface-attach API needs be enhanced to support SR-IOV.
++We need to translate the port to pci request in the 'nova attach-interface' API
++stage, and allocate the pci devices on host to support the hotplug a SRIOV
++port.
 +
 +
 +Use Cases
 +----------
-+* As an user, I want to request access to a new virtual network via SR-IOV
-+  NICs, if host support it.
-+* As an user, I want to separate a SR-IOV NICs from a network.
++
++Alice wants certain virtual machines to have access to faster networking
++interfaces. She configures her virtual machine instance as normal.
++After launch, Alice wishes to add a new network interface to her virtual
++machine that has better performance than the network interface already on her
++VM. She calls an API to attach a new network interface, passing in some tag
++that indicates a better tier of performance for the interface.
 +
 +Project Priority
 +-----------------
@@ -81,17 +90,14 @@ index 0000000..53093a0
 +
 +attach_interface
 +----------------
-+For SR-IOV networking, special libvirt xml is required. So a PCI request id is
-+need to initialy created to get a SR-IOV information.
-+We can check the "physical_network" tag for the attached port.
-+And we will create a normal interface without "physical_network".
-+Or We need to correlate the allocated device with the requested network (NIC)
-+[SUPPORT_SR-IOV_NETWORKING]_ before the libvirt dirver attach, in this way we
-+can attach a SR-IOV port correctly.
++For attach interface there is only 2 thing need to be addressed:
 +
-+Note that for SR-IOV networking, a pre-defined tag "physical_network" is aready
-+used to define the physical network that the devices are attached to, refer to
-+[ENHANCE_PCI_WHITELIST]_.
++First one is converting the port/network information from attach interface API
++to pci_request, which already had API (network/neutron v2 API).
++
++The second thing is alloc the pci device on the host (nova/compute/manager).
++Libvirt has already supported generating the pci xml for server, and it can
++attach allocated SR-IOV port correctly.
 +
 +detach_interface
 +----------------
@@ -136,13 +142,8 @@ index 0000000..53093a0
 +Performance Impact
 +------------------
 +
-+The physical network to which a port is connected needs to be retrieved from
-+neutron, which requires additional calls to neutron. Particularly, nova will
-+call neutron *show_port* to check the port's *vnic_type*. If the *vnic_type* is
-+either *direct* or *macvtap*, it will call neutron *show_network* to retrieve
-+the associated physical network. As a consequence, the number of calls to
-+neutron will be slightly increased when *port-id* is specified in the --nic
-+option in nova boot.
++Additional pci request will be called, that will bring slightly performance
++impact.
 +
 +
 +Other deployer impact
@@ -171,7 +172,7 @@ index 0000000..53093a0
 +Work Items
 +----------
 +
-+* nova compute.
++* nova compute API
 +
 +
 +Dependencies
@@ -210,9 +211,6 @@ index 0000000..53093a0
 +  <http://www.libvirt.org/formatdomain.html#elementsNICSHostdev>`_
 +.. [MACVTAP_SR-IOV] `Direct attachment to physical interface
 +  <http://www.libvirt.org/formatdomain.html#elementsNICSDirect>`_
-+.. [SUPPORT_SR-IOV_NETWORKING] `Support SR-IOV networking in nova compute api
-+  and nova neutronv2
-+  <https://review.openstack.org/#/c/98828/>`_
 +.. [ENHANCE_PCI_WHITELIST] `Enhance PCI whitelist
 +  <https://review.openstack.org/#/c/99043/>`_
 -- 

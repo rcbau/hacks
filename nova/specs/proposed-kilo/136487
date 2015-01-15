@@ -1,4 +1,4 @@
-From 512bf71cc1d0332a560010fe5ce50f898ba3adc2 Mon Sep 17 00:00:00 2001
+From bc74499eba15726a398c5bd66caa57f4021adb74 Mon Sep 17 00:00:00 2001
 From: Jennifer Mulsow <jmulsow@us.ibm.com>
 Date: Fri, 21 Nov 2014 14:52:03 -0600
 Subject: [PATCH] Nova specs doc for dynamic server groups - remove
@@ -6,6 +6,7 @@ Subject: [PATCH] Nova specs doc for dynamic server groups - remove
 This is the documentation for
 https://blueprints.launchpad.net/nova/+spec/dynamic-server-groups-remove
 
+APIImpact
 Change-Id: I1728e3b347b4ae0364785d167ac530bf4109f3bf
 ---
  .../kilo/approved/dynamic-server-groups-remove.rst | 292 +++++++++++++++++++++
@@ -14,7 +15,7 @@ Change-Id: I1728e3b347b4ae0364785d167ac530bf4109f3bf
 
 diff --git a/specs/kilo/approved/dynamic-server-groups-remove.rst b/specs/kilo/approved/dynamic-server-groups-remove.rst
 new file mode 100644
-index 0000000..ef36b00
+index 0000000..91c8699
 --- /dev/null
 +++ b/specs/kilo/approved/dynamic-server-groups-remove.rst
 @@ -0,0 +1,292 @@
@@ -209,7 +210,7 @@ index 0000000..ef36b00
 +
 +* Policy Changes: Two new authorizations will be added so that the Nova
 +  policy.json file has the ability to distinctly enumerate what roles can list
-+  the servers in a server group an what roles can remove servers from a server
++  the servers in a server group and what roles can remove servers from a server
 +  group.
 +  The following action will be required in the policy to list the server
 +  members in a server group:
@@ -236,11 +237,11 @@ index 0000000..ef36b00
 +In addition to the API, the user will be able to use the Nova CLI to remove
 +instances from a server group. The CLI will be of the form:
 +
-+* nova server-group-delete-server <id> <server>
++* nova server-group-delete-member <id> <member
 +
-+Where <id> represents the server group's identifier and <server> represents
++Where <id> represents the server group's identifier and <member represents
 +an instance's uuid or name. The uuid will be required in cases in which the
-+name does not unambiguously identify a server.
++name is ambiguous.
 +
 +Performance Impact
 +------------------

@@ -1,4 +1,4 @@
-From 72b71a7ca9bd77e9797fe88fbd4dff1658f9aa89 Mon Sep 17 00:00:00 2001
+From aa4e097e487a6535d709f890534dea746d673b8f Mon Sep 17 00:00:00 2001
 From: "Chris St. Pierre" <stpierre@metacloud.com>
 Date: Tue, 7 Oct 2014 14:29:05 -0500
 Subject: [PATCH] Relax resource name restrictions

@@ -1,4 +1,4 @@
-From d92924937b5f4b6d37b65f476af671274df5978b Mon Sep 17 00:00:00 2001
+From d39c87cc9a84077126213ab3c4432d74f121382f Mon Sep 17 00:00:00 2001
 From: Johannes Erdfelt <johannes@erdfelt.com>
 Date: Wed, 25 Jun 2014 07:21:04 -0700
 Subject: [PATCH] Online Schema Changes
@@ -10,16 +10,16 @@ database schema changes when services are running.
 
 Change-Id: Ibbab7cb29911d52b57c467c6bfbc5876d1102e79
 ---
- specs/kilo/approved/online-schema-changes.rst | 302 ++++++++++++++++++++++++++
- 1 file changed, 302 insertions(+)
+ specs/kilo/approved/online-schema-changes.rst | 331 ++++++++++++++++++++++++++
+ 1 file changed, 331 insertions(+)
  create mode 100644 specs/kilo/approved/online-schema-changes.rst
 
 diff --git a/specs/kilo/approved/online-schema-changes.rst b/specs/kilo/approved/online-schema-changes.rst
 new file mode 100644
-index 0000000..a17ad05
+index 0000000..f8dbd82
 --- /dev/null
 +++ b/specs/kilo/approved/online-schema-changes.rst
-@@ -0,0 +1,302 @@
+@@ -0,0 +1,331 @@
 +..
 + This work is licensed under a Creative Commons Attribution 3.0 Unported
 + License.
@@ -45,13 +45,18 @@ index 0000000..a17ad05
 +* Database migrations have historically been a source of lengthy downtime
 +  during deployments.
 +
++* Schema changes are required to be repeated in two places: database
++  model defined in Nova and writing a migration script.
++
 +
 +Use Cases
 +---------
 +
-+Any deployer that would like to reduce the amount of downtime during
-+deploys. Developers that would like to spend less time writing database
-+migrations.
++* Any deployer that would like to reduce the amount of downtime during
++  deploys.
++* Developers that would like to spend less time writing migration
++  scripts.
++* Deployers that would like to maintain a set of local schema changes.
 +
 +
 +Project Priority
@@ -63,18 +68,23 @@ index 0000000..a17ad05
 +Proposed change
 +===============
 +
-+Database migrations are currently managed by sqlalchemy-migrate and applied
-+using the 'db sync' command to nova-manage. A new workflow that expands
-+the schema, then contracts the schema (expand/contract workflow) will
-+be added. This new workflow will dynamically determine the differences
-+between the running schema and the database model defined in Nova. DDL
-+statements will be generated, and optionally executed, to make the
-+running schema match the model.
++A new alternative workflow for applying schema changes will be added
++that expands the schema, then contracts the schema (expand/contract
++workflow).
 +
-+Until the sqlalchemy-migrate workflow can be deprected, all schema
-+changes will still need sqlalchemy-migrate migrations to be written.
-+It is intended that at some future point, the use of sqlalchemy-migrate
-+will dropped in a way transparent to deployers.
++The new expand/contract workflow will not utilize any migration scripts,
++instead it will dynamically compare the running schema against the
++database model defined in Nova. DDL statements will be generated, and
++optionally executed, to make the running schema match the model.
++
++The existing schema management workflow is the 'db sync' command to
++nova-manage. This is managed by sqlalchemy-migrate and uses individual
++migration scripts. This workflow will remain for now, but is expected
++to be be removed at some future time, leaving the expand/contract
++workflow as the way to manage the database schema.
++
++Until the sqlalchemy-migrate workflow is removed, all schema changes
++will still need sqlalchemy-migrate migration scripts to be written.
 +
 +Three new nova-manage commands will be added:
 +
@@ -85,8 +95,11 @@ index 0000000..a17ad05
 +   running code.
 +
 +Those schema changes that can be safely and semantically applied while
-+running online will be applied during the expand and contract phases. All
-+other schema changes will be applied during the migrate phase.
++running online will be applied during the expand and contract phases.
++Also, only those schema changes that will not acquire long running
++locks in the database will be considered for the online phases (expand,
++contract). All other schema changes will be applied during the migrate
++phase.
 +
 +The three new commands would be built by dynamically executing alembic's
 +autogenerate and DDL generating features. A list of differences would
@@ -98,8 +111,13 @@ index 0000000..a17ad05
 +the database software (eg MySQL 5.5, 5.6, etc) and the storage engine used
 +(eg InnoDB, TokuDB, etc).
 +
++As an example, index additions can be executed online in MySQL 5.5, but
++not 5.1. An index addition would be run during the expand phase for
++MySQL 5.5 or higher, but during the migrate phase for MySQL 5.1.
++
 +It is intended that the initial set that will run online will be
 +conservative at first and a subset of what is possible to run safely.
++This can be safely expanded at any time in the future.
 +
 +Schema changes that will be potentially performed during expand:
 +- Table creates
@@ -142,6 +160,14 @@ index 0000000..a17ad05
 +table would be updated to the latest shipped sqlalchemy-migrate
 +migration version. This would maintain compatibility with the
 +existing sqlalchemy-migrate workflow.
++
++The fundamental difference between the two workflows is the
++expand/contract workflow is declarative (by using the model) and the
++sqlalchemy-migrate workflow is imperative (by using migration scripts).
++
++By being declarative, it limits changes to one place (database model)
++and allows for more intelligent decisions (by factoring in the database
++software, engine, version, etc)
 +
 +
 +Alternatives
@@ -203,8 +229,8 @@ index 0000000..a17ad05
 +This can mitigated by the deployer by scheduling the expand and contract
 +phases to be run during periods of low activity. The expand phase can
 +be run an arbitrary amount of time before the migrate phase. Likewise,
-+the contract phase can be run an arbitrary amount of time after the
-+migrate phase.
++the contract phase does not need to be run immediately after the
++migrate phase is run.
 +
 +
 +Other deployer impact
@@ -212,14 +238,16 @@ index 0000000..a17ad05
 +
 +Using the new expand/contract workflow is optional. If the deployer
 +does not want to perform database schema changes online, then they
-+can continue using the 'db sync' with nova-manage.
++can continue using the 'db sync' command with nova-manage.
 +
 +Those deployers that want to take advantage of the online schema changes
 +will need to run the 'db expand', 'db migrate' and 'db contract' commands
 +at the appropriate steps in their deployment process.
 +
-+The sqlalchemy-migrate and expand/contract workflow are compatible, but
-+only if 'db contract' is finally run.
++Switching from the sqlalchemy-migrate workflow to the expand/contract
++workflow can happen at any time. The reverse can only happen after
++a final 'db contract' is run (to ensure all schema changes are applied
++and the migrate_version table is updated).
 +
 +If the expand/contract workflow is used, then 'db contract' is required
 +to be execute once for each formal release of Nova. This is to ensure
@@ -270,19 +298,18 @@ index 0000000..a17ad05
 +Work Items
 +----------
 +
-+- Implement schema synchronizer
++- Implement schema synchronizer using alembic.autogenerate
 +- Implement new 'expand', 'migrate' and 'contract' commands to
 +  'nova-manage db'
-+- Drop schema changes from existing migrations that are now done
-+  automatically as part of the schema synchronizer
++- Ensure grenade and turbo-hipster tests are update
 +
 +
 +Dependencies
 +============
 +
-+This builds on top of the validate-migrations-and-model spec and extends
-+the comparator to generate the DDL needed to change the running schema
-+to match the model.
++This builds on top of the validate-migrations-and-model spec. The
++existing use of alembic.autogenerate will now also be used to generate
++the list of needed changes to make the schema match the model.
 +
 +This also depends on dropping the use of sqlalchemy-migrate for data
 +migrations.
@@ -293,6 +320,8 @@ index 0000000..a17ad05
 +
 +No tempest tests will be added since tempest does not do any upgrade
 +testing.
++
++A Nova unit test will be added to test starting from an empty database.
 +
 +Grenade currently tests upgrades from older versions of Nova. A new
 +test to use the new 'db expand', 'db migrate' and 'db contract' commands

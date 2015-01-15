@@ -1,4 +1,4 @@
-From 2581b539900bc2e12666249a46eca7c909e07d77 Mon Sep 17 00:00:00 2001
+From 4e25656692a04e63fa520171fbba7c983d2f26c0 Mon Sep 17 00:00:00 2001
 From: Ken'ichi Ohmichi <oomichi@mxs.nes.nec.co.jp>
 Date: Fri, 24 Oct 2014 05:37:47 +0000
 Subject: [PATCH] Add JSON-Home support for API path discovery
@@ -9,47 +9,50 @@ Partially implements blueprint nova-api-json-home
 
 Change-Id: I66cc077666b41bd337640598e989ec8fd04d501e
 ---
- specs/kilo/approved/nova-api-json-home.rst | 311 +++++++++++++++++++++++++++++
- 1 file changed, 311 insertions(+)
+ specs/kilo/approved/nova-api-json-home.rst | 315 +++++++++++++++++++++++++++++
+ 1 file changed, 315 insertions(+)
  create mode 100644 specs/kilo/approved/nova-api-json-home.rst
 
 diff --git a/specs/kilo/approved/nova-api-json-home.rst b/specs/kilo/approved/nova-api-json-home.rst
 new file mode 100644
-index 0000000..7cad3c4
+index 0000000..008fb5a
 --- /dev/null
 +++ b/specs/kilo/approved/nova-api-json-home.rst
-@@ -0,0 +1,311 @@
+@@ -0,0 +1,315 @@
 +..
 + This work is licensed under a Creative Commons Attribution 3.0 Unported
 + License.
 +
 + http://creativecommons.org/licenses/by/3.0/legalcode
 +
-+=============================================
-+Support JSON-Home for API extension discovery
-+=============================================
++==========================================
++Support JSON-Home for API discoverability
++==========================================
 +
 +https://blueprints.launchpad.net/nova/+spec/nova-api-json-home
 +
-+Nova needs to provide a standard API extension discovery way to clients.
++Nova needs to provide a standard API discovery way to clients.
 +This spec proposes JSON-Home as the way.
 +
 +Problem description
 +===================
 +
-+Now Nova API provides available API extension list via "list extensions"
-+API, but the way is Nova-specific and that is not a standard way.
-+From the point of view of whole OpenStack projects, the ways are not
-+consistent and application programers should write an application for
-+handling these extensions by different ways.
++Now Nova API provides available API list via "list extensions" API, but the
++way is Nova-specific and that is not a standard way. In addition, clients
++cannot know available API resource URLs from the result of "list extensions"
++only and client developers need to investigate Nova implementation, because
++the result doesn't show available API resource URLs directly.
++From the point of view of whole OpenStack projects, the ways are not consistent
++and application programers should write an application for handling these APIs
++by different ways.
 +
 +Use Cases
 +----------
 +
-+End users can know what extensions are available on a cloud service and how to
-+access these features by a common way. For example, end users can get available
-+REST URLs(v2/{project-id}/servers, etc) by passing 'application/json-home' in
-+an accept header with GET method.
++End users can know what APIs are available on a cloud service and how to access
++these features by a common way. For example, end users can get available REST
++URLs(v2/{project-id}/servers, etc) by passing 'application/json-home' in an
++accept header with GET method.
 +Developers can get full set of REST URLs including details(available method(
 +GET/POST/PUT etc)) and create API document based on the information. Ideally
 +it is the best to generate API document automatically from this feature.
@@ -173,12 +176,13 @@ index 0000000..7cad3c4
 +we can implement JSON-Home feature just by arranging the information to
 +JSON-Home format and publishing it to a client.
 +
-+We don't need to consider v2.1 + microversions for this JSON-Home spec.
-+The scope of approved microversion spec can cover how to change a request/
-+response body only. It doesn't cover how to change API paths. On the other
-+hand, this spec covers API paths, which are not changed with microversion.
-+So each scope of these specs are different now. When adding "JSON-Schema on
-+JSON-Home", we will need to consider microversions.
++On v2.1 + microversions, we will be able to add/remove API URLs and request/
++response bodies. This JSON-Home feature provides available API URLs of each
++microversion which is specified with "X-OpenStack-Compute-API-Version" in a
++header. If not specifying a microversion, this feature provides available API
++URLs of minimum microversion. "JSON-Schema on JSON-Home" will provide available
++request/response bodies of the specified microversion also based on the same
++semantic.
 +
 +Alternatives
 +------------

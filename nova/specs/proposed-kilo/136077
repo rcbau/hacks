@@ -1,4 +1,4 @@
-From 736cc583e7f5ae15e4f79cc3829aac06fdfe1c79 Mon Sep 17 00:00:00 2001
+From c9282e9aba74ee72b48f3ca52f2860e34a90d576 Mon Sep 17 00:00:00 2001
 From: Robert Li <baoli@cisco.com>
 Date: Thu, 20 Nov 2014 12:45:00 -0500
 Subject: [PATCH] Support live migration with macvtap SR-IOV
@@ -6,16 +6,16 @@ Subject: [PATCH] Support live migration with macvtap SR-IOV
 Change-Id: I23390c3e8e453e3f494f910bc7dd69866a255e51
 Implements: blueprint sriov-live-migration
 ---
- specs/kilo/approved/sriov-live-migration.rst | 345 +++++++++++++++++++++++++++
- 1 file changed, 345 insertions(+)
+ specs/kilo/approved/sriov-live-migration.rst | 306 +++++++++++++++++++++++++++
+ 1 file changed, 306 insertions(+)
  create mode 100644 specs/kilo/approved/sriov-live-migration.rst
 
 diff --git a/specs/kilo/approved/sriov-live-migration.rst b/specs/kilo/approved/sriov-live-migration.rst
 new file mode 100644
-index 0000000..92259f5
+index 0000000..d31d033
 --- /dev/null
 +++ b/specs/kilo/approved/sriov-live-migration.rst
-@@ -0,0 +1,345 @@
+@@ -0,0 +1,306 @@
 +..
 + This work is licensed under a Creative Commons Attribution 3.0 Unported
 + License.
@@ -81,20 +81,22 @@ index 0000000..92259f5
 +request will be rejected with proper reason. Live migration will only be
 +attempted on a VM without direct SR-IOV and/or direct PCI passthrough devices.
 +
-+Renaming Interface to Keep Domain XML Unchanged
-+-----------------------------------------------
++Modify Domain XML With Target Interfaces
++----------------------------------------
 +
 +Libvirt allows a modified domain XML during live migration with serious
 +restrictions. The configuration must include an identical set of virtual
 +devices, to ensure a stable guest ABI (application binary interface) across
 +migration. Only parameters related to host side configuration can be changed in
 +the XML. Therefore, to live migrate a VM with libvirt, the VM's domain XML
-+should not be changed to cause any changes as described in above.
++should not be modified to cause any non-migratable changes.
 +
-+In the interest of keeping the domain XML unchanged during live migration,
-+information that's local to the host such as the PCI device address and local
-+ethernet name (such as eth20) can't be used in the domain XML. To meet this
-+requirement, this spec proposes an interface renaming mechanism.
++Fortunately, if the network interfaces used on the target host are known before
++live migration takes place, the domain XML can be modified with the network
++interface names that will be used on the target host. The libvirt
++migrateToURI2() API supports such modification. And as a result, the instance
++will be succesfully brought up on the target host with those network
++interfaces.
 +
 +An example of the interface XML with macvtap SR-IOV in a domain XML::
 +
@@ -109,48 +111,18 @@ index 0000000..92259f5
 +
 +Note that in the source dev clause above, eth20 is local to the compute node
 +where the domain is hosted. The interface with the same name eth20 on the
-+destination host may have already been used by other VMs. Therefore,
-+a location independent naming convention for interface names is needed.
-+Fortunately, we can use the neutron port ID to rename the interface before
-+generating the domain XML. With renaming, when the VM is initially launched,
-+the interface XML in the VM's domain XML will look like::
++destination host may have already been used by other VMs. During
++pre_live_migration() (which is a RPC call from the source host to the
++destination host), the PCI device used on the target host will be allocated,
++and the corresponding interface name becomes known. This information can then
++be included in the migrate_data which is passed back to the source host as a
++result of pre_live_migration() RPC call. The source host then modifies the
++above domain xml and replaces the 'srouce dev' with the one used on the
++destination host.
 +
-+  <interface type='direct'>
-+    <mac address='fa:16:3e:ae:7f:c5'/>
-+    <source dev='srv<12 chars from neutron-port-id>' mode='passthrough'/>
-+    <model type='virtio'/>
-+    <driver name='vhost'/>
-+    <alias name='net0'/>
-+    <address type='pci' domain='0x0000' bus='0x00' slot='0x03' function='0x0'/>
-+  </interface>
-+
-+The maximum length of an interface name is 15 characters.
-+
-+There is a corner case that would cause name collision:
-+* A VM with macvtap SR-IOV port on Host-1 is migrated to Host-2
-+* Later, it is migrated back to Host-1
-+
-+If it happens that during the second migration, a different port on Host-1 than
-+the one the VM originally used is allocated for the VM, then this port would be
-+renamed with the same name as the original port if the original port were still
-+free after the first migration.
-+
-+The possible name collision can be resolved by renaming the original port to
-+srv<domain>-<bus>-<slot>-<func> after the first migration has been completed.
-+For example, if eth20 has the PCI address as 0000:0a:01.1, it will be renamed
-+as srv0000-0a-01-1 after migration is completed.
-+
-+Note that after the compute node is initialized and whitelist processed, the
-+SR-IOV interfaces subject to the whitelist will be renamed to
-+srv<domain>-<bus>-<slot>-<func>. This makes it easier to check what interfaces
-+are used for SR-IOV on the host.
-+
-+Note that since Nova invokes libvirt's migrateToURI2() API to perform live
-+migration, it's possible to provide an updated domain XML for the target node
-+in which the source device is modified with the target's interface name.
-+Keeping the domain XML unchanged with interface renaming seems to have another
-+benefit: due to the renaming, it's easy to see what interfaces are being used
-+for SRIOV and by what VMs on a particular host.
++Note that an interface can be identified by its MAC address. The interface
++information carried in the migrate_data will be a dictionary keyed off by the
++interface's MAC address.
 +
 +Device/VIF Compatibility
 +------------------------
@@ -241,37 +213,26 @@ index 0000000..92259f5
 +limitation in the current workflow to support migration, and is out of the
 +scope of this specification.
 +
-+
 +Alternatives
 +------------
 +
-+There are two other alternative solutions that were discussed among the
-+communities. The first one involves creating a network XML per neutron SR-IOV
-+port. The second one involves creating a network XML per physical network.
++With the technique of interface renaming, it's possible to live migrate VMs
++with macvtap SR-IOV interfaces without modifying the domain XML. An macvtap
++SR-IOV interface can be renamed using the neutron port id. This involves:
 +
-+The first alternative is similar to the interface renaming approach as
-+described in the **proposed section**. For each neutron SR-IOV port, a netwrok
-+XML is created and referenced in the domain XML when the instance is initially
-+launchedn. During migration, a network XML with the same name needs to be
-+created on the destination host during the pre_live_migration phase.
++* Renaming the interface and using the new name in the domain XML before the
++  domain is launched.
++* Renaming the target interface during pre_live_migration on the target host.
 +
-+Currently in the pci_passthrough_whitelist, each SR-IOV pci device is tagged
-+with the physical network name which the device is connected to. In the second
-+alternative solution, a network XML per physical network can be created during
-+the PCI device initialization time. Each network XML contains all the SR-IOV
-+PCI devices that belongs to the physical network. The domain XML will only need
-+to refer to this network XML when defining SR-IOV interfaces that are on that
-+network. Therefore, the requirement for unchanged domain XML is guaranteed.
-+There is a problem with this solution, though. By doing so, allocation of
-+individual PCI device is managed by libvirt, and there doesn't seem to be a
-+libvirt API that can be invoked to get knowledge of the PCI device allocated
-+for each port before the instance is launched. However, such knowledge is
-+critical in properly configuring the device.
++Although the technique is pretty simple, there is no obvious benefit other than
++direct association of an interface with the VM that is using it (due to the
++naming convention).
 +
-+Both alternatives require management of libvirt network XML, which currently is
-+not supported by Nova.
-+
-+It's also possible to support live migration by modifying the domain XML.
++There was also discussion about using network XML. It is found, however, the
++running domain XML is not equal to the originally defined domain XML when
++network XMLs are used. The running doamin XML actually directly refers to
++interfaces that are allocated from the network XMLs. Therefore, the domain XML
++has to be modified before live migration.
 +
 +Data model impact
 +-----------------
@@ -332,7 +293,7 @@ index 0000000..92259f5
 +
 +* Check live migratability
 +* PCI requests management
-+* interface renaming
++* populate migrate_data with target interface information
 +* SR-IOV device allocation
 +* migrate_instance_finish
 +

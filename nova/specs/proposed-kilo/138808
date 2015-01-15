@@ -1,4 +1,4 @@
-From 6c9ad1913418a33cb60a148f6625a721f5e1ba04 Mon Sep 17 00:00:00 2001
+From 317bb4a1c97775766f3e0dbb809c0fdef6d43519 Mon Sep 17 00:00:00 2001
 From: Przemyslaw Czesnowicz <przemyslaw.czesnowicz@intel.com>
 Date: Wed, 3 Dec 2014 17:57:21 +0000
 Subject: [PATCH] Api add vnic_type support
@@ -17,7 +17,7 @@ Blueprint: api-specify-vnic-type
 
 diff --git a/specs/kilo/approved/api-specify-vnic-type.rst b/specs/kilo/approved/api-specify-vnic-type.rst
 new file mode 100644
-index 0000000..d33bf18
+index 0000000..149051a
 --- /dev/null
 +++ b/specs/kilo/approved/api-specify-vnic-type.rst
 @@ -0,0 +1,233 @@
@@ -31,7 +31,7 @@ index 0000000..d33bf18
 +Extend api to allow specifying vnic_type
 +========================================
 +
-+https://blueprints.launchpad.net/neutron/+spec/api-specify-vnic-type
++https://blueprints.launchpad.net/nova/+spec/api-specify-vnic-type
 +
 +This specification proposes to extend the Nova v2.1 api to allow
 +specifying vnic_type for nic's attached to the instance.
@@ -70,7 +70,7 @@ index 0000000..d33bf18
 +
 +The way Nova is building pci_requests for ports with vnic_type
 +"direct" or "macvtap" will be changed to support vnic_type passed
-+from the api. The setting vnic_type on a Neutron port will still be
++from the api. The setting of vnic_type on a Neutron port will still be
 +supported. In case when both api and Neutron port will have a vnic_type
 +setting, the setting from api will take precedence.
 +

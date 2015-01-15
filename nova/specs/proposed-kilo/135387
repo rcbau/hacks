@@ -1,25 +1,25 @@
-From 8235255bbaf7fef1808a56d7eea4a2e229331566 Mon Sep 17 00:00:00 2001
+From 8958a8067e37816eec03bbbb469c3533db73df54 Mon Sep 17 00:00:00 2001
 From: abhishekkekane <abhishek.kekane@nttdata.com>
 Date: Wed, 12 Nov 2014 11:54:08 -0800
 Subject: [PATCH] Improve performance of UnShelve API
 
 The aim of this feature is to improve the performance of unshelve
-instance by eliminating downloading/copying snapshot time. All
-instance files will be retained in the instance store backed by NFS
-on the compute node when an instance is shelved.
+instance by eliminating downloading/copying snapshot time. All instance
+files will be retained in the instance store backed by shared or
+non-shared storage on the compute node when an instance is shelved.
 
 Change-Id: I2476574f664f5a87a51bec5fac344c839e14b6d1
 ---
- .../kilo/approved/improve-unshelve-performance.rst | 269 +++++++++++++++++++++
- 1 file changed, 269 insertions(+)
+ .../kilo/approved/improve-unshelve-performance.rst | 412 +++++++++++++++++++++
+ 1 file changed, 412 insertions(+)
  create mode 100644 specs/kilo/approved/improve-unshelve-performance.rst
 
 diff --git a/specs/kilo/approved/improve-unshelve-performance.rst b/specs/kilo/approved/improve-unshelve-performance.rst
 new file mode 100644
-index 0000000..ff2a893
+index 0000000..49fb7c0
 --- /dev/null
 +++ b/specs/kilo/approved/improve-unshelve-performance.rst
-@@ -0,0 +1,269 @@
+@@ -0,0 +1,412 @@
 +========================================
 +Improve performance of unshelve instance
 +========================================
@@ -28,8 +28,8 @@ index 0000000..ff2a893
 +
 +The aim of this feature is to improve the performance of unshelve instance
 +by eliminating downloading/copying snapshot time. All instance files will be
-+retained in the instance store backed by NFS on the compute node when an
-+instance is shelved.
++retained in the instance store backed by shared or non-shared storage on the
++compute node when an instance is shelved.
 +
 +Problem description
 +===================
@@ -37,13 +37,15 @@ index 0000000..ff2a893
 +When you unshelve hundreds of instances at the same time, instance spawning
 +time varies and it mainly depends on the size of the instance snapshot and
 +the network speed between glance and nova servers.
-+If you have configured file store (NFS) as a backend in Glance for storing
-+images/snapshots, then it’s possible to improve the performance of unshelve
-+instance dramatically by configuring nova.image.download.FileTransfer in nova.
-+In this case, it simply copies the instance snapshot as if it is stored on
-+the local filesystem of the compute node. But then again in this case, it is
-+observed the network traffic increases enormously between NFS servers and nova
-+resulting in slow spawning of the instances.
++
++If you have configured file store (shared storage) as a backend in Glance for
++storing images/snapshots, then it's possible to improve the performance of
++unshelve instance dramatically by configuring nova.image.download.FileTransfer
++in nova. In this case, it simply copies the instance snapshot as if it is
++stored on the local filesystem of the compute node. But then again in this
++case, it is observed the network traffic between shared storage servers and
++nova increases enormously resulting in slow spawning of
++the instances.
 +
 +Use Cases
 +----------
@@ -53,122 +55,258 @@ index 0000000..ff2a893
 +Project Priority
 +-----------------
 +
-+High
++None
 +
 +Proposed change
 +===============
 +
-+NFS will be used for storing instance files on the compute nodes.
-+
-+An existing configuration parameter “shelved_offload_time" will be used here
++An existing configuration parameter "shelved_offload_time" will be used here
 +to indicate the instance files should not be deleted.
 +
-+-1, never offload: In this case disks are not removed, but the instance is
-+shutdown so CPU and Memory are released back to the hypervisor.
-+Quotas are not released.
++Existing values for shelved_offload_time:
 +
-+0, offload during shelved: In this case everything is released during the
-+shelving process. Quotas are not released.
++* shelved_offload_time = -1
 +
-+> 0, offload using “_poll_shelved_instances” periodic task: In this case
-+CPU and Memory are released, and the disk is removed later using periodic
-+task. Quotas are not released.
++  Never offload. In this case, instance files are not removed, and the CPU
++  and memory will be released back to the hypervisor. But these resources are
++  still not released from nova hypervisor point of view so the scheduler
++  cannot consider these resources for spawning new instances. Quotas are not
++  released.
++
++* shelved_offload_time = 0
++
++  Offload during shelved. In this case everything is released during the
++  shelving process. Quotas are not released.
++
++* shelved_offload_time > 0
++
++  Offload using ._poll_shelved_instances. periodic task: In this case
++  CPU and Memory are released, and the disk is removed later using periodic
++  task. Quotas are not released.
 +
 +New value will be added:
-+-2, offload partially, release CPU/Memory but retain instance files.
++
++* shelved_offload_time = -2
++
++  Offload partially. In this case instance files will be retained. CPU and
++  Memory will be released back to the hypervisor which can be used for
++  spawning new instances.
++
++Impact:
++
++If administrator configures shelved_offload_time as -1, 0 or > 0, then there
++is no impact on the existing functionality of shelve, unshelve api.
++
++In case of shelved_offload_time is -2, then only CPU/Memory released back to
++the hypervisor and instance files will be retained on the host which can be
++used to start the instance when unshelve api is called.
 +
 +A new VM state 'SHELVED_PARTIAL_OFFLOADED' and new Task state
 +'SHELVING_PARTIAL_OFFLOADING' will be added. In case of SHELVE_OFFLOAD,
 +all the resources will be already cleaned up from the compute node so at the
 +api layer it only releases network/volume resources consumed by the instance
 +when it is deleted in the shelved_offload state. But when shelved_offload_time
-+is set to -2, instance files are still persisting on the compute node (NFS)
-+and these files needs to be cleanup when the instance is destroyed. To decide
++is set to -2, instance files are still persisting on the compute node and
++these files needs to be clean up when the instance is destroyed. To decide
 +whether or not terminate instance call should be sent to the compute node,
-+there is a need to introduce 'SHELVED_PARTIAL_OFFLOADED' new VM state.
++there is a need to introduce a new VM state named as
++'SHELVED_PARTIAL_OFFLOADED'.
 +
-+Note: In case shelved_offload_time=-2, You must configure instance path on
-+NFS either on all of the compute nodes or group of compute nodes defined
-+by host aggregate.
++Scenarios:
 +
-+HostAggregate group configuration scenarios:
 +1. No HostAggregate groups are configured:
-+Administrator hasn't defined any host aggregate groups and the instance path
-+is mounted on NFS on all of the compute nodes.
 +
-+2. HostAggregate groups configured and share same NFS:
-+Administrator has defined host aggregate groups for segregating compute nodes
-+based on image properties by using AggregateImagePropertiesIsolation filter
-+(windows/ubuntu/RHEL etc) and instance types by using
-+AggregateInstanceExtraSpecs filter. Compute nodes added to each host
-+aggregate group uses its own NFS.
++  Administrator hasn't defined any host aggregate groups and the instance path
++  is configured either on shared or non-shared storage on all of the compute
++  nodes.
 +
-+3. HostAggregate groups configured with same properties on multiple NFS:
-+Everything is same as scenario #2 but in this case to address scalability
-+issue of NFS servers (There is a capacity limitation on each NFS Server),
-+administrator will create multiple host aggregate group with same
-+metadata properties.
++2. HostAggregate groups configured:
 +
-+For 1st and 2nd scenario, there is no need to change the scheduler logic as
-+all compute nodes are sharing the same NFS server. But in the 3rd scenario
-+as multiple NFS servers are configured, we need to implement the new scheduler
-+logic, for allocating the virtual machine on the host aggregate in which
-+instance was previously running. In order to achieve this, while Shelving
-+the instance, based on the instance host and store it in the instance
-+system metadata. While Unshelving the instance retrieve the
-+'host aggregate group id' from instance system metadata and set the same to
-+scheduler filter_properties and pass these filter_properties to
-+select_destination method of scheduler to select the appropriate host to
-+start the instance. We need to implement new scheduling filter
-+'HostAggregateGroupFilter' which can filter the host on the basis of
-+'host aggregate group id' stored in the filter_properties.
++  Administrator has defined host aggregate groups for segregating compute nodes
++  based on image properties and instance types
++  (AggregateImagePropertiesIsolation (windows/ubuntu/RHEL etc) and
++  AggregateInstanceExtraSpecs filter).
++
++  Two ways to configure instance path on the compute nodes:
++
++  2.1 shared storage
++
++  2.2 non-shared storage
++
++3. Multiple hostAggregate groups configured with same meta properties with each
++   group using its own shared storage server:
++
++  Everything is same as scenario #2 but in this case to address scalability
++  issue of shared storage servers (There is a capacity limitation on each
++  shared storage server), administrator will create multiple host aggregate
++  groups with same metadata properties.
++
++Example of instance path mounted on shared storage:
++
++* AggregateImagePropertiesIsolation filter
++
++  OS Type: Windows/Ubuntu/RHEL
++
++* AggregateInstanceExtraSpecs
++
++  Instance Type: High/Normal
++
++  HAG-1 (OS Type: Windows, Instance Type: High), com1, com2, com3 ..
++  (shared storage server - SSS1)
++
++  HAG-2 (OS Type: Windows, Instance Type: High), com4, com5, com6 ..
++  (shared storage server - SSS2)
++
++  HAG-3 (OS Type: Windows, Instance Type: High), com7, com8, com9 ..
++  (shared storage server - SSS3)
 +
 +Shelve api call:
++
 +* shelved_host (host where the instance is running) will be set to
-+instance_system_metadata.
++  instance_system_metadata.
++
 +* Disk resources (instance files) will not be destroyed
-+(self.driver.destroy(…,destroy_disks=False).
-+* As disk resources are persisted, instance snapshot will not be taken.
++  (self.driver.destroy(.,destroy_disks=False).
++
++* As instance files are persisted, there is no need to save instance snapshot.
++
 +* CPU/Memory will be released.
-+* Store 'host aggregate group id' in instance system metadata.
++
++* Store 'host_aggregate_group_id' in instance system metadata.
++  (Refer to Note-1 for the reasons where host_aggregate_group_id is needed)
++
 +* Instance host and node will be set to None.
++
 +* VM state will be set to SHELVED_PARTIAL_OFFLOADED.
++
 +* Quotas will not be released, similar to shelve/shelve_offloaded case.
 +
-+Note: In case of the host aggregate deployment strategy, decision cannot be
-+made by the compute api whether to create a image or not as
-+shelved_offload_time parameter will be configured only on the compute nodes,
-+so image creation code will be moved from compute api to compute manager.
++  Note: In case of the host aggregate deployment strategy, decision cannot be
++  made by the compute api whether to create a image or not as
++  shelved_offload_time parameter will be configured only on the compute nodes,
++  so image creation logic code will be moved from compute api to compute
++  manager.
 +
 +Unshelve api call:
-+* If 'host aggregate group id' is present in instance system metadata,
-+then set it to filter_properties.
-+* Select a new compute node (nova-scheduler) from the available pool of
-+compute nodes
-+* Set the newly elected host to the instance and call start_instance method
-+(hard reboot). In this case, it will use the already existing instance files
-+as it is without the need of downloading/copying instance snapshot from the
-+glance server.
++
++Conductor (unshelve_instance method, in case vm_state is
++SHELVED_PARTIAL_OFFLOADED)
++
++* If 'host_aggregate_group_id' is present in the instance system metadata,
++  then set it to filter_properties.
++
++  Note-1: There is a need to store host_aggregate_group_id in case of
++  scenario #3 only as described above, reason being scheduler should be able to
++  choose compute host from the same host aggregate group where the instance was
++  running previously before it was shelved rather than from the different
++  host aggregate group.
++
++  For example, refer to scenario #3 deployment:
++
++  a) instance spawned in HAG-1, com1
++  b) User calls shelve api
++  c) User calls unshelve api, in this case scheduler may choose compute node
++     from one of these groups HAG-1, HAG-2 and HAG-3.
++
++  If it chooses compute host from HAG-2 or HAG-3, then the instance files
++  needs to be copied from the shelved_host to the destination compute node.
++  We don't want this to happen, hence scheduler should first check if compute
++  hosts are available from HAG-1.
++
++  For this reason, "host_aggregate_group_id" should be stored in the
++  instance system metadata during shelving process.
++
++* Call select_destinations method of scheduler, it will first check if any
++  of the compute nodes are available from the host aggregate group matching
++  with the host_aggregate_group_id which is set to the filter_properties
++  parameter. A New filter "HostAggregateGroupFilter" will be added to do this
++  job.
++
++* If no valid host is found then reschedule the instance by removing
++  'host_aggregate_group_id' from the filter_properties. Again if the scheduler
++  returns empty host list, then set instance task state to 'None' and return.
++
++* Modify existing compute rpcapi unshelve_instance method to pass the newly
++  selected destination compute node from the above scheduler call.
++  unshelve_instance method will be invoked on the source host (shelved_host)
++  where the instance was running previously.
++
++Compute Manager:
++
++* Depending on the shelve_offload_time parameter settings in nova.conf,
++  if it's -2, then check if the source compute and the destination compute
++  nodes are sharing the same instance path.
++  (similar to _is_instance_storage_shared method)
++  If the instance path are mounted on the shared storage, then simply power on
++  instance on the destination compute host.
++  If not, then copy the instance files from the source compute host to the
++  destination compute host and finally power on instance on the destination
++  compute host.
++
++* A new interface will be added in virt driver and implemented in libvirt
++  driver for copying the instance files from source to destination host using
++  ssh. For other drivers, this method will raise NotImplementedError.
++  Our scope is only to implement this method for libvirt driver.
++
++  .. code:: python
++
++   def copy_instance_files_to_destination(self, instance, destination_host):
++   '''Copy instance files from source node to destination node.
++
++   This method will copy the instance files from source node to destination
++   node using ssh. After successful copying, removes the instance directory
++   from the source node. If copying fails due to some reason, then clears the
++   instance files from the destination node.
++
++   :param instance: instance object reference
++   :param destination_host: destination node to copy files.
++   :returns: None
++   '''
++
 +* VM state will be set to ACTIVE.
++
++* Remove 'host_aggregate_group_id' and 'shelved_host' metadata from
++  instance system metadata.
++
 +* Quotas will not be touched.
 +
 +Deleting instance in shelve_partial_offload state:
++
 +* Instance host stored in the 'shelved_host' from instance system_metadata
-+will be retrieved and assign to the instance.
++  will be retrieved and assign to the instance.
++
 +* Instance will be destroyed from the shelved host. It will ensure instance
-+files are deleted properly.
++  files are deleted properly.
++
 +* Quotas will be released in the normal workflow.
 +
 +Advantages:
-+* Improve unshelve instance performance as it completely eliminates the need
-+of downloading/copying instance snapshot from glance
-+* Unshelve instance performance will not be impacted by any kind of backed
-+store configured in glance.
++
++* This feature will work for both the cases, instance_path is mounted on
++  shared or non-shared storage.
++
++* Improves unshelve instance performance as it completely eliminates the need
++  of downloading/copying instance snapshot from glance.
++
++* Unshelve instance performance will not be impacted by any kind of backend
++  store configured in glance.
++
 +* CPU/Memory released after shelving instances will allow nova scheduler to
-+use the compute capacity for launching new instances (similar to
-+shelve_offload case).
++  use the compute capacity for launching new instances (similar to
++  shelve_offload case).
++
 +* Improve shelve instance performance as it completely eliminates the need
-+of taking snapshot and uploading it to glance.
++  of taking snapshot and uploading it to glance.
++
++
++Note:
++If the instance_path is configured on shared storage then you will notice
++unshelve api performance would be better as it neither require copying of
++instance files from source to the destination compute host nor
++downloading/copying snapshot from glance.
++
++We are planning to configure host aggregate groups as described in
++scenario #3 above.
 +
 +Alternatives
 +------------
@@ -206,30 +344,36 @@ index 0000000..ff2a893
 +
 +* Shelve instance performance will be improved as snapshot will not be taken
 +  when shelve_offload_time is set to -2.
-+* Unshelve instance performance will be improved in case instance files are
-+  stored on NFS on the compute nodes when shelve_offload_time is set to -2.
++* Unshelve instance performance will be improved in case instance_path is
++  mounted on shared storage on the compute nodes when shelve_offload_time
++  is set to -2.
 +
 +Other deployer impact
 +---------------------
 +
-+An existing configuration parameter “shelved_offload_time" will be modified
-+here to indicate the instance files shouldn’t be deleted.
++An existing configuration parameter "shelved_offload_time" will be modified
++here to indicate the instance files should not be deleted.
 +
 +-1, never offload
++
 +0, offload when shelved
-+> 0, offload using “_poll_shelved_instances” periodic task
++
++> 0, offload using '_poll_shelved_instances' periodic task
++
++Note: The existing functionality for shelved_offload_time set to -1, 0 and > 0
++will not have any impact and will remain as it is.
 +
 +New value will be added
++
 +-2, offload partially, release CPU/Memory but retain instance files
 +
-+Note: In case shelved_offload_time=-2, You must configure instance path on
-+NFS either on all of the compute nodes or group of compute nodes defined
-+by host aggregate.
-+
-+If HostAggregate groups configured with same properties on multiple NFS, then
-+add 'HostAggregateGroupFilter' in the 'scheduler_default_filters'
++Note:
++If multiple HostAggregate groups are created with same metadata properties
++with each group having it's own shared storage, then add
++'HostAggregateGroupFilter' in the 'scheduler_default_filters'
 +configuration parameter as mentioned below:
-+scheduler_default_filters=HostAggregateGroupFilter,AvailabilityZoneFilter,...
++
++scheduler_default_filters=HostAggregateGroupFilter,RetryFilter,...
 +
 +Developer impact
 +----------------
@@ -260,8 +404,7 @@ index 0000000..ff2a893
 +Dependencies
 +============
 +
-+Bug: https://bugs.launchpad.net/nova/+bug/1307791
-+Patch : https://review.openstack.org/#/c/89298/
++* https://bugs.launchpad.net/nova/+bug/1404801
 +
 +
 +Testing

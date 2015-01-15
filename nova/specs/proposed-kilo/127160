@@ -1,5 +1,5 @@
-From 127d4f7fa5a32adaf26d260c787d15be9c22de9d Mon Sep 17 00:00:00 2001
-From: He Jie Xu <xuhj@linux.vnet.ibm.com>
+From 995c676a3ee56af479b7f74960d468c050cc2fbc Mon Sep 17 00:00:00 2001
+From: He Jie Xu <hejie.xu@intel.com>
 Date: Thu, 9 Oct 2014 13:12:23 +0800
 Subject: [PATCH] Implement policy should be enforced at REST API layer
 
@@ -10,16 +10,16 @@ Part of blueprint v3-api-policy
 
 Change-Id: I5bcb24346062219adae49ddafb5c1cd69b8e24b3
 ---
- specs/kilo/approved/nova-api-policy.rst | 301 ++++++++++++++++++++++++++++++++
- 1 file changed, 301 insertions(+)
+ specs/kilo/approved/nova-api-policy.rst | 302 ++++++++++++++++++++++++++++++++
+ 1 file changed, 302 insertions(+)
  create mode 100644 specs/kilo/approved/nova-api-policy.rst
 
 diff --git a/specs/kilo/approved/nova-api-policy.rst b/specs/kilo/approved/nova-api-policy.rst
 new file mode 100644
-index 0000000..e519e80
+index 0000000..c94d5f9
 --- /dev/null
 +++ b/specs/kilo/approved/nova-api-policy.rst
-@@ -0,0 +1,301 @@
+@@ -0,0 +1,302 @@
 +..
 + This work is licensed under a Creative Commons Attribution 3.0 Unported
 + License.
@@ -41,9 +41,6 @@ index 0000000..e519e80
 +
 +This BP is already discussed at Icehouse summit:
 +https://etherpad.openstack.org/p/icehouse-summit-nova-v3-api
-+
-+This is part of policy improvement, the full view describe of those
-+improvement at: https://review.openstack.org/#/c/128560
 +
 +Problem description
 +===================
@@ -101,7 +98,7 @@ index 0000000..e519e80
 +as only admin can operator those API.
 +
 +2. As developer view, Only one rule for pause server API at REST API layer.
-+Developer needn't confuse how to process permission checks in the nova.
++Developer needn't be confused how to process permission checks in the nova.
 +
 +Project Priority
 +----------------
@@ -124,16 +121,17 @@ index 0000000..e519e80
 +
 +    https://review.openstack.org/#/c/100408/2/nova/api/openstack/compute/plugins/v3/shelve.py
 +
-+  * For Ec2, We also want to keep backwards compatibility. we will move the
-+    compute API layer policy checking into REST API layer, the same as
-+    V2.1 API.
++  * For Ec2, we want to keep the backwards-compatibility. Also we want to
++    move the compute API layer policy checking into REST API layer, the same
++    as V2.1 API. That means the old policy and new policy will be available
++    at sametime. At least after one release, we can remove the old polcy.
 +
 +  * For V2 API, we want to keep the backwards-compatibility. So we won't move
 +    the compute API layer policy checking into REST API layer. We will set
 +    compute API's parameter skip_policy_check to False, that means still
 +    doing policy checking at compute API layer. It's because V2 API will be
 +    depreciated. Before V2 API removed, we needn't take risk of breaking
-+    existed code.
++    existing code.
 +
 +    https://review.openstack.org/#/c/100408/2/nova/compute/api.py
 +
@@ -168,7 +166,7 @@ index 0000000..e519e80
 +  For nova-network, move all the policy enforcement into REST API layer from
 +  network API, and remove the db layer hard-code permission checks.
 +
-+  For neutron, we didn't have too much can do, neutron have his own policy
++  For neutron, we didn't have too much can do, neutron has its own policy
 +  enforcement. We just need ensure we have policy enforcement at nova REST
 +  API layer.
 +
@@ -221,36 +219,34 @@ index 0000000..e519e80
 +As v2.1 API isn't ready yet, there isn't any user for v2.1 for now, so we
 +won't worry about any change will affect the user.
 +
-+For EC2 API, it will affect the user, need user update their configuration
-+files. Because EC2 API is different with Nova V2 API. EC2 API won't be
-+removed forever, if we keep the back-compatibility for EC2 API also, that
-+means we can't remove the old compute api layer policy checks forever. That
-+really confuse for developer maintain the old code. And EC2 API is really
-+small than Nova API, it's about 29 APIs without volume and image related API
-+(Those policy will be enforced by cinder and glance). It will affect user
-+less.
++For EC2 API, we also want to keep backwards compatibility, just like v2 API.
++The old policy rules will be keep at least for one release. If the user
++just want to use the old policy, user can set all the new policy to empty.
++Then all the policy will be skipped. If user want to use new policy, just
++set the rule into new policy, then new policy will be enforced before old
++policy.
 +
 +The extension will be affect by remove db layer hard-code permission checks
 +as below:
 +
-+services
-+certificates
-+floating_ips
-+floating_ips_bulk
-+floating_ip_dns
-+fixed_ips
-+os-network
-+network_associate
-+quotas
-+quota_classes
-+security_group
-+security_group_default_rule
-+migrations
-+flavor_manage
-+flavor_access
-+cell
-+agent
-+pci
++* services
++* certificates
++* floating_ips
++* floating_ips_bulk
++* floating_ip_dns
++* fixed_ips
++* os-network
++* network_associate
++* quotas
++* quota_classes
++* security_group
++* security_group_default_rule
++* migrations
++* flavor_manage
++* flavor_access
++* cell
++* agent
++* pci
 +
 +For v2.1 and ec2 api, the policy rule name prefix is changed. So it need
 +Deployer update their policy config.
@@ -280,14 +276,19 @@ index 0000000..e519e80
 +
 +* Add parameter to compute and network API to skip policy checks.
 +* Improve the EC2 API policy enforcement
-+  * Remove compute API and network API layer policy enforcement
-+  * Rename EC2 API rules
++
++  * Add new policy rules at REST API layer
++  * Add new EC2 API rules
 +  * Move EC2 API rules into separated file.
 +* Improve the V2.1 API policy enforcement
++
 +  * Remove compute API and network API layer policy enforcement
 +  * Rename V2.1 API rules
 +  * Move V2.1 API rules into separated file.
 +* Remove db layer hard-code permission checks.
++
++  * Add back-compatibility rules into REST API layer for v2 API
++  * Add policy rules at REST API layer instead of hard-code checks for v2.1
 +* Move V2 API policy out of policy.conf
 +
 +Working list:

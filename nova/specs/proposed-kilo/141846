@@ -1,0 +1,186 @@
+From 82aa1078d8f490038332d55dfec6fc02db4a9d16 Mon Sep 17 00:00:00 2001
+From: Qiu Yu <qiuyu@ebaysf.com>
+Date: Tue, 16 Dec 2014 00:57:18 +0800
+Subject: [PATCH] Caching aggregate metadata for scheduler
+
+It is a known issue for aggregate metadata based scheduler filters has a
+performance hit. For each scheduling request, there will be database
+query generated for each host candidate and for each filter of this
+kind. Thus make it not scalable for any large deployment.
+
+Change-Id: Ib8b3a8da889b5acd146dda2c0b5e9b4a5929b94c
+---
+ .../caching-aggregate-metadata-for-scheduler.rst   | 161 +++++++++++++++++++++
+ 1 file changed, 161 insertions(+)
+ create mode 100644 specs/kilo/approved/caching-aggregate-metadata-for-scheduler.rst
+
+diff --git a/specs/kilo/approved/caching-aggregate-metadata-for-scheduler.rst b/specs/kilo/approved/caching-aggregate-metadata-for-scheduler.rst
+new file mode 100644
+index 0000000..f8c589a
+--- /dev/null
++++ b/specs/kilo/approved/caching-aggregate-metadata-for-scheduler.rst
+@@ -0,0 +1,161 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++==========================================
++Caching aggregate metadata for scheduler
++==========================================
++
++https://blueprints.launchpad.net/nova/+spec/caching-aggregate-metadata-for-scheduler
++
++It is a known issue for aggregate metadata based scheduler filters has a
++performance hit. For each scheduling request, there will be database query
++generated for each host candidate and for each filter of this kind. Thus make
++it not scalable for any large deployment.
++
++
++Problem description
++===================
++
++Currently all host aggregate based scheduler filters suffer the same
++perfomance hit, that is database query has to be generated for each host
++candidate in a single scheduling request for each filter of this kind.
++
++At the time of writing this spec, scheduler filters that require reading
++aggregate metadata from database includes:
++AggregateRamFilter, AggregateCoreFilter, AggregateDiskFilter,
++AggregateTypeAffinityFilter, AggregateIoOpsFilter, AggregateNumInstancesFilter,
++AggregateMultiTenancyIsolation, AvailabilityZoneFilter,
++AggregateInstanceExtraSpecsFilter, AggregateImagePropertiesIsolation, which is
++quite a long list.
++
++It not only brings unnecessary performance hit to database clusters, but also
++makes scheduler itself not scalable well for any large deployment with many
++compute hosts connected.
++
++Use Cases
++----------
++
++* Deployers who want to relieve database burden of scheduler issuing too many
++  database queries.
++
++Project Priority
++-----------------
++
++Not a priority in kilo.
++
++
++Proposed change
++===============
++
++This change is proposing a caching layer for aggregate metadata queries in
++scheduler. It will be based on aggregate_host_get_by_metadata_key database api
++to retrieve all host metadata for a specific key in a single database query.
++And the result will be cached by metadata key for a configurable timeout value.
++
++For aggregate_metadata_get_by_host query without metadata key specified, an
++metadata reference will be returned and delay the cache fetaching to the real
++key accessing time. New argument will be added to existing
++nova.scheduler.filters.utils aggregate query interface to control whether to
++use cached query or not.
++
++With this change, for a single scheduling request, database query is reduced
++from the number of host candidates to the number of metadata keys, which is a
++huge performance gain.
++
++Alternatives
++------------
++
++Another related effort going on would be `Isolate Scheduler Database
++<https://blueprints.launchpad.net/cinder/+spec/isolate-scheduler-db>`_ which
++fits into a larger scope of Gnatt split. Before Gnatt becoming real in
++production, this change is still providing a viable choice to solve the
++problem.
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++None
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++None
++
++Performance Impact
++------------------
++
++Huge performance gain after enabling cache for aggregate metadata. For
++aggregate based scheduler filter, can reduce database queries from the number
++of hosts to the number of metadata keys.
++
++Other deployer impact
++---------------------
++
++This change will add additional config options to control whether to enable
++aggregate metadata caching, and the default timeout value for metadata caching.
++
++Developer impact
++----------------
++
++None
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  unicell
++
++Work Items
++----------
++
++* Add caching for aggregate_host_get_by_metadata_key
++
++* Add lazy loading logic for aggregate_metadata_get_by_host without key
++  specified
++
++
++Dependencies
++============
++
++None
++
++
++Testing
++=======
++
++Unit test coverage will be provided.
++
++
++Documentation Impact
++====================
++
++New caching config options to be described in filter_scheduler.rst
++
++
++References
++==========
++
++* Isolate scheduler db aggregates
++  https://blueprints.launchpad.net/nova/+spec/isolate-scheduler-db-aggregates
+-- 
+1.9.1
+

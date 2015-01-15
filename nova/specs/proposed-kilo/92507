@@ -1,4 +1,4 @@
-From e4549ca0650289c269fa7c50d289b6dde0b91fdc Mon Sep 17 00:00:00 2001
+From 1b163aeee34f97ee78b106bda23663af69708cfb Mon Sep 17 00:00:00 2001
 From: Thang Pham <thang.g.pham@gmail.com>
 Date: Tue, 6 May 2014 23:02:16 -0400
 Subject: [PATCH] Validate project with Keystone

@@ -1,20 +1,20 @@
-From 67b4af87006ac6f9b82771899a6c637aa677d8e7 Mon Sep 17 00:00:00 2001
+From 80acf3a8b8a65288ba4e91000e7e04dfb8ad6dce Mon Sep 17 00:00:00 2001
 From: sajeesh cs <sajeesh.cs@cern.ch>
 Date: Thu, 16 Oct 2014 16:23:20 +0100
 Subject: [PATCH] Quota Management in Nested Projects
 
 Change-Id: I11f83d5da1f86a9d55e3b83495567b5e3cae483a
 ---
- specs/kilo/approved/nested-quota-driver-api.rst | 484 ++++++++++++++++++++++++
- 1 file changed, 484 insertions(+)
+ specs/kilo/approved/nested-quota-driver-api.rst | 503 ++++++++++++++++++++++++
+ 1 file changed, 503 insertions(+)
  create mode 100644 specs/kilo/approved/nested-quota-driver-api.rst
 
 diff --git a/specs/kilo/approved/nested-quota-driver-api.rst b/specs/kilo/approved/nested-quota-driver-api.rst
 new file mode 100644
-index 0000000..d4e6684
+index 0000000..8031816
 --- /dev/null
 +++ b/specs/kilo/approved/nested-quota-driver-api.rst
-@@ -0,0 +1,484 @@
+@@ -0,0 +1,503 @@
 +..
 + This work is licensed under a Creative Commons Attribution 3.0 Unported
 + License.
@@ -29,14 +29,15 @@ index 0000000..d4e6684
 +
 +Nested quota driver will enable OpenStack to enforce quota in nested
 +projects.
-+
++( http://specs.openstack.org/openstack/keystone-specs/specs/juno/hierarchical_multitenancy.html )
 +
 +Problem description
 +===================
 +
 +OpenStack is moving towards  support for hierarchical ownership of projects.
 +In this regard, the Keystone will change the organizational structure of
-+Openstack, creating nested projects.
++Openstack,creating nested projects
++
 +
 +The existing Quota Driver in Nova called "DbQuotaDriver" is useful to enforce
 +quotas at both the project and the project-user level provided that all the
@@ -44,19 +45,18 @@ index 0000000..d4e6684
 +than 1).
 +
 +The proposal is to develop a new Quota Driver called "NestedQuotaDriver",
-+which will allows enforcing quotas in nested projects in Openstack.The
-+nested projects are having a hierarchical structure, where each project
-+may contain users and projects (can be called sub-projects), except for the
-+projects at the last level in the hierarchy ,called leaf nodes, which contain
-+only users.
++by extending the existing "DbQuotaDriver" which will allow enforcing quotas
++in nested projects in Openstack.The nested projects are having a hierarchical
++structure, where each project may contain users and projects (can be called
++sub-projects).
 +
 +Users can have different roles inside each project: A normal user can make
-+use of resources of a project. A project admin is a user who in addition is
-+allowed to create sub-projects,assign quota on resources to these
-+sub-projects and assign the project admin role to individual users of the
-+sub-projects.Resource quotas of the root project can only be set by the admin
-+of the root project.The user roles can be set as inherited, and if set, then
-+an admin of a project is automatically an admin of all the projects in the
++use of resources of a project. A project-admin,for example can be a user
++who in addition is allowed to create sub-projects,assign quota on resources
++to these sub-projects and assign the project admin role to individual users
++of the sub-projects.Resource quotas of the root project can only be set by the
++admin of the root project.The user roles can be set as inherited, and if set,
++then an admin of a project is automatically an admin of all the projects in the
 +tree below.
 +
 +
@@ -64,7 +64,7 @@ index 0000000..d4e6684
 +---------
 +
 +**Actors**
-+* Martha - Cloud Admin (i.e role:admin) of ProductionIT
++* Martha - Cloud Admin (i.e role:cloud-admin) of ProductionIT
 +
 +* George - Manager (i.e role: project-admin) of Project CMS
 +
@@ -78,22 +78,31 @@ index 0000000..d4e6684
 +
 +* Jim - Manager (i.e role: project-admin) of Project Visualisation
 +
++The nested structure of the projects is as follows.
 +
-+                             ProductionIT
-+                             /           \
++     {
 +
-+                           /              \
++        ProductionIT: {
 +
-+                         /                 \
++                       CMS  : {
 +
-+                       CMS                 ATLAS
-+                       / \                  / \
++                                 Computing,
 +
-+                     /     \              /    \
++                                 Visualisation
 +
-+                   /         \          /        \
++                             },
 +
-+          Visualisation  Computing  Services    Operations
++                       ATLAS: {
++
++                                 Operations,
++
++                                 Services
++
++                           }
++
++                    }
++
++      }
 +
 +Martha is an infrastructure provider and offers cloud services to George for
 +Project CMS,and John for Project ATLAS.CMS has two sub projects below it
@@ -185,10 +194,10 @@ index 0000000..d4e6684
 +ensures availability of free quota, before resources can be claimed in the
 +project.
 +
-+3. A user with role "admin" in the root project and with inherited roles is
-+called Cloud-Admin and  is permitted to do quota operations across the entire
-+hierarchy, including the top level project. Cloud-Admins are the only users
-+who are allowed to set the quota of the root project in a tree.
++3. A user with role "cloud-admin" in the root project and with inherited roles
++is called Cloud-Admin and is permitted to do quota operations across the
++entire hierarchy, including the top level project. Cloud-Admins are the only
++users who are allowed to set the quota of the root project in a tree.
 +
 +4. A person with role "project-admin" in a project is permitted to do quota
 +operations on its sub-projects and users in the hierarchy. If the
@@ -196,6 +205,9 @@ index 0000000..d4e6684
 +user with this role is permitted to do quota operations starting from its
 +immediate child projects to the last level project/user under the project
 +hierarchy.
++
++Note:The roles like "cloud-admin" and "project-admin" are not hard coded.
++It is used in this BP,just for demonstration purpose.
 +
 +5. The total resources consumed by a project is divided into
 +     a.Used Quota  - Resources used by the VMs in a project.
@@ -377,13 +389,17 @@ index 0000000..d4e6684
 +Alternatives
 +------------
 +
-+None
++For quota update and delete operations of a project,the token can be scoped to
++the project itself,instead to its parent.But,we are avoiding that,because the
++quota change in the child project lead to change in the free quota of the
++parent. Because of that,according to this bp,for quota update and delete
++operations,the token is scoped to the parent.
 +
 +
 +Data model impact
 +-----------------
 +
-+Create a new column "allocated" in table "quota_usages" with default value 0.
++Create a new column "allocated" in table "quotas" with default value 0.
 +
 +
 +REST API impact
@@ -452,27 +468,30 @@ index 0000000..d4e6684
 +Work Items
 +----------
 +
-+1. Cloud Admin will be created by assigning the admin role to the user in
-+   root project and making it inheritable.
++1. The role called "cloud-admin"  will be created and assigning that
++   role to a user in root project and making it inheritable.
 +
 +2. Role called  "project-admin" will be created.The user with "project-admin"
 +   role in a project will be  able to do quota operations in projects
 +   starting  from its immediate child projects to the last level
 +   project/user under the project hierarchy,provided it is inheritable.
 +
-+3. A new Quota Driver called "NestedQuotaDriver" will be implemented to
-+   enforce quotas in hierarchical multitenancy in OpenStack.
++   Note:The roles like "cloud-admin" and "project-admin" are not hard coded.
++   It is used in this BP,just for demonstration purpose.
++
++3. A new Quota Driver called "NestedQuotaDriver" will be implemented by
++   extending the existing "DbQuotaDriver",to enforce quotas in hierarchical
++   multitenancy in OpenStack.
 +
 +4. A migration script will be added to create the new column "allocated" in
-+   table "quota_usages", with default value 0.
++   table "quotas", with default value 0.
 +
 +
 +Dependencies
 +============
 +
 +Depends on bp Hierarchical Multitenancy
-+  * https://blueprints.launchpad.net/keystone/+spec/
-+    hierarchical-multitenancy
++  * `<http://specs.openstack.org/openstack/keystone-specs/specs/juno/hierarchical_multitenancy.html>`_
 +
 +
 +Testing
@@ -492,13 +511,13 @@ index 0000000..d4e6684
 +References
 +==========
 +
-+* "https://wiki.openstack.org/wiki/HierarchicalMultitenancy"
++* `Wiki <https://wiki.openstack.org/wiki/HierarchicalMultitenancy>`_
 +
-+* "https://blueprints.launchpad.net/keystone/+spec/
-+   hierarchical-multitenancy"
++* `Heirarchical Projects
++  <http://specs.openstack.org/openstack/keystone-specs/specs/juno/hierarchical_multitenancy.html>`_
 +
-+* "https://blueprints.launchpad.net/keystone/+spec/
-+   hierarchical-multitenancy-improvements"
++* `Hierarchical Projects Improvements
++  <https://blueprints.launchpad.net/keystone/+spec/hierarchical-multitenancy-improvements>`_
 -- 
 1.9.1
 

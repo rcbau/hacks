@@ -1,4 +1,4 @@
-From 6584e48fd8691b15d1f021b4d6bbdd1349126149 Mon Sep 17 00:00:00 2001
+From cadd16642ca381d544dcc359e34c6cc6a91931e8 Mon Sep 17 00:00:00 2001
 From: Jay Pipes <jaypipes@gmail.com>
 Date: Fri, 10 Oct 2014 14:01:53 -0400
 Subject: [PATCH] Add resource object models
@@ -9,16 +9,16 @@ generalized class interface.
 Change-Id: I37b8a1c8b0bbf73bbcf2ee2c2d29018039eb1a9a
 Blueprint: resource-objects
 ---
- specs/kilo/approved/resource-objects.rst | 370 +++++++++++++++++++++++++++++++
- 1 file changed, 370 insertions(+)
+ specs/kilo/approved/resource-objects.rst | 389 +++++++++++++++++++++++++++++++
+ 1 file changed, 389 insertions(+)
  create mode 100644 specs/kilo/approved/resource-objects.rst
 
 diff --git a/specs/kilo/approved/resource-objects.rst b/specs/kilo/approved/resource-objects.rst
 new file mode 100644
-index 0000000..cfb8411
+index 0000000..3a8ef2c
 --- /dev/null
 +++ b/specs/kilo/approved/resource-objects.rst
-@@ -0,0 +1,370 @@
+@@ -0,0 +1,389 @@
 +..
 + This work is licensed under a Creative Commons Attribution 3.0 Unported
 + License.
@@ -192,8 +192,27 @@ index 0000000..cfb8411
 +  resources
 +- A set of classes that represent different types of resources
 +
++These amount, usage, and resource type classes will be `nova.objects` object
++classes, and will enable Nova evolve, in a versioned manner, the way that it
++tracks resources and exposes usage data about consumed resources.
++
++The goals of the extensible resource tracker was to put in place a framework
++that allowed adding new resource types and allowed accounting for those
++resources in different ways. While this blueprint does indeed remove the
++extensible resource tracker, because these amount, usage, and resource type
++classes are being added as `nova.object` objects, we will gain the ability
++to evolve and enhance our resource tracking with object versioning and
++adding new resource type classes. This approach will provide the flexibility
++that the ERT intended, but with the stability that the nova objects system.
++
 +The resource tracker code will then be converted to use the above classes when
 +representing usage of all resources on a compute node.
++
++A new conductor RPC API method `update_compute_node_resource_usages` method
++will be added that gets a `nova.objects.ComputeNode` object and a
++`nova.objects.ResourceUsageCollection` object and updates the compute node
++database record with the resource usage amounts/data coming from the resource
++tracker.
 +
 +Note that we do NOT propose any changes at this time to the database schema
 +of the `compute_nodes` table or the fields in `nova.objects.ComputeNode`,

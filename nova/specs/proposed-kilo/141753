@@ -1,0 +1,50 @@
+From 7542142c87041e25d0de4c75ef0dda907232a251 Mon Sep 17 00:00:00 2001
+From: Matthew Gilliard <matthew.gilliard@hp.com>
+Date: Mon, 15 Dec 2014 09:27:23 +0000
+Subject: [PATCH] docs fixup: corrects formatting of SQL in cellsv2
+
+Simple fix to the formatting of the SQL.
+
+Change-Id: I29de529d47c8da8d1b6bc87fda5c1d0255f64d92
+---
+ specs/kilo/approved/cells-v2-mapping.rst | 24 ++++++++++++------------
+ 1 file changed, 12 insertions(+), 12 deletions(-)
+
+diff --git a/specs/kilo/approved/cells-v2-mapping.rst b/specs/kilo/approved/cells-v2-mapping.rst
+index 10d5884..4eb9068 100644
+--- a/specs/kilo/approved/cells-v2-mapping.rst
++++ b/specs/kilo/approved/cells-v2-mapping.rst
+@@ -96,18 +96,18 @@ A new 'cell_mapping' table will be added.  And it will be added outside of the
+ current 'nova' database in a new 'nova_api' database.  This new database will
+ have deployment ramifications as described below
+ 
+-The table will look like:
+-
+-CREATE TABLE `cell_mapping` (
+-  `created_at` datetime DEFAULT NULL,
+-  `updated_at` datetime DEFAULT NULL,
+-  `deleted_at` datetime DEFAULT NULL,
+-  `id` int(11) NOT NULL AUTO_INCREMENT,
+-  `uuid` varchar(36) NOT NULL,
+-  `name` varchar(255) DEFAULT NULL,
+-  `deleted` int(11) DEFAULT NULL,
+-  `transport_url` mediumtext NOT NULL,
+-  `database_connection` mediumtext NOT NULL)
++The table will look like:::
++
++  CREATE TABLE `cell_mapping` (
++    `created_at` datetime DEFAULT NULL,
++    `updated_at` datetime DEFAULT NULL,
++    `deleted_at` datetime DEFAULT NULL,
++    `id` int(11) NOT NULL AUTO_INCREMENT,
++    `uuid` varchar(36) NOT NULL,
++    `name` varchar(255) DEFAULT NULL,
++    `deleted` int(11) DEFAULT NULL,
++    `transport_url` mediumtext NOT NULL,
++    `database_connection` mediumtext NOT NULL)
+ 
+ REST API impact
+ ---------------
+-- 
+1.9.1
+

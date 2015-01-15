@@ -1,4 +1,4 @@
-From 774ee61b7747a099c9d06c01597099983fdab773 Mon Sep 17 00:00:00 2001
+From 639166793bb6c3071210df437bdfb42a6f5b6f66 Mon Sep 17 00:00:00 2001
 From: zhangni <zhangni@huawei.com>
 Date: Sat, 25 Oct 2014 10:46:55 +0800
 Subject: [PATCH] Add a new libvirt volume driver for Huawei SDSHypervisor
@@ -12,16 +12,16 @@ methods:
 Change-Id: I1d18fda62b77c5f46eed174fc0699d8bbe14fe92
 Blueprint: huawei-sdshypervisor-volume-driver
 ---
- ...virt-volume-driver-for-Huawei-SDSHypervisor.rst | 201 +++++++++++++++++++++
- 1 file changed, 201 insertions(+)
+ ...virt-volume-driver-for-Huawei-SDSHypervisor.rst | 207 +++++++++++++++++++++
+ 1 file changed, 207 insertions(+)
  create mode 100644 specs/kilo/approved/new-libvirt-volume-driver-for-Huawei-SDSHypervisor.rst
 
 diff --git a/specs/kilo/approved/new-libvirt-volume-driver-for-Huawei-SDSHypervisor.rst b/specs/kilo/approved/new-libvirt-volume-driver-for-Huawei-SDSHypervisor.rst
 new file mode 100644
-index 0000000..9e6727c
+index 0000000..a04a97a
 --- /dev/null
 +++ b/specs/kilo/approved/new-libvirt-volume-driver-for-Huawei-SDSHypervisor.rst
-@@ -0,0 +1,201 @@
+@@ -0,0 +1,207 @@
 +..
 + This work is licensed under a Creative Commons Attribution 3.0 Unported
 + License.
@@ -51,14 +51,16 @@ index 0000000..9e6727c
 +Problem description
 +===================
 +
-+Currently, Huawei SDShypervisor driver spec is approved by cinder and code
-+is under review, user will be able to access Huawei SDShypervisor by
-+Openstack Cinder when the code is approved.
++Currently, Huawei SDShypervisor cinder driver bp and code is approved
++by cinder, users now are able to access Huawei SDShypervisor by
++Openstack Cinder.
 +
-+Because Huawei SDShypervisor data path uses private Key Value protocol for IO
-+and uses private CLI command to attach/detach volume, so the current volume
-+driver can't be used by SDSHypervisor, we need to add a new libvirt volume
-+driver to realize attach/detach volume.
++Because Huawei SDSHypervisor uses a private key-value data protocol,
++we have to register a new lower level driver which can capture SCSI data
++from SCSI middle layer and copy these data from core mode to SDSHypervisor
++process in user mode for high performance. In order to achieve these we have
++to use a private method to implement connect_volume and disconnect_volume and
++add new libvirt volume driver to realize attach/detach volume.
 +
 +Use Cases
 +----------
@@ -74,9 +76,10 @@ index 0000000..9e6727c
 +Proposed change
 +===============
 +
-+SDShypervisor data path uses private Key Value protocol for IO
-+and uses private CLI command to attach/detach volume, so we add a new
-+libvirt volume driver to realize attach/detach volume.
++Add a new libvirt volume driver to realize attach/detach volume.
++The driver uses sds_cli cmd to implement attach/detach/querydev vol,
++sds_cli will be put to a specific dir and the path is registered as a system
++environment variable when sds is installed.
 +
 +The following diagram shows the command and data paths.
 +
@@ -201,8 +204,11 @@ index 0000000..9e6727c
 +Huawei SDSHypervisor cinder driver spec has been merged into cinder-spec
 +in this url https://review.openstack.org/#/c/101688/
 +
-+Huawei SDSHypervisor cinder driver code is under review in this url
-+https://review.openstack.org/#/c/123394/
++Huawei SDSHypervisor cinder driver code has been merged into cinder
++in this url https://review.openstack.org/#/c/123394/
++
++Huawei SDSHypervisor cinder connector code has been merged into cinder
++in this url https://review.openstack.org/#/c/138988/
 +
 +
 +Testing

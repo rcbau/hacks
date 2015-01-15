@@ -1,4 +1,4 @@
-From c43400bd52bc017ba15c45154f9a99c2084fbee4 Mon Sep 17 00:00:00 2001
+From 5da051c196ebb32ab75bcf5e5b18dcbe0e2d4234 Mon Sep 17 00:00:00 2001
 From: Nisha Agarwal <agarwalnisha1980@gmail.com>
 Date: Fri, 31 Oct 2014 13:06:45 +0530
 Subject: [PATCH] Enhance the ComputeCapabilities filter to accept the list as
@@ -8,16 +8,16 @@ Implements: blueprint ironic-enhance-compute-capabilities
 
 Change-Id: I95302c737c09e3fad42080c75bb4b0e76a06e379
 ---
- .../ironic-enhance-compute-capabilities.rst        | 152 +++++++++++++++++++++
- 1 file changed, 152 insertions(+)
+ .../ironic-enhance-compute-capabilities.rst        | 155 +++++++++++++++++++++
+ 1 file changed, 155 insertions(+)
  create mode 100644 specs/kilo/approved/ironic-enhance-compute-capabilities.rst
 
 diff --git a/specs/kilo/approved/ironic-enhance-compute-capabilities.rst b/specs/kilo/approved/ironic-enhance-compute-capabilities.rst
 new file mode 100644
-index 0000000..eaec1c7
+index 0000000..41b15e4
 --- /dev/null
 +++ b/specs/kilo/approved/ironic-enhance-compute-capabilities.rst
-@@ -0,0 +1,152 @@
+@@ -0,0 +1,155 @@
 +..
 + This work is licensed under a Creative Commons Attribution 3.0 Unported
 + License.
@@ -66,8 +66,11 @@ index 0000000..eaec1c7
 +Use Cases
 +----------
 +
-+The node/instance can be picked up for deploying based on the capabilities
-+and flavor values.
++Nova filter ComputeCapabilities filter selects the instances
++when instance capabilities matches the extra_specs of the flavor. This allows
++the node to be selected for deploying for uefi or bios. WIth the changes,
++the filter will be able to select the same node for both the methods of
++deployment when the hardware is capable of both.
 +
 +Project Priority
 +-----------------
@@ -78,7 +81,7 @@ index 0000000..eaec1c7
 +===============
 +
 +The spec proposes to enhance the filter ComputeCapabilities filter to
-+accept multiple values for a key also.
++parse multiple values for a key also.
 +
 +Alternatives
 +------------
@@ -146,10 +149,10 @@ index 0000000..eaec1c7
 +* Enhance the ComputeCapabilities filter to accept the list also as
 +  value.
 +
-+Example : "capabilities=supported_boot_modes:bios uefi".
++Example : "capabilities='supported_boot_modes:bios uefi secure-boot,key2:val2"
 +
-+The capabilities filter does not read beyond the comma, hence the
-+delimiter used is space.
++The capabilities filter does not read beyond the comma,n a key:value pair,
++hence the delimiter used is space.
 +
 +Dependencies
 +============

@@ -1,4 +1,4 @@
-From e6c155ee322b853f4bb37e8ebe6e028e8cc34c93 Mon Sep 17 00:00:00 2001
+From 712d26bfb5d4983bee08c9832873002545cd49af Mon Sep 17 00:00:00 2001
 From: James Carey <jecarey@us.ibm.com>
 Date: Tue, 7 Oct 2014 20:15:23 +0000
 Subject: [PATCH] i18n lazy translation enablement
@@ -11,16 +11,16 @@ Part of blueprint i18n-enablement-juno
 
 Change-Id: I17002abf79157d108b649b6e0a58c4b50ea9ebae
 ---
- specs/kilo/approved/i18n-enablement.rst | 240 ++++++++++++++++++++++++++++++++
- 1 file changed, 240 insertions(+)
+ specs/kilo/approved/i18n-enablement.rst | 261 ++++++++++++++++++++++++++++++++
+ 1 file changed, 261 insertions(+)
  create mode 100644 specs/kilo/approved/i18n-enablement.rst
 
 diff --git a/specs/kilo/approved/i18n-enablement.rst b/specs/kilo/approved/i18n-enablement.rst
 new file mode 100644
-index 0000000..8a46da8
+index 0000000..2cb79f5
 --- /dev/null
 +++ b/specs/kilo/approved/i18n-enablement.rst
-@@ -0,0 +1,240 @@
+@@ -0,0 +1,261 @@
 +..
 + This work is licensed under a Creative Commons Attribution 3.0 Unported
 + License.
@@ -51,8 +51,8 @@ index 0000000..8a46da8
 +pre-existing work of explicitly importing '_' from gettextutils.
 +
 +During the Juno release, hacking checks were added to restrict how
-+translatable messasges are used in Nova.  In particular, ensuring that
-+translatable messges are not concatenated and that str() is not used on
++translatable messages are used in Nova.  In particular, ensuring that
++translatable messages are not concatenated and that str() is not used on
 +exceptions.  Also Nova moved to using the oslo.i18n library.
 +
 +To finalize this work in Kilo we need to enable the "lazy" translation
@@ -244,8 +244,29 @@ index 0000000..8a46da8
 +Testing
 +=======
 +
-+* There will be a Nova functional test added that will ensure that
++* There will be a Nova functional tests added that will ensure that
 +  lazy translation is working properly.
++
++  In order to make these tests less brittle, they will create a temporary
++  translation (language) that is identical to the default translation
++  (language) except that each translation will have a uuid prepended to
++  the translation.  In this way lazy translation can be confirmed simply
++  by checking for the presence of the uuid.
++
++  - The first functional test will consist of running the server create API
++    with and without lazy translation enabled and ensuring that the returned
++    message is lazily translated.   This will be done by using Accept-Language
++    in the request to requesting that the temporary language be returned and
++    checking that the returned message includes the uuid.  Also, the request
++    will be done without using Accept-Language and the absence of the uuid
++    will be confirmed.
++
++  - The second functional test will also consist of running the server create
++    API, but in this case a second translation of the logs will be configured
++    to translate the logs into both the original and temporary language.
++    The logs will then be compared to ensure that, excluding debug logs, the
++    logs only differ by the addition of the uuid in the ones translated with
++    the temporary language.
 +
 +* The hacking checks listed under Developer Impacts above.
 +

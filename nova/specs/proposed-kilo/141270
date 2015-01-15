@@ -1,4 +1,4 @@
-From 7c94fc31993c0faa015077d075e37f32ec9b0ae9 Mon Sep 17 00:00:00 2001
+From ae4f1a0421b3725eb0e1968707c68ecfc624d9cb Mon Sep 17 00:00:00 2001
 From: Yongli He <yongli.he@intel.com>
 Date: Fri, 12 Dec 2014 13:03:38 +0800
 Subject: [PATCH] test cases for third party CI
@@ -11,16 +11,16 @@ Implements blueprint pci-test-cases-for-third-party-ci
 
 Change-Id: Ieae7899e1e913f10715ee74427a5fc5ccd89c89b
 ---
- .../approved/pci-testcases-for-third-party-CI.rst  | 182 +++++++++++++++++++++
- 1 file changed, 182 insertions(+)
+ .../approved/pci-testcases-for-third-party-CI.rst  | 183 +++++++++++++++++++++
+ 1 file changed, 183 insertions(+)
  create mode 100644 specs/kilo/approved/pci-testcases-for-third-party-CI.rst
 
 diff --git a/specs/kilo/approved/pci-testcases-for-third-party-CI.rst b/specs/kilo/approved/pci-testcases-for-third-party-CI.rst
 new file mode 100644
-index 0000000..045636c
+index 0000000..a40a8c3
 --- /dev/null
 +++ b/specs/kilo/approved/pci-testcases-for-third-party-CI.rst
-@@ -0,0 +1,182 @@
+@@ -0,0 +1,183 @@
 +..
 + This work is licensed under a Creative Commons Attribution 3.0 Unsorted
 + License.
@@ -44,7 +44,8 @@ index 0000000..045636c
 +now, running a tempest in a VM can not well provide a simulated PCI devices
 +and iommu. Third party CI is a reasonable choice
 +
-+To enable third party CI, problems bellowing need be addressed:
++To enable third party CI, and share test cases among them,
++problems bellowing need be addressed:
 +
 +1. What test cases should be created to covering the features
 +

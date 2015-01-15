@@ -1,4 +1,4 @@
-From c6728ab973a31d976e1ca18825a56b402cdcb54c Mon Sep 17 00:00:00 2001
+From b4f74f1b7e315ed6c0e75a87b472849d0e1b9e64 Mon Sep 17 00:00:00 2001
 From: Andrew Laski <andrew.laski@rackspace.com>
 Date: Wed, 19 Nov 2014 08:17:23 -0500
 Subject: [PATCH] Cells instance mapping
@@ -10,16 +10,16 @@ bp cells-instance-mapping
 
 Change-Id: I9e8e760497122d120e9c4fbf690993747281c30a
 ---
- specs/kilo/approved/cells-instance-mapping.rst | 179 +++++++++++++++++++++++++
- 1 file changed, 179 insertions(+)
+ specs/kilo/approved/cells-instance-mapping.rst | 177 +++++++++++++++++++++++++
+ 1 file changed, 177 insertions(+)
  create mode 100644 specs/kilo/approved/cells-instance-mapping.rst
 
 diff --git a/specs/kilo/approved/cells-instance-mapping.rst b/specs/kilo/approved/cells-instance-mapping.rst
 new file mode 100644
-index 0000000..85d54f1
+index 0000000..48297ee
 --- /dev/null
 +++ b/specs/kilo/approved/cells-instance-mapping.rst
-@@ -0,0 +1,179 @@
+@@ -0,0 +1,177 @@
 +..
 + This work is licensed under a Creative Commons Attribution 3.0 Unported
 + License.
@@ -89,26 +89,23 @@ index 0000000..85d54f1
 +
 +A new 'instance_mapping' table will be added to the 'nova_api' database.
 +
-+The table will look like:
++The table will look like:::
 +
-+CREATE TABLE `instance_mapping` (
-+  `created_at` datetime DEFAULT NULL,
-+  `updated_at` datetime DEFAULT NULL,
-+  `id` int(11) NOT NULL AUTO_INCREMENT,
-+  `instance_uuid` varchar(36) NOT NULL,
-+  `cell_uuid` varchar(36) NOT NULL,
-+  `project_id` varchar(255) NOT NULL)
++    CREATE TABLE `instance_mapping` (
++      `created_at` datetime DEFAULT NULL,
++      `updated_at` datetime DEFAULT NULL,
++      `id` int(11) NOT NULL AUTO_INCREMENT,
++      `instance_uuid` varchar(36) NOT NULL,
++      `cell_uuid` varchar(36) NOT NULL,
++      `project_id` varchar(255) NOT NULL)
 +
 +And instance_uuid will be an indexed column.  Other indexes are likely as well
 +and can be discussed in the code review.
 +
-+It should be noted that there is no 'deleted' or 'deleted_at' column here.  An
-+instance that exists within a cell database, whether it's deleted or not,
-+should have a row in this table.  If an instance row is removed from a cell
-+database via some cleanup mechanism then the mapping row for that instance can
-+be removed from this table as well.  There is currently no mechanism in Nova to
-+do this so rows in instance_mapping will only be removed via an out-of-band
-+deployer cleanup.
++It should be noted that there is no 'deleted' or 'deleted_at' column here.
++This mapping is still valid even if the instance is deleted, so there is no
++requirement to delete the mapping.  A listing of deleted instances, for
++example, will still need to know which cell those instances are in.
 +
 +REST API impact
 +---------------
@@ -199,6 +196,7 @@ index 0000000..85d54f1
 +==========
 +
 +``https://etherpad.openstack.org/p/kilo-nova-cells``
++``https://review.openstack.org/#/c/139191/``
 -- 
 1.9.1
 

@@ -1,6 +1,6 @@
-From 70c54e806fda0fedeb78a4c69b2ae9c3d7001617 Mon Sep 17 00:00:00 2001
+From c0af03baf4dd68b89caeb90b45058ad41ff066b5 Mon Sep 17 00:00:00 2001
 From: James Chapman <james.p.chapman@intel.com>
-Date: Fri, 5 Dec 2014 15:00:59 +0000
+Date: Tue, 16 Dec 2014 12:36:10 +0000
 Subject: [PATCH] SRIOV scheduling with stateless offloads
 
 This feature will add support for the consideration of PCI
@@ -10,20 +10,19 @@ for their guest, this feature will enable the placement of
 the guest on a compute node that provides these capabilities.
 
 Implements blueprint sriov-sched-with-stateless-offloads
-
 Change-Id: I382eff5873e5ac053d6ee1b7732aefaf8bc2097c
 Co-Authored-By: Adrian Hoban <adrian.hoban@intel.com>
 ---
- .../sriov-sched-with-stateless-offloads.rst        | 221 +++++++++++++++++++++
- 1 file changed, 221 insertions(+)
+ .../sriov-sched-with-stateless-offloads.rst        | 230 +++++++++++++++++++++
+ 1 file changed, 230 insertions(+)
  create mode 100644 specs/kilo/approved/sriov-sched-with-stateless-offloads.rst
 
 diff --git a/specs/kilo/approved/sriov-sched-with-stateless-offloads.rst b/specs/kilo/approved/sriov-sched-with-stateless-offloads.rst
 new file mode 100644
-index 0000000..14f0c54
+index 0000000..5f892d9
 --- /dev/null
 +++ b/specs/kilo/approved/sriov-sched-with-stateless-offloads.rst
-@@ -0,0 +1,221 @@
+@@ -0,0 +1,230 @@
 +..
 + This work is licensed under a Creative Commons Attribution 3.0 Unported
 + License.
@@ -232,8 +231,16 @@ index 0000000..14f0c54
 +Testing
 +=======
 +
-+UT will be added for this feature, also some third party tests will need to
-+be added.
++UT will be added for this feature.
++Third party tests will be run on real multi NIC HW, examples scenarios:
++
++Using multi NIC platform, disable certain offloads on specific NICs.
++Request certain NIC offloads via image properties.
++Boot guest, verify its associated with NIC exposing requested offloads.
++
++Using multi NIC platform, disable certain offloads on all NICs.
++Request certain NIC offloads via image properties.
++Boot guest, verify guest fails to boot.
 +
 +Documentation Impact
 +====================
@@ -244,7 +251,8 @@ index 0000000..14f0c54
 +References
 +==========
 +
-+http://www.mail-archive.com/libvir-list@redhat.com/msg103820.html
++* https://bugzilla.redhat.com/show_bug.cgi?id=1174755
++* http://www.mail-archive.com/libvir-list@redhat.com/msg103820.html
 -- 
 1.9.1
 

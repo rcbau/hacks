@@ -1,4 +1,4 @@
-From a72243ef06ecbca0a4c93bd4d8ee25d51bf8c5ab Mon Sep 17 00:00:00 2001
+From 2cbaeade24c0f084466c988876cc33b6c82261b2 Mon Sep 17 00:00:00 2001
 From: Brent Eagles <beagles@redhat.com>
 Date: Thu, 11 Dec 2014 14:01:35 -0330
 Subject: [PATCH] Wrap Neutron client calls
@@ -9,16 +9,16 @@ between arguments and JSON requests and replies and exceptions.
 Change-Id: I2b36bfd243e7d56950d5a7e4bbf919eb098f83c0
 Blueprint: nova-neutron-refactor
 ---
- specs/kilo/approved/wrap-neutronclient.rst | 188 +++++++++++++++++++++++++++++
- 1 file changed, 188 insertions(+)
+ specs/kilo/approved/wrap-neutronclient.rst | 183 +++++++++++++++++++++++++++++
+ 1 file changed, 183 insertions(+)
  create mode 100644 specs/kilo/approved/wrap-neutronclient.rst
 
 diff --git a/specs/kilo/approved/wrap-neutronclient.rst b/specs/kilo/approved/wrap-neutronclient.rst
 new file mode 100644
-index 0000000..917e478
+index 0000000..9aa025d
 --- /dev/null
 +++ b/specs/kilo/approved/wrap-neutronclient.rst
-@@ -0,0 +1,188 @@
+@@ -0,0 +1,183 @@
 +..
 + This work is licensed under a Creative Commons Attribution 3.0 Unported
 + License.
@@ -28,8 +28,6 @@ index 0000000..917e478
 +==========================================
 +Wrap the Python NeutronClient
 +==========================================
-+
-+Include the URL of your launchpad blueprint:
 +
 +https://blueprints.launchpad.net/nova/+spec/nova-neutron-refactor
 +
@@ -75,6 +73,9 @@ index 0000000..917e478
 +* Changes to the Neutron client can require pervasive changes to the
 +  adapter implementation.
 +
++* Certain API features are only accessible through contexts with
++  administrative credentials, requiring maintainers to understand
++
 +
 +Use Cases
 +----------
@@ -86,12 +87,15 @@ index 0000000..917e478
 +  practices in an accessible and immediately useful way for themselves and
 +  other developers.
 +
++* Special handling of remote call behavior can be introduced in a manageable
++  and consistent fashion.
++
 +
 +Project Priority
 +-----------------
 +
-+This refactoring addresses an issue of significant techncial dept and
-+facilitates Nova to Neutron migration.
++This refactoring addresses an issue of significant techncial debt and
++is a step towards deprecating nova-network.
 +
 +
 +Proposed change
@@ -101,10 +105,6 @@ index 0000000..917e478
 +by through a class (or family of classes if required). The classes hide
 +construction of JSON requests, translation of replies to Nova objects and
 +Neutron exceptions to Nova exceptions.
-+
-+The addition of tempest tests that directly exercise the wrapper provide
-+concrete verification of the interpretation of the Neutron API that Nova
-+relies on.
 +
 +Alternatives
 +------------
@@ -147,10 +147,7 @@ index 0000000..917e478
 +Other deployer impact
 +---------------------
 +
-+It is expected that additional source files will be created. Deployment
-+tools that are not wild card based in file selection will need to be
-+modified to include the new files.
-+
++None
 +
 +Developer impact
 +----------------
@@ -195,9 +192,7 @@ index 0000000..917e478
 +Testing
 +=======
 +
-+As this is part of the Nova-Neutron API refactoring, a CI job will in the
-+experimental work queue will run the new Tempest tests
-+
++The changes will be exercised through the existing CI.
 +
 +Documentation Impact
 +====================

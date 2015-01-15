@@ -1,4 +1,4 @@
-From cc359c2adc61fb1d50f5e7a8bc53389eb8edd9ff Mon Sep 17 00:00:00 2001
+From 819ae6b30ebad82a8f388f5e2f8afc7fb0818b88 Mon Sep 17 00:00:00 2001
 From: Jennifer Mulsow <jmulsow@us.ibm.com>
 Date: Thu, 4 Dec 2014 18:04:59 -0600
 Subject: [PATCH] Nova specs doc for dynamic server groups - add
@@ -14,7 +14,7 @@ Change-Id: I4fea7f6385e714da5f684affc8909460e8d53394
 
 diff --git a/specs/kilo/approved/dynamic-server-groups-add.rst b/specs/kilo/approved/dynamic-server-groups-add.rst
 new file mode 100644
-index 0000000..71ed6a6
+index 0000000..6268b6c
 --- /dev/null
 +++ b/specs/kilo/approved/dynamic-server-groups-add.rst
 @@ -0,0 +1,390 @@
@@ -328,11 +328,11 @@ index 0000000..71ed6a6
 +In addition to the API, the user will be able to use the Nova CLI to add an
 +instances to a server group. The CLI will be of the form:
 +
-+* nova server-group-add-server <id> <server>
++* nova server-group-add-member <id> <member
 +
-+Where <id> represents the server group's identifier and <server> represents
++Where <id> represents the server group's identifier and <member> represents
 +an instance's uuid or name. The uuid will be required in cases in which the
-+name does not unambiguously identify a server.
++name is ambiguous.
 +
 +Performance Impact
 +------------------

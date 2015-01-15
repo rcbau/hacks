@@ -1,4 +1,4 @@
-From 77b1e25f90c3a3900896414029324101e378a1e0 Mon Sep 17 00:00:00 2001
+From a22ba2dedaa977af3718dfe54e3cbad6fe1aad3f Mon Sep 17 00:00:00 2001
 From: "Daniel P. Berrange" <berrange@redhat.com>
 Date: Wed, 12 Nov 2014 12:46:44 +0000
 Subject: [PATCH] Libvirt hardware policy from libosinfo
