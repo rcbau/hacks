@@ -1,36 +1,37 @@
-From bda540dd603d6592879f7e9b14f6507e99f87469 Mon Sep 17 00:00:00 2001
+From 2b86f8497cf88bb8503eb0bad843bfddc3ac7778 Mon Sep 17 00:00:00 2001
 From: EdLeafe <ed@leafe.com>
 Date: Tue, 2 Dec 2014 11:12:17 -0600
-Subject: [PATCH] Remove direct nova DB/API access in Scheduler Filters
+Subject: [PATCH] Remove direct nova DB/API access by Scheduler Filters
 
-Some filters currently get their filtering criteria by accessing
-the nova DB or API directly. This spec proposes replacing those
-occurrences with an in-memory view of the hosts and their instances that
-would be maintained by the Scheduler. This information would be loaded
-when the Scheduler starts up, and will be updated by the compute nodes
-whenever their instances change.
+Some filters need information about the current instances on a host in
+order to make their decisions. Currently they get their filtering
+criteria by accessing the nova DB or API directly. This spec proposes
+replacing those occurrences with an in-memory view of the hosts and
+their instances that would be maintained by the Scheduler. This
+information would be loaded when the Scheduler starts up, and will be
+updated by the compute nodes whenever their instances change.
 
 Change-Id: Id90a699ab8d456e7a8a66637b738aa373e12e736
 ---
- .../kilo/approved/isolate-scheduler-db-filters.rst | 176 +++++++++++++++++++++
- 1 file changed, 176 insertions(+)
+ .../kilo/approved/isolate-scheduler-db-filters.rst | 173 +++++++++++++++++++++
+ 1 file changed, 173 insertions(+)
  create mode 100644 specs/kilo/approved/isolate-scheduler-db-filters.rst
 
 diff --git a/specs/kilo/approved/isolate-scheduler-db-filters.rst b/specs/kilo/approved/isolate-scheduler-db-filters.rst
 new file mode 100644
-index 0000000..8b08b70
+index 0000000..2f7ba0a
 --- /dev/null
 +++ b/specs/kilo/approved/isolate-scheduler-db-filters.rst
-@@ -0,0 +1,176 @@
+@@ -0,0 +1,173 @@
 +..
 + This work is licensed under a Creative Commons Attribution 3.0 Unported
 + License.
 +
 + http://creativecommons.org/licenses/by/3.0/legalcode
 +
-+================================
-+Isolate Scheduler DB for Filters
-+================================
++==================================
++Isolate Scheduler DB for Instances
++==================================
 +
 +https://blueprints.launchpad.net/nova/+spec/isolate-scheduler-db
 +
@@ -60,10 +61,7 @@ index 0000000..8b08b70
 +Use Cases
 +----------
 +
-+Nova contributors wish to extend the functionality of the scheduler and intend
-+to break the scheduler out into the Gantt project. In order to do this
-+effectively, the internal interfaces around the scheduler and its filters must
-+be updated to remove direct DB or API calls.
++N/A
 +
 +Project Priority
 +-----------------

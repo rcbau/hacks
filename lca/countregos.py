@@ -8,7 +8,7 @@ import psycopg2.extras
 import sys
 import time
 
-DEBUG = True
+DEBUG = False
 
 # Try to connect
 password = getpass.getpass('DB password: ')
@@ -28,17 +28,41 @@ cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
 
 # Determine item prices
 product_prices = {}
+product_names = {}
 cur.execute('select * from product')
 rows = cur.fetchall()
 for row in rows:
     product_prices[row['id']] = row['cost']
+    product_names[row['id']] = row['description']
 
 # Cache invoice dates
 invoice_dates = {}
-cur.execute('select * from invoice')
+cur.execute('select * from invoice where void is null')
 rows = cur.fetchall()
 for row in rows:
     invoice_dates[row['id']] = row['issue_date']
+
+# Cache people
+people = {}
+cur.execute('select * from person')
+rows = cur.fetchall()
+for row in rows:
+    people[row['id']] = '%s, %s' %(row['lastname'], row['firstname'])
+
+# Cache vouchers which have been presented
+presented_vouchers = {}
+cur.execute('select * from registration where voucher_code <> \'\'')
+rows = cur.fetchall()
+for row in rows:
+    presented_vouchers.setdefault(row['person_id'], [])
+    presented_vouchers[row['person_id']].append(row['voucher_code'])
+
+# Cache a mapping of invoices to people
+invoice_people = {}
+cur.execute('select * from invoice')
+rows = cur.fetchall()
+for row in rows:
+    invoice_people[row['id']] = row['person_id']
 
 # Find paid invoices
 paid_invoices = []
@@ -59,35 +83,21 @@ invoice_totals = {}
 cur.execute('select * from invoice_item')
 rows = cur.fetchall()
 for row in rows:
-    if not row['product_id']:
-        continue
-
     invoice_totals.setdefault(row['invoice_id'], 0)
-    invoice_totals[row['invoice_id']] += product_prices[row['product_id']]
+    invoice_totals[row['invoice_id']] += row['cost']
 
 for invoice_id in invoice_totals:
+    if not invoice_id in invoice_dates:
+        continue
+    
+    if DEBUG:
+        print 'Invoice %s for %s' %(invoice_id, invoice_totals[invoice_id])
+
     if invoice_totals[invoice_id] == 0 and not invoice_id in paid_invoices:
         paid_invoices.append(invoice_id)
-        payment_dates[invoice_id] = invoice_dates[invoice_id]
-
-if DEBUG:
-    str_invoices = []
-    for invoice in paid_invoices:
-        str_invoices.append(str(invoice))
-    print 'Paid invoices: %s' % ','.join(sorted(str_invoices))
-
-# Find what those invoices paid for
-products_by_date = {}
-
-cur.execute('select * from invoice_item')
-rows = cur.fetchall()
-for row in rows:
-    invoice_id = row['invoice_id']
-    if invoice_id in paid_invoices:
-        products_by_date.setdefault(payment_dates[invoice_id], {})
-        products_by_date[payment_dates[invoice_id]].setdefault(
-            row['product_id'], 0)
-        products_by_date[payment_dates[invoice_id]][row['product_id']] += 1
+        paid_dt = invoice_dates[invoice_id]
+        paid_d = datetime.datetime(paid_dt.year, paid_dt.month, paid_dt.day)
+        payment_dates[invoice_id] = paid_d
 
 # Find the product category that is tickets
 ticket_category = None
@@ -112,7 +122,35 @@ for row in rows:
     if row['category_id'] == ticket_category:
         ticket_products.append(row['id'])
         columns.append(row['description'])
+
+columns.append('vouchers presented')
         
+# Find what those invoices paid for
+products_by_date = {}
+vouchers_by_date = {}
+revenue_by_date = {}
+
+cur.execute('select * from invoice_item')
+rows = cur.fetchall()
+for row in rows:
+    invoice_id = row['invoice_id']
+    if invoice_id in paid_invoices and row['product_id'] in ticket_products:
+        if DEBUG:
+            print '%s bought a %s on %s' %(people[invoice_people[invoice_id]],
+                                          product_names.get(row['product_id']),
+                                          payment_dates[invoice_id])
+
+        person_id = invoice_people[invoice_id]
+        if person_id in presented_vouchers:
+            vouchers_by_date.setdefault(payment_dates[invoice_id], [])
+            vouchers_by_date[payment_dates[invoice_id]].append(
+                presented_vouchers[person_id])
+
+        products_by_date.setdefault(payment_dates[invoice_id], {})
+        products_by_date[payment_dates[invoice_id]].setdefault(
+            row['product_id'], 0)
+        products_by_date[payment_dates[invoice_id]][row['product_id']] += 1
+
 # Dumpy dumpy
 first_day = sorted(products_by_date.keys())[0]
 last_day = sorted(products_by_date.keys())[-1]
@@ -131,6 +169,7 @@ while dt <= last_day:
     sales = ['%04d%02d%02d' %(dt.year, dt.month, dt.day)]
     for ticket_product in ticket_products:
         sales.append(products_by_date.get(dt, {}).get(ticket_product, 0))
+    sales.append(len(vouchers_by_date.get(dt, [])))
     c.writerows([sales])
 
     dt += datetime.timedelta(days=1)

@@ -1,4 +1,4 @@
-From 821f77a771e4fca935fb2e215f87e13cacf2773f Mon Sep 17 00:00:00 2001
+From ea9ca34378330dfd20e2bc21822e3da5f677b0b6 Mon Sep 17 00:00:00 2001
 From: ShaoHe Feng <shaohe.feng@intel.com>
 Date: Mon, 8 Dec 2014 17:31:36 +0800
 Subject: [PATCH] Attach/detach SR-IOV interface
@@ -7,16 +7,16 @@ This spec describes the blueprint sriov-interface-attach-detach
 
 Change-Id: Ie35558cfc6a8a49df3ec230c18b35a54940d2698
 ---
- .../approved/sriov-interface-attach-detach.rst     | 196 +++++++++++++++++++++
- 1 file changed, 196 insertions(+)
+ .../approved/sriov-interface-attach-detach.rst     | 202 +++++++++++++++++++++
+ 1 file changed, 202 insertions(+)
  create mode 100644 specs/kilo/approved/sriov-interface-attach-detach.rst
 
 diff --git a/specs/kilo/approved/sriov-interface-attach-detach.rst b/specs/kilo/approved/sriov-interface-attach-detach.rst
 new file mode 100644
-index 0000000..f24297b
+index 0000000..ae8422f
 --- /dev/null
 +++ b/specs/kilo/approved/sriov-interface-attach-detach.rst
-@@ -0,0 +1,196 @@
+@@ -0,0 +1,202 @@
 +..
 + This work is licensed under a Creative Commons Attribution 3.0 Unported
 + License.
@@ -53,7 +53,7 @@ index 0000000..f24297b
 +SR-IOV NICs at present.
 +
 +
-+For example we can create a directly SR-IOV port by:
++For example we can create a direct SR-IOV port by:
 +  neutron port-create <net-id> --binding:vnic-type direct
 +
 +Then we can do the following to attach interface to a VM:
@@ -90,10 +90,10 @@ index 0000000..f24297b
 +
 +attach_interface
 +----------------
-+For attach interface there is only 2 thing need to be addressed:
++For attach interface there is only 2 things that need to be addressed.
 +
 +First one is converting the port/network information from attach interface API
-+to pci_request, which already had API (network/neutron v2 API).
++to a pci request. The API to create a PCI request already exists.
 +
 +The second thing is alloc the pci device on the host (nova/compute/manager).
 +Libvirt has already supported generating the pci xml for server, and it can
@@ -101,7 +101,8 @@ index 0000000..f24297b
 +
 +detach_interface
 +----------------
-+We need to refresh PCI stats after detach a SR-IOV port.
++We need to refresh PCI status to free the device object after detach a SR-IOV
++port.
 +
 +
 +Alternatives
@@ -190,6 +191,9 @@ index 0000000..f24297b
 +drivers. Cisco Neutron CI and Mellanox External Testing need to be enhanced in
 +support of SR-IOV tempest testing.
 +
++Also intel has been working on getting a PCI CI up and voting on Nova
++[INTEL_PCI_CI]_. External testing will be enhanced after this CI is finished.
++
 +
 +Documentation Impact
 +====================
@@ -213,6 +217,8 @@ index 0000000..f24297b
 +  <http://www.libvirt.org/formatdomain.html#elementsNICSDirect>`_
 +.. [ENHANCE_PCI_WHITELIST] `Enhance PCI whitelist
 +  <https://review.openstack.org/#/c/99043/>`_
++.. [INTEL_PCI_CI] `Intel PCI CI
++  <https://wiki.openstack.org/wiki/ThirdPartySystems/Intel-PCI-CI>`_
 -- 
 1.9.1
 

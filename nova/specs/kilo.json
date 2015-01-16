@@ -66,6 +66,9 @@
             "138627", 
             "137996"
         ], 
+        "Add totalSecurityGroupRulesUsed to the quota limits": [
+            "145689"
+        ], 
         "Check that a service isn't running before deleting it": [
             "131633"
         ], 
@@ -86,18 +89,12 @@
         ]
     }, 
     "Block Storage": {
+        "Allow direct access to LVM volumes if supported by Cinder": [
+            "127318"
+        ], 
         "Cache data from volumes on local disk": [
             "138292", 
             "138619"
-        ], 
-        "Give additional info in BDM when source type is \"blank\"": [
-            "140133"
-        ], 
-        "Support Cinder Volume Multi-attach": [
-            "139580"
-        ],
-	"Allow direct access to LVM volumes if supported by Cinder": [
-            "127318"
         ], 
         "Enhance iSCSI volume multipath support": [
             "134299"
@@ -105,14 +102,23 @@
         "Failover to alternative iSCSI portals on login failure": [
             "137468"
         ], 
+        "Give additional info in BDM when source type is \"blank\"": [
+            "140133"
+        ], 
         "Implement support for a DRBD driver for Cinder block device access": [
             "134153"
+        ], 
+        "Poll volume status": [
+            "142828"
         ], 
         "Refactor ISCSIDriver to support other iSCSI transports besides TCP": [
             "130721"
         ], 
         "StorPool volume attachment support": [
             "115716"
+        ], 
+        "Support Cinder Volume Multi-attach": [
+            "139580"
         ], 
         "Support iSCSI live migration for different iSCSI target": [
             "132323"
@@ -141,20 +147,23 @@
         ]
     }, 
     "Database": {
+        "Develop and implement a profiler for SQL requests": [
+            "142078"
+        ], 
+        "Enforce instance uuid uniqueness in the SQL database": [
+            "128097"
+        ], 
         "Nova db purge utility": [
             "132656"
         ], 
         "Online schema change options": [
             "102545"
         ], 
-        "Validate database migrations and model'": [
-            "134984"
-        ],
-        "Enforce instance uuid uniqueness in the SQL database": [
-            "128097"
-        ], 
         "Support DB2 as a SQL database": [
             "141097"
+        ], 
+        "Validate database migrations and model'": [
+            "134984"
         ]
     }, 
     "Hypervisor: Docker": {
@@ -170,16 +179,16 @@
     "Hypervisor: Hyper-V": {
         "Allow volumes to be stored on SMB shares instead of just iSCSI": [
             "102190"
-        ],
-	"Instance hot resize": [
+        ], 
+        "Instance hot resize": [
             "141219"
         ]
     }, 
     "Hypervisor: Ironic": {
         "Add config drive support": [
             "98930"
-        ],
-	"Pass through flavor capabilities to ironic": [
+        ], 
+        "Pass through flavor capabilities to ironic": [
             "136104"
         ]
     }, 
@@ -315,6 +324,9 @@
         "Allow portions of an instance's uuid to be configurable": [
             "130451"
         ], 
+        "Allow the resize of ephemeral disks during resize": [
+            "145736"
+        ], 
         "Attempt to schedule cinder volumes \"close\" to instances": [
             "130851", 
             "131051", 
@@ -416,6 +428,9 @@
         "Add instance count on the hypervisor as a weight": [
             "127871"
         ], 
+        "Add soft affinity support for server group": [
+            "140017"
+        ], 
         "Allow extra spec to match all values in a list by adding the ALL-IN operator": [
             "138698"
         ], 
@@ -424,6 +439,9 @@
         ], 
         "Allow the remove of servers from server groups": [
             "136487"
+        ], 
+        "Cache aggregate metadata": [
+            "141846"
         ], 
         "Convert get_available_resources to use an object instead of dict": [
             "133728"
@@ -436,6 +454,9 @@
         ], 
         "Decouple services and compute nodes in the SQL database": [
             "126895"
+        ], 
+        "Distribute PCI Requests Across Multiple Devices": [
+            "142094"
         ], 
         "Enable adding new scheduler hints to already booted instances": [
             "134746"
@@ -478,9 +499,6 @@
         ], 
         "Trusted computing support": [
             "133106"
-        ],
-        "Add soft affinity support for server group": [
-            "140017"
         ]
     }, 
     "Scheduling": {
@@ -489,14 +507,14 @@
         ]
     }, 
     "Security": {
+        "Make key manager interface interoperable with Barbican": [
+            "140144"
+        ], 
         "Provide a reference implementation for console proxies that uses TLS": [
             "126958"
         ], 
         "Strongly validate the tenant and user for quota consuming requests with keystone": [
             "92507"
-        ],
-        "Make key manager interface interoperable with Barbican": [
-            "140144"
         ]
     }, 
     "Service Groups": {
@@ -515,8 +533,10 @@
             "128304", 
             "133658", 
             "131740", 
-            "137995",
-	    "138065"
+            "137995", 
+            "138065", 
+            "141753", 
+            "146963"
         ]
     }, 
     "__previously_approved__": [

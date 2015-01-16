@@ -1,4 +1,4 @@
-From e11d8ebd7898ed6417ac2410f3e6a86f6f35c2a0 Mon Sep 17 00:00:00 2001
+From 975187ff190046693097911020bd15d52181d7c1 Mon Sep 17 00:00:00 2001
 From: Tomoki Sekiyama <tomoki.sekiyama@hds.com>
 Date: Thu, 13 Nov 2014 12:03:54 -0500
 Subject: [PATCH] Add spec for 'Enhance iSCSI volume multipath support'
@@ -9,16 +9,16 @@ get multiple iSCSI portals/iqns/luns to access a volume (LU) from Cinder.
 Change-Id: I0b1f3f33c7f37abef56b4f12449180d314a4a922
 blueprint: iscsi-multipath-enhancement
 ---
- .../kilo/approved/iscsi-multipath-enhancement.rst  | 156 +++++++++++++++++++++
- 1 file changed, 156 insertions(+)
+ .../kilo/approved/iscsi-multipath-enhancement.rst  | 160 +++++++++++++++++++++
+ 1 file changed, 160 insertions(+)
  create mode 100644 specs/kilo/approved/iscsi-multipath-enhancement.rst
 
 diff --git a/specs/kilo/approved/iscsi-multipath-enhancement.rst b/specs/kilo/approved/iscsi-multipath-enhancement.rst
 new file mode 100644
-index 0000000..b42581d
+index 0000000..914c85d
 --- /dev/null
 +++ b/specs/kilo/approved/iscsi-multipath-enhancement.rst
-@@ -0,0 +1,156 @@
+@@ -0,0 +1,160 @@
 +..
 + This work is licensed under a Creative Commons Attribution 3.0 Unported
 + License.
@@ -84,6 +84,10 @@ index 0000000..b42581d
 +
 +If multiple addresses are not returned from APIs, it should find multiple
 +targets using discovery, as in the existing design, for compatibility.
++
++Note that multipathd must be installed and running to use multipath features.
++If 'iscsi_use_multipath' is enabled but multipathd is not running, compute
++may raise an exception and abort attachment of volumes.
 +
 +Alternatives
 +------------

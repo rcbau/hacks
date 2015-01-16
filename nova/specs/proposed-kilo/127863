@@ -1,5 +1,5 @@
-From f7d89f264c86545cfec39297eac22ded66161d2c Mon Sep 17 00:00:00 2001
-From: He Jie Xu <xuhj@linux.vnet.ibm.com>
+From 8fcb235f07b12d544e2d1df0245c119f129cc71f Mon Sep 17 00:00:00 2001
+From: He Jie Xu <hejie.xu@intel.com>
 Date: Thu, 9 Oct 2014 15:46:08 +0800
 Subject: [PATCH] Add separated policy rule for each v2.1 api
 
@@ -11,16 +11,16 @@ Part of blueprint separated-policy-rule-v3-api
 
 Change-Id: I0a8d43ac3ae56b65e598fc0dc0fab40a36ee1a00
 ---
- .../kilo/approved/separated-policy-rule-v3-api.rst | 189 +++++++++++++++++++++
- 1 file changed, 189 insertions(+)
+ .../kilo/approved/separated-policy-rule-v3-api.rst | 186 +++++++++++++++++++++
+ 1 file changed, 186 insertions(+)
  create mode 100644 specs/kilo/approved/separated-policy-rule-v3-api.rst
 
 diff --git a/specs/kilo/approved/separated-policy-rule-v3-api.rst b/specs/kilo/approved/separated-policy-rule-v3-api.rst
 new file mode 100644
-index 0000000..263acf7
+index 0000000..34428f1
 --- /dev/null
 +++ b/specs/kilo/approved/separated-policy-rule-v3-api.rst
-@@ -0,0 +1,189 @@
+@@ -0,0 +1,186 @@
 +..
 + This work is licensed under a Creative Commons Attribution 3.0 Unported
 + License.
@@ -71,10 +71,7 @@ index 0000000..263acf7
 +
 +Project Priority
 +----------------
-+The kilo priorities list is currently not defined. However under the
-+currently proposed list of priorities it would fall under "User
-+Experience" as it significantly increases the ability for us to
-+improve the Nova API.
++None
 +
 +Proposed change
 +===============

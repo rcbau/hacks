@@ -1,4 +1,4 @@
-From 060d767578a59a7907d9638e682c5244e34788b0 Mon Sep 17 00:00:00 2001
+From 3e08183550ada9633d8bc12d905a6d3b6c0c0378 Mon Sep 17 00:00:00 2001
 From: Peter Penchev <openstack-dev@storpool.com>
 Date: Wed, 20 Aug 2014 20:11:41 +0300
 Subject: [PATCH] Add the StorPool volume attach/detach proposal.

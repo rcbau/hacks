@@ -1,9 +1,11 @@
-From f5b70f4dbe18b06b1b6d753de9674fad0149c569 Mon Sep 17 00:00:00 2001
+From 5af8cd3deb5304d7e366f6ec6868f443e98300f5 Mon Sep 17 00:00:00 2001
 From: Philipp Marek <philipp.marek@linbit.com>
 Date: Wed, 3 Dec 2014 07:17:19 +0100
 Subject: [PATCH] Connecting Nova to DRBD storage nodes directly.
 
 No iSCSI would be needed anymore.
+
+blueprint drbd-driver
 
 Change-Id: I66dd9feb9435945ab8eb7dcad4d0d5ece2095ccf
 ---

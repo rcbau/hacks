@@ -1,4 +1,4 @@
-From 69776894c77b123340f67e4e4791dc6453b76f5a Mon Sep 17 00:00:00 2001
+From 8452d65138f826f14a266f6b55688144f33dfef0 Mon Sep 17 00:00:00 2001
 From: Andrew Laski <andrew.laski@rackspace.com>
 Date: Fri, 21 Nov 2014 16:06:26 -0500
 Subject: [PATCH] Cells instance migration
@@ -10,25 +10,25 @@ bp cells-instance-migration
 
 Change-Id: Idc104f70820e2796aa0d093118e7e7fe15318986
 ---
- specs/kilo/approved/cells-instance-migration.rst | 158 +++++++++++++++++++++++
- 1 file changed, 158 insertions(+)
+ specs/kilo/approved/cells-instance-migration.rst | 167 +++++++++++++++++++++++
+ 1 file changed, 167 insertions(+)
  create mode 100644 specs/kilo/approved/cells-instance-migration.rst
 
 diff --git a/specs/kilo/approved/cells-instance-migration.rst b/specs/kilo/approved/cells-instance-migration.rst
 new file mode 100644
-index 0000000..535fc10
+index 0000000..d7c06ce
 --- /dev/null
 +++ b/specs/kilo/approved/cells-instance-migration.rst
-@@ -0,0 +1,158 @@
+@@ -0,0 +1,167 @@
 +..
 + This work is licensed under a Creative Commons Attribution 3.0 Unported
 + License.
 +
 + http://creativecommons.org/licenses/by/3.0/legalcode
 +
-+==========================================
++========================
 +Cells instance migration
-+==========================================
++========================
 +
 +https://blueprints.launchpad.net/nova/+spec/cells-instance-migration
 +
@@ -39,10 +39,9 @@ index 0000000..535fc10
 +Problem description
 +===================
 +
-+When Nova is partitioned into cells, the compute api needs to know which cell
-+to communicate with for a particular instance.  Instances that exist from
-+before this mapping was maintained need to have their location added to the
-+table.
++When Nova is partitioned into cells the compute api needs to know which cell to
++communicate with for a particular instance.  Instances that existed before this
++mapping was maintained need to have their location added to the table.
 +
 +Use Cases
 +----------
@@ -64,27 +63,36 @@ index 0000000..535fc10
 +The 'instance_mapping' table will be populated with data on which cell an
 +instance lives in.
 +
-+There are two cases to consider:
++This can be done via a nova-manage command that will be added to look up
++instances in a database and add instance_mapping data for them.  Additionally
++this table can be updated on an instance.save() if the mapping can be
++determined.
 +
-+In a deployment not using cellsv1 a new v2 cell should be added and then all
-+instances can be mapped to that cell.
++There are two cases to consider, starting from a non-cell deployment or
++starting with cellsv1:
 +
-+In a deployment using cellsv1 new v2 cells should be created with the same
-+names as the current cells and then instances can be mapped to the new cells
-+one at a time.
++If starting from a non-cells deployment:
 +
++* Add a new v2 cell configured to use the existing nova database and message
++  queue.
 +
-+And there are two methods we can use to populate this data.  If a v2 cell is
-+configured and we can match an instance to that cell then we can create the
-+mapping as the instance is accessed through its pre cells v2 method.
-+Additionally a new nova-manage command will be added to do an manual migration
-+at any time.
++* Instances will be added to the instance_mapping table on instance_obj.save()
++  calls.
++
++* All unpopulated instances can be added to the instance_mapping table with a
++  nova-manage command.
++
++If starting from a cells v1 deployment the procedure is the same but is handled
++on a cell by cell basis.  So each cell will be migrated as a new v2 cell is
++added and configured to use its database and message queue.  The nova-manage
++command will be written to operate on a single cell for each run.
++
 +
 +Alternatives
 +------------
 +
-+We could continue to use the nova-cells model in place today.  The downsides of
-+this have been discussed in the etherpad link in the references section.
++The alternatives to cells v1/v2 have been discussed prior to this spec.  In the
++cells v2 effort there is no alternative for this mapping requirement.
 +
 +Data model impact
 +-----------------
@@ -114,19 +122,16 @@ index 0000000..535fc10
 +Performance Impact
 +------------------
 +
-+On its own this change does not introduce a performance impact.  When it's used
-+by later specs it does introduce another database lookup for many actions
-+within Nova.  For example a 'nova show <uuid>' will require Nova to look up the
-+database that an instance is in before it can query it for instance data.  This
-+can be optimized later with a memcached cache of this mapping.
++There may be a tiny performance penalty for updating the mapping on an
++instance.save().
 +
 +Other deployer impact
 +---------------------
 +
 +Deployers will be provided with a new nova-manage command to trigger the
 +creation of the mappings.  This should be run once for a deployment not
-+currently using cells, and once in each cell for a deployment currently using
-+cells.  This migration can be run at any time but should be run a final time
++currently using cellsv1, and once in each cell for a deployment currently using
++cellsv1.  This migration can be run at any time but should be run a final time
 +before switching over to using cells v2.
 +
 +Developer impact
@@ -149,7 +154,11 @@ index 0000000..535fc10
 +Work Items
 +----------
 +
-+* Add database migration for 'instance_mapping' table.
++* Add nova-manage command to populate instance_mapping data for instances.  The
++  command should migrate one cell at a time, with a non-cell setup being
++  considered as one 'cell'.
++
++* Update instance.save() to populate the instance_mapping for an instance.
 +
 +
 +Dependencies

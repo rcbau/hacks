@@ -1,20 +1,20 @@
-From 32e6580d488ce05b25f2f10f892855d4e9546a16 Mon Sep 17 00:00:00 2001
+From dc5cddffe87d774316b0ba1439de3d3c9aabca33 Mon Sep 17 00:00:00 2001
 From: Irena Berezovsky <irenab@mellanox.com>
 Date: Wed, 22 Oct 2014 09:39:08 +0300
 Subject: [PATCH] Add spec for VIF Driver for SR-IOV InfiniBand
 
 Change-Id: I5673b2abeb21d16ed7fde553896ac8a32ed3881c
 ---
- specs/kilo/approved/vif-driver-ib-passthrough.rst | 144 ++++++++++++++++++++++
- 1 file changed, 144 insertions(+)
+ specs/kilo/approved/vif-driver-ib-passthrough.rst | 152 ++++++++++++++++++++++
+ 1 file changed, 152 insertions(+)
  create mode 100644 specs/kilo/approved/vif-driver-ib-passthrough.rst
 
 diff --git a/specs/kilo/approved/vif-driver-ib-passthrough.rst b/specs/kilo/approved/vif-driver-ib-passthrough.rst
 new file mode 100644
-index 0000000..daab5b3
+index 0000000..a21b15a
 --- /dev/null
 +++ b/specs/kilo/approved/vif-driver-ib-passthrough.rst
-@@ -0,0 +1,144 @@
+@@ -0,0 +1,152 @@
 +..
 + This work is licensed under a Creative Commons Attribution 3.0 Unported
 + License.
@@ -109,6 +109,11 @@ index 0000000..daab5b3
 +Infiniband Subnet Manager should be running to enable IB Fabric.
 +The 'ebrctl' utility should be installed on compute nodes.
 +
++Deployers need to be aware of the limitations:
++* There will be no smooth upgrade path from the out of tree solution [3] to
++the current solution.
++* The out of tree solution [3] will be deprecated.
++
 +Developer impact
 +----------------
 +
@@ -140,9 +145,12 @@ index 0000000..daab5b3
 +Testing
 +=======
 +
-+Unit tests will be added to validate these modifications.
-+Third party testing is already in place to verify the complete solution:
-+https://wiki.openstack.org/wiki/ThirdPartySystems/Mellanox_CI
++* Unit tests will be added to validate these modifications.
++* Adding Third party testing for nova with SR-IOV NIC (Ethernet and Infiniband)
++* Third party testing for neutron is already in place:
++  https://wiki.openstack.org/wiki/ThirdPartySystems/Mellanox_CI
++
++
 +
 +Documentation Impact
 +====================
@@ -153,11 +161,11 @@ index 0000000..daab5b3
 +References
 +==========
 +
-+* Infiniband openstack solution documentation:
++[1] Infiniband openstack solution documentation:
 +  https://wiki.openstack.org/wiki/Mellanox-Neutron-Icehouse-Redhat#InfiniBand_Network
-+* Mellanox ML2 Mechanism Driver:
++[2] Mellanox ML2 Mechanism Driver:
 +  https://github.com/openstack/neutron/blob/master/neutron/plugins/ml2/drivers/mlnx/mech_mlnx.py
-+* Out of the tree VIF_TYPE_HOSTDEV vif driver:
++[3] Out of the tree VIF_TYPE_HOSTDEV vif driver:
 +  https://github.com/mellanox-openstack/mellanox-vif
 -- 
 1.9.1

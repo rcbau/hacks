@@ -16,6 +16,8 @@ with open('proposed-%s/__abandoned__' % release) as f:
     abandoned = json.loads(f.read())
 with open('proposed-%s/__implemented__' % release) as f:
     implemented = json.loads(f.read())
+with open('proposed-%s/__spec_exception__' % release) as f:
+    requested_spec_exception = json.loads(f.read())
 
 for topic in sorted(j):
     if topic == '__ignore__':
@@ -40,6 +42,8 @@ for topic in sorted(j):
                 attrs.append('abandoned')
             if review in implemented:
                 attrs.append('implemented')
+            if review in requested_spec_exception:
+                attrs.append('requested a spec exception')
             if attrs:
                 attr_str = ' <b>(%s)</b>' % ', '.join(attrs)
 

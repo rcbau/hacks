@@ -1,4 +1,4 @@
-From 5cc4f4e251d4dcca492b697aa6d320486bc65f65 Mon Sep 17 00:00:00 2001
+From 6c62aa335c2ebb72eedd11d06cde906679440368 Mon Sep 17 00:00:00 2001
 From: Andrew Laski <andrew.laski@rackspace.com>
 Date: Fri, 12 Dec 2014 15:34:45 -0500
 Subject: [PATCH] DRAFT Proposal for cells v2 scheduling and build requests
@@ -12,16 +12,16 @@ blueprint cells-scheduling
 
 Change-Id: I9fbbb107cb148aee4404f6fa3f06021edf3fa5b4
 ---
- specs/kilo/approved/cells-scheduling.rst | 162 +++++++++++++++++++++++++++++++
- 1 file changed, 162 insertions(+)
+ specs/kilo/approved/cells-scheduling.rst | 179 +++++++++++++++++++++++++++++++
+ 1 file changed, 179 insertions(+)
  create mode 100644 specs/kilo/approved/cells-scheduling.rst
 
 diff --git a/specs/kilo/approved/cells-scheduling.rst b/specs/kilo/approved/cells-scheduling.rst
 new file mode 100644
-index 0000000..7b17144
+index 0000000..6e472d5
 --- /dev/null
 +++ b/specs/kilo/approved/cells-scheduling.rst
-@@ -0,0 +1,162 @@
+@@ -0,0 +1,179 @@
 +..
 + This work is licensed under a Creative Commons Attribution 3.0 Unported
 + License.
@@ -67,34 +67,35 @@ index 0000000..7b17144
 +the interface for passing the build to a cell, and storing the instance request
 +before scheduling.
 +
-+When an API request is made to build an instance it expects to receive a
-+response in a timely manner, and that an instance uuid has been assigned and
-+all relevant details of the request stored in a persistent way.  This presents
-+a few challenges to overcome.  The API request needs to return before we have
-+made a call to the scheduler in order to be responsive.  But since we have not
-+called the scheduler we can't place the instance info into a cells instance
-+table.  So I'm proposing a table at the api level to store the details of the
-+API request so that they can be persisted before the API responds.
++When an API request is made to build an instance there is a certain response
++contract that we need to honor.  This means that we need to have stored certain
++information from the request such as image, flavor, name, uuid, etc...  In a
++cellsv2 setup this poses a challenge because that would have been stored in the
++instance table, but we don't know which cell instance table to put it in yet.
++There will need to be a table in the api database which can persist information
++about an instance build request until it has been scheduled and created within
++a cell.
 +
-+The scheduler then needs to be queried in order to pick a cell, or (cell, host)
-+tuple.  This could be done in a greenthread in the nova-api service, conductor
-+could be modified to run at the api level as well for this, or a new service
-+could be added similar to the current cells service.
++The scheduler then needs to be queried in order to pick a (cell, host) tuple.
++This could be done in a greenthread in the nova-api service or conductor could
++be modified and run at the api level for this.  For clarity, this would be
++handled by the nova-scheduler and not an addition to the current cells
++scheduler.
 +
-+Then once a scheduling decision has been made the build request needs to be
-+sent into the cell.  At that point it's possible that the scheduler has picked
-+a host, or that an admin has targeted a host, so there should be an optional
-+host argument passed down.  If that host argument is not set then the conductor
-+service handling the build process within the cell should query the scheduler
-+for a host placement.  The reason for this optionality is that some deployments
-+may want a single scheduler that picks a host up front and other deployments
-+might want a scheduler to pick a cell and then for schedulers within each cell
-+to pick a host.
++In order to aid current cells users with moving from cellsv1 to cellsv2 I would
++add the possibility that the first scheduler will pick a cell but not a host.
++Then once the build request reaches the cell another scheduler call can be made
++to pick a host.  This adds a slight amount of complexity but will allow cellsv1
++users to migrate over to cellsv2 without needing to wait on large reworkings of
++the scheduler.
++
 +
 +Alternatives
 +------------
 +
-+We could continue to use the nova-cells model in place today.
++There are different variations of this proposal, such as using a two tiered
++scheduling system like cellsv1.  This spec is currently a forum to discuss
++this proposal against those alternatives.
 +
 +Data model impact
 +-----------------
@@ -102,6 +103,21 @@ index 0000000..7b17144
 +A new table would be added to the 'nova_api' database for storing build request
 +details and an instance uuid.  This starts to look a little like storing a task
 +to be completed.
++
++A model for this might look something like:::
++
++    CREATE TABLE `build_request` (
++      `uuid`,
++      `project_id`,
++      `flavor`,
++      `image_ref`,
++      `block_device_mapping`,
++      `metadata`,
++      `keypair`,
++      `availability_zone`,
++      `security_groups`,
++      ...
++    )
 +
 +REST API impact
 +---------------
@@ -184,6 +200,7 @@ index 0000000..7b17144
 +==========
 +
 +``https://etherpad.openstack.org/p/kilo-nova-cells``
++``https://etherpad.openstack.org/p/nova-cells-scheduling-requirements``
 -- 
 1.9.1
 

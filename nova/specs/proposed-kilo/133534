@@ -1,8 +1,10 @@
-From 5da051c196ebb32ab75bcf5e5b18dcbe0e2d4234 Mon Sep 17 00:00:00 2001
+From 8f0917548008ad35e13e7a6b33ef9413fdad30c9 Mon Sep 17 00:00:00 2001
 From: Nisha Agarwal <agarwalnisha1980@gmail.com>
 Date: Fri, 31 Oct 2014 13:06:45 +0530
-Subject: [PATCH] Enhance the ComputeCapabilities filter to accept the list as
- value.
+Subject: [PATCH] Allow multiple node capabilities
+
+Enhance the ComputeCapabilitiesFilter to allow multiple space-delimited
+values for a node capability key.
 
 Implements: blueprint ironic-enhance-compute-capabilities
 
@@ -14,7 +16,7 @@ Change-Id: I95302c737c09e3fad42080c75bb4b0e76a06e379
 
 diff --git a/specs/kilo/approved/ironic-enhance-compute-capabilities.rst b/specs/kilo/approved/ironic-enhance-compute-capabilities.rst
 new file mode 100644
-index 0000000..41b15e4
+index 0000000..4761e24
 --- /dev/null
 +++ b/specs/kilo/approved/ironic-enhance-compute-capabilities.rst
 @@ -0,0 +1,155 @@
@@ -30,8 +32,8 @@ index 0000000..41b15e4
 +
 +https://blueprints.launchpad.net/nova/+spec/ironic-enhance-compute-capabilities
 +
-+Nova has the filter ComputeCapabilities filter which selects the instances
-+when instance capabilities matches the extra_specs of the flavor. This allows
++Nova has the ComputeCapabilities filter which selects the nodes
++when nodes capabilities matches the extra_specs of the flavor. This allows
 +the node to be selected for deploying for uefi or bios. The filter is not
 +capable of selecting the same node for both methods of deployment, even when
 +the hardware is capable of both, and therefore currently requires the
@@ -41,7 +43,7 @@ index 0000000..41b15e4
 +===================
 +
 +The ComputeCapabilities filter acts for static selection of node as per current
-+implementation. The ComputeCapabilities filter is not capable to choose if the
++implementation. The ComputeCapabilities filter is not able to choose if the
 +values provided is a list. There shall be filters which accepts the values
 +as list, Example : 'supported_boot_modes:bios uefi',
 +'boot_options:netboot localboot'.
@@ -66,9 +68,9 @@ index 0000000..41b15e4
 +Use Cases
 +----------
 +
-+Nova filter ComputeCapabilities filter selects the instances
++Nova ComputeCapabilities filter selects the instances
 +when instance capabilities matches the extra_specs of the flavor. This allows
-+the node to be selected for deploying for uefi or bios. WIth the changes,
++the node to be selected for deploying for uefi or bios. With the changes,
 +the filter will be able to select the same node for both the methods of
 +deployment when the hardware is capable of both.
 +
@@ -87,7 +89,7 @@ index 0000000..41b15e4
 +------------
 +
 +The same can be achieved by adding a new filter ComputeCapabilitiesList
-+filter in the schedular. It adds a new filter to the
++filter in the scheduler. It adds a new filter to the
 +'nova/scheduler/filters'. This filter would select the node based on
 +given value which can match either value in the list of the capabilities.
 +
@@ -146,13 +148,13 @@ index 0000000..41b15e4
 +----------
 +
 +
-+* Enhance the ComputeCapabilities filter to accept the list also as
-+  value.
++* Enhance the ComputeCapabilities filter to parse the possible multiple values
++  for a key and select the node for scheduling on a match.
 +
 +Example : "capabilities='supported_boot_modes:bios uefi secure-boot,key2:val2"
 +
-+The capabilities filter does not read beyond the comma,n a key:value pair,
-+hence the delimiter used is space.
++The ironic virt driver breaks the key:value pairs using comma as a delimiter,
++hence the delimiter used between list items is a single space character.
 +
 +Dependencies
 +============
