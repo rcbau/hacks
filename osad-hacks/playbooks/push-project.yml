@@ -1,0 +1,54 @@
+- name: Install wheel
+  hosts: "{{ project }}_all"
+  pre_tasks:
+    - name: Build wheel
+      shell: |
+        python ./setup.py --quiet bdist_wheel \
+          --dist-dir "{{ local_wheel_staging_dir }}"
+      args:
+        chdir: "{{ source_path }}"
+      run_once: true
+      delegate_to: 127.0.0.1
+
+    - shell: |
+        python ./setup.py --fullname
+      args:
+        chdir: "{{ source_path }}"
+      register: wheel_name
+      run_once: true
+      delegate_to: 127.0.0.1
+
+    - name: Copy wheel to servers
+      copy:
+        src: "{{ local_wheel_staging_dir }}/{{ item }}"
+        dest: "{{ remote_wheel_staging_dir }}/{{ item }}"
+      with_items:
+        - "{{ wheel_name.stdout }}-py2.py3-none-any.whl"
+
+    - name: Install wheel
+      pip:
+        name: "{{ remote_wheel_staging_dir }}/{{ item }}"
+      with_items:
+        - "{{ wheel_name.stdout }}-py2.py3-none-any.whl"
+
+  # This is a bit weird.  I _just_ want the "Restart services" task
+  # from this role.  Most flexible approach I can find is to disable
+  # all tasks (just fetch the foo_service_names variable), and
+  # cut+paste the single desired action.  Alternatives sought.
+  roles:
+    - role: "os_{{ project }}"
+      when: false
+  post_tasks:
+    - name: Restart {{ project }} services
+      service:
+        name: "{{ item }}"
+        state: restarted
+        pattern: "{{ item }}"
+      with_items: "{{ project }}_service_names"
+      failed_when: false
+
+  vars:
+    project: nova
+    local_wheel_staging_dir: "/tmp/dev-push-staging"
+    remote_wheel_staging_dir: "/tmp"
+    source_path: .
