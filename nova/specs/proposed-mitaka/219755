@@ -1,0 +1,173 @@
+From abff881e9d796b54330de68df253e49596593047 Mon Sep 17 00:00:00 2001
+From: jichenjc <jichenjc@cn.ibm.com>
+Date: Thu, 27 Aug 2015 19:43:24 +0800
+Subject: [PATCH] Add list-server-invalid-option-as-error.rst
+
+Add list-server-invalid-option-as-error blue print.
+
+Change-Id: I00040e7b1e3f5d545baed16a05126c2c4028992c
+---
+ .../list-server-invalid-option-as-error.rst        | 151 +++++++++++++++++++++
+ 1 file changed, 151 insertions(+)
+ create mode 100644 specs/mitaka/approved/list-server-invalid-option-as-error.rst
+
+diff --git a/specs/mitaka/approved/list-server-invalid-option-as-error.rst b/specs/mitaka/approved/list-server-invalid-option-as-error.rst
+new file mode 100644
+index 0000000..10d5127
+--- /dev/null
++++ b/specs/mitaka/approved/list-server-invalid-option-as-error.rst
+@@ -0,0 +1,151 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++================================
++Validate options to list-servers
++================================
++
++<blueprint link>
++
++Users sometimes make spelling and other mistakes. It's important that Nova
++validate requests or a user may think Nova is answering a different query than
++the one it's actually answering.
++
++Problem description
++===================
++
++Suppose the following instances exist::
++
++  ID                                   | Server
++  8cf19a86-c523-4155-9bce-f78837be8c7d | test1.example.com
++  b15ef5bf-35c0-4c83-acd9-f8129fcc364b | test2.example.com
++  e0787cd2-5781-4007-b42f-ebee6a0bf1ec | test3.example.com
++
++When we run a query like::
++
++  nova.servers.list(detailed=True, search_opts={'id': 'FAKE-UUID'})
++
++We get all the instances back, despite none of them having an 'id' matching
++'FAKE-UUID'.
++
++Use Cases
++---------
++
++Sam writes a script to query Nova for certain names and if duplicates are
++found, delete the first one. Unfortunately Sam makes a mistake in the options.
++This causes Nova to return all servers every request. Sam's script deletes the
++first one for each name, slowly destroying all servers. This makes Sam sad.
++
++Project Priority
++----------------
++
++None.
++
++Proposed change
++===============
++
++Validation will be added to the ``/servers/detail`` endpoint so that only those
++options the user has permission to use are accepted. The presence of any other
++option will cause Nova to reject the request.
++
++As this involves a change in API behaviour, the microversion will be bumped.
++
++Alternatives
++------------
++
++We could warn the user but attempt to fulfill the request anyway. This brings
++with it a substantial risk of a dumb script not noticing the warning and
++continuing with unexpected data, as described in _`Use Cases`.
++
++Data model impact
++-----------------
++
++None.
++
++REST API impact
++---------------
++
++The ``GET /servers/detail`` endpoint will be modified to validate options.
++Although admins are permitted more options than non-admins, requests
++referencing unknown options will still be rejected. Rejected requests will have
++an HTTP 400 code (BadRequest). The body will be a list of strings, each
++describing an invalid option.
++
++Security impact
++---------------
++
++None.
++
++Notifications impact
++--------------------
++
++None.
++
++Other end user impact
++---------------------
++
++novaclient will be updated as well.
++
++Performance Impact
++------------------
++
++None.
++
++Other deployer impact
++---------------------
++
++None.
++
++Developer impact
++----------------
++
++None.
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  jichenjc
++
++
++Work Items
++----------
++
++* Validate options.
++
++Dependencies
++============
++
++None.
++
++Testing
++=======
++
++Unit test.
++
++Documentation Impact
++====================
++
++Specify that invalid options will be rejected.
++
++References
++==========
++
++https://bugs.launchpad.net/nova/+bug/1410949
++
++History
++=======
++
++.. list-table:: Revisions
++   :header-rows: 1
++
++   * - Release Name
++     - Description
++   * - Mitaka
++     - Introduced
+-- 
+2.1.0
+

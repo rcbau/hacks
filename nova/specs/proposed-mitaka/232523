@@ -1,0 +1,221 @@
+From 74fe384d00a3522d16ce055f521d9ff03dda8eaa Mon Sep 17 00:00:00 2001
+From: jichenjc <jichenjc@cn.ibm.com>
+Date: Tue, 6 Oct 2015 01:11:57 +0800
+Subject: [PATCH] Add add-deleted-flag-during-flavor-query
+
+Add add-deleted-flag-during-flavor-query spec.
+
+APIImpact
+
+Change-Id: If7a639fc307da2b1abf0fc616fa91e47383b4534
+---
+ .../add-deleted-flag-during-flavor-query.rst       | 197 +++++++++++++++++++++
+ 1 file changed, 197 insertions(+)
+ create mode 100644 specs/mitaka/approved/add-deleted-flag-during-flavor-query.rst
+
+diff --git a/specs/mitaka/approved/add-deleted-flag-during-flavor-query.rst b/specs/mitaka/approved/add-deleted-flag-during-flavor-query.rst
+new file mode 100644
+index 0000000..e7f72ef
+--- /dev/null
++++ b/specs/mitaka/approved/add-deleted-flag-during-flavor-query.rst
+@@ -0,0 +1,197 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++============================================
++API: Add deleted flag to flavor query output
++============================================
++
++When a flavor is deleted, it can be queried internally but
++nova should tell end user it's a deleted flavor.
++
++
++Problem description
++===================
++
++When a flavor is deleted, currently nova will return the info
++even if it's deleted through API.
++
++::
++  nova flavor-list
++  +-----+-----------+-----------+------+-----------+------+-------+
++  | ID  | Name      | Memory_MB | Disk | Ephemeral | Swap | VCPUs |
++  +-----+-----------+-----------+------+-----------+------+-------+
++  | 1   | m1.tiny   | 512       | 1    | 0         |      | 1     |
++  | 2   | m1.small  | 2048      | 20   | 0         |      | 1     |
++  | 23  | bar       | 8192      | 23   | 0         |      | 6     |
++  +-----+-----------+-----------+------+-----------+------+-------+
++
++  nova flavor-delete 23
++  +----+------+-----------+------+-----------+------+-------+
++  | ID | Name | Memory_MB | Disk | Ephemeral | Swap | VCPUs |
++  +----+------+-----------+------+-----------+------+-------+
++  | 23 | bar  | 8192      | 23   | 0         |      | 6     |
++  +----+------+-----------+------+-----------+------+-------+
++
++  nova flavor-show 23
++  +----------------------------+-------+
++  | Property                   | Value |
++  +----------------------------+-------+
++  | OS-FLV-DISABLED:disabled   | False |
++  | OS-FLV-EXT-DATA:ephemeral  | 0     |
++  | disk                       | 23    |
++  | extra_specs                | N/A   |
++  | id                         | 23    |
++  | name                       | bar   |
++  | os-flavor-access:is_public | True  |
++  | ram                        | 8192  |
++  | rxtx_factor                | 1.0   |
++  | swap                       |       |
++  | vcpus                      | 6     |
++  +----------------------------+-------+
++
++Use Cases
++----------
++
++Authorized user or admin may create flavor then delete it.
++After the flavor is deleted, user might query it by accident
++or on purpose, API layer should tell user it's delete.
++
++Project Priority
++-----------------
++
++None
++
++Proposed change
++===============
++
++Use microversion because this change is not backward compatible.
++When the flavor is deleted, a deleted = True indication will
++be added in the API layer, otherwise delete = False will be returned.
++
++Alternatives
++------------
++
++None
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++::
++
++  By giving the executions after 'Problem description', REST API
++  -X GET http://x.x.x.x:8774/v2/xxxxx/flavors/23 will return following
++  if the flavor 23 is deleted.
++
++  will get reponse like:
++  {
++  "ram": 8192,
++  "OS-FLV-DISABLED:disabled": false,
++  "vcpus": 6,
++  "swap": "",
++  "os-flavor-access:is_public": true,
++  "rxtx_factor": 1.0,
++  "OS-FLV-EXT-DATA:ephemeral": 0,
++  "disk": 23,
++  "id": "23",
++  "deleted": true
++  }
++
++  GET http://x.x.x.x:8774/v2/xxxxx/flavors/23 will return following
++  if the flavor 23 is active.
++
++  will get reponse like:
++  {
++  "ram": 8192,
++  "OS-FLV-DISABLED:disabled": false,
++  "vcpus": 6,
++  "swap": "",
++  "os-flavor-access:is_public": true,
++  "rxtx_factor": 1.0,
++  "OS-FLV-EXT-DATA:ephemeral": 0,
++  "disk": 23,
++  "id": "23",
++  "deleted": false
++  }
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++Python nova client will be update.
++
++Performance Impact
++------------------
++
++None
++
++Other deployer impact
++---------------------
++
++None
++
++Developer impact
++----------------
++
++None
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  jichenjc
++
++Work Items
++----------
++
++Use microversion to append deleted flag to query output.
++
++Dependencies
++============
++
++None
++
++Testing
++=======
++
++None
++
++Documentation Impact
++====================
++
++The deleted flag in the output of flavor query output.
++
++References
++==========
++
++https://bugs.launchpad.net/nova/+bug/1485767
++
++History
++=======
++
++.. list-table:: Revisions
++   :header-rows: 1
++
++   * - Release Name
++     - Description
++   * - Mitaka
++     - Introduced
+-- 
+2.1.0
+

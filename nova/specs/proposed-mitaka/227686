@@ -1,0 +1,313 @@
+From 0e89f6ce9fa48f4bc1750f64bd94b2daa129bec9 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Stanis=C5=82aw=20Pitucha?= <stanislaw.pitucha@hp.com>
+Date: Fri, 25 Sep 2015 15:53:07 +1000
+Subject: [PATCH] [WIP] SSH host certificates
+
+RFC:
+
+While the idea is possible to implement and will work, there's a problem
+of secure host key storage left. The host keys should not be permamently
+available in nova's database.
+
+The most trivial way to achieve it would be to periodically clean host
+keys created X minutes ago. (so certainly after the host booted and had
+the chance to copy it) Another option would be to make the metadata
+writable/erasable, but that's going against the current design.
+
+Yet another option would be to only allow host key signing where direct
+access to the spawned instance is available before boot (libguestfs,
+etc.) This has the extra benefit of not preserving the key in the
+database at all.
+
+Suggestions, alternatives and comments on the rest of the spec welcome.
+
+Change-Id: Ie56634789ba3ac92f9a59110bc66d37f1a7c74dd
+---
+ specs/mitaka/approved/ssh-host-certificates.rst | 275 ++++++++++++++++++++++++
+ 1 file changed, 275 insertions(+)
+ create mode 100644 specs/mitaka/approved/ssh-host-certificates.rst
+
+diff --git a/specs/mitaka/approved/ssh-host-certificates.rst b/specs/mitaka/approved/ssh-host-certificates.rst
+new file mode 100644
+index 0000000..faeb185
+--- /dev/null
++++ b/specs/mitaka/approved/ssh-host-certificates.rst
+@@ -0,0 +1,275 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++================================
++Support for signed SSH host keys
++================================
++
++https://blueprints.launchpad.net/nova/+spec/ssh-host-certificates
++
++Add support for SSH host certificates to Nova. This allows users to trust the
++instance they connect to, without relying on the current assumption that the
++first connection always reaches the trusted host. It also simplifies the first
++connection during high churn of instances.
++
++Problem description
++===================
++
++There are two aspects of the first connection to a new instance which are not
++optimal right now. The first issue is that the user must trust they're
++connecting to the right host. There are situations like IP address typos and
++configuration errors which can lead to connections to unexpected hosts. Since
++the new host key is usually not known at this point, that user cannot easily
++tell that they've reached untrusted host.
++
++The second issue is that instances reusing old IPs will have entries in
++:file:`.ssh/known_hosts` that do not match the host key anymore.
++
++Use Cases
++----------
++
++1. After registering an SSH signing key with Nova, user can connect to a new
++   instance and be sure it's one of their instances.
++
++2. After registering an SSH signing key with Nova, user can terminate and spawn
++   new instances reusing the same IPs without the need to remove cached
++   :file:`.ssh/known_hosts` entries.
++
++Project Priority
++-----------------
++
++None
++
++Proposed change
++===============
++
++Three components require a change to support this blueprint: Nova, novaclient,
++CloudInit.
++
++Nova requires a change which allows it to store SSH private keys for a project,
++generate and sign host keys, and publish the host keys along with the
++certificate in the instance metadata. Then it requires an API update to support
++uploading (or generating) and deleting said keys. All of those operations
++correspond closely to what currently happens with SSH pubic keys - this should
++allow a lot of code reuse.
++
++novaclient requires a change to interact with the API defined above. This
++should also be very similar to existing SSH public key operations.
++
++CloudInit requires a change to read the SSH host key and certificate from the
++instance metadata and write them to the file that ``sshd`` can use. ``sshd``
++must be configured before the first run, or alternatively it can be restarted
++after new keys are in place.
++
++Alternatives
++------------
++
++Some distributions print out the host key to the console output, which can be
++then used by the user to verify the instance. This is not standardised in any
++way and not required. It requires custom scripting to support.
++
++Another way to obtain a trusted host key is to request signing inside of
++cloudinit itself, however this again requires trusting a newly created instance
++and potentially making the metadata service an RPC endpoint rather than
++readonly service.
++
++Instead of creating a new set of routes, keys could be stored along existing
++SSH keypairs. This is a bad idea in case user confuses the meaning of keypairs.
++It would also require adding new information to existing key listing.
++
++Data model impact
++-----------------
++
++This change requires only additions to schemas.
++
++New table needs to store the following information:
++
++* project id
++* SSH CA (signing) key
++* key type (``dsa``, ``ecdsa``, ``ed25519``, ``rsa``)
++* standard attributes (creation/deletion information and unique id)
++
++The instance table needs a new column referencing the host key id. Initially
++this should be unassigned (NULL) for all existing instances.
++
++REST API impact
++---------------
++
++A set of ``GET``, ``POST``, ``DELETE`` endpoints will be created, corresponding
++to ones already implemented for ``os-keypairs``. These should be available for
++routes:
++
++::
++
++    /v2/{tenant_id}/os-sshca
++    /v2/{tenant_id}/os-sshca/{name}
++
++Route ``POST /v2/{tenant_id}/servers`` will require an additional parameter to
++specify the SSH CA key.
++
++Security impact
++---------------
++
++This change introduces a new secret/private element into the database. Host key
++signing requires Nova to hold this key and only sign instances started by the
++related project.
++
++In the future, this function could be optionally delegated to a Barbican
++service instead.
++
++In practice there's no new danger for the ``sshd`` communication itself. While
++the host key is generated and deployed by Nova now, similar capability was
++already possible using file injections or just modifying the image before. A
++compromised Nova instance does not gain any new capabilities from this change.
++
++Generated host keys MUST be isolated from other users or the system and deleted
++as soon as they're loaded into metadata.
++
++Notifications impact
++--------------------
++
++Uploading, modifying, deleting SSH signing keys should result in an audit
++trail - possibly via CADF messages.
++
++Other end user impact
++---------------------
++
++To use the new functionality user needs to explicitly enable it by uploading or
++generating the key and by enabling it on the new instance. Modification of
++exisiting instances is not trivial and would not be supported.
++
++Proposed new calls for host SSH key management. Following ``ssh-keygen``
++documentation, the signing key is called the Certificate Authority key, so the
++prefix is ``ssh-ca``:
++
++    nova ssh-ca-add [--priv-key <priv-key>|[--key-type <type>]] <name>
++    nova ssh-ca-delete <name>
++    nova ssh-ca-list
++    nova ssh-ca-show <name>
++
++The optional ``--priv-key`` option decides if the key is uploaded from the
++user, or generated on server side. If the key is not provided, an optional
++``--key-type`` option defines type of key is it. Possible options are ``dsa``,
++``ecdsa``, ``ed25519``, ``rsa``. (``rsa1`` should not be supported)
++
++Similarily to SSH keypairs, the CA private key should not be possible to
++download once it's generated. (even though the system keeps a copy of it) If
++the new signing key is generated by Nova, it does not need to be displayed to
++the user. ``ssh-ca-show`` command should only show the public key, formatted
++for use in SSH :file:``known_hosts``
++
++Instance spawning also requires a new parameter:
++
++    nova boot ... --ssh-ca <name> ...
++
++Documentation has to include the fact that when ``--ssh-ca`` is specified, the
++ssh host key is generated by the cloud infrastructure, not the instance.
++
++There's a new failure mode possible when booting a host: the SSH CA key has a
++limited lifetime and may not be valid anymore at the time of the request. This
++should result in a clear error message.
++
++Performance Impact
++------------------
++
++Generating new host keys and signing them has a cost on the order of tens of
++milliseconds. In comparison to other operations in the instance creation
++process, it should not be noticable. Instance boot time should be faster by the
++same amount of time since it doesn't need to generate the key anymore.
++
++Other deployer impact
++---------------------
++
++SSH utilities need to be available to Nova, which should be the case on all
++UNIX-like deployments by default, but may need extra configuration on other
++systems. In the first iteration, only ``ssh-keygen`` from OpenSSH project will
++be supported to simplify implementation.
++
++For systems with customised ACL / MAC systems, it may be necessary to adjust
++the rules to allow the ``nova-api`` process to run the ``ssh-keygen`` command.
++
++Developer impact
++----------------
++
++None (this is an isolated feature)
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  stanislaw-pitucha
++
++Other contributors:
++  welcome to join
++
++Work Items
++----------
++
++* nova-api: SSH CA key upload, generation, management
++* nova-api: SSH host key generation and signing on instance creation
++* nova-api: populating metadata with SSH host key and certificate
++* novaclient: SSH CA key management
++* novaclient: instance creation parameter for host key spawning
++* cloudinit: provisioning the SSH host key and certificate onto the instance
++
++
++Dependencies
++============
++
++SSH utilities for key generation need to be present on the host.
++
++
++Testing
++=======
++
++* End to end key management (create, upload, show, delete)
++
++* Other projects cannot access signing key
++
++* Expired host keys prevent creation of instance if host key signing is
++  requested
++
++* Instance gets created with signed host key, if configured (tempest test)
++
++
++Documentation Impact
++====================
++
++New novaclient and nova options.
++
++Short section about what SSH host certificates are and why are they useful.
++
++
++References
++==========
++
++* `Explanation of SSH certificates`_
++
++* `OpenSSH announcement`_
++
++
++History
++=======
++
++Optional section for Mitaka intended to be used each time the spec
++is updated to describe new design, API or any database schema
++updated. Useful to let reader understand what's happened along the
++time.
++
++.. list-table:: Revisions
++   :header-rows: 1
++
++   * - Release Name
++     - Description
++   * - Mitaka
++     - Introduced
++
++:: _Explanation of SSH certificates: https://www.digitalocean.com/community/tutorials/how-to-create-an-ssh-ca-to-validate-hosts-and-clients-with-ubuntu
++:: _OpenSSH announcement: http://www.openssh.com/txt/release-5.4
+-- 
+2.1.0
+

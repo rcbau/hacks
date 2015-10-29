@@ -1,0 +1,348 @@
+From 5e43dee00ddb88d4422d0d700f27424a5e3cf92c Mon Sep 17 00:00:00 2001
+From: Rui Chen <chenrui.momo@gmail.com>
+Date: Wed, 1 Apr 2015 14:17:09 +0800
+Subject: [PATCH] CreateVM supports subnet specified
+
+Currently the network info specified as part of
+server creation is limited to network-id, port-id,
+and ip address. When a network has multiple subnets
+then we should be able to specify a subnet-id.
+
+APIImpact
+DocImpact
+Previously-approved: juno
+blueprint selecting-subnet-when-creating-vm
+
+Change-Id: Iadbf9dd4d24e73f96ba13587efc1818177f0df14
+---
+ .../approved/selecting-subnet-when-creating-vm.rst | 318 +++++++++++++++++++++
+ 1 file changed, 318 insertions(+)
+ create mode 100644 specs/mitaka/approved/selecting-subnet-when-creating-vm.rst
+
+diff --git a/specs/mitaka/approved/selecting-subnet-when-creating-vm.rst b/specs/mitaka/approved/selecting-subnet-when-creating-vm.rst
+new file mode 100644
+index 0000000..2cf26b3
+--- /dev/null
++++ b/specs/mitaka/approved/selecting-subnet-when-creating-vm.rst
+@@ -0,0 +1,318 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++==================================
++CreateVM supports subnet specified
++==================================
++
++https://blueprints.launchpad.net/nova/+spec/selecting-subnet-when-creating-vm
++
++Currently the network info specified as part of server creation is limited to
++network-id, port-id, and ip address. When a network has multiple subnets then
++we should be able to specify a subnet-id.
++
++This blueprint had been approved in juno:
++
++http://specs.openstack.org/openstack/nova-specs/specs/juno/approved/selecting-subnet-when-creating-vm.html
++
++According to the mitaka template to reedit it.
++
++Problem description
++===================
++
++Currently the network info specified as part of server creation is limited to
++network-id, port-id, and ip address.
++
++So if an network has multiple subnets in it, it's impossible to select
++which of the possible subnets a VM should be created in.
++You only could choose an ip address in one subnet and then create an instance.
++But this is not a convenient way. Moreover, this method is also not available
++for bulk instances creation.
++
++Use Cases
++---------
++
++As a End User, when a network has multiple subnets, I want to boot an instance
++in the specified subnet, and when I create bulk instances, I hope that these
++instances are running on same subnet in convenient way. A group of instances
++with the same subnet belong to a department, so we can distinguish the network
++request come from which department according to the source ip.
++
++Project Priority
++----------------
++
++None
++
++Proposed change
++===============
++
++1. Add one optional param 'subnet_id' in networking structure of 'spawn'.
++
++2. This parameter will affect in 'allocate_for_instance()'
++   in nova/network/neutronv2/api.py.
++
++3. Bulk instances creation with 'subnet_id' will be supported,
++   as the 'net-uuid' is specified.
++
++
++NOTE:
++
++When we boot instance with specify subnet_id, nova will create port with
++subnet_id, like this: neutron port-create --fixed-ip subnet_id=SUBNET NET_ID,
++the neutron behavior of creating port was changed after neutron supported ipv6.
++so all SLAAC-enabled subnets on the associated network will now be implicitly
++associated with the port, it's neutron design behavior.
++
++See more details in References.
++
++Alternatives
++------------
++
++We can create port using specify subnet, then boot instance with the port. But
++we can't use this way when we do multiple-create instance.
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++The proposed change will only be added in v2.1 API, because v2 API has been
++frozen now, and the API will be exposed with API microversion.
++
++* Specification for the method
++
++  * Booting instance with specified subnet.
++
++  * Method type: POST
++
++  * Normal http response code(s): 202
++
++  * Expected error http response code(s):
++
++    * 400: If 'subnet_id' is not a uuid-like string, a BadRequest exception
++      will be raised.
++    * 404: If 'subnet_id' is present and don't match a subnet entry in neutron,
++      a SubnetNotFound exception will be raised.
++
++  * ``/v2.1/{project_id}/servers``
++
++  * Parameters which can be passed via the url: N/A
++
++  * JSON schema definition for the body data:
++
++    ::
++
++        base_create = {
++            ...
++            'server': {
++                ...
++                    'networks': {
++                        'type': 'array',
++                        'items': {
++                            'type': 'object',
++                            'properties': {
++                                'fixed_ip': parameter_types.ip_address,
++                                'port': {
++                                    'type': ['string', 'null'],
++                                    'format': 'uuid'
++                                },
++                                'subnet_id': {
++                                    'type': ['string', 'null'],
++                                    'format': 'uuid'
++                                },
++                                'uuid': {'type': 'string'},
++                            },
++                            'oneOf': [
++                                {'required': ['port']},
++                                {'required': ['subnet_id']},
++                                {'required': ['uuid']}
++                            ],
++                            'dependencies': {
++                                'fixed_ip': ['uuid']
++                            },
++                            'additionalProperties': False,
++                        }
++                    }
++                ...
++            },
++            ...
++        }
++
++
++  * JSON schema definition for the response data: the response schema won't be
++    changed.
++
++* Example use case:
++
++    ::
++
++        POST /v2.1/9f0e4191106141dcbae9e0003d52a051/servers
++        {
++            'server':{
++            ...
++            'networks': [
++            {
++            'subnet_id': '892b9731-044a-4c87-b003-1e75869028c0'
++            }
++            ...
++            ]
++            ...
++            }
++
++        }
++
++
++* There should not be any impacts to policy.json files for this change.
++
++In the current implement in Nova, the network info specified is limited to
++network-id, port-id, and ip address, either port-id or network-id must be
++provided. After subnet-id is added, port-id, network-id or subnet-id must be
++provided.
++
++In the current implemented, users can specify port and network at same time,
++but if the specified port conflict with the specified network, the network
++would been ignored, for example, we tried nova boot using a port_id that
++doesn't belong to a given network, the validation wasn't performed, the
++network_id would been override by the network_id of the port. Ignoring a
++redundant parameter can cause to a lot of confusion for users. So we decide
++to fix the confused behavior, when the specification is implemented, only
++following use cases are supported.
++
++* 'networks': [{'uuid': 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx'}]
++
++* 'networks': [{'uuid': 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx',
++                'fixed_ip': '***.***.***.***'}]
++
++* 'networks': [{'subnet_id': 'yyyyyyyy-yyyy-yyyy-yyyy-yyyyyyyyyyyy'}]
++
++* 'networks': [{'port': 'zzzzzzzz-zzzz-zzzz-zzzz-zzzzzzzzzzzz'}]
++
++Only one of the types (uuid, uuid & fixed-ip, subnet_id, port) will be
++supported in a nic entry, like the JSON schema definition.
++
++NOTE:
++
++We add that with a microversion, users not using the newer version, can keep
++doing what they always did. The users want to use this feature, need to specify
++the new or higher microversion and follow the new rule of requested network in
++above section when they boot instance.
++
++When we boot instance with the network_id and fixed-ip, we can't judge whether
++the fixed-ip can be used to create a port in the nova side, think about the
++following case, when we create a subnet 10.0.0.0/24 in a network, the ip
++10.0.0.2 is allocated for dhcp server, then a user want to boot instance with
++network_id and 10.0.0.2, the ip 10.0.0.2 is in the scope of the subnet
++10.0.0.0/24, but the ip can't been used to create port, because it's in use.
++There is no completed mechanism to check the availability of the ip between
++nova and neutron, so we can't solve this issue, and I don't think it belong the
++scope of the specification. We need better way to solve it in the future.
++
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++The related works in python-novaclient will also be added.
++After this modification, user could create instances with 'subnet-id' specified
++like 'net-uuid' does via CLI.
++
++Performance Impact
++------------------
++
++None
++
++Other deployer impact
++---------------------
++
++None
++
++Developer impact
++----------------
++
++None
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Assignee: Rui Chen <chenrui.momo@gmail.com>
++
++Work Items
++----------
++
++In nova:
++
++  * Add 'subnet_id' to 'create' in API layer
++
++  * Use 'subnet_id' for 'allocate_for_instance()'
++    in nova/network/neutronv2/api.py
++
++  * Add related tests both API & nova-compute
++
++  * Add some test cases to stop newer versions accepting port_id and subnet_id,
++    etc. Make sure that only one of the types (uuid, uuid & fixed-ip,
++    subnet_id, port) will be supported in one requested network. To ensure that
++    the rule is not being broken in the following version.
++
++In python-novaclient:
++
++  * Add 'subnet-id' support in python-novaclient
++
++  * Add related tests in python-novaclient
++
++In tempest:
++
++  * Related test-cases will definitely be added here
++
++In doc:
++
++  * The API modification will also be registered in openstack-doc
++
++
++Dependencies
++============
++
++None
++
++
++Testing
++=======
++
++The unit tests need to be added in each related projects like I described
++in <Work Items> part. After the modifications, all changed methods above
++will be verified together.
++
++
++Documentation Impact
++====================
++
++The 'server creation' in API & CLI documentations will need to be updated to:
++
++* Reflect the new 'subnet_id' parameter and explain its usage
++* Explain the priority of network info during server creation
++
++
++References
++==========
++
++* Neutron multiple-ipv6-prefixes BP
++  http://specs.openstack.org/openstack/neutron-specs/specs/kilo/multiple-ipv6-prefixes.html#proposed-change
++
+-- 
+2.1.0
+

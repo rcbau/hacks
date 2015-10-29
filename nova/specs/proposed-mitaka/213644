@@ -1,0 +1,270 @@
+From b7346abaa113a61935a804a84f62d2bd3678fb24 Mon Sep 17 00:00:00 2001
+From: Bence Romsics <bence.romsics@ericsson.com>
+Date: Mon, 17 Aug 2015 11:15:00 +0200
+Subject: [PATCH] Trunk port: Spec for nova impacts
+
+APIImpact
+
+blueprint trunk-port
+Change-Id: Ic61e4ff9b64ef39287ca7f08ddc43098f05bdbbe
+---
+ specs/mitaka/approved/trunk-port.rst | 247 +++++++++++++++++++++++++++++++++++
+ 1 file changed, 247 insertions(+)
+ create mode 100644 specs/mitaka/approved/trunk-port.rst
+
+diff --git a/specs/mitaka/approved/trunk-port.rst b/specs/mitaka/approved/trunk-port.rst
+new file mode 100644
+index 0000000..45bdf71
+--- /dev/null
++++ b/specs/mitaka/approved/trunk-port.rst
+@@ -0,0 +1,247 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++==========================================
++Trunk Port in nova
++==========================================
++
++https://blueprints.launchpad.net/nova/+spec/trunk-port
++
++There is a blueprint for neutron called vlan-aware-vms, for which we will
++provide a short summary below, but please read it before continuing. The
++neutron blueprint aims to enable OpenStack instances to connect to
++hundreds or even thousands of neutron networks over a single (or a few)
++vNICs. The neutron blueprint has impacts on nova. The goal of this
++blueprint is to describe the nova impacts.
++
++Problem description
++===================
++
++The current model of attaching instances to a network requires one vNIC
++per network. This model has scalability problems after a few dozens of
++vNICs. It also makes hard to dynamically attach a network to an instance
++after it has booted. For further details please see neutron blueprint
++vlan-aware-vms.
++
++Use Cases
++----------
++
++Again please see the definitive list in neutron blueprint vlan-aware-vms,
++but here are a few examples:
++
++* network function virtualization (NFV) applications using lots of networks
++* network middleboxes implemented in VMs
++* any applications requiring dynamic attachment/detachment to networks
++* legacy VLAN-using applications
++
++Project Priority
++-----------------
++
++FIXME
++
++Proposed change
++===============
++
++Background
++----------
++
++The neutron blueprint introduces two new "port types". One is a new
++first class API resource called *trunk port*, which is independent of
++the *port* resource. The other is a subtype of the *port* resource,
++extending that with new attributes. Here we will refer to it as *subport*.
++
++From nova's perspective the trunk port is similar to a plain old port, at
++instance boot one vNIC is created for each trunk port of an instance. The
++most important difference to plain old ports is, that a trunk port is
++never directly attached to any networks. It attaches to networks only
++indirectly, via subports. Naturally the trunk port has a relation to
++an instance ("used by", attributes ``device_*``), and to a compute host
++("hosted on", attributes ``binding:*``).
++
++Conversely, the subport is similar to a plain old port from neutron's
++perspective. As usual, it is attached to a network. Nova should
++never directly handle any subports. All subports have a parent trunk
++port, the relation expressed in the ``device_owner`` and ``device_id``
++attributes. A trunk port and all of its subports has to exist on the same
++compute host. A subport has a relation to an instance only indirectly
++via its parent trunk port. A subport has a relation to a compute host
++only indirectly via its parent trunk port.
++
++There is no such thing as a *trunk network*, the changes introduced by
++the trunk port feature exist between the virtual switch and the instance.
++
++Inside an instance the many networks attached via a single vNIC
++are distinguishable by encapsulation (here we use 'segmentation'
++synonymously). For example different neutron networks can be seen as
++different VLANs on a single vNIC.
++
++The first implementation of the trunk port feature will be openvswitch
++(ovs) only with only VLANs inside the instance. But please note that
++the choice of network virtualization technology in neutron fabric is
++independent of the choice of trunk-port segmentation type inside an
++instance. Compatibility with all possible ``tenant_network_types``
++shall be kept. Also the API shall be kept independent of the choice of
++vswitch and instance-internal segmentation type.
++
++Changes
++-------
++
++We foresee the following changes needed:
++
++* ``nova boot --nic trunk-port-id``
++
++We intend to omit support analogous to ``nova boot --nic net-id``,
++because we see it needs overly complicated syntax and also unnecessary.
++
++Since the trunk port is a new resource, nova (nova-compute) must know to
++either query a port or query a trunk port from neutron. Unfortunately
++this information (kind of a "port type") must come from the API
++end-user, because there's no way to discover this information from
++neutron. Therefore nova-api and python-novaclient must be modified to
++support booting on a trunk port. nova-compute must be modified to be able
++to boot an instance with a trunk port. The only way to get the necessary
++information from nova-api to nova-compute is to channel it through. We
++believe nova-scheduler is not affected. All information present at boot
++time about trunk ports, must be persisted in nova DB.
++
++FIXME nova-conductor: Any changes needed?
++
++We want to minimize the changes needed by limiting where "port type"
++is used. It must be used in nova-compute when querying neutron. But we
++hope its use can be avoided in nova's virt driver. We hope to keep ports
++and trunk ports similar enough (from nova's perspective), so that nova's
++virt driver need not know the difference.
++
++FIXME Is this hope realistic?
++
++One reason for nova not to know about subports, is that they may get
++created or deleted after an instance was booted.
++
++* New vif driver: ``ovs_trunk_port``
++
++neutron-ovs-agent uses VLANs for tenant network isolation inside the
++compute host. This is done as standard VLAN access ports work, that is the
++instance sends and receives untagged frames, while the switch port adds
++and strips the compute-internal tags as necessary. ovs does not support
++QinQ. Therefore the one available level of VLANs are used up already,
++and in the current implementation, any VLAN tagged frame coming from
++an instance must be dropped. We believe the easiest way to accept VLAN
++tagged frames by ovs is to introduce a new ovs bridge per trunk port,
++sandwiched between the tap interface and the integration bridge. Then
++the trunk port bridge can accept arbitrarily VLAN tagged frames and remap
++them to the compute-internal VLANs present on the integration bridge (as
++long as the total number of networks do not exceed 4k per compute host).
++
++If a new bridge per trunk port is needed, either nova or neutron can
++create these bridges. If neutron must create the trunk port bridge, that
++leads to a hard problem. Because there is no way for neutron to delay
++when nova plugs the vif into the bridge that may or may not have been
++created yet. At present nova may plug the vif any time after neutron
++returned 200 OK after trunk port creation. But at that time nothing
++guarantees the trunk port (bridge) was created in the underlying devices.
++
++Alternatives
++------------
++
++We see the following alternatives of the new vif driver:
++
++1) Make the user responsible to pass trunk port uuids to nova, only after
++   the trunk port reached the ``ACTIVE`` state.
++2) Make neutron-server synchronously call into neutron-ovs-agent to create
++   the trunk port bridge.
++3) Introduce new nova-neutron communication mechanism so neutron can delay
++   nova's vif plugging action.
++4) Make nova create the trunk port bridge (that is a new vif driver).
++
++We believe (3) and (4) are realistic, with the new ovs type (4) being
++much simpler.
++
++Further notes
++-------------
++
++Please note that a trunk port does not have any L3 addresses, so at
++instance boot time there's no IP information available.
++
++Data model impact
++-----------------
++
++FIXME
++
++REST API impact
++---------------
++
++The JSON body of POST requests to the /instance resource need to be
++extended with a trunk_ports field. Microversion bump is needed.
++
++FIXME Add details.
++
++Security impact
++---------------
++
++No security impact.
++
++Notifications impact
++--------------------
++
++FIXME
++
++Other end user impact
++---------------------
++
++python-novaclient
++
++Performance Impact
++------------------
++
++No significant performance impact expected.
++
++Other deployer impact
++---------------------
++
++FIXME
++
++Developer impact
++----------------
++
++FIXME
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Bence Romsics <bence.romsics@ericsson.com>
++
++Work Items
++----------
++
++FIXME
++
++Dependencies
++============
++
++neutron blueprint vlan-aware-vms
++
++Testing
++=======
++
++FIXME
++
++Documentation Impact
++====================
++
++FIXME
++
++References
++==========
++
++https://blueprints.launchpad.net/neutron/+spec/vlan-aware-vms
++
++History
++=======
++
++FIXME
+-- 
+2.1.0
+

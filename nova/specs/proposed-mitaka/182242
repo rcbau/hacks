@@ -1,0 +1,306 @@
+From c03b3cb90d7d3a39bb680b85e1ae28bddad025ec Mon Sep 17 00:00:00 2001
+From: Roman Bogorodskiy <rbogorodskiy@mirantis.com>
+Date: Tue, 12 May 2015 14:19:54 +0300
+Subject: [PATCH] User-controlled SR-IOV ports allocation
+
+A proposal for user-controlled SR-IOV ports allocation
+on Physical Functions (PFs).
+
+Blueprint: user-controlled-sriov-ports-allocation
+Change-Id: I926d4d950b5de99e52eb353787a794f641caf9f0
+---
+ .../user-controlled-sriov-ports-allocation.rst     | 282 +++++++++++++++++++++
+ 1 file changed, 282 insertions(+)
+ create mode 100644 specs/mitaka/approved/user-controlled-sriov-ports-allocation.rst
+
+diff --git a/specs/mitaka/approved/user-controlled-sriov-ports-allocation.rst b/specs/mitaka/approved/user-controlled-sriov-ports-allocation.rst
+new file mode 100644
+index 0000000..1dc5d45
+--- /dev/null
++++ b/specs/mitaka/approved/user-controlled-sriov-ports-allocation.rst
+@@ -0,0 +1,282 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++==========================================
++User controlled SR-IOV ports allocation
++==========================================
++
++https://blueprints.launchpad.net/nova/+spec/user-controlled-sriov-ports-allocation
++
++
++In certain scenarios an additional HA for networking might be required
++for a guest that could be achieved by bonding NIC inside of a guest.
++
++Problem description
++===================
++
++The single root I/O virtualization (SR-IOV) allows a PCI device provide a
++number of functions within the same device, specifically, there's
++a Physical Function (PF) that's a primary function of the device, and a
++number of Virtual Functions (VF) within this device, each of VFs could be
++associated with a network port and passed to a guest using PCI passthrough.
++
++OpenStack does support SR-IOV ports, however, it gives no control to user on
++how VFs will be distributed across PFs. Moreover, with the current
++implementation, if a host has multiple PFs, VFs will be allocated in a linear
++fashion.
++
++Use Cases
++----------
++
++Consider a situation when cluster contains Compute nodes with 4 SR-IOV NICs
++each. 2 of the NICs are connected to the same physical network 'Alice' and
++other 2 of the NICs are connected to the same physical netowrk 'Bob'.
++
++A user wants to start a VM that is connected to both networks, 'Alice' and
++'Bob'. Additionally, a user wants to have redundancy for these connections
++that could be achieved by having 2 VFs for a physical network and bonding
++them together.
++
++Assuming that the 'pci_passthrough_whitelist' configuration option for Nova
++is properly specified and networks 'Alice' and 'Bob' mentined before
++were created with the corresponding 'physical_network' value, a user
++could created ports as follows::
++
++    neutron port-create --binding:vnic_type=direct --name a0 alice
++    neutron port-create --binding:vnic_type=direct --name a1 alice
++    neutron port-create --binding:vnic_type=direct --name b0 bob
++    neutron port-create --binding:vnic_type=direct --name b1 bob
++
++Now user can boot a VM this way::
++
++    nova boot --nic port-id=a0,alice_group \
++              --nic port-id=a1,alice_group \
++              --nic port-id=b0,bob_group \
++              --nic port-id=b1,bob_group
++
++Specifying a group ('alice_group' and 'bob_group') users informs
++Nova that it wants devices on this group to be allocated on different
++PFs.
++
++This results in the following PCI request requirements:
++
++ - a host should have at least 2 PFs assigned to network 'Alice'
++ - a host should have at least 2 PFs assigned to network 'Bob'
++ - each of these PFs should have at least 1 unallocated VF
++
++If there are hosts that meet that requirement, VM is successfully scheduled
++and user could pass interfaces information through metadata to be able
++to differentiate NICs inside of the VM and configure bonds accordingly.
++
++If there are no hosts that meet this requirement, then user gets an error.
++
++Note: multiple ports for network could be created after setting Nova's
++config option 'allow_duplicate_networks' to 'True'.
++
++Proposed change
++===============
++
++The main steps would be:
++
++ * Extend Nova API so it is possible to specify a device group for
++   port during a server creation, for example, store it in
++   server.networks[i].dev_group. This attribute is an arbitrary
++   string with name of a device group. Devices in the same group
++   will have to be allocated on different PFs. Scope of a device group
++   is a single guest.
++
++   Optionally, meaning of the 'dev_group' attribute could be extended.
++   For example, it could be extended with group type, such as 'affinity'
++   or 'anti-affinity' (to require VFs be allocated on the same or on
++   different PFs respectively).
++ * PCI requests handling code modification to respect device group
++   requirements and store device group information for devices.
++ * Nova-scheduler needs to be modified to properly calculate required
++   number of PCI devices for a given request. For example, if we have
++   two sriov ports requested for a guest, we just check if we have 2 VFs
++   available. However, it's not enough when these ports have the same
++   device group value, and the requirement should be to have a host
++   with 2 PFs that have at least 1 VF available.
++
++In case when device group is not specified the default behavior doesn't
++change.
++
++Alternatives
++------------
++
++An alternative approach would be to offload part of the changes into
++Neutron. Specifically, we could extend the 'Port' model to become
++responsible for more than one device by adding a new attribute, say,
++binding:redundancy, so when user creates a port:
++
++neutron port-create --binding:vnic_type=direct --binding:redundancy=2
++
++It would mean that user wants 2 NICs to achieve redundancy of this
++port.
++
++Port model will need to be modified to store more than 1 MAC address,
++1 mac address for each redundant interface.
++
++Nova's network.neutronv2 code will be modified to created necessary
++number of interfaces based on binding:redundancy setting.
++
++The 'binding:profile' attribute will need to be changed as well to take
++into account multiple interfaces::
++
++    {"mac0": {"pci_slot": "0000:06:11.4",
++              "physical_network": "foo",
++               "pci_vendor_info": "8086:10ed"},
++     "mac1": {"pci_slot": "0000:06:11.6",
++              "physical_network": "foo",
++               "pci_vendor_info": "8086:10ed"}}
++
++This solution appears to be cleaner and simpler from user perspective,
++but more vast from development perspective and touches two components
++instead of one.
++
++Data model impact
++-----------------
++
++The PciDevice model will have a new field to store device group assigned
++to the device.
++
++REST API impact
++---------------
++
++Items of the 'networks' list of the 'server' object will have a new optional
++field to store device group name.
++
++The new 'spawn' REST API in v2::
++ /v2/{project_id}/servers
++
++    {
++        'server':{
++        ...
++        'networks': [
++        {
++        'port': '43b6fef5-dc09-43ed-a6d2-35211a35c8ad',
++        'dev_group': 'intranet_bond'
++        }
++        ...
++        ]
++        ...
++        }
++
++    }
++
++and in v3 it is like::
++ /v3/servers
++
++{
++    'server':{
++    ...
++    'networks': [
++    {
++    'port': '43b6fef5-dc09-43ed-a6d2-35211a35c8ad',
++    'dev_group': 'intranet_bond'
++    }
++    ...
++    ]
++    ...
++    }
++
++}
++
++* Here, the <string> 'dev_group' means the device group to put
++  the port in. No default value.
++
++* If 'dev_group' is not a string, a BadRequest exception
++  will be raised. (HTTP 400)
++
++* The status code will be HTTP 202 when the request succeeded as usual,
++  and the response body won't be changed.
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++Users will be able to control how VFs are allocated in their setups
++using SRIOV.
++
++Performance Impact
++------------------
++
++None
++
++Other deployer impact
++---------------------
++
++None
++
++Developer impact
++----------------
++
++None
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  Roman Bogorodskiy <novel>
++
++Work Items
++----------
++
++ * Nova's API modification for setting device group
++ * Nova's dev_group processing and VF allocation code modification
++ * Nova's scheduler code modification
++
++Dependencies
++============
++
++* blueprint: https://blueprints.launchpad.net/nova/+spec/distribute-pci-allocation
++
++Testing
++=======
++
++The changes to the selection logic are testable through unit testing, as is
++the extension to the PCI request API.
++
++Integration and system testing will require 3rd party CI as it will require
++specific hardware configurations to properly test.
++
++Documentation Impact
++====================
++
++Documentation should be updated with information on how this feature should
++be used.
++
++References
++==========
++
++* Previous change request: https://review.openstack.org/#/c/151260/1
++* Distribute PCI Requests Across Multiple Devices:
++  https://review.openstack.org/#/c/142094/
++
++History
++=======
++
++.. list-table:: Revisions
++   :header-rows: 1
++
++   * - Release Name
++     - Description
++   * - Liberty
++     - Introduced
++   * - Mitaka
++     - Resubmitted
+-- 
+2.1.0
+

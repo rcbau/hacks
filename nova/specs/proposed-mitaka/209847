@@ -1,0 +1,300 @@
+From ad40f120f9bc72efaa9a552279a5fa8c1dacc278 Mon Sep 17 00:00:00 2001
+From: Markus Zoeller <mzoeller@de.ibm.com>
+Date: Thu, 6 Aug 2015 11:44:08 +0200
+Subject: [PATCH] Create nova-bug-report cmd utility
+
+This got shortly discussed during the Liberty Midcycle event.
+The contributors need certain information from a bug report to do a
+proper bug triage and/or to have criteria if patches for this bug
+really solve the described issue. To provide this information in each
+bug report, the reporter has to collect them manually, although
+OpenStack is already aware of most of the information. The collecting
+of the information is cumbersome and sometimes the reporter doesn't
+exactly know what is needed, so it is often omitted in the reports.
+The turnaround time of bugs could be decreased if the reporter has a
+means to collect the debug information automatically.
+The artifact of an execution of this means should then contain enough
+information to attach it to a bug report.
+
+Implements: blueprint nova-bug-report
+
+Change-Id: I8df9feff106598226900173f8d12863567cdd73f
+---
+ specs/mitaka/approved/nova-bug-report.rst | 265 ++++++++++++++++++++++++++++++
+ 1 file changed, 265 insertions(+)
+ create mode 100644 specs/mitaka/approved/nova-bug-report.rst
+
+diff --git a/specs/mitaka/approved/nova-bug-report.rst b/specs/mitaka/approved/nova-bug-report.rst
+new file mode 100644
+index 0000000..8a0e650
+--- /dev/null
++++ b/specs/mitaka/approved/nova-bug-report.rst
+@@ -0,0 +1,265 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++===============
++Nova Bug Report
++===============
++
++Include the URL of your launchpad blueprint:
++
++https://blueprints.launchpad.net/nova/+spec/nova-bug-report
++
++The contributors need certain information from a bug report
++to do a proper bug triage and/or to have criteria if patches for this bug
++really solve the described issue. To provide this information in each bug
++report, the reporter has to collect them manually, although OpenStack is
++already aware of most of the information. The collecting of the information
++is cumbersome and sometimes the reporter doesn't exactly know what
++is needed, so it is often omitted in the reports.
++The turnaround time of bugs could be decreased if the reporter has a
++means to collect the debug information automatically.
++The artifact of an execution of this means should then contain enough
++information to attach it to a bug report.
++
++Problem description
++===================
++
++Nova has right now around 1000 open bugs. Around 600 of them are not yet in
++progress. Many of them lack the necessary information to do a proper bug
++triage and/or to have criteria if patches for this bug really solve the issue.
++This includes the logs, the configuration options, the host environment and
++the steps which led to the bug report. To provide this information in each bug
++report, the reporter has to collect them manually, although OpenStack is
++already aware of most of the information. The bug triage could be made faster
++if we give the user a means to collect the necessary debug data in a somewhat
++automated way with as less interaction from the user as possible. This spec
++proposes to introduce a command line utility which collects the debug data we
++would like to have for a proper bug triage. The artifact of an execution
++should then be enough to attach it to a bug report. The turnaround time of
++bugs could be decreased. This got shortly discussed during the "Nova Liberty
++Midcycle" event [1].
++
++Use Cases
++----------
++
++The actors which would benefit from a solution to the problem described above
++are basically all the people who could observe an anomaly in the behavior of
++Nova which the like to have solved/clarified. This includes:
++
++* test teams (who see a lot of different combinations and configurations)
++* developers (who introduce new features and could introduce regressions)
++* operators (who see Nova at real life conditions and scale)
++
++Project Priority
++-----------------
++
++Low
++
++
++Proposed change
++===============
++
++The overall vision I have can be done in stages:
++
++* stage 1 (short term): Execute a cmd utility on each node where you want to
++                        collect debug information. Expect zero input arguments
++                        from the user (but make it configurable). The user
++                        attaches the created artifact to a new bug report.
++* stage 2 (mid term):   Make the utility available for all other OpenStack
++                        projects too.
++* stage 3 (long term):  Execute a utility on one node and collect the
++                        information from all necessary nodes
++                        (1 <= necessary nodes <= all nodes). The user attaches
++                        the created artifact to a new bug report.
++* stage 4 (future):     Execute a utility on one node and collect the
++                        information from all necessary nodes. The bug report
++                        is created automatically with the attached artifact.
++
++
++The scope of this spec is **only stage 1** which should be feasible within one
++release cycle. From a user perspective it should behave like this:
++
++.. code-block:: bash
++
++    $ ssh user@node1
++    $ nova-bug-report
++    $ ll
++    2015-07-30_11:05:06_nova_bug_report.tar.gz
++    $ tar -ztvf 2015-07-30_11:05:06_nova_bug_report.tar.gz
++    ./summary.log
++    ./logs/n-cpu.log
++    ./confs/nova.conf
++    ./envs/host.log
++    ./envs/pip_freeze.log
++    ./envs/hypervisor.log
++    # TBD what is considered necessary
++    $ exit
++    $ ssh user@node2
++    $ nova-bug-report
++    $ ll
++    2015-07-30_11:10:01_nova_bug_report.tar.gz
++    $ tar -ztvf 2015-07-30_11:10:01_nova_bug_report.tar.gz
++    ./summary.log
++    ./logs/n-api.log
++    ./logs/n-cnd.log
++    ./confs/nova.conf
++    ./envs/host.log
++    ./envs/pip_freeze.log
++    ./envs/hypervisor.log
++    # TBD what is considered necessary
++
++We should use tools which are already available in the host operating system,
++for example for Linux distributions https://github.com/sosreport/sos
++and serve solely as a facade to these tools::
++
++                   User
++                    +
++                    |
++                    |./nova-bug-report
++                    |
++                    v
++    +---------------+----------------+
++    |                                |
++    |        nova-bug-report.py      |
++    |                                |
++    +--------+---------------+-------+
++             |               |
++             |               |
++             |               |
++       +-----v------+  +-----v-----+
++       | sosreport  |  |  tool XY  |
++       +------------+  +-----------+
++
++
++Alternatives
++------------
++
++We could ask the bug reporters every time to do the collection with the tools
++they have at hand. The result of that will look different every time, I guess.
++Very few bug reports in Nova contain the minimal information which is
++explicitly asked for when you open a new bug.
++
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++None
++
++Security impact
++---------------
++
++This touches sensitive data, like
++
++* config options (passwords, IP addresses, database connection strings, ?)
++* information of the host system (operating system, installed packages, ?)
++* user data in the logs files
++
++Depending on the actual implementation it could be necessary to execute
++the feature as sudo.
++
++The OpenStack Security Group should definitely be involved in the reviews.
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++Right now I think of it as a cmd utility like ``nova-manage``. Maybe it makes
++sense to make this available as command in the ``python-openstackclient`` in
++future releases (stage 2 or stage 3) if we see that the smaller approach here
++makes sense and is useful for us.
++
++Performance Impact
++------------------
++
++None
++
++Other deployer impact
++---------------------
++
++Right now I think of it as a cmd utility like ``nova-manage``.
++
++Developer impact
++----------------
++
++None
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  Markus Zoeller (markus_z)
++  https://launchpad.net/~mzoeller
++
++Other contributors:
++  None (but feel free to join)
++
++Work Items
++----------
++
++* create the cmd utility as facade
++* make it pluggable to use different tools which are already available on the
++  host operating system / distro (version)
++* create a summary of user actions which shows a high-level
++  "steps to reproduce"
++* ensure that there is a way to mask sensitive data
++* make it configurable (e.g. collect only data from the last 10 min.)
++
++
++Dependencies
++============
++
++None
++
++
++Testing
++=======
++
++I don't think we would need tempest tests for that. I would assume that
++the nova-bug-team should also be the people which say if the implementation
++is acceptable, because they will work with the result.
++
++
++Documentation Impact
++====================
++
++A new entry here: http://docs.openstack.org/developer/nova/man/
++
++
++References
++==========
++
++[1] Nova Liberty Midcycle Event; Etherpad; item "create a bug report service?"
++    https://etherpad.openstack.org/p/liberty-nova-midcycle
++
++
++History
++=======
++
++Optional section for Mitaka intended to be used each time the spec
++is updated to describe new design, API or any database schema
++updated. Useful to let reader understand what's happened along the
++time.
++
++.. list-table:: Revisions
++   :header-rows: 1
++
++   * - Release Name
++     - Description
++   * - Mitaka
++     - Introduced
+-- 
+2.1.0
+

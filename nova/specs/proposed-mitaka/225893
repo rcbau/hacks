@@ -1,0 +1,293 @@
+From 1a856738867334869a358e20d3133e771d6442bd Mon Sep 17 00:00:00 2001
+From: "Daniel P. Berrange" <berrange@redhat.com>
+Date: Mon, 21 Sep 2015 16:20:59 +0100
+Subject: [PATCH] Libvirt driver emulator threads placement policy
+
+The Nova schedular determines CPU resource utilization and instance
+CPU placement based on the number of vCPUs in the flavour. A number
+of hypervisors have work that is performed in the host OS on behalf
+of a guest instance, which does not take place in association with
+a vCPU. This is currently unaccounted for in Nova scheduling and
+cannot have any placement policy controls applied.
+
+Change-Id: Ie3309323334e20b0b7104a69217aa622b46fa627
+Blueprint: libvirt-emulator-threads-policy
+---
+ .../approved/libvirt-emulator-threads-policy.rst   | 265 +++++++++++++++++++++
+ 1 file changed, 265 insertions(+)
+ create mode 100644 specs/mitaka/approved/libvirt-emulator-threads-policy.rst
+
+diff --git a/specs/mitaka/approved/libvirt-emulator-threads-policy.rst b/specs/mitaka/approved/libvirt-emulator-threads-policy.rst
+new file mode 100644
+index 0000000..b9598b2
+--- /dev/null
++++ b/specs/mitaka/approved/libvirt-emulator-threads-policy.rst
+@@ -0,0 +1,265 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++================================================
++Libvirt driver emulator threads placement policy
++================================================
++
++https://blueprints.launchpad.net/nova/+spec/libvirt-emulator-threads-policy
++
++The Nova schedular determines CPU resource utilization and instance
++CPU placement based on the number of vCPUs in the flavour. A number
++of hypervisors have work that is performed in the host OS on behalf
++of a guest instance, which does not take place in association with
++a vCPU. This is currently unaccounted for in Nova scheduling and
++cannot have any placement policy controls applied.
++
++Problem description
++===================
++
++The Nova schedular determines CPU resource utilization by counting the
++number of vCPUs allocated for each guest. When doing overcommit, as
++opposed to dedicated resources, this vCPU count is multiplied by an
++overcommit ratio. This utilization is then used to determine optimal
++guest placement across compute nodes, or within NUMA nodes.
++
++A number of hypervisors, however, perform work on behalf of a guest
++instance in an execution context that is not associated with the
++virtual instance vCPUs. With KVM / QEMU, there are one or more
++threads associated with the QEMU process which are used for the
++QEMU main event loop, asynchronous I/O operation completion,
++migration data transfer, SPICE display I/O and more. With Xen, if
++the stub-domain feature is in use, there is an entire domain used
++to provide I/O backends for the main domain.
++
++Nova does not have any current mechanism to either track this extra
++guest instance compute requirement in order to measure utilization,
++nor to place any control over its execution policy.
++
++The libvirt driver has implemented a generic placement policy for
++KVM whereby the QEMU emulator threads are allowed to float across
++the same pCPUs that the instance vCPUs are running on. IOW, the
++emulator threads will steal some time from the vCPUs whenever they
++have work to do. This is just about acceptable in the case where
++CPU over commit is being used. When guests want dedicated vCPU
++allocation though, there is a desire to be able to express other
++placement policies. For example, to allocate one or more pCPUs
++to be dedicated to a guest's emulator threads. This becomes even
++more important if Nova gains support for real-time workloads, as
++it will not be acceptable to allow emulator threads to steal time
++from real-time vCPUs.
++
++While it would be possible for the libvirt driver to add different
++placement policies, unless the concept of emulator threads is
++exposed to the schedular in some manner, CPU usage cannot be
++expressed in a satisfactory manner. Thus there needs to be a way
++to describe to the schedular what other CPU usage may be associated
++with a guest, and account for that during placement.
++
++Use Cases
++----------
++
++The users of dedicated (no overcommit) CPU guests, particular
++those with real-time schedular policy, will want to configure
++guests such that emulator threads are placed separately from
++vCPUs. This will be desired by the NFV community, as well as
++the other user groups described for the real-time spec.
++
++Project Priority
++-----------------
++
++None
++
++Proposed change
++===============
++
++Each hypervisor has a different architecture, for example QEMU
++has emulator threads, while Xen has stub-domains. To avoid favouring
++any specific implementation, the idea is to present concept of a
++virtual instance having zero or more "system pseudo-CPUs". For
++example, we might say that all the various QEMU threads account
++for 1 system pseudo-CPU, while a Xen stub-domain's 2 vCPUs, may
++correspond to the 2 system pseudo-CPUs. Since the permitted vCPU
++allocation is recorded against the flavour, it is natural to use
++a flavour extra spec to express the number of system pseudo-CPUs.
++So the new property
++
++* hw:cpu_system=2
++
++would say that this instance is to be considered to have 2 system
++pseudo-CPUs. If this is omitted, it is assumed that the value is
++zero.
++
++In the virt drivers, when reporting the available resources to
++the schedular, the 'vcpu_total' field value will have to be
++adjusted to include the hw:cpu_system value set for any running
++instances.
++
++When the BaseCoreFilter schedular filter is checking a host's
++suitability, instead of checking just the flavour vCPU count,
++it will have to include the hw:cpu_system value too. The over
++commit ratio will applied to the combined value.
++
++IOW, given a flavour with
++
++* vcpus=8
++* hw:cpu_system=2
++* cpu_overcommit=1.5
++
++The instance will have a total of 10 vcpus required, which with
++the given overcommit ratio requires equivalent of 7.5 physical
++CPUs to be available on the host.
++
++The NUMA schedular filter will also need to be changed to account
++for the extra threads, which will in turn include changing the
++InstanceNUMATopology object. Specifically the object will be
++extended to have a new field specifying what NUMA node the
++system pseudo-CPUs should be placed on.
++
++In the libvirt driver, if hw:cpu_system is set then <emulatorpin>
++will be used to control where the QEMU emulator threads run, based
++on the mask determined by the NUMA filter. The current default
++logic of floating emulator threads across all host pCPUs associated
++with vCPUs will only be used if hw:cpu_system is not set.
++
++When the guest instance has more than one NUMA node enabled there
++will need to be a way to indicate which NUMA node the system
++pseudo-CPUs should be associated with. The hw:cpu_system count is
++not referring to the number of threads the hypervisor uses, but
++rather the number of host CPUs we want to reserve. e.g. QEMU may
++have 6 system threads, running across 2 CPUs - we don't know how
++many threads will be present at any time. So we can't allow fine
++grained control. So we merely need a property to specify the
++single guest NUMA node to associate the system psuedo-CPUs with
++e.g. the following says to associate with NUMA node 3.
++
++* hw:numa_cpu_system=3
++
++Alternatives
++------------
++
++We could use a host level tunable to just reserve a set of host pCPUs
++for running emulator threads globally, instead of trying to account
++for it per instance. This would work in the simple case, but when
++NUMA is used, it is highly desirable to have more fine grained config
++to control emulator thread placement. When real-time or dedicated CPUs
++are used, it will be critical to separate emulator threads for different
++KVM instances.
++
++Another option is to hardcode an assumption that the vCPUs number set
++against the flavour implicitly includes 1 vCPUs for emulator. eg a
++vCPU value of 5 would imply 4 actual vCPUs and 1 system pseudo-vCPU.
++This would likely be extremely confusing to tenant users, and developers
++alike.
++
++Do nothing is always an option. If we did nothing, then it would limit
++the types of workload that can be run on Nova. This would have a negative
++impact inparticular on users making use of the dedicated vCPU feature,
++as there would be no way to guarantee their vCPUs are not pre-empted by
++emulator threads. It can be worked around to some degree with realtime
++by setting a fixed policy that the emulator threads only run on the vCPUs
++that have non-realtime policy. This requires that all guest OS using
++realtime are SMP, but some guest OS want realtime, but are only UP.
++
++
++Data model impact
++-----------------
++
++The InstanceNUMATopology object will be extended to have a new field
++
++* cpuset_system=SetOfIntegersField()
++
++This field will defualt to None, so a schema migration change just
++adds the new column with no data. It will only be populated if the
++hw:cpu_system flavour extra_spec is used and the NUMA filter is
++enabled, which will not be the case for any existing running instances.
++
++REST API impact
++---------------
++
++None
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++None
++
++Performance Impact
++------------------
++
++The NUMA and compute schedular filters will have some changes to them,
++but it is not anticipated that they will become more computationally
++expensive to any measurable degree.
++
++Other deployer impact
++---------------------
++
++Deployers who are using dedicated CPU policy will wish to consider
++whether they want to also assign a number of system pseudo-CPUs for
++instances. This will involve setting up at most two extra flavour
++extra spec properties.
++
++Developer impact
++----------------
++
++Developers of other virtualization drivers may wish to make use of
++the new flavour extra spec property and schedular accounting. This
++will be of particular interest to the Xen hypervisor, if using the
++stub domain feature.
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  sahid
++
++Other contributors:
++  berrange
++
++Work Items
++----------
++
++
++
++Dependencies
++============
++
++The realtime spec is not a pre-requisite, but is complementary to
++this work
++
++* https://blueprints.launchpad.net/nova/+spec/libvirt-real-time
++* https://review.openstack.org/#/c/139688/
++
++Testing
++=======
++
++This can be tested in any CI system that is capable of testing the current
++NUMA and dedicated CPUs policy. ie, it requires ability to use KVM, not
++merely QEMU.
++
++Documentation Impact
++====================
++
++The documentation detailing NUMA and dedicated CPU policy usage will need
++to be extended to also describe the new options this work introduces.
++
++References
++==========
++
++None
+-- 
+2.1.0
+

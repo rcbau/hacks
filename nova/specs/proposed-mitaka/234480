@@ -1,0 +1,176 @@
+From 7b3977ad31fb2080b67e6e13a1e5c0e94d741962 Mon Sep 17 00:00:00 2001
+From: Eric Brown <browne@vmware.com>
+Date: Tue, 13 Oct 2015 17:08:11 -0700
+Subject: [PATCH] VMware: store vCenter user/password in Keystone
+
+Spec for a method by which the VMware driver can fetch the vCenter
+user/password from the Keystone credential store rather than
+nova.conf.
+
+Change-Id: I7a38431edd0f369e80cc561e2f184f0fa1ebd7d5
+Blueprint: vmware-encrypt-vcenter-passwords
+---
+ .../approved/vmware-encrypt-vcenter-passwords.rst  | 151 +++++++++++++++++++++
+ 1 file changed, 151 insertions(+)
+ create mode 100644 specs/mitaka/approved/vmware-encrypt-vcenter-passwords.rst
+
+diff --git a/specs/mitaka/approved/vmware-encrypt-vcenter-passwords.rst b/specs/mitaka/approved/vmware-encrypt-vcenter-passwords.rst
+new file mode 100644
+index 0000000..bb882a8
+--- /dev/null
++++ b/specs/mitaka/approved/vmware-encrypt-vcenter-passwords.rst
+@@ -0,0 +1,151 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++=================================================================
++VMware: Storage of vCenter passwords in Keystone credential store
++=================================================================
++
++https://blueprints.launchpad.net/nova/+spec/vmware-encrypt-vcenter-passwords
++
++This blueprint is proposal for how vCenter passwords can be securely stored
++in the keystone credential store rather than as plain text in the nova.conf
++file.
++
++Problem description
++===================
++
++Today there are two config options representing the credentials necessary for
++the VMware driver to properly communicate with the vCenter Server. They are:
++host_username and host_password. The primary concern of some deployers is that
++the vCenter usernames and passwords are stored in plain text inside the
++nova.conf file.
++
++This problem statement only applies to the VMware credenitals stored in
++nova.conf. It does not attempt to address the more general issue of plain text
++passwords being stored in \*.conf files.
++
++Use Cases
++----------
++
++As a deployer, I wish to configure Nova for the VMware driver using my
++user/password stored in a secure manner.
++
++Proposed change
++===============
++
++The proposed solution is to utilize the leverage the existing keystone
++credential store a repository for the vCenter user/password.
++
++The flow would be as follows:
++- The openstack command line is used to create a new credential for the nova
++user in keystone's credential store (openstack credential create).
++- The values in nova.conf for host_username and host_password are left empty.
++- When the VMware Nova driver starts it will fetch the user and password from
++Keystone if they are undefined in nova.conf.
++
++The Keystone credential store is a v3 API, so there is a dependency on Nova
++using this version.
++
++Also, note that is it not required that the username and password to be stored
++in this credential store.  A deployer may still put these values in the
++nova.conf.
++
++Alternatives
++------------
++
++Some suggestions have been to use Barbican for storing credentials. But not all
++deployments have Barbican.  Unlike Barbican, Keystone is always required in
++order to deploy OpenStack.
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++None
++
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++None
++
++Performance Impact
++------------------
++
++None
++
++Other deployer impact
++---------------------
++
++The deployer needs to make use of the openstack command line in order to
++create a credential for the vCenter user/password.
++
++Developer impact
++----------------
++
++None
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  ericwb
++
++Other contributors:
++  None
++
++Work Items
++----------
++
++Should be a single work item (patch) to update the VMware driver to fetch the
++vCenter user/password from the Keystone credential store when undefined in
++nova.conf.
++
++Dependencies
++============
++
++Nova must be using the keystone middleware which supports the Keystone v3 API.
++This dependency should already be satisfied.
++
++Testing
++=======
++
++The testing should be rather straightforward. A deployment should be tested
++with and without the user/password of vCenter in the Keystone credential store
++and verify communication of the driver to vCenter still works properly.
++
++Documentation Impact
++====================
++
++The deployment flow described above should be documented as an alternative way
++of deploying the VMware compute driver in a more secure manner.
++
++References
++==========
++
++None
++
++History
++=======
++
++None
+-- 
+2.1.0
+

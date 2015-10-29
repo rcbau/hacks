@@ -1,0 +1,385 @@
+From 1d222ac16fb906ffb804f56bb73a4c69e6206a26 Mon Sep 17 00:00:00 2001
+From: Sylvain Bauza <sbauza@redhat.com>
+Date: Wed, 7 Oct 2015 14:48:31 +0200
+Subject: [PATCH] Remove Priorities section for approved specs
+
+In I808227fe71210abc64270f53ef3d3d62f176ff24 we approved to remove the
+Priorities section. Now it's a cleanup for the already accepted specs.
+
+Change-Id: I6bf243ca114a72cd71aa97491eb528312c53a0dd
+---
+ specs/mitaka/approved/check-destination-on-migrations.rst  | 5 -----
+ specs/mitaka/approved/flavor-cell-api.rst                  | 4 ----
+ specs/mitaka/approved/host-state-level-locking.rst         | 5 -----
+ specs/mitaka/approved/hyper-v-cluster.rst                  | 4 ----
+ specs/mitaka/approved/hyper-v-uefi-secureboot.rst          | 4 ----
+ specs/mitaka/approved/hyper-v-vnuma-enable.rst             | 4 ----
+ specs/mitaka/approved/hyperv-fibre-channel.rst             | 4 ----
+ specs/mitaka/approved/hyperv-storage-qos.rst               | 4 ----
+ specs/mitaka/approved/libvirt-real-time.rst                | 4 ----
+ specs/mitaka/approved/mem-bw.rst                           | 8 --------
+ specs/mitaka/approved/oslo_db-enginefacade.rst             | 5 -----
+ specs/mitaka/approved/pci-passthrough-whitelist-regex.rst  | 4 ----
+ specs/mitaka/approved/persist-request-spec.rst             | 5 -----
+ specs/mitaka/approved/purge-deleted-instances-cmd.rst      | 4 ----
+ specs/mitaka/approved/refresh-quotas-usage.rst             | 5 -----
+ specs/mitaka/approved/request-spec-object-mitaka.rst       | 6 ------
+ specs/mitaka/approved/service-version-behavior.rst         | 4 ----
+ specs/mitaka/approved/stop-dmcrypt-on-suspend.rst          | 5 -----
+ specs/mitaka/approved/tag-instances.rst                    | 4 ----
+ specs/mitaka/approved/use-glance-v2-api.rst                | 5 -----
+ specs/mitaka/approved/vmware-limits.rst                    | 4 ----
+ specs/mitaka/approved/websocket-proxy-to-host-security.rst | 5 -----
+ 22 files changed, 102 deletions(-)
+
+diff --git a/specs/mitaka/approved/check-destination-on-migrations.rst b/specs/mitaka/approved/check-destination-on-migrations.rst
+index 55e708c..e08a1e9 100644
+--- a/specs/mitaka/approved/check-destination-on-migrations.rst
++++ b/specs/mitaka/approved/check-destination-on-migrations.rst
+@@ -53,11 +53,6 @@ specific destination wouldn't impact my existing instances running on that
+ destination host because of some affinity that I missed.
+ 
+ 
+-Project Priority
+------------------
+-
+-Part of the 'scheduler' priority accepted for Liberty.
+-
+ Proposed change
+ ===============
+ 
+diff --git a/specs/mitaka/approved/flavor-cell-api.rst b/specs/mitaka/approved/flavor-cell-api.rst
+index ad464de..90e12f3 100644
+--- a/specs/mitaka/approved/flavor-cell-api.rst
++++ b/specs/mitaka/approved/flavor-cell-api.rst
+@@ -33,10 +33,6 @@ Use Cases
+   failure domain, and buildout reasons. When partitioned, flavor
+   information needs to be stored at API level.
+ 
+-Project Priority
+------------------
+-
+-Nova CellV2 is a project priority in liberty.
+ 
+ Proposed change
+ ===============
+diff --git a/specs/mitaka/approved/host-state-level-locking.rst b/specs/mitaka/approved/host-state-level-locking.rst
+index 441a2ab..e333c6f 100644
+--- a/specs/mitaka/approved/host-state-level-locking.rst
++++ b/specs/mitaka/approved/host-state-level-locking.rst
+@@ -76,11 +76,6 @@ There is no specific use case that this is aimed at. It is an internal
+ refactoring aimed at improving data consistency in the scheduler, and thus
+ overall effectiveness of placement decisions.
+ 
+-Project Priority
+------------------
+-
+-Yes - This is work related to the scheduler, one of the priority topics for
+-Liberty.
+ 
+ Proposed change
+ ===============
+diff --git a/specs/mitaka/approved/hyper-v-cluster.rst b/specs/mitaka/approved/hyper-v-cluster.rst
+index 73ced1e..c900464 100644
+--- a/specs/mitaka/approved/hyper-v-cluster.rst
++++ b/specs/mitaka/approved/hyper-v-cluster.rst
+@@ -33,10 +33,6 @@ This feature is particularly useful for its increased performance, highly
+ available VMs and virtual machine and virtual machine network health
+ detection.
+ 
+-Project Priority
+------------------
+-
+-None
+ 
+ Proposed change
+ ===============
+diff --git a/specs/mitaka/approved/hyper-v-uefi-secureboot.rst b/specs/mitaka/approved/hyper-v-uefi-secureboot.rst
+index 9b5524d..5833aad 100644
+--- a/specs/mitaka/approved/hyper-v-uefi-secureboot.rst
++++ b/specs/mitaka/approved/hyper-v-uefi-secureboot.rst
+@@ -28,10 +28,6 @@ Use Cases
+ This feature will increase the security of the spawned instances, assuring
+ their integrity before they boot.
+ 
+-Project Priority
+------------------
+-
+-None
+ 
+ Proposed change
+ ===============
+diff --git a/specs/mitaka/approved/hyper-v-vnuma-enable.rst b/specs/mitaka/approved/hyper-v-vnuma-enable.rst
+index 961ed5d..c607f31 100644
+--- a/specs/mitaka/approved/hyper-v-vnuma-enable.rst
++++ b/specs/mitaka/approved/hyper-v-vnuma-enable.rst
+@@ -39,10 +39,6 @@ Hyper-V related restrictions:
+ * Hyper-V cannot create instances with asymmetric NUMA topology.
+ * Hyper-V cannot guarantee CPU pinning.
+ 
+-Project Priority
+------------------
+-
+-None
+ 
+ Proposed change
+ ===============
+diff --git a/specs/mitaka/approved/hyperv-fibre-channel.rst b/specs/mitaka/approved/hyperv-fibre-channel.rst
+index 12c4c1c..35bef74 100644
+--- a/specs/mitaka/approved/hyperv-fibre-channel.rst
++++ b/specs/mitaka/approved/hyperv-fibre-channel.rst
+@@ -26,10 +26,6 @@ This blueprint addresses deployers possessing FC based infrastructure.
+ This will enable attaching volumes exported by Cinder FC based backends using
+ the retrieved target informations such as WWN and LUN.
+ 
+-Project Priority
+------------------
+-
+-None
+ 
+ Proposed change
+ ===============
+diff --git a/specs/mitaka/approved/hyperv-storage-qos.rst b/specs/mitaka/approved/hyperv-storage-qos.rst
+index ef57a49..987b2e1 100644
+--- a/specs/mitaka/approved/hyperv-storage-qos.rst
++++ b/specs/mitaka/approved/hyperv-storage-qos.rst
+@@ -31,10 +31,6 @@ Use Cases
+ 
+ * Set IOPS caps for instance local disks by using flavor extra specs
+ 
+-Project Priority
+------------------
+-
+-None
+ 
+ Proposed change
+ ===============
+diff --git a/specs/mitaka/approved/libvirt-real-time.rst b/specs/mitaka/approved/libvirt-real-time.rst
+index 1b35f2b..96b3bf9 100644
+--- a/specs/mitaka/approved/libvirt-real-time.rst
++++ b/specs/mitaka/approved/libvirt-real-time.rst
+@@ -78,10 +78,6 @@ cloud and the service/system it is communicating with. Such networking
+ guarantees are largely impractical to achieve when using remote public
+ clouds across the internet.
+ 
+-Project Priority
+-----------------
+-
+-None
+ 
+ Proposed change
+ ===============
+diff --git a/specs/mitaka/approved/mem-bw.rst b/specs/mitaka/approved/mem-bw.rst
+index 138ff8d..cd6a9bc 100644
+--- a/specs/mitaka/approved/mem-bw.rst
++++ b/specs/mitaka/approved/mem-bw.rst
+@@ -41,12 +41,6 @@ Use Cases
+   of BaseResourceMonitor.
+ 
+ 
+-Project Priority
+------------------
+-
+-None
+-
+-
+ Proposed change
+ ===============
+ 
+@@ -186,5 +180,3 @@ References
+ ==========
+ 
+ http://pcp.io/
+-
+-
+diff --git a/specs/mitaka/approved/oslo_db-enginefacade.rst b/specs/mitaka/approved/oslo_db-enginefacade.rst
+index 59c88d2..096d504 100644
+--- a/specs/mitaka/approved/oslo_db-enginefacade.rst
++++ b/specs/mitaka/approved/oslo_db-enginefacade.rst
+@@ -57,11 +57,6 @@ this separation. This allows us to automatically use a slave database
+ connection for all read-only transactions. It is currently only used when
+ explicitly requested in code.
+ 
+-Project Priority
+------------------
+-
+-None
+-
+ 
+ Proposed change
+ ===============
+diff --git a/specs/mitaka/approved/pci-passthrough-whitelist-regex.rst b/specs/mitaka/approved/pci-passthrough-whitelist-regex.rst
+index f8479c4..6b09d1a 100644
+--- a/specs/mitaka/approved/pci-passthrough-whitelist-regex.rst
++++ b/specs/mitaka/approved/pci-passthrough-whitelist-regex.rst
+@@ -30,10 +30,6 @@ Deployer may want to exclude specific VF(s) to be used for other purposes.
+ For instance VF can be used to connect compute node to storage node
+ by running iSER (iSCSI Extensions for RDMA) transport.
+ 
+-Project Priority
+------------------
+-
+-None
+ 
+ Proposed change
+ ===============
+diff --git a/specs/mitaka/approved/persist-request-spec.rst b/specs/mitaka/approved/persist-request-spec.rst
+index f1337e6..2c928db 100644
+--- a/specs/mitaka/approved/persist-request-spec.rst
++++ b/specs/mitaka/approved/persist-request-spec.rst
+@@ -32,11 +32,6 @@ Use Cases
+ * Operators/users want to move an instance through a migration or resize and
+   want the destination to satisfy the same requirements as the source.
+ 
+-Project Priority
+-----------------
+-
+-Priorities for Mitaka have not yet been decided.
+-
+ 
+ Proposed change
+ ===============
+diff --git a/specs/mitaka/approved/purge-deleted-instances-cmd.rst b/specs/mitaka/approved/purge-deleted-instances-cmd.rst
+index 7a52419..7efdff4 100644
+--- a/specs/mitaka/approved/purge-deleted-instances-cmd.rst
++++ b/specs/mitaka/approved/purge-deleted-instances-cmd.rst
+@@ -34,10 +34,6 @@ Use Cases
+ As a cloud operator, I want to manage the size of my database by purging
+ soft deleted instances - and I don't care about archiving to shadow tables.
+ 
+-Project Priority
+------------------
+-
+-None
+ 
+ Proposed change
+ ===============
+diff --git a/specs/mitaka/approved/refresh-quotas-usage.rst b/specs/mitaka/approved/refresh-quotas-usage.rst
+index 032c5d7..d5cacfb 100644
+--- a/specs/mitaka/approved/refresh-quotas-usage.rst
++++ b/specs/mitaka/approved/refresh-quotas-usage.rst
+@@ -38,11 +38,6 @@ If a refresh quotas usage feature is implemented in Nova an operator can
+ correct the usage without running a SQL query directly on the database.
+ 
+ 
+-Project Priority
+------------------
+-
+-None
+-
+ Proposed change
+ ===============
+ 
+diff --git a/specs/mitaka/approved/request-spec-object-mitaka.rst b/specs/mitaka/approved/request-spec-object-mitaka.rst
+index fd752fb..1c97b97 100644
+--- a/specs/mitaka/approved/request-spec-object-mitaka.rst
++++ b/specs/mitaka/approved/request-spec-object-mitaka.rst
+@@ -40,12 +40,6 @@ Use Cases
+ This is a pure refactoring effort for cleaning up all the interfaces in between
+ Nova and the scheduler so the scheduler could be split out by the next cycle.
+ 
+-Project Priority
+------------------
+-
+-This blueprint is part of a global effort around the 'scheduler' refactoring
+-for helping it to be split out. It was formerly identified as a priority in
+-Kilo.
+ 
+ Proposed change
+ ===============
+diff --git a/specs/mitaka/approved/service-version-behavior.rst b/specs/mitaka/approved/service-version-behavior.rst
+index ecb1d3d..e868694 100644
+--- a/specs/mitaka/approved/service-version-behavior.rst
++++ b/specs/mitaka/approved/service-version-behavior.rst
+@@ -50,10 +50,6 @@ steps and more forgiving behavior from nova.
+ As an operator, I want more automated checks preventing an ancient
+ compute node from trying to rejoin after an extended hiatus.
+ 
+-Project Priority
+------------------
+-
+-The priorities for Mitaka are not yet defined.
+ 
+ Proposed change
+ ===============
+diff --git a/specs/mitaka/approved/stop-dmcrypt-on-suspend.rst b/specs/mitaka/approved/stop-dmcrypt-on-suspend.rst
+index b495ca8..13445d3 100644
+--- a/specs/mitaka/approved/stop-dmcrypt-on-suspend.rst
++++ b/specs/mitaka/approved/stop-dmcrypt-on-suspend.rst
+@@ -34,11 +34,6 @@ Use Cases
+ An encrypted instance operating on sensitive data is stopped but not destroyed
+ -- the work to be resumed later.
+ 
+-Project Priority
+-----------------
+-
+-None
+-
+ 
+ Proposed change
+ ===============
+diff --git a/specs/mitaka/approved/tag-instances.rst b/specs/mitaka/approved/tag-instances.rst
+index dff5dc1..7ba2d9f 100644
+--- a/specs/mitaka/approved/tag-instances.rst
++++ b/specs/mitaka/approved/tag-instances.rst
+@@ -33,10 +33,6 @@ A typical end-user would like to attach a set of strings to an instance. The
+ user does not wish to use key/value pairs to tag the instance with some
+ simple strings.
+ 
+-Project Priority
+-----------------
+-
+-None
+ 
+ Proposed change
+ ===============
+diff --git a/specs/mitaka/approved/use-glance-v2-api.rst b/specs/mitaka/approved/use-glance-v2-api.rst
+index 43bcd37..9d37854 100644
+--- a/specs/mitaka/approved/use-glance-v2-api.rst
++++ b/specs/mitaka/approved/use-glance-v2-api.rst
+@@ -64,11 +64,6 @@ that is holding people back from deploying Glance v2. This in turn is causing
+ some problems for the DefCore effort.
+ 
+ 
+-Project Priority
+------------------
+-
+-None
+-
+ Proposed change
+ ===============
+ 
+diff --git a/specs/mitaka/approved/vmware-limits.rst b/specs/mitaka/approved/vmware-limits.rst
+index b32cf77..e26ca3b 100644
+--- a/specs/mitaka/approved/vmware-limits.rst
++++ b/specs/mitaka/approved/vmware-limits.rst
+@@ -36,10 +36,6 @@ Use Cases
+ 
+ * It will allow tenants to be guaranteed performance
+ 
+-Project Priority
+------------------
+-
+-None
+ 
+ Proposed change
+ ===============
+diff --git a/specs/mitaka/approved/websocket-proxy-to-host-security.rst b/specs/mitaka/approved/websocket-proxy-to-host-security.rst
+index 1e1fd3d..c6ddc0b 100644
+--- a/specs/mitaka/approved/websocket-proxy-to-host-security.rst
++++ b/specs/mitaka/approved/websocket-proxy-to-host-security.rst
+@@ -51,11 +51,6 @@ With this blueprint, Carol would be unable to view the VNC or SPICE traffic
+ (since it would we encrypted) and would be unable to connect to the VM's
+ console with her own VNC client (since it would require authentication).
+ 
+-Project Priority
+-----------------
+-
+-None
+-
+ 
+ Proposed change
+ ===============
+-- 
+2.1.0
+

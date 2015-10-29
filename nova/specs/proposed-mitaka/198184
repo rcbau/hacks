@@ -1,0 +1,205 @@
+From c0e2fe6f4a999597e31498b12bc290c1e538eabd Mon Sep 17 00:00:00 2001
+From: ghanshyam <ghanshyam.mann@nectechnologies.in>
+Date: Wed, 30 Sep 2015 13:24:22 +0900
+Subject: [PATCH] Spec for "tenant_id" "user_id" filter implies "all_tenant"
+
+APIImpact
+Implements: blueprint list-filter-with-tenant-or-user-id-should-implies-all-tenants
+
+Related-Bug: 1468992
+
+Change-Id: Ib73de451def0e51aa6b00610afcfc27e14981ce2
+---
+ ...r-with-tenant-id-should-implies-all-tenants.rst | 180 +++++++++++++++++++++
+ 1 file changed, 180 insertions(+)
+ create mode 100644 specs/mitaka/approved/list-filter-with-tenant-id-should-implies-all-tenants.rst
+
+diff --git a/specs/mitaka/approved/list-filter-with-tenant-id-should-implies-all-tenants.rst b/specs/mitaka/approved/list-filter-with-tenant-id-should-implies-all-tenants.rst
+new file mode 100644
+index 0000000..307ff91
+--- /dev/null
++++ b/specs/mitaka/approved/list-filter-with-tenant-id-should-implies-all-tenants.rst
+@@ -0,0 +1,180 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++============================================================================
++Server List filter with tenant-id or user-id should implies all-tenants flag
++============================================================================
++
++https://blueprints.launchpad.net/nova/+spec/list-filter-with-tenant-or-user-id-should-implies-all-tenants
++
++Admin requests to server list filter with "tenant_id" or "user_id" should
++implies "all_tenants" flag to get correct list of servers for requested
++tenant.
++
++
++Problem description
++===================
++
++When admin tries to list all servers that belong to a given tenant or user,
++it works only when the "all_tenant" flag is passed.
++
++For example:
++
++- nova list --tenant xyz --all-tenants 1
++
++If "all_tenants" flag is not mentioned, then it returns empty list with
++200 response code.
++
++Use Cases
++---------
++
++Admin want to list all servers belongs to given tenants or user same way
++as other list filter works.
++
++Project Priority
++----------------
++
++None
++
++Proposed change
++===============
++
++Flag "all_tenants" should not be required for "tenant_id" or "user_id" filter
++to function properly.
++
++If admin is searching servers with filter "tenant_id"  or "user_id" then, this
++should imply that all_tenants is also enabled unless that is explicitly
++disabled.
++
++There will be no change in behavior for request which has "all_tenants" flag
++set explicitly either True or False like:
++
++- nova list server --tenant_id=<id> --all_tenants=True|False
++
++Behavior changes after this proposal:
++
++::
++
++  - nova list [--tenant [<tenant>]] [--user [<user>]] [--all-tenants [<0|1>]]
++    No Change
++
++  - nova list [--tenant [<tenant>]] [--user [<user>]]
++    Old behavior - Return empty list
++    New behavior - Return the list of servers for the provided tenant and user.
++
++Alternatives
++------------
++
++It can be fixed as bug fix without requiring a new API microversion. But to
++advertise that it is working fine now, microversion..
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++This fix is added as a microversion.
++
++Behavior for old request:
++
++- For requests with "all_tenant" flag present, there is no behavior change
++  with this microversion.
++- For requests without "all_tenant" flag with "tenant_id"  or "user_id"
++  filter, will start getting the expected list of servers instead of empty
++  list.
++
++
++Request::
++
++    GET /servers?tenant_id=<id>
++    GET /servers?user_id=<id>
++
++The request and response headers, body and possible codes are unchanged from
++current behavior. The "tenant_id" and "user_id" filter will work properly.
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++python-novaclient will have to be updated so that it can request the new
++microversion when the "tenant_id" or "user_id" option is used in server
++list API.
++
++Currently python-novaclient set all_tenant flag to 1 explicitly in case of
++--user or --tenant. This logic should be removed when request is with this
++microversion.
++
++Performance Impact
++------------------
++
++None
++
++Other deployer impact
++---------------------
++
++None
++
++Developer impact
++----------------
++
++None
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  gmann
++
++Work Items
++----------
++
++* Add a new microversion to make "tenant_id" "user_id" filters
++  work properly.
++* Update python-novaclient as mentioned above.
++
++Dependencies
++============
++
++None
++
++
++Testing
++=======
++
++* Unit tests and API samples functional tests in the nova tree will be added.
++
++
++Documentation Impact
++====================
++
++The nova/api/openstack/rest_api_version_history.rst document will be updated.
++
++
++References
++==========
++
++[1] Originally reported as a bug: https://bugs.launchpad.net/nova/+bug/1185290
++
++[2] Reopened bug: https://bugs.launchpad.net/nova/+bug/1468992
++
++[3] Proof of concept code change: https://review.openstack.org/#/c/195412/3
++    (Need to undo for v2)
+-- 
+2.1.0
+

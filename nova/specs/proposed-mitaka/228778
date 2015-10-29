@@ -1,0 +1,150 @@
+From 535b9c98e4cdfc03c4cba2703b54612b0c7d2126 Mon Sep 17 00:00:00 2001
+From: Radoslav Gerganov <rgerganov@vmware.com>
+Date: Tue, 29 Sep 2015 11:15:03 +0300
+Subject: [PATCH] ConsoleAuthTokens should work for all console types
+
+The current API allows getting connection info only for tokens which
+correspond to RDP consoles. It should work for all types of tokens.
+
+blueprint fix-console-auth-tokens
+
+APIImpact
+
+Change-Id: Ic37540ff0c10da83b0989e87daad2c27da7d2b38
+---
+ specs/mitaka/approved/fix-console-auth-tokens.rst | 123 ++++++++++++++++++++++
+ 1 file changed, 123 insertions(+)
+ create mode 100644 specs/mitaka/approved/fix-console-auth-tokens.rst
+
+diff --git a/specs/mitaka/approved/fix-console-auth-tokens.rst b/specs/mitaka/approved/fix-console-auth-tokens.rst
+new file mode 100644
+index 0000000..04825fd
+--- /dev/null
++++ b/specs/mitaka/approved/fix-console-auth-tokens.rst
+@@ -0,0 +1,123 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++==========================================
++Fix ConsoleAuthTokens API
++==========================================
++
++https://blueprints.launchpad.net/nova/+spec/fix-console-auth-tokens
++
++The current ConsoleAuthTokens API allows getting connection info only for
++tokens which correspond to RDP consoles. We need this API to also work for MKS
++tokens in order to implement a standalone MKS proxy. The proposal is to change
++this API to work for all types of tokens.
++
++Problem description
++===================
++
++Standalone console proxies need this API but it is restricted only for RDP.
++So there is no way to implement a console proxy outside of the Nova tree.
++
++Use Cases
++----------
++
++Provide VM consoles for all protocols.
++
++Project Priority
++-----------------
++
++N/A
++
++Proposed change
++===============
++
++Change the implementation of ConsoleAuthTokens to provide connect
++information for all types of tokens (not only RDP).
++
++Alternatives
++------------
++
++The alternative is to put all proxy implementations in the Nova codebase.
++This won't work for many reasons.
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++The REST API will remain unchanged, only the implemenation will be changed.
++However, we will need a new API micro version to differentiate from the old
++behavior which is to return HTTP 401 for non-RDP tokens.
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++None
++
++Performance Impact
++------------------
++
++None
++
++Other deployer impact
++---------------------
++
++None
++
++Developer impact
++----------------
++
++None
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  rgerganov
++
++Work Items
++----------
++
++It will be implemented in a single patch which fixes the API implementation
++and bumps the micro version.
++
++Dependencies
++============
++
++None
++
++Testing
++=======
++
++Unit and functional tests.
++
++Documentation Impact
++====================
++
++None
++
++References
++==========
++
++History
++=======
++
+-- 
+2.1.0
+

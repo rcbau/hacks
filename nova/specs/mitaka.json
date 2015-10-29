@@ -1,0 +1,59 @@
+{
+    "API": {
+        "Allow force stop of an instance": [
+            "195418"
+        ], 
+        "Allow sending a NMI to an instance": [
+            "229255"
+        ], 
+        "Allow the user to change and view the description of an instance": [
+            "228908"
+        ], 
+        "Return HTTPForbidden if over quota (API guideline compliance)": [
+            "230986"
+        ]
+    }, 
+    "Administrative": {
+        "Remove service manament commands from nova-manage, as they have been replaced by calls in the REST API": [
+            "231918"
+        ]
+    }, 
+    "Feature": {
+        "Allow increase ephemeral disk during resize": [
+            "145736"
+        ], 
+        "Implement live resize of instances": [
+            "141219"
+        ], 
+        "Virtual instance rescue with stable disk devices": [
+            "230442"
+        ]
+    }, 
+    "Features": {
+        "Nested quotas": [
+            "209989"
+        ]
+    }, 
+    "Hypervisor: Hyper-V": {
+        "Support vNUMA": [
+            "231417"
+        ]
+    }, 
+    "Scheduler": {
+        "Report host memory bandwidth as a scheduling metric": [
+            "229034"
+        ]
+    }, 
+    "__ignore__": {
+        "__ignore__": [
+            "231964", 
+            "192755", 
+            "230499"
+        ]
+    }, 
+    "__previously_approved__": [
+        "229034", 
+        "231417", 
+        "209989"
+    ]
+}

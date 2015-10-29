@@ -1,0 +1,162 @@
+From c834cd01ed777e46e1595e631d9dbea92cc9b93b Mon Sep 17 00:00:00 2001
+From: Tang Chen <tangchen@cn.fujitsu.com>
+Date: Fri, 16 Oct 2015 16:48:10 +0800
+Subject: [PATCH] Migration state machine
+
+Implement a state machine to manage migration status.
+
+Change-Id: I01fc9ac167e251b299b72c96ffeca483f51ac68c
+Implements: blueprint migration-state-machine
+---
+ specs/mitaka/approved/migration-state-machine.rst | 139 ++++++++++++++++++++++
+ 1 file changed, 139 insertions(+)
+ create mode 100644 specs/mitaka/approved/migration-state-machine.rst
+
+diff --git a/specs/mitaka/approved/migration-state-machine.rst b/specs/mitaka/approved/migration-state-machine.rst
+new file mode 100644
+index 0000000..bd3f902
+--- /dev/null
++++ b/specs/mitaka/approved/migration-state-machine.rst
+@@ -0,0 +1,139 @@
++
++==========================================
++Migration state machine
++==========================================
++
++https://blueprints.launchpad.net/nova/+spec/migration-state-machine
++
++Implement a state machine to manage migration status.
++
++Problem description
++===================
++
++In the current code, migration statuses (Migration.status) are represented
++with pure String. So are image, snapshot and event statuses.
++
++It has the following demerits:
++1. When we grep the code for migration statuses, we could get lots of noisy
++info we don't want. eg. When we want to grep migration status 'error', all
++the other statuses will also come out.
++
++2. Sometimes, we use '' to wrap a string, but sometimes using "". So usually
++we need to grep twice for more precise results. eg. Grep "'migrating'" and
++"\"migrating\"". I found that in some test files, " " is used, but in other
++files, ' ' is used.
++
++3. People could spell the string incorrectly, or give a different word to
++represent the same meaning. eg. In the current code, we have three statuses
++representing the migration is over: finished, completed and done. I really
++cannot tell the difference among them.
++
++To prevent above problems, Nikola suggested to implement a state machine to
++manage migration status. And we can reuse the common state machine builder
++in openstack/automaton. (https://review.openstack.org/203284)
++
++Use Cases
++----------
++
++1. The migration status will be more clear to users. Only one human readable
++string for each status.
++
++2. Using a state machine API to maintain the status is more reliable than
++pure string.
++
++3. Once the state machine is correctly defined, the state modification won't
++miss. It is more reliable than human modification.
++
++Proposed change
++===============
++
++1. Define all 16 migration statuses as enum instead of pure string.
++
++2. Implement a migration state machine for migration status, reusing state
++machine builder in openstack/automaton.
++
++3. Use the state machine to change migration status when necessary.
++
++Alternatives
++------------
++
++None
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++None
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++None
++
++Performance Impact
++------------------
++
++None
++
++Other deployer impact
++---------------------
++
++None
++
++Developer impact
++----------------
++
++None
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++Tang Chen (tangchen@cn.fujitsu.com)
++
++Work Items
++----------
++
++* Define all 16 migration statuses as enum.
++* Implement a state machine for migration.
++* Use the state machine to modify migration status.
++
++Dependencies
++============
++
++None
++
++Testing
++=======
++
++None
++
++Documentation Impact
++====================
++
++None
++
++References
++==========
++
++[1] https://review.openstack.org/#/c/197668/
++[2] https://review.openstack.org/#/c/197669/
++[3] https://review.openstack.org/#/c/203284/
++[4] http://paste.openstack.org/show/384853/
+-- 
+2.1.0
+

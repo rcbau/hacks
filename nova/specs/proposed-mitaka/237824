@@ -1,0 +1,179 @@
+From 1cdf9aedef799b60714811e141018006fe5a9636 Mon Sep 17 00:00:00 2001
+From: Akira Yoshiyama <akirayoshiyama@gmail.com>
+Date: Tue, 20 Oct 2015 23:16:11 +0900
+Subject: [PATCH] Add Clustered LVM support to Libvirt LVM image backend
+
+Nova libvirt driver supports LVM as its image backend and it can
+also be used for Clustered LVM (CLVM). CLVM is an extended version
+of Linux LVM2 on top of SAN storages to support concurrent access
+from servers. To do so, it is based on clustering software like
+Pacemaker/Corosync, DLM (Linux distributed lock manager) and
+clvmd to share LVM metadata among servers safely. It's useful to
+support VM live-migration between compute hosts sharing a CLVM pool.
+
+The goal of this spec is to support live-migration on CLVM.
+
+bp libvirt-imagebackend-clvm
+
+Change-Id: I1ee85d744c20da126cc2494114c7144a4da12d6e
+---
+ .../mitaka/approved/libvirt-imagebackend-clvm.rst  | 147 +++++++++++++++++++++
+ 1 file changed, 147 insertions(+)
+ create mode 100644 specs/mitaka/approved/libvirt-imagebackend-clvm.rst
+
+diff --git a/specs/mitaka/approved/libvirt-imagebackend-clvm.rst b/specs/mitaka/approved/libvirt-imagebackend-clvm.rst
+new file mode 100644
+index 0000000..dbbd5bd
+--- /dev/null
++++ b/specs/mitaka/approved/libvirt-imagebackend-clvm.rst
+@@ -0,0 +1,147 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++==============================================
++Clustered LVM support as Libvirt image backend
++==============================================
++
++https://blueprints.launchpad.net/nova/+spec/libvirt-imagebackend-clvm
++
++This blueprint aims to add support for Clustered LVM to the LVM image
++backend driver of Libvirt plugin.
++
++
++Problem description
++===================
++
++Nova libvirt driver supports LVM as its image backend and it can also
++be used for clustered LVM (CLVM). CLVM is an extended version of Linux
++LVM2 on top of SAN storages to support concurrent access from
++servers. To do so, it is based on clustering software like
++Pacemaker/Corosync, DLM (Linux distributed lock manager) and clvmd to
++share LVM metadata among servers safely. It's useful to support VM
++live-migration between compute hosts sharing a CLVM pool.
++
++However, Nova doesn't support VM live-migration on CLVM because the
++LVM image backend driver isn't marked as for shared storages.
++
++Use Cases
++----------
++
++A typical use case is like below:
++
++- A small private cloud; there are 20-50 compute nodes.
++- With VM HA; VM live migration and evacuation are required.
++- Heavy disk I/O; NFS image backend is not suitable.
++- Ceph isn't good as the image backend by a cost aspect.
++
++
++Proposed change
++===============
++
++Add is_shared_block_storage() to nova.virt.libvirt.imagebackend.Lvm class:
++
++.. code-block:: python
++
++    def is_shared_block_storage():
++        """True if the backend puts images on a shared block storage."""
++        return CONF.libvirt.clvm_enabled
++
++clvm_enabled is a boolean variable (defalut is False). True is set
++when CLVM is used as image backend.
++
++Alternatives
++------------
++
++Do nothing and CLVM is not supoprted.
++
++Data model impact
++-----------------
++
++None.
++
++REST API impact
++---------------
++
++None.
++
++Security impact
++---------------
++
++Each host is able to access all images on the CLVM pool. But it's not
++a problem because using NFS image backend is the same.
++
++Notifications impact
++--------------------
++
++None.
++
++Other end user impact
++---------------------
++
++None.
++
++Performance Impact
++------------------
++
++None.
++
++Other deployer impact
++---------------------
++
++A new configuration option "clvm_enabled" is added in [libvirt] group
++of nova.conf.
++
++Developer impact
++----------------
++
++None.
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  yosshy
++
++Other contributors:
++  None
++
++Work Items
++----------
++
++* Add is_shared_block_storage() to nova.virt.libvirt.imagebackend.Lvm class:
++* Add a few unit tests for the above.
++
++
++Dependencies
++============
++
++None.
++
++
++Testing
++=======
++
++The new configuration parameter "clvm_enabled" is a boolean value, so
++2 test cases are required.
++
++
++Documentation Impact
++====================
++
++Add a description for the new configuration parameter "clvm_enabled".
++
++
++References
++==========
++
++* Red Hat Enterprise Linux 6 Logical Volume Manager Administration
++  1.4. The Clustered Logical Volume Manager (CLVM)
++  https://access.redhat.com/documentation/en-US/Red_Hat_Enterprise_Linux/6/html/Logical_Volume_Manager_Administration/LVM_Cluster_Overview.html
+-- 
+2.1.0
+

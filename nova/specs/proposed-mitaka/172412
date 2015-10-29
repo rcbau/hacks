@@ -1,0 +1,233 @@
+From 7c7d158fc7bbf7167b526af89240cf41ec861ea7 Mon Sep 17 00:00:00 2001
+From: jichenjc <jichenjc@cn.ibm.com>
+Date: Thu, 9 Apr 2015 10:39:59 +0800
+Subject: [PATCH] New API for get service info from id
+
+Add get-service-by-id.rst
+
+APIImpact
+
+Change-Id: I93f81c0742cbf533c9aa143a30b6b17dc323b3ad
+---
+ specs/mitaka/approved/get-service-by-id.rst | 209 ++++++++++++++++++++++++++++
+ 1 file changed, 209 insertions(+)
+ create mode 100644 specs/mitaka/approved/get-service-by-id.rst
+
+diff --git a/specs/mitaka/approved/get-service-by-id.rst b/specs/mitaka/approved/get-service-by-id.rst
+new file mode 100644
+index 0000000..5dae73c
+--- /dev/null
++++ b/specs/mitaka/approved/get-service-by-id.rst
+@@ -0,0 +1,209 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++==========================================
++Add uuid to service and add API to query
++==========================================
++
++Add an uuid field into db service model and change API layer to let user
++be able to query the service through the uuid.
++
++Problem description
++===================
++
++Currently, nova use 'id' which is an integer to distinct the serivce.
++After cellv2, we might end up with services in multiple cells with the same
++id, this will make distinct services and query become difficult.
++
++Use Cases
++----------
++
++User want to get the details of a specified service without having to
++list all services.
++
++User want to delete the service by directly using the uuid(we already
++support use id to delete a service)
++
++Project Priority
++-----------------
++
++None
++
++Proposed change
++===============
++
++Add an uuid field to service model, make it nullable and
++add a unique constraint to uuid field.
++
++::
++  class Service(BASE, NovaBase):
++  ...
++  uuid = Column(String(36), nullable=True)
++
++  schema.UniqueConstraint(
++    "uuid",
++    name="uniq_instance_uuid"),
++
++Add a new API to enable serivce get by using its uuid.
++Change the existing API to enable delete a service by its uuid.
++
++Alternatives
++------------
++
++use GET /os-service and let user filter the id they wanted, this is
++not convenient to end user. Also it might affect cellv2 usage because
++cellv2 has identical service id in different cell.
++
++Data model impact
++-----------------
++
++See proposed change chapter for Data model update.
++
++For online migration, a column like following will be added to
++Service table. So all the uuids will be stored in the table.
++
++::
++  uuid = Column(String(36), nullable=True, unique=True)
++
++REST API impact
++---------------
++
++currently we support following API:
++REQ: curl -i
++'http://xx.xx.xx.xx:8774/v2/768cacb71c464bf79e42ca256dc43cee/os-services'
++and response is something like:
++
++::
++
++   {
++       "services": {
++           "status": "enabled",
++           "binary": "nova-cert",
++           "zone": "internal",
++           "host": "host1",
++           "updated_at": "2015-04-10T12:52:01.000000",
++           "state": "up",
++           "disabled_reason": null,
++           "id": 1,
++           "uuid": xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
++       },
++       {
++           "status": "enabled",
++           "binary": "nova-conductor",
++           "zone": "internal",
++           "host": "host1",
++           "updated_at": "2015-04-02T15:39:24.000000",
++           "state": "down",
++           "disabled_reason": null,
++           "id": 2,
++           "uuid": xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
++       }
++   }
++
++The proposed changes are add API to support following:
++REQ : curl -X GET -i
++'http://xx.xx.xx.xx:8774/v2/768cacb71c464bf79e42ca256dc43cee/os-services/uuid'
++and response is something like:
++
++::
++
++   {
++       "service":
++       {
++           "status": "enabled",
++           "binary": "nova-cert",
++           "zone": "internal",
++           "host": "host1",
++           "updated_at": "2015-04-10T12:52:01.000000",
++           "state": "up",
++           "disabled_reason": null,
++           "id": 1,
++           "uuid": xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
++       }
++   }
++
++If no service with given uuid found, the HTTPNotFound (404) will be returned.
++
++The other proposed changes are change delete API:
++this is a backward-incompatible change.
++
++REQ: curl -X DELETE
++'http://xx.xx.xx.xx:8774/v2/768cacb71c464bf79e42ca256dc43cee/os-services/uuid'
++and response is 204 if the delete is success or the uuid not found, 404 will be
++returned.
++
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++The developer will be able to query services by uuid, and, use the
++uuid instead of id to delete the service.
++
++Performance Impact
++------------------
++
++None
++
++Other deployer impact
++---------------------
++
++Policy.json will be be updated because this is only allowed to be
++executed by admin by default.
++Following default rule will be kept.
++
++::
++ "os_compute_api:os-services": "rule:admin_api",
++
++Developer impact
++----------------
++
++None
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++jichenjc <jichenjc@cn.ibm.com>
++
++Work Items
++----------
++
++Add DB migraiton scripts to add uuid of services.
++Add DB update for services.
++Add API as above mentioned, it will only make changes on v2.1 microversion,
++no v2 change will be added.
++
++Dependencies
++============
++
++None
++
++Testing
++=======
++
++Unit test and tempest test will be added
++
++Documentation Impact
++====================
++
++API update will impact Doc changes.
++
++References
++==========
++
++[1] https://bugs.launchpad.net/nova/+bug/1386540
+-- 
+2.1.0
+

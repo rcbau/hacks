@@ -1,0 +1,180 @@
+From d0a0a41f99e5792a18a90f9202fc5c41f893dd0d Mon Sep 17 00:00:00 2001
+From: Victor Morales <victor.morales@intel.com>
+Date: Fri, 16 Oct 2015 10:36:39 -0500
+Subject: [PATCH] Add support to boot from UEFI images
+
+Libvirt 1.2.8 version has included support to boot UEFI instances using OVMF,
+therefore nova compute needs to be able to boot instances using UEFI images.
+
+bp boot-from-uefi
+
+Change-Id: I0f1d13ee9c1f81cfe688e174d9e8abce2f4051be
+---
+ specs/mitaka/approved/boot-from-uefi.rst | 155 +++++++++++++++++++++++++++++++
+ 1 file changed, 155 insertions(+)
+ create mode 100644 specs/mitaka/approved/boot-from-uefi.rst
+
+diff --git a/specs/mitaka/approved/boot-from-uefi.rst b/specs/mitaka/approved/boot-from-uefi.rst
+new file mode 100644
+index 0000000..cb1a551
+--- /dev/null
++++ b/specs/mitaka/approved/boot-from-uefi.rst
+@@ -0,0 +1,155 @@
++
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++==========================================
++Boot From UEFI image
++==========================================
++
++https://blueprints.launchpad.net/nova/+spec/boot-from-uefi
++
++OpenStack Liberty Release does not enable UEFI images to be booted via the
++Nova compute libvirt driver. This is a problem because there is a slow but
++stedy trend for OSes to move to the UEFI format and in some cases to make the
++UEFI format their only format. Microsoft Windows is moving in this direction
++and Clear Linux is already in this category. Given this, we propose enabling
++UEFI boot with the libvirt driver. Additionally, we propose using the well
++tested and battle hardened Open Virtual Machine Firmware (OVMF) as the VM
++firmware for x86_64.
++
++Unified Extensible Firmware Interface (UEFI) is a standard firmware designed
++to replace BIOS, VM boot is supported by libvirt since version 1.2.8.
++
++OVMF is a port of Intel's tianocore firmware to qemu virtual machine, in other
++words this project enables UEFI support for Virtual Machines.
++
++Problem description
++===================
++Platform vendors have been increasingly adopting UEFI for the platform firmware
++over traditional BIOS. This, in part, is leading to OS vendors also shifting to
++support or provide UEFI images. However, as adoption of UEFI for OS images
++increases, it has become apparent that OpenStack through its Nova compute
++Libvirt driver, does not support UEFI image boot. This is problematic and needs
++to be resolved.
++
++Use Cases
++----------
++1. User wants to launch a VM using a specific flavor and their own UEFI image.
++In this case the user needs to be able to tell Nova everything that is needed
++to launch the desired VM. The only additional information that should be
++required is an extra spec indicating that the specified image is a UEFI image
++and needs to be treated as such. Being treated as such means that the Nova
++scheduler would filter the possible compute hosts based on the extra spec, pass
++the extra spec to the libvirt driver which would then use this information to
++locate and use the correct firmware for VM boot.
++
++2. User has a UEFI image and wants to make it available in Glance for general
++use. In this case we want the user to be able to upload the image to Glance in
++the same way they do today. However, we will need to enable Glance to recognize
++that the image being uploaded is UEFI or not and add the appropriate extra spec
++when it is a UEFI image.
++
++3. User wants to launch a VM based on a specific flavor and UEFI image. The
++image is in Glance. Given use cases 1 and 2 have been implemented, the user
++needs not do anything special to launch a VM based on an image is Glance (UEFI
++or not).
++
++Project Priority
++-----------------
++
++None
++
++Proposed change
++===============
++
++We offer a solution for including UEFI images in OpenStack as first class
++citizens. Enabling their recognition on upload to Glance through to their being
++scheduled by Nova and launched onto a Nova compute host via the libvirt driver.
++For x86_64 images we will use the battle hardened OVMF (Open Virtual Machine
++Firmware) a sub-project of Intel's EFI Development Kit II (edk2), which enables
++UEFI support for Ia32 and X64 Virtual Machines. Other architecture should also
++be supported.
++
++Add missing elements when generating XML definition in libvirt driver to
++support OVMF firmware. Add also a new metadata value to specify firmware used
++per defined image.
++
++This way, when operator uploads an UEFI bootable image he/she can update the
++metadata value specifying the path of firmware used to boot the image.
++
++When user launch a VM from an UEFI image, the XML generated would include
++proper values to use firmware previously defined by the operator.
++
++Posting to get preliminary feedback on the scope of this spec.
++
++Alternatives
++------------
++
++Data model impact
++-----------------
++
++REST API impact
++---------------
++None
++
++Security impact
++---------------
++None
++
++Notifications impact
++--------------------
++
++Other end user impact
++---------------------
++
++Performance Impact
++------------------
++
++Other deployer impact
++---------------------
++
++Developer impact
++----------------
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Work Items
++----------
++
++Dependencies
++============
++* libvirt >= 1.2.8
++* OVMF from EDK2
++
++Testing
++=======
++
++Documentation Impact
++====================
++Yes, some minor additions for launching a UEFI image with Nova, note on Glance auto-detect of
++UEFI image and extra-spec inclusion, Operator / installation information for the UEFI firmware.
++
++References
++==========
++
++* http://www.linux-kvm.org/downloads/lersek/ovmf-whitepaper-c770f8c.txt
++
++* https://libvirt.org/formatdomain.html#elementsOSBIOS
++
++History
++=======
++
++.. list-table:: Revisions
++   :header-rows: 1
++
++   * - Release Name
++     - Description
++   * - Mitaka
++     - Introduced
+-- 
+2.1.0
+

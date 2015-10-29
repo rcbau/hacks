@@ -1,0 +1,145 @@
+From 1a05a8e09f241d5fb0cc3d910a47ff58effcbe17 Mon Sep 17 00:00:00 2001
+From: Samuel Cassiba <sam@cassiba.com>
+Date: Thu, 17 Sep 2015 21:24:06 -0700
+Subject: [PATCH] Add support for FreeBSD as a compute node
+
+blueprint freebsd-compute-node
+
+Change-Id: Id75e7bf14f42f9a376303ddf86adcc3f78aed3a8
+---
+ specs/mitaka/approved/freebsd-compute-node.rst | 123 +++++++++++++++++++++++++
+ 1 file changed, 123 insertions(+)
+ create mode 100644 specs/mitaka/approved/freebsd-compute-node.rst
+
+diff --git a/specs/mitaka/approved/freebsd-compute-node.rst b/specs/mitaka/approved/freebsd-compute-node.rst
+new file mode 100644
+index 0000000..ecb6f2e
+--- /dev/null
++++ b/specs/mitaka/approved/freebsd-compute-node.rst
+@@ -0,0 +1,123 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++==============================================
++Add support for FreeBSD host as a compute node
++==============================================
++
++https://blueprints.launchpad.net/nova/+spec/freebsd-compute-node
++
++FreeBSD is a popular free Unix-like operating system for a variety of
++platforms and architectures. Recently, it has gained a native
++hypervisor named 'bhyve', a legacy-free type 2 hypervisor
++
++Problem description
++===================
++
++See above.
++
++Use Cases
++----------
++
++As a deployer, I want to run Nova on a FreeBSD host so I can use the BSD
++hypervisor (bhyve) in my OpenStack deployment
++
++Project Priority
++-----------------
++
++None
++
++Proposed change
++===============
++
++Support for bhyve is in libvirt. Some adjustments are needed in the nova.virt
++subsystem and a minimal network driver for nova-network (equivalent to
++linux_net) compatible with FreeBSD networking abstractions, tools and APIs.
++
++Alternatives
++------------
++
++None
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++None
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++None
++
++Performance Impact
++------------------
++
++None
++
++Other deployer impact
++---------------------
++
++Deployers will be able to use FreeBSD as a compute node.
++
++Developer impact
++----------------
++
++None
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  scassiba
++
++Other contributors:
++  md-sh
++
++Work Items
++----------
++
++Devstack changes for FreeBSD host[1]
++Work in progress with nova changes for FreeBSD[2]
++
++Dependencies
++============
++
++* Depends on the BP, which will provide bhyve as a hypervisor option.
++
++Testing
++=======
++
++None
++
++Documentation Impact
++====================
++
++Document how to install Nova on a FreeBSD host
++
++References
++==========
++
++* http://bhyve.org/
++* [1] https://github.com/Semihalf/openstack-devstack
++* [2] https://github.com/Semihalf/openstack-nova
+-- 
+2.1.0
+

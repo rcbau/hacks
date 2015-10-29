@@ -1,0 +1,177 @@
+From d89eb26122ae0582e306929043d168f4f19b6f32 Mon Sep 17 00:00:00 2001
+From: Andrew Laski <andrew.laski@rackspace.com>
+Date: Thu, 22 Oct 2015 15:15:56 -0400
+Subject: [PATCH] WIP Cells: Instance table outside of cells
+
+This proposes a place to store instances that have yet to be scheduled
+to a cell, or do not end up being scheduled to a cell.  There are two
+approaches proposed and additional details on the data model impact will
+be added as those approaches are discussed and agreed upon.
+
+blueprint cells-instance-table
+
+Change-Id: I04c260aa6d283899808f59686efd71b79fdd50a8
+---
+ specs/mitaka/approved/cells-instance-table.rst | 150 +++++++++++++++++++++++++
+ 1 file changed, 150 insertions(+)
+ create mode 100644 specs/mitaka/approved/cells-instance-table.rst
+
+diff --git a/specs/mitaka/approved/cells-instance-table.rst b/specs/mitaka/approved/cells-instance-table.rst
+new file mode 100644
+index 0000000..31ef43f
+--- /dev/null
++++ b/specs/mitaka/approved/cells-instance-table.rst
+@@ -0,0 +1,150 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++=========================================
++Add an instance table to the api database
++=========================================
++
++https://blueprints.launchpad.net/nova/+spec/cells-instance-table
++
++In order to maintain the API contract when using cells we need to store enough
++information to fulfill an instance show request.
++
++
++Problem description
++===================
++
++When an API request is made to build an instance there is a certain response
++contract that we need to honor.  This means that we need to have stored certain
++information from the request such as image, flavor, name, uuid, etc...  This
++data needs to be available before the scheduler has been called to pick a cell,
++or in the event that no cells are picked by the scheduler and the build never
++proceeds into a cell.
++
++
++Use Cases
++----------
++
++* Operators want to partition their deployments into cells for scaling, failure
++  domain, and buildout reasons.  When partitioned, we need to maintain the
++  current API contract.
++
++
++Proposed change
++===============
++
++An instance table will be added to the Nova api database that can store enough
++information about an instance to fulfill an instance list or show request from
++the API.  It is not necessary that the instance table match the definition of
++an instance table within a cell, and it may actually be better to name this
++something different.  It will be home to instances which do not belong to a
++cell and the only actions that can occur for instances in this table are to
++schedule them to a cell or delete them.
++
++
++Alternatives
++------------
++
++An alternative would be to use two different tables to handle the two cases in
++the "Problem Description" separately.  This may ultimately make more sense.
++
++There could be a BuildRequest object and table which stores instances that have
++yet to be scheduled.  This table would hold data for a short time before
++instances are scheduled.  The short TTL of data here would allow for easy
++migrations of this data format in the future.
++
++Then there could be the instance table described in "Proposed change" which
++would hold instances which the scheduler could not find a cell for.  These
++instances would be in an ERROR state with no action possible except to delete
++them.  The primary purpose of this table would be to fulfill instance list or
++show requests from the API.
++
++Data model impact
++-----------------
++
++This will be filled out after some discussion on which of the above approaches,
++or another alternate, would be a better path forward.
++
++
++REST API impact
++---------------
++
++None
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++None
++
++Performance Impact
++------------------
++
++An additional database write will be incurred.
++
++Other deployer impact
++---------------------
++
++Instances that have not been scheduled yet will exist in this new table.
++Deployers will need to be aware of this to aid proper debugging.
++
++Developer impact
++----------------
++
++None
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  alaski
++
++Other contributors:
++  None
++
++Work Items
++----------
++
++ * Add new table to api database
++
++Dependencies
++============
++
++None
++
++
++Testing
++=======
++
++Since this is designed to be an internal re-architecting of Nova with no user
++visible changes the current suite of Tempest or functional tests should
++suffice.  At some point we will want to look at how to test multiple cells or
++potentially exposing the concept of a cell in the API and we will tackle
++testing requirements then.
++
++
++Documentation Impact
++====================
++
++Documentation will be written describing the flow of an instance build and how
++this affects it.
++
++
++References
++==========
+-- 
+2.1.0
+

@@ -1,0 +1,248 @@
+From db1ce5aec9dde0776d191bd4342a446946a77a01 Mon Sep 17 00:00:00 2001
+From: Chaoyi Huang <joehuang@huawei.com>
+Date: Wed, 21 Oct 2015 13:08:40 +0800
+Subject: [PATCH] Expose quiece unquiece API
+
+Provide atomic quiesce / unquiesce API from Nova, to make consistency
+snapshot of a group of VMs in a transaction way is possible, for
+example, quiesce VM1, quiesce VM2, quiesce VM3, snapshot VM1's volumes,
+snapshot VM2's volumes, snapshot VM3's volumes, unquiesce VM3, unquiesce
+VM2, unquiesce VM1. For some telecom application, the order is
+important for a group of VMs with strong relationship.
+
+Blueprint:
+https://blueprints.launchpad.net/nova/+spec/expose-quiesce-unquiesce-api
+
+Change-Id: I3cc247fba7a07dceb42704022444a450c31ea0e8
+Signed-off-by: Chaoyi Huang <joehuang@huawei.com>
+---
+ .../mitaka/approved/expose-quiece-unquiece-api.rst | 217 +++++++++++++++++++++
+ 1 file changed, 217 insertions(+)
+ create mode 100644 specs/mitaka/approved/expose-quiece-unquiece-api.rst
+
+diff --git a/specs/mitaka/approved/expose-quiece-unquiece-api.rst b/specs/mitaka/approved/expose-quiece-unquiece-api.rst
+new file mode 100644
+index 0000000..db9d16e
+--- /dev/null
++++ b/specs/mitaka/approved/expose-quiece-unquiece-api.rst
+@@ -0,0 +1,217 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++=====================================================================
++Expose Quiesce Unquiesce API
++=====================================================================
++
++https://blueprints.launchpad.net/nova/+spec/expose-quiesce-unquiesce-api
++
++Provide atomic quiesce unquiesce API from Nova, to make consistency snapshot
++of a group of VMs in a transaction way is possible
++
++Problem description
++===================
++Currently the Nova provides VM snapshot API, which will take a consistency
++snapshot of a VM and regarding volumes, and will quiesce/unquiesce VM
++automatily with guest agent support.This method is good for single VM
++consistency snapshot, but no way to make consistency snapshot of a group
++of VMs in a transaction way.
++
++Use Cases
++---------
++
++In NFV scenario, a VNF (telecom application) often is consisted of a group
++of VMs. To make it be able to restore in another site for catastrophic
++failures happened, this group of VMs snapshot/backup/restore should be done
++in a transaction way to guarantee the application level consistency but not
++only on single VM level : for example, quiesce VM1, quiesce VM2, quiesce VM3,
++snapshot VM1's volumes, snapshot VM2's volumes, snapshot VM3's volumes,
++unquiesce VM3, unquiesce VM2, unquiesce VM1. For some telecom application,
++the order is very important for a group of VMs with strong relationship.
++
++Therefore the OPNFV multsite project expects Nova to provide atomic quiesce
++unquiesce API, to make consistency snapshot of a group of VMs in a transaction
++way is possible (but not only one single VM instead).
++
++The disater recovery will work like this:
++
++1)GR(Geo site redundancy)software get the attached volumes for the VMs in a
++VNF from Nova
++2)GR software add these attached volumes to the  consistency group in Cinder
++3)GR software call Nova API Quiesce to freeze VMs and flush buffer in order
++4)GR software make cgsnapshots of these volumes in Cinder(NOTE: Because
++storage often provides fast snapshot, so the duration between quiece and
++unquiece is a short interval)
++5)GR software call Nova API unquiesce VMs in reverse order
++6)GR software create volumes from the cgsnapshots in Cinder
++7)GR software create backup (incremental) for these volumes to remote
++backup storage ( swift or ceph, or.. ) in Cinder
++8)if this site failed,
++8.1)GR software restore these backup volumes in remote Cinder in the backup
++site.
++8.2)GR software boot vm from bootable volume from the remote Cinder in the
++backup site and attach the regarding data volumes.
++
++Note: It's up to the GR policy and VNF character how to use the API. Some
++VNF may allow the standby of the VNF or member of the cluster to do
++quiece/unquiece to avoid interfering the service provided by the VNF.
++Some other VNF may afford short unavailable for GR purpose.
++
++The use case has been discussed and agreed in OPNFV multisite project:
++https://wiki.opnfv.org/multisite
++
++Agreed in the meeting of this project: http://ircbot.wl.linuxfoundation.org/meetings/opnfv-meeting/2015/opnfv-meeting.2015-09-03-08.02.html
++People who joined the meeting and from: Ericsson, Metaswitch, NTT Docomo,
++Nokia, Huawei.
++
++
++Project Priority
++----------------
++
++None
++
++Proposed change
++===============
++
++Expose 'quiesce' and 'unquiesce' admin actions for GR software.
++
++Add a 'quiesce' and 'unquiesce' method for each driver. In libvirt driver,
++if QEMU Guest Agent is enabled in an instance, the guest agent is called
++to freeze the filesystems (and applications if fsfreeze-hook is installed)
++by 'quiesce' method. The 'unquiesce' method will thaw them.
++
++The prerequisites of this feature are:
++
++1. the hypervisor is 'qemu' or 'kvm'
++
++2. libvirt >= 1.2.5 (which has fsFreeze/fsThaw API) is installed in the
++hypervisor
++
++3. 'hw_qemu_guest_agent=yes' properties are set on the image metadata,
++   and QEMU Guest Agent is installed and enabled in the instance
++
++When these conditions are not satisfied, the methods will fail by
++'QuiesceUnsupportedException'.
++When quiesce is failed even though these conditions are satisfied
++(e.g. the agent is not responding), the methods fail by the other
++exception, such as LibvirtException.
++
++Alternatives
++------------
++None
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++* URL:
++    * /v2/{tenant_id}/servers/{server_id}/action:
++    * /v2.1/servers/{server_id}/action/{server_id}/action:
++
++* Request method:
++    * POST
++
++* JSON request body for 'quiesce'::
++
++        {
++            "quiesce": null
++        }
++
++* JSON request body for 'unquiesce'::
++
++        {
++            "unquiesce": null
++        }
++
++* This operation does not return a response body.
++
++* Normal response code:
++    * `200 OK`: Returned after the instances' filesystes are successfully
++      quiesced/unquiesced.
++
++* Error response codes:
++    * `500 Internal Server Error`: Returned if the driver fails to
++      quiesce/unquiesce
++    * For malformed requests, other error codes may be returned like the other
++      server admin actions.
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++None
++
++Performance Impact
++------------------
++While taking quiece, disk writes from the instance are blocked.
++
++Other deployer impact
++---------------------
++
++None
++
++Developer impact
++----------------
++
++None
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  joehuang
++
++Work Items
++----------
++
++1. Add 'quiesce' and 'unquiesce' server admin actions APIs for Nova
++2. Enable the test to run in CI with libvirt >= 1.2.5
++
++Dependencies
++============
++
++None
++
++Testing
++=======
++
++Live quiece/unquice of VMs with a guest booted with qemu-guest-agent should
++be added to scenario tests.
++Note that it requires environment with libvirt >= 1.2.5.
++
++Documentation Impact
++====================
++
++New REST APIs (server admin actions) should be added to the API documentation.
++Also, need to document how to use this feature in the operation guide (which
++currently recommends you use the fsfreeze tool manually).
++
++References
++==========
++
++.. [1] nova-specs: 'Quiesce filesystems with QEMU guest agent during image
++       snapshot':
++       https://review.openstack.org/#/c/126966/
++
++.. [2] 'quiesce' and 'unquiesce' methods for libvirt driver:
++       https://blueprints.launchpad.net/nova/+spec/quiesced-image-snapshots-with-qemu-guest-agent
+-- 
+2.1.0
+

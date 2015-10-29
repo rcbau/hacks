@@ -1,0 +1,169 @@
+From 38f473ac1b32658180266b44894c71cb6d0e293d Mon Sep 17 00:00:00 2001
+From: liyingjun <liyingjun1988@gmail.com>
+Date: Tue, 13 Oct 2015 16:45:53 +0800
+Subject: [PATCH] Pagination for hypervisor
+
+A proposal to support pagination for hypervisor.
+
+Blueprint: pagination-for-hypervisor
+Change-Id: I02d0403374020887eeb0c9ca1725de0847660de7
+---
+ .../mitaka/approved/pagination-for-hypervisor.rst  | 146 +++++++++++++++++++++
+ 1 file changed, 146 insertions(+)
+ create mode 100644 specs/mitaka/approved/pagination-for-hypervisor.rst
+
+diff --git a/specs/mitaka/approved/pagination-for-hypervisor.rst b/specs/mitaka/approved/pagination-for-hypervisor.rst
+new file mode 100644
+index 0000000..1743ba3
+--- /dev/null
++++ b/specs/mitaka/approved/pagination-for-hypervisor.rst
+@@ -0,0 +1,146 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++=========================
++Pagination for hypervisor
++=========================
++
++https://blueprints.launchpad.net/nova/+spec/pagination-for-hypervisor
++
++This spec is proposed to support pagination for hypervisor.
++
++Problem description
++===================
++
++When there are thousands of compute nodes, it would be slow to get the
++whole hypervisor list, and it is bad for user experience to display
++thousands of items in a table in horizon.
++
++Use Cases
++----------
++
++* Get paginated compute nodes list when there are too many items.
++
++Proposed change
++===============
++
++Changes are going to be in the following places:
++
++* New DB api `compute_node_get_all_by_filters` will be added with
++  params filters, limit, marker, sort_key, and sort_dir, so other filter
++  methods(compute_node_search_by_hypervisor, etc) also can be refactored
++  to use this new db method.
++
++* New compute node object `get_by_filters` method will be added which calls
++  the new db api `compute_node_get_all_by_filters`.
++
++* Compute api `compute_node_get_all` will be refactored.
++
++* REST API microversion will be added for hypervisors list to accept
++  pagination request.
++
++
++Alternatives
++------------
++
++None
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++New Hypervisors list API to support pagination:
++
++  request::
++
++      GET /v2.1/{tenant_id}/os-hypervisors?marker=2&limit=1
++
++  reponse::
++
++      {
++        "hypervisors": [
++          {
++            "hypervisor_hostname": "fake-mini",
++            "id": 3,
++            "state": "up",
++            "status": "enabled"
++          }
++        ]
++      }
++
++Security impact
++---------------
++
++None.
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++None
++
++
++Performance Impact
++------------------
++
++None
++
++Other deployer impact
++---------------------
++
++None
++
++Developer impact
++----------------
++
++None
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  liyingjun
++
++Work Items
++----------
++
++1. Change db api to support pagination params.
++
++2. Add compute node object method and refactor compute api.
++
++3. Add REST API microversion.
++
++Dependencies
++============
++
++None
++
++
++Testing
++=======
++
++The changes will be exercised through unit tests.
++
++Documentation Impact
++====================
++
++New REST API microversion will be added.
++
++References
++==========
++
++None
+-- 
+2.1.0
+

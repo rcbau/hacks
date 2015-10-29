@@ -1,0 +1,231 @@
+From 2e2c94556bd3cf8274a870a9820947812c356568 Mon Sep 17 00:00:00 2001
+From: Giridhar Jayavelu <gjayavelu@vmware.com>
+Date: Tue, 20 Oct 2015 16:10:21 -0700
+Subject: [PATCH] VMware: placement policies within cluster
+
+This will provide a mechanism to do instance placement with vcenter
+cluster by ensuring the affinity and anti-affintity policies
+at ESX host level. In addition, provide ability to do placement
+on a group of hosts.
+
+Implements: blueprint vmware-placement-policy
+DocImpact
+
+Change-Id: I8c081f1dd52fae1c03c34595612a7f08b029270b
+---
+ specs/mitaka/approved/vmware-placement-policy.rst | 203 ++++++++++++++++++++++
+ 1 file changed, 203 insertions(+)
+ create mode 100644 specs/mitaka/approved/vmware-placement-policy.rst
+
+diff --git a/specs/mitaka/approved/vmware-placement-policy.rst b/specs/mitaka/approved/vmware-placement-policy.rst
+new file mode 100644
+index 0000000..a8b6362
+--- /dev/null
++++ b/specs/mitaka/approved/vmware-placement-policy.rst
+@@ -0,0 +1,203 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++==========================================
++VMware: placement policies within cluster
++==========================================
++
++https://blueprints.launchpad.net/nova/+spec/vmware-placement-policy
++
++This will provide a mechanism to do instance placement with vcenter
++cluster by ensuring the affinity and anti-affintity policies
++at ESX host level. In addition, provide ability to do placement
++on a group of hosts.
++
++
++Problem description
++===================
++
++Currently, nova scheduler sees a vcenter cluster as a compute node.
++Because of this abstraction, affinity placement policy is not
++guaranteed at ESX host level and anti-affinity policy could place maximum
++of only one instance per group on a cluster. This violates the user
++defined policies (in case of affinity rules) and impacts resource utilization
++within cluster.
++The proposal is to inspect the policies from server group object
++and automatically create rules on vcenter cluster to satisfy the
++placement policy at ESX host level.
++
++In addition, the notion of host aggregates is also not available at ESX host
++level because of using clusters.
++To support placement policies on a group/aggregate of ESX hosts,
++add a new image property "vmware_vm_group" which could be used do the
++placement based on the group policy defined on cluster."
++
++Use Cases
++----------
++
++Tenants want to place instances based on affinity (example: database and
++application servers) and anti-affinity (say, for fault tolerance)
++policy using nova VMware driver. This is a requirement for multi-tier
++Telco setups.
++
++Admins/tenants would want certain VNF workloads to run only on specific
++set of hosts within a cluster to meet SLA guarantees.
++
++Proposed change
++===============
++
++The proposal is to leverage the server groups API for vm-vm affinity and
++anti-affinity policies within vcenter cluster. And add a new image metadata
++'vmware_vm_group' that corresponds to vcenter vm group for vm-host
++placement policies.
++
++Currently, nova scheduler has the following filters to expresses affinity and
++anti-affinity rules between instances.
++1. ServerGroupAffinityFilter
++2. ServerGroupAntiAffinityFilter
++
++These filters work in combination with server group API.
++Through server group API, tenants can specify the policies as 'affinity' or
++'anti-affinity'. In VMware driver, the policy information will be retrieved and
++affinity/anti-affinity rules will be created automatically on the vc cluster.
++
++This would make the behavior of ServerGroupAffinityFilter and
++ServerGroupAntiAffinityFilter similar to other reference drivers.
++
++For vm-host placement policy, VMware driver will read the image metadata
++'vmware_vm_group' and associate the instance to the corresponding vm
++group folder on vcenter cluster. The vm-host policy defined within cluster
++can then take care of placement on specific host(s).
++
++Alternatives
++------------
++
++Given the abstraction of cluster as a compute node in VMware VC driver, there
++are no other alternatives.
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++None
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++None
++
++Performance Impact
++------------------
++
++None
++
++Other deployer impact
++---------------------
++
++For vm-vm affinity/anti-affinity policy, there is no change in deployment.
++
++The following examples demonstrates how existing commands can be used.
++
++Users would create server group with a policy as:
++nova server-group-create --policy <affinity|anti-affinity> <group name>
++
++Now, an instance can be deployed by passing scheduler hint
++group=<uuid of server instance group>
++
++nova boot --image <image id> --flavor <flavor id>
++--hint group=<uuid of server instance group> <instance name>
++
++For vm-host placement policy, admins have to update image metadata
++'vmware_vm_group'. Here is a sample format:
++glance image-update <image id> --property vmware_vm_group=<vm group name>
++
++Then booting an instance with this image would automatically place it on
++corresponding vm group within vcenter.
++
++Developer impact
++----------------
++
++None
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  gjayavelu
++
++Other contributors:
++  None
++
++Work Items
++----------
++
++* Define new image metadata 'vmware_vm_group'
++* Modify VMware driver to parse the 'vmware_vm_group' image property and
++  place the vm on corresponding vm group
++* Modify VMware driver to get server group object, read the policy and
++  automatically create rules on vcenter cluster
++
++Dependencies
++============
++
++None
++
++Testing
++=======
++
++Functional tests are better for this feature because it requires
++querying configuring vcenter directly.
++Currently, there are no functional tests for VMware driver.
++Defining functional tests for VMware driver may be outside the scope
++of this spec.
++
++
++Documentation Impact
++====================
++
++The user documentation for VMware driver should be updated about
++the new image metadata 'vmware_vm-group'.
++
++
++References
++==========
++
++vcenter placement rules: https://goo.gl/5fdT63
++
++
++History
++=======
++
++Optional section for Mitaka intended to be used each time the spec
++is updated to describe new design, API or any database schema
++updated. Useful to let reader understand what's happened along the
++time.
++
++.. list-table:: Revisions
++   :header-rows: 1
++
++   * - Release Name
++     - Description
++   * - Mitaka
++     - Introduced
+-- 
+2.1.0
+

@@ -1,0 +1,187 @@
+From fab77ac8f8bf8755592c1276fdba874da4309ad6 Mon Sep 17 00:00:00 2001
+From: Vilobh Meshram <vilobhmm@yahoo-inc.com>
+Date: Fri, 11 Sep 2015 17:03:04 -0700
+Subject: [PATCH] Quota Policy Engine
+
+There are many different ways that deployers may want to slice
+their private cloud - availability zones, aggregates exposed
+via flavors and special flavors being the most common amongst
+all the available options. There are different ways to impose
+quota based on the slice mechanism used. Quota policy engine
+provide a way to validate whether a particular quota operation
+is valid or not depending on the actual resource consumption
+and what is requested by the incoming request.
+
+Change-Id: I88c73d051e324bebe46d6f9df6067fa9330e70a8
+Implements: blueprint quota-policy-engine
+---
+ specs/mitaka/approved/quota-policy-engine.rst | 157 ++++++++++++++++++++++++++
+ 1 file changed, 157 insertions(+)
+ create mode 100644 specs/mitaka/approved/quota-policy-engine.rst
+
+diff --git a/specs/mitaka/approved/quota-policy-engine.rst b/specs/mitaka/approved/quota-policy-engine.rst
+new file mode 100644
+index 0000000..e6fc68e
+--- /dev/null
++++ b/specs/mitaka/approved/quota-policy-engine.rst
+@@ -0,0 +1,157 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++==========================================
++Quota Policy Engine
++==========================================
++
++https://blueprints.launchpad.net/nova/+spec/quota-policy-engine
++
++An operator would like to be able to define policy and quotas differently
++for different ways in which an Openstack cloud is sliced. There are multiple
++ways to slice an Openstack cloud - availability zones, aggregates exposed
++via flavors and special flavors being the most common amongst all the
++available options. An idea to provide an option for Openstack admin to
++set and manage Quota by Flavor, Quota by AZ or both has already been
++proposed. Since there can be multiple ways to impose quota based on how
++the cloud is sliced there seems to be a need for Quota Policy engine
++to govern and provide a policy whether a particular operation is do able
++or possible with the given constraints.
++
++
++Problem description
++===================
++As an example there can be some hardware running virtual instances
++whereas some of them being used to run Baremetal. Even in virtual instances
++there can be some 'ssd' flavor VM's which are run on SSD hardware and 'hdd'
++which run on normal harddisk hardware. These needs to be a provision to
++impose Quota per Flavor, Quota per AZ and Quota per Flavor(and AZ) to
++judiciously manage the resources. With multiple ways to implement this
++imposition there needs to be various checks that need to be done in the code
++to check whether the consumption is above the available quota. The similar
++concept can be applied to the concept of reservation. Quota Policy Engine
++can be used to provide a policy to validate whether a particular quota
++operation is allowed or not allowed. Quota policy engine can get the data
++from the nova.quotas or the data storage for Flavor classes. For example
++users in a tenant can use 10GB of RAM with a current consumption of
++8GB, request REQ comes in for booting an instance of flavor=large which
++will need 10GB of RAM. Since this is not justifyable the request won't
++go through because of the policy imposition because flavor.large for HDD
++needs some set of static resources which aren't fullfilled by the avaiable
++capacity for this particular tenant.
++
++Use Cases
++----------
++
++None
++
++Project Priority
++-----------------
++
++None
++
++Proposed change
++===============
++
++None
++
++Alternatives
++------------
++
++None
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++None
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++None
++
++Performance Impact
++------------------
++
++None
++
++Other deployer impact
++---------------------
++
++None
++
++Developer impact
++----------------
++
++None
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  vilobhmm
++
++Other contributors:
++  alaski, harlowja
++
++Work Items
++----------
++
++None
++
++Dependencies
++============
++
++None
++
++Testing
++=======
++
++None
++
++Documentation Impact
++====================
++
++None
++
++References
++==========
++
++None
++
++History
++=======
++
++Optional section for liberty intended to be used each time the spec
++is updated to describe new design, API or any database schema
++updated. Useful to let reader understand what's happened along the
++time.
++
++.. list-table:: Revisions
++   :header-rows: 1
++
++   * - Release Name
++     - Description
++   * - Mitaka
++     - Introduced
+-- 
+2.1.0
+

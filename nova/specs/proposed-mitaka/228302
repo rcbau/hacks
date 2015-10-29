@@ -1,0 +1,163 @@
+From 4ef7bb17134d6e3e0abdd8d495e3dfaa3bc08f46 Mon Sep 17 00:00:00 2001
+From: Hiroyuki Eguchi <h-eguchi@az.jp.nec.com>
+Date: Mon, 28 Sep 2015 14:17:38 +0900
+Subject: [PATCH] Live migrate local disk
+
+User is not allowed to execute live-migration of
+a booted from volume instance which have a local disk
+in non-shared storage environment.
+This blueprint make it enable by copying local disk
+from the source host to the destination host.
+
+Blueprint: live-migrate-local-disk
+Change-Id: I1a44685cbbed7364b8bb8566075f67f481d3a1c4
+---
+ specs/mitaka/approved/live-migrate-local-disk.rst | 136 ++++++++++++++++++++++
+ 1 file changed, 136 insertions(+)
+ create mode 100644 specs/mitaka/approved/live-migrate-local-disk.rst
+
+diff --git a/specs/mitaka/approved/live-migrate-local-disk.rst b/specs/mitaka/approved/live-migrate-local-disk.rst
+new file mode 100644
+index 0000000..3fbcf82
+--- /dev/null
++++ b/specs/mitaka/approved/live-migrate-local-disk.rst
+@@ -0,0 +1,136 @@
++..
++   This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++==========================================
++Live migrate local disk
++==========================================
++
++https://blueprints.launchpad.net/nova/+spec/live-migrate-local-disk
++https://bugs.launchpad.net/nova/+bug/1497125
++
++Problem description
++===================
++
++Currently, user is not allowed to execute live-migration of
++a booted from volume instance which has local disk
++(swap, ephemeral disk and config-drive) in non-shared storage environment.
++This blueprint make it enable by copying local disk
++from the source host to the destination host in pre_live_migration.
++
++Use Cases
++----------
++
++User can execute live-migration of a booted from volume instance
++which has local disk in a non-shared storage environment.
++
++Project Priority
++-----------------
++
++None
++
++Proposed change
++===============
++
++A libvirt driver need to be modified.
++
++* Modify a check_can_live_migrate_source method so that error does not
++  occur in case of a booted from volume instance which has local disk.
++
++* Modify a pre_live_migration method to copy local disk by using
++  a copy_image method of libvirt_utils.
++
++Alternatives
++------------
++
++None
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++None
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++None
++
++Performance Impact
++------------------
++
++None
++
++Other deployer impact
++---------------------
++
++None
++
++Developer impact
++----------------
++
++None
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  <h-eguchi>
++
++Work Items
++----------
++
++* Modify a libvirt driver (include unit tests) at first
++  (see "Proposed change" section for details).
++* Add new tests in tempest.
++
++
++Dependencies
++============
++
++None
++
++
++Testing
++=======
++
++Both unit and Tempest tests need to be created to ensure
++that live-migration works correctly.
++
++
++Documentation Impact
++====================
++
++None
++
++
++References
++==========
++
++None
++
++
++History
++=======
++
++None
+-- 
+2.1.0
+

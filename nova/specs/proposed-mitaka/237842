@@ -1,0 +1,228 @@
+From 5df0af1b23e9ffa656423e522f71d7f872f2218c Mon Sep 17 00:00:00 2001
+From: Hiroyuki Eguchi <h-eguchi@az.jp.nec.com>
+Date: Mon, 26 Oct 2015 15:34:54 +0900
+Subject: [PATCH] Evacuate instance automatically
+
+If nova-compute service is down by hardware failure,
+an instance evacuate to another compute node automatically.
+A super user is allowed to execute any script before or
+after evacuation.
+
+Blueprint: auto-evacuate-instance
+Change-Id: Id164f0ff4a96382f9157d8c810c891a9e24ff763
+---
+ specs/mitaka/approved/auto-evacuate-instance.rst | 202 +++++++++++++++++++++++
+ 1 file changed, 202 insertions(+)
+ create mode 100644 specs/mitaka/approved/auto-evacuate-instance.rst
+
+diff --git a/specs/mitaka/approved/auto-evacuate-instance.rst b/specs/mitaka/approved/auto-evacuate-instance.rst
+new file mode 100644
+index 0000000..9ca1de8
+--- /dev/null
++++ b/specs/mitaka/approved/auto-evacuate-instance.rst
+@@ -0,0 +1,202 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++==========================================
++Evacuate instance automatically
++==========================================
++
++https://blueprints.launchpad.net/nova/+spec/auto-evacuate-instance
++
++Problem description
++===================
++
++Currently, A super user has to evacuate instance manually
++when nova-compute service is down.
++There is no feature which evacuate instance automatically
++in nova service.
++
++Use Cases
++----------
++
++If nova-compute service is down by hardware failure,
++an instance evacuate to another compute node automatically.
++A super user is allowed to execute any script before or
++after evacuation. It it useful for host fencing,
++controlling SDN or storages, notification, and so on.
++
++Proposed change
++===============
++
++Add a new service named nova-saver.
++nova-saver is the service which monitors all enabled compute hosts
++alive periodically and call 'evacuate instance' for instances
++on the inactive hosts.
++
++Alternatives
++------------
++
++It is possible to evacuate instance automatically by using a
++something monitoring system (e.g. Zabbix, Nagios).
++However, it requires some configuration to make it possible.
++A nova-saver is a one option to realize VM-HA feature
++for users who don't want to manage and develop extra service.
++A nova-saver is inside of nova, so user can make it possible
++easier than any other alternatives.
++And this service also has the meaning of promotion.
++OpenStack is often compared with other cloud service (e.g. VMware).
++At that time, It can be a demerit point
++to not having a VM-HA feature inside of Nova.
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++None
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++A notification of evacuation should be added.
++It should be notified the start and end of evacuation
++for each instance.
++
++Other end user impact
++---------------------
++
++None
++
++Performance Impact
++------------------
++
++There is no performance impact on existing service.
++A new service named nova-saver has a following performance impact.
++
++* A nova-saver has a periodic task which monitors all enabled
++  compute hosts via service API.
++
++Other deployer impact
++---------------------
++
++Following config options will be added in [saver] section
++of nova.conf.
++
++* retry_count - Maximum recheck time(s) before host evacuation.
++  Default is 3, so nova-saver kicks evacuation when it found
++  nova-compute is down 3 times sequencially.
++
++* evacuation_interval - Second(s) between each instance evacuation.
++
++* force_disabled - Mark host disabled before host evacuation.
++  If True, nova-saver marks inactive nova-compute 'disabled'
++  before instance evacuation. If False, after all instance
++  evacuation finished successfully.
++
++* on_shared_storage - Using a shared storage for ephemeral disk images.
++  If True, nova-saver kicks instance evacuation with
++  on_shared_storage=True.
++  If None, nova-compute detects whether ephemeral disks are
++  on a shared storage or not (since Liberty).
++
++* debug - Don't evacuate instances for test.
++
++* pre_script_host - Script path to execute before host evacuation.
++  nova-saver runs a command with an inactive hostname before
++  it starts evacuating instances on the host. Useful for
++  host fencing, controlling SDN or storages, notification,
++  and so on.
++
++* post_script_host - Script path to execute after host evacuation.
++  nova-saver runs a command with an inactive hostname after
++  it finishes evacuating instances on the host. Useful for
++  notification and so on.
++
++* pre_script_instance - Script path to execute before instance evacuation.
++  nova-saver runs a command with an UUID of instance before
++  it starts evacuating. Useful for instance fencing,
++  controlling SDN or storages, notification, and so on.
++
++* post_script_instance - Script path to execute after instance evacuation.
++  nova-saver runs a command with an UUID of instance after
++  it starts evacuating. Useful for notification and so on.
++
++Developer impact
++----------------
++
++None
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  <h-eguchi>
++
++Work Items
++----------
++
++Add following files newly:
++
++* nova/cmd/saver.py - A starter script for nova-saver.
++
++* nova/saver/manager.py - A main script of nova-saver.
++  It has a periodic task which monitors nova-compute and a evacuate method.
++
++* nova/saver/rpcapi.py - A client side of the nova-saver manager RPC API.
++
++* nova/tests/unit/saver/test_saver.py - Unit test of nova/saver/manager.py.
++
++
++Modify following files:
++
++* nova/service.py - Add a full class name of nova-saver in service_opts.
++
++* setup.cfg - Add a entry point of nova-saver.
++
++
++Dependencies
++============
++
++None
++
++
++Testing
++=======
++
++Both unit and Tempest tests need to be created to ensure
++that instance is evacuated automatically.
++
++
++Documentation Impact
++====================
++
++Need to be updated following documents.
++
++* Install Guide - Add a install guide of nova-saver.
++
++* Configuration Guide - Add a configuration guide of nova-saver.
++
++References
++==========
++
++None
++
++
++History
++=======
++
++None
+-- 
+2.1.0
+

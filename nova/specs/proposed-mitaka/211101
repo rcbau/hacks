@@ -1,0 +1,188 @@
+From c7d4872dbac3bbc2ff5a96da6e1e10d5a25545f6 Mon Sep 17 00:00:00 2001
+From: Ramakrishnan G <rameshg87@gmail.com>
+Date: Fri, 7 Aug 2015 02:33:38 +0000
+Subject: [PATCH] Add support for booting bare metals from Cinder volume
+
+This commit proposes changes to Nova Ironic virt driver
+to support booting from Cinder volume (in tandem with
+other changes proposed in Ironic).
+
+Change-Id: I11d37595d11b536bbe0f986a3a814bed2b3a2650
+---
+ specs/mitaka/approved/ironic-boot-from-volume.rst | 164 ++++++++++++++++++++++
+ 1 file changed, 164 insertions(+)
+ create mode 100644 specs/mitaka/approved/ironic-boot-from-volume.rst
+
+diff --git a/specs/mitaka/approved/ironic-boot-from-volume.rst b/specs/mitaka/approved/ironic-boot-from-volume.rst
+new file mode 100644
+index 0000000..67893a7
+--- /dev/null
++++ b/specs/mitaka/approved/ironic-boot-from-volume.rst
+@@ -0,0 +1,164 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++================================
++Ironic - Boot from Cinder volume
++================================
++
++https://blueprints.launchpad.net/nova/+spec/ironic-boot-from-volume
++
++This spec captures the changes required in Nova Ironic virt driver
++to enable Ironic to boot bare metal machines from Cinder volume, when
++requested from Nova.
++
++Problem description
++===================
++
++Currently, there is no way to request a bare metal compute resource from Nova
++that boots from a Cinder volume.  Ironic also doesn't support it.  But with
++some changes proposed in Ironic ([1] and [2]), it will enable Ironic to boot
++bare metal servers from a remote volume.  Ironic virt driver needs to pass the
++remote volume connection information down to Ironic when spawning a new
++bare metal instance requesting it to boot from a Cinder volume.
++
++A bare metal hardware using a Cinder volume is more secure in a multi-tenant
++environment, as tenants don't get to see other's data by doing something
++malicious on the system's or disk's firmware. Booting from SAN also provides
++better data protection at lower cost including support for snapshots and
++replication.
++
++Use Cases
++----------
++
++A tenant can request a bare metal server that boots from a Cinder volume.
++
++Project Priority
++-----------------
++
++None.
++
++Proposed change
++===============
++
++* Whenever an instance that boots from a Cinder volume is requested in Nova, it
++  queries the virt driver to provide the volume connectors for the hypervisor.
++  Virt drivers should implement the method ``get_volume_connector`` in the Nova
++  driver API.  Ironic virt driver should implement this method which hits the
++  Ironic endpoint ``GET /v1/volume_connectors?node=<node_uuid>`` in the Ironic
++  API. The Ironic API will provide the volume connectors for the bare metal.
++
++  If ``ip`` doesn't exist in the volume connectors returned from the API,
++  Ironic virt driver should query Neutron to get the private IP assigned to the
++  MAC address ``mac`` (which is the MAC address of the iSCSI initiator). If
++  ``ip`` is not returned, then it means that storage network is managed by
++  Neutron.
++
++* Nova Ironic virt driver should pass the ``connection_info`` of the block
++  device passed to the ``spawn()`` method to Ironic.  The Nova Ironic virt
++  driver should add an attribute in Ironic node's instance_info for each
++  attribute in ``connection_info``.  For example, for an iSCSI Cinder volume,
++  the Nova Ironic virt driver should write the ``target_iqn``, ``target_lun``,
++  ``target_portal``, ``auth_method``, ``auth_username`` and ``auth_password``
++  to the Ironic node's instance_info.
++
++.. note::
++
++  The scheduler changes to pick up a suitable bare metal node which can support
++  booting from a particular volume should be taken care of in the spec which
++  covers the changes in scheduling mechanism for the Ironic virt driver ([3]
++  and [4]).
++
++
++Alternatives
++------------
++
++None.
++
++Data model impact
++-----------------
++
++None.
++
++REST API impact
++---------------
++
++None.
++
++Security impact
++---------------
++
++None.
++
++Notifications impact
++--------------------
++
++None.
++
++Other end user impact
++---------------------
++
++None.
++
++Performance Impact
++------------------
++
++None.
++
++Other deployer impact
++---------------------
++
++Deployers need to prepare bare metal servers that can boot from remote volume
++in Ironic.
++
++Developer impact
++----------------
++
++None.
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  rameshg87
++
++
++Work Items
++----------
++
++* Implement get_volume_connector for Ironic.
++* Pass ``connection_info`` to Ironic node.
++
++
++Dependencies
++============
++
++Changes are proposed in Ironic to add APIs to get/set volume information for
++the bare metal node.  Nova Ironic virt driver needs to make use of them.
++
++#. https://review.openstack.org/200496
++
++
++Testing
++=======
++
++Unit tests will be added.
++
++Documentation Impact
++====================
++
++None.
++
++
++References
++==========
++
++[1] https://review.openstack.org/200496
++[2] https://review.openstack.org/207337
++[3] https://review.openstack.org/194453
++[4] https://review.openstack.org/204641
+-- 
+2.1.0
+

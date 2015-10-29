@@ -1,0 +1,243 @@
+From ac652f012cc87463ba45d20d68c2c66ac3bedc0c Mon Sep 17 00:00:00 2001
+From: Timofey Durakov <tdurakov@mirantis.com>
+Date: Mon, 21 Sep 2015 18:32:48 +0300
+Subject: [PATCH] Split different live-migration types in nova
+
+To improve code maintainability and simplicity different
+live-migration types should be splitted in its own methods.
+
+Implements: blueprint split-different-live-migration-types
+
+Change-Id: Ia5af81020da637d6c2c413bf75a646a0c3e7ea8d
+---
+ .../split-different-live-migration-types.rst       | 218 +++++++++++++++++++++
+ 1 file changed, 218 insertions(+)
+ create mode 100644 specs/mitaka/approved/split-different-live-migration-types.rst
+
+diff --git a/specs/mitaka/approved/split-different-live-migration-types.rst b/specs/mitaka/approved/split-different-live-migration-types.rst
+new file mode 100644
+index 0000000..6736ec9
+--- /dev/null
++++ b/specs/mitaka/approved/split-different-live-migration-types.rst
+@@ -0,0 +1,218 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++============================================
++Split different live-migration types in nova
++============================================
++
++https://blueprints.launchpad.net/nova/+spec/split-different-live-migration-types
++
++There are different types of live-migrations in nova, depending on instance
++type and environment configuration. While there only one method in compute's
++manager and driver layer, called live_migration. This cause a lot of "if/else"
++blocks, lot of flows, code grows, and it's hard to understand what is going on
++and to maintain it.
++
++
++Problem description
++===================
++
++Live-migration mostly depends on instance storage used by environment.
++According to [1] there are three main approaches:
++* Off compute node storage—shared file system
++* On compute node storage—shared file system
++* On compute node storage—nonshared file system
++Note: there are several things that comes from [2] and affects all three
++approaches. They are:
++* Swap
++* Ephemeral drive
++* Config drive
++While they are common things, we need to process them differently. Check
++[3] for example. Coverage of all 3 branches in single api method
++is a challenge, that cause constant issues, not-easy maintainable code.
++
++
++Use Cases
++----------
++
++These changes should not affects operators as they could be treated as
++internal.
++
++Project Priority
++-----------------
++
++None
++
++Proposed change
++===============
++
++The point is to specify live-migration command object that knows by itself,
++for which of type it belongs. In first case new method to compute.Manager
++and drivers will be added. In second case new migrate-command object argument
++should be added to existing methods instead.
++To implement this we should create compute-livel comand/task package.
++Possible base class for that:
++
++class Task(object):
++        def execute(self):
++              ...
++
++        def retry(self):
++              ...
++
++        def rollback(self):
++              ...
++
++Things to be changed in compute manager:
++Tasks should have ability to be composed of other tasks.
++For live migration there are could be  several subtasks:
++* PreLiveMigrationTask;
++* LiveMigrationTask;
++* RollbackLiveMigrationTask;
++* PostLiveMigrationTask.
++
++Which also could be made of smaller parts, e.g.:
++* SetupNetworkTask;
++* CleanupLocalResorces;
++* etc.
++
++This change could eliminate need for patches like [4] as we split process
++declaration and execution in several parts.
++
++Note: There is a big chance that Taskflow[5] library could fit this
++requirements. So base task class could be inherited from taskflow
++abstractions.
++
++Things to be changed in virt driver.
++Logic and excution paths of live_migration, pre_live_migration, cleanup
++method are mostly based  on the contents of migrate_data dictionary
++object that contains flags from checks that are executed before it.
++Instead of holding all this logic in single methods, different types
++could be moved into its own tasks.
++As, migrate_data dict content is driver specific workflow could look
++like:
++* populate migrate_data during checks before live_migration;
++* build live_migration task object on the virt driver side;
++* execute created tasks.
++
++Several methods should be added to virt driver interface:
++* build_live_migration_task(self, migrate_data) - creates task for
++live-migration. Should incapsulate all specific logic for live-migration
++Task creation should be a composition of more simple atomic actions,
++like creation of console log file, connection of volumes, etc.
++* execute_task(self, task) - execute created task
++
++To be consistent, this change should affect all virt drivers.
++
++Alternatives
++------------
++
++Implement several method for different live-migration types:
++* block_live_migrate for non shared storage(--block-migrate flag);
++* live_migrate_file_level_storage() for live migration of instances with
++ephemeral located on file shares(e.g. NFS);
++* live_migrate_block_storage() for ephemerals, located on remote storage
++(RBD) or volume-backed instances.
++Note: naming comes from different storage types, described in [6]
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++None
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++None
++
++Performance Impact
++------------------
++
++None
++
++Other deployer impact
++---------------------
++
++None
++
++Developer impact
++----------------
++
++Allows to simplify changes in live-migration code on compute side.
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  tdurakov
++
++Other contributors:
++  rpodolyaka
++
++Work Items
++----------
++
++* Split different live-migration type in Nova.
++* Make existing multinode jobs stable and voting.
++* Add more jobs to tests all live-migration types.
++
++Dependencies
++============
++
++None
++
++Testing
++=======
++
++While no new features would be added to live-migration we could
++cover more scenarios in tempests tests and add more multinode jobs
++to check different live-migration types described above.
++
++
++Documentation Impact
++====================
++
++Existing live-migration documentation shoulb be updated
++
++
++References
++==========
++
++* [1] - http://docs.openstack.org/openstack-ops/content/compute_nodes.html
++* [2] - http://docs.openstack.org/openstack-ops/content/flavors.html
++* [3] - https://bugs.launchpad.net/nova/+bug/1246201
++* [4] - https://review.openstack.org/#/c/227897/
++* [5] - https://wiki.openstack.org/wiki/TaskFlow
++* [6] - http://docs.openstack.org/openstack-ops/content/storage_decision.html
++
++History
++=======
++
++.. list-table:: Revisions
++      :header-rows: 1
++
++   * - Release Name
++     - Description
++   * - Mitaka
++     - Introduced
+-- 
+2.1.0
+

@@ -1,0 +1,363 @@
+From af4af72d69dbcf4a0a3cbd4b8e1ff15c15b60647 Mon Sep 17 00:00:00 2001
+From: Pavel Kholkin <pkholkin@mirantis.com>
+Date: Tue, 27 Oct 2015 16:16:32 +0300
+Subject: [PATCH] keypairs-pagination support
+
+Blueprint adds pagination support for key pairs.
+Optional parameters 'limit', 'marker', 'sort_key', 'sort_dir'
+will be added to GET /os-keypairs request.
+
+Co-Authored-By: Sergey Nikitin <snikitin@mirantis.com>
+
+APIImpact
+
+Change-Id: Ie9e4230494d5ba95d2e94ef47de15c8f7d7fd8fe
+Blueprint: keypairs-pagination
+---
+ specs/mitaka/approved/keypairs-pagination.rst | 334 ++++++++++++++++++++++++++
+ 1 file changed, 334 insertions(+)
+ create mode 100644 specs/mitaka/approved/keypairs-pagination.rst
+
+diff --git a/specs/mitaka/approved/keypairs-pagination.rst b/specs/mitaka/approved/keypairs-pagination.rst
+new file mode 100644
+index 0000000..073bdd6
+--- /dev/null
++++ b/specs/mitaka/approved/keypairs-pagination.rst
+@@ -0,0 +1,334 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++===========================
++Keypairs pagination support
++===========================
++
++https://blueprints.launchpad.net/nova/+spec/keypairs-pagination
++
++The blueprint aims to add `limit`, `marker`, `sort_key`, `sort_dir` optional
++parameters to GET /os-keypairs request.
++
++Problem description
++===================
++
++Right now user can only get all non-deleted key pairs, which can be too slow.
++Compute API user wants to be able to get only a subset of all tenant key pairs
++using general pagination mechanism.
++
++There is no support for retrieving server data in a specific order. In
++order to retrieve data in any sort order and direction, the REST APIs need
++to accept multiple sort keys and directions.
++
++Use Cases
++---------
++
++The scale testing of Horizon faced several problems with a lot of data being
++received from Nova side. The change can be useful for showing key pairs in
++Horizon on several pages instead of one general list.
++
++Proposed change
++===============
++
++Add an API microversion that allows to get several key pairs using
++general pagination mechanism with the help of `limit`, `marker`, `sort_key`,
++`sort_dir` optional parameters to GET /os-keypairs request.
++
++* **sort_key**: Key used to determine sort order
++
++* **sort_dir**: Direction for with the associated sort key ("asc" or "desc")
++
++* **marker**: The last key pair NAME of the previous page. Displays list of key
++  pairs after "marker".
++
++* **limit**: Maximum number of key pairs to display. If limit == -1,
++  all key pairs will be displayed. If limit is bigger than `osapi_max_limit`
++  option of Nova API, limit `osapi_max_limit` will be used instead.
++
++
++Alternatives
++------------
++
++None
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++The proposal would add API microversion for getting several key pairs using
++general pagination mechanism. New optional parameters `limit`, `marker`,
++`sort_key`, `sort_dir` will be added to GET /os-keypairs request.
++
++Generic request format ::
++
++    GET /os-keypairs?limit={limit}&marker={kp_name}&sort_key={sort_key}&sort_dir={asc|desc}
++
++1) Get all key pairs ::
++
++    GET /os-keypairs
++
++   Response ::
++
++    {
++        "keypairs": [
++            {
++                "keypair": {
++                    "public_key": <ssh-key1>,
++                    "name":"kp1",
++                    "fingerprint": "cc:cc:cc:cc"
++                }
++            },
++            {
++                "keypair": {
++                    "public_key": <ssh-key2>,
++                    "name":"kp2",
++                    "fingerprint": "aa:aa:aa:aa"
++                }
++            },
++            {
++                "keypair": {
++                    "public_key": <ssh-key3>,
++                    "name":"kp3",
++                    "fingerprint": "bb:bb:bb:bb"
++                }
++            }
++        ]
++    }
++
++2) Get no more than 2 key pairs ::
++
++    GET /os-keypairs?limit=2
++
++   Response ::
++
++    {
++        "keypairs": [
++            {
++                "keypair": {
++                    "public_key": <ssh-key1>,
++                    "name":"kp1",
++                    "fingerprint": "cc:cc:cc:cc"
++                }
++            },
++            {
++                "keypair": {
++                    "public_key": <ssh-key2>,
++                    "name":"kp2",
++                    "fingerprint": "aa:aa:aa:aa"
++                }
++            }
++        ]
++    }
++
++3) Get all key pairs after kp2 ::
++
++    GET /os-keypairs?marker=kp2
++
++   Response ::
++
++    {
++        "keypairs": [
++            {
++                "keypair": {
++                    "public_key": <ssh-key3>,
++                    "name":"kp3",
++                    "fingerprint": "bb:bb:bb:bb"
++                }
++            }
++        ]
++    }
++
++4) Get all key pairs sorted by fingerprint ::
++
++    GET /os-keypairs?sort_key=fingerprint
++
++   Response ::
++
++    {
++        "keypairs": [
++            {
++                "keypair": {
++                    "public_key": <ssh-key2>,
++                    "name":"kp2",
++                    "fingerprint": "aa:aa:aa:aa"
++                }
++            },
++            {
++                "keypair": {
++                    "public_key": <ssh-key3>,
++                    "name":"kp3",
++                    "fingerprint": "bb:bb:bb:bb"
++                }
++            },
++            {
++                "keypair": {
++                    "public_key": <ssh-key1>,
++                    "name":"kp1",
++                    "fingerprint": "cc:cc:cc:cc"
++                }
++            }
++        ]
++    }
++
++5) Get all key pairs sorted by name (default sort_key) in descending order ::
++
++    GET /os-keypairs?sort_dir=desc
++
++   Response ::
++
++    {
++        "keypairs": [
++            {
++                "keypair": {
++                    "public_key": <ssh-key3>,
++                    "name":"kp3",
++                    "fingerprint": "bb:bb:bb:bb"
++                }
++            },
++            {
++                "keypair": {
++                    "public_key": <ssh-key2>,
++                    "name":"kp2",
++                    "fingerprint": "aa:aa:aa:aa"
++                }
++            },
++            {
++                "keypair": {
++                    "public_key": <ssh-key1>,
++                    "name":"kp1",
++                    "fingerprint": "cc:cc:cc:cc"
++                }
++            }
++        ]
++    }
++
++6) Get all key pairs from kp3 in descending order by name (default sort_key) ::
++
++    GET /os-keypairs?sort_dir=desc&marker=kp3
++
++   Response ::
++
++    {
++        "keypairs": [
++            {
++                "keypair": {
++                    "public_key": <ssh-key2>,
++                    "name":"kp2",
++                    "fingerprint": "aa:aa:aa:aa"
++                }
++            },
++            {
++                "keypair": {
++                    "public_key": <ssh-key1>,
++                    "name":"kp1",
++                    "fingerprint": "cc:cc:cc:cc"
++                }
++            }
++        ]
++    }
++
++7) Get no more than 1 key pair from kp3 in descending order by name
++   (default sort_key) ::
++
++    GET /os-keypairs?sort_dir=desc&marker=kp3&limit=1
++
++   Response ::
++
++    {
++        "keypairs": [
++            {
++                "keypair": {
++                    "public_key": <ssh-key2>,
++                    "name":"kp2",
++                    "fingerprint": "aa:aa:aa:aa"
++                }
++            }
++        ]
++    }
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++None
++
++Performance Impact
++------------------
++
++Reduce load on Horizon with the help of pagination of retrieving key pairs from
++Nova side.
++
++Other deployer impact
++---------------------
++
++None
++
++Developer impact
++----------------
++
++None
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  pkholkin
++
++Work Items
++----------
++
++Create a new API microversion for getting several key pairs using general
++pagination mechanism.
++
++Dependencies
++============
++
++None
++
++Testing
++=======
++
++Would need new Tempest, functional and unit tests.
++
++Documentation Impact
++====================
++
++Docs needed for new API microversion and usage.
++
++References
++==========
++
++Nova bug describes the problem:
++
++[1] https://bugs.launchpad.net/nova/+bug/1510504
++
++History
++=======
++
++.. list-table:: Revisions
++   :header-rows: 1
++
++   * - Release Name
++     - Description
++   * - Mitaka
++     - Introduced
+-- 
+2.1.0
+

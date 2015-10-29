@@ -1,0 +1,270 @@
+From db713761c0cac3d021205dc49b0f303d836cdd19 Mon Sep 17 00:00:00 2001
+From: Alexander Schmidt <alexs@linux.vnet.ibm.com>
+Date: Mon, 5 Oct 2015 13:31:50 +0200
+Subject: [PATCH] WIP libvirt: iothreads for disk devices
+
+Accelerate disk IO performance by exploiting iothreads, which were
+introduced in in recent libvirt/qemu releases.
+
+Change-Id: I8ae0b5af77aa7c6eccd42d67dc703d4ac9d2b07b
+Implements: blueprint libvirt-iothreads
+---
+ specs/mitaka/approved/libvirt-iothreads.rst | 246 ++++++++++++++++++++++++++++
+ 1 file changed, 246 insertions(+)
+ create mode 100644 specs/mitaka/approved/libvirt-iothreads.rst
+
+diff --git a/specs/mitaka/approved/libvirt-iothreads.rst b/specs/mitaka/approved/libvirt-iothreads.rst
+new file mode 100644
+index 0000000..ec6a912
+--- /dev/null
++++ b/specs/mitaka/approved/libvirt-iothreads.rst
+@@ -0,0 +1,246 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++==========================================
++Libvirt: iothreads for disk devices
++==========================================
++
++https://blueprints.launchpad.net/nova/+spec/libvirt-iothreads
++
++Iothreads were introduced in recent libvirt and qemu releases for
++improving disk IO performance and scalability.
++
++This feature enhances the nova libvirt driver to exploit iothreads when
++they are available in the underlying libvirt/qemu release. To make
++life easier for operators and users, iothreads will be enabled
++transparently without adding new configuration parameters.
++
++
++Problem description
++===================
++
++By default, IO operations are handled within a qemu thread under a global
++mutex. This limits IO throughput when a guest drives IO operations to
++multiple disk devices in parallel.
++
++With iothreads, the IO processing can be offloaded to dedicated threads
++outside of the qemu context. Iothreads must be allocated and assigned
++to disk devices via libvirt APIs and the guest XML definition.
++
++Currently nova does not enable iothreads. By sticking with the default
++settings, performance and scalability improvements cannot be exploited by
++Openstack operators and users.
++
++Use Cases
++----------
++
++This feature should be very helpful for end users that run workloads where
++disk IO performance is critical.
++
++Proposed change
++===============
++
++Background on iothreads:
++
++By default, IO operations for all block devices are handled
++within Qemu under the Qemu global mutex. With virtio-blk dataplane, the IO
++processing is moved into dedicated threads which can handle the IO
++processing in parallel. IO threads can be allocated dynamically and disk
++devices need to be assigned to a specific IO thread.
++
++For more background on iothreads, see the references.
++
++Details on required libvirt/qemu versions:
++
++* qemu 1.4: virtio-blk dataplane was added as experimental feature (see `[3]`_)
++* qemu 2.0: support for M:N threading model (see `[4]`_)
++* qemu 2.1: "dataplane now supports almost all features of the block layer",
++            but it is still considered experimental (see `[5]`_)
++
++* libvirt 1.2.8: introduction of the iothread concept and XML format
++* libvirt 1.2.14: new API for pinning iothreads
++* libvirt 1.2.15: new APIs for adding and removing iothreads dynamically
++                  (it depends on the actual nova implementation if these
++                  APIs are required or not)
++
++Information on libvirt versions was taken from `[6]`_.
++
++* data-plane is available as technology preview in RHEL7 (see `[7]`_)
++* data-plane is supported on KVM for IBM z Systems 1.1.0 (see `[8]`_)
++
++For exploiting iothreads, qemu 2.1 should be the minimum requirement. For
++libvirt, the actual version minimum depends on implementation details
++(for example, will it be required to add/remove iothreads during the
++runtime of an instance). Version 1.2.8 is the absolute minimum.
++
++Details on the proposed solution:
++
++For each disk device that is used by an instance, a dedicated IO thread
++will be created. IO threads for the initial disks of an instance are
++created when the instance is spawned. When cinder volumes are attached
++or detached from an instance during runtime, IO threads are added or
++deleted via the available libvirt APIs (virDomainAddIOThread,
++virDomainDelIOThread).
++
++TODO: think about how IO thread placement would be handled when guest NUMA
++pinning or strict CPU pinning are used
++
++TODO: think about association between guest devices and guest NUMA nodes
++
++TODO: impacts on live migration?
++
++Alternatives
++------------
++
++Alternative implementations to the "one IO thread per device" algorithm
++would be:
++
++* one iothread per vCPU and distributing devices across iothreads
++
++* one iothread per device while the number of devices is lower than the
++  number of vCPUs, then distribute additional devices across the iothreads
++
++TODO: evaluate which algorithm makes most sense
++
++Data model impact
++-----------------
++
++None
++
++
++REST API impact
++---------------
++
++None
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++None
++
++Performance Impact
++------------------
++
++The IO throughput seen by user instances will be improved by this change,
++especially when multiple disks are used in parallel by the guest. See
++`[1]`_ for a performance comparison between traditional qemu IO and
++virtio data-plane.
++
++The performance of nova services like compute and scheduler should not be
++affected by this change.
++
++Other deployer impact
++---------------------
++
++Iothreads will only be effective when the libvirt and qemu versions are
++recent enough to support these features.
++
++See the secion "Proposed change" for a discussion on required libvirt/qemu
++versions.
++
++Developer impact
++----------------
++
++None
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  alexs-h
++
++Work Items
++----------
++
++* Create iothreads for disks during instance spawn
++* Create and remove iothreads for cinder volumes that are attached/detached
++* Handle iothreads during live migration
++
++
++Dependencies
++============
++
++To exploit iothreads, recent libvirt and qemu versions are required.
++
++
++Testing
++=======
++
++Unit tests will be provided that cover instance XML generation and
++verification. The interaction with libvirt APIs will also be tested
++via unit tests.
++
++Live migration, where iothreads need to be
++enabled/disabled based on the capabilities of the target
++hypervisor, also need to be tested via unit tests.
++
++For tempest, the new code should be tested already in existing tests.
++
++
++Documentation Impact
++====================
++
++Wiki pages that cover IO configuration with libvirt/qemu as a hypervsior
++should be updated.
++
++
++References
++==========
++
++* _`[1]` Exploiting The Latest KVM Features For Optimized Virtualized
++  Enterprise Storage Performance (2013):
++  http://events.linuxfoundation.org/sites/events/files/slides/CloudOpen2013_Khoa_Huynh_v3.pdf
++
++* _`[2]` Towards multi threaded IO emulation in QEMU:
++  http://www.linux-kvm.org/images/a/a7/02x04-MultithreadedDevices.pdf
++
++* _`[3]` New in QEMU 1.4: high performance virtio-blk data plane implementation
++  http://blog.vmsplice.net/2013/03/new-in-qemu-14-high-performance-virtio.html
++
++* _`[4]` QEMU 2.0 ChangeLog
++  http://wiki.qemu.org/ChangeLog/2.0
++
++* _`[5]` QEMU 2.1 ChangeLog
++  http://wiki.qemu.org/ChangeLog/2.1
++
++* _`[6]` libvirt news
++  http://www.libvirt.org/news.html
++
++* _`[7]` Redhat product documentation
++  https://access.redhat.com/documentation/en-US/Red_Hat_Enterprise_Linux/7/html/7.0_Release_Notes/chap-Red_Hat_Enterprise_Linux-7.0_Release_Notes-Virtualization.html
++
++* _`[8]` KVM for IBM z Systems product documentation
++  http://public.dhe.ibm.com/software/dw/linux390/docu/l159va00.pdf
++
++History
++=======
++
++Optional section for Mitaka intended to be used each time the spec
++is updated to describe new design, API or any database schema
++updated. Useful to let reader understand what's happened along the
++time.
++
++.. list-table:: Revisions
++   :header-rows: 1
++
++   * - Release Name
++     - Description
++   * - Mitaka
++     - Introduced
+-- 
+2.1.0
+

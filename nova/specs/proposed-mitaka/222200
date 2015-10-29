@@ -1,0 +1,306 @@
+From 6547ea70d8bfcec2c5c67b96ab2bc27847e55d4b Mon Sep 17 00:00:00 2001
+From: Claudiu Belu <cbelu@cloudbasesolutions.com>
+Date: Thu, 10 Sep 2015 17:03:32 +0300
+Subject: [PATCH] Adds spec for exposing host capabilities
+
+https://blueprints.launchpad.net/nova/+spec/expose-host-capabilities
+
+Ensuring proper scheduling can be difficult task, especially
+when the instances require several host features or capabilities.
+This would require the administrators to know what features are
+available for a certain hypervisor version and / or creating
+quite a few host aggregates, which can become tedious.
+
+Implements: blueprint expose-host-capabilities
+
+Change-Id: I7f31de7c5074561cbe2906c80d79ce8b825f1009
+---
+ specs/mitaka/approved/expose-host-capabilities.rst | 276 +++++++++++++++++++++
+ 1 file changed, 276 insertions(+)
+ create mode 100644 specs/mitaka/approved/expose-host-capabilities.rst
+
+diff --git a/specs/mitaka/approved/expose-host-capabilities.rst b/specs/mitaka/approved/expose-host-capabilities.rst
+new file mode 100644
+index 0000000..5704106
+--- /dev/null
++++ b/specs/mitaka/approved/expose-host-capabilities.rst
+@@ -0,0 +1,276 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++========================
++Expose host capabilities
++========================
++
++https://blueprints.launchpad.net/nova/+spec/expose-host-capabilities
++
++Ensuring proper scheduling can be a difficult task, especially when the
++instances require several host features or capabilities. This would require the
++administrators to know what features are available for a certain hypervisor
++version and / or creating quite a few host aggregates, which can become
++tedious.
++
++Problem description
++===================
++
++Currently, the nova scheduler is not aware of any host capabilities or features
++the compute nodes might have. For example, certain features require a minimum
++hypervisor version. The only way to handle this would be to set filters (
++e.g. image property ``requires_hypervisor_version``) in order to ensure proper
++scheduling. This less than ideal, as it requires the administrators to know
++which feature requires what hypervisor version. [1]
++
++On top of this, there are some features that are not available without proper
++configuration. Choosing to deploy an instance with such a feature on such a
++node would fail. For example, Hyper-V Shielded VMs cannot be created on a
++host that does not have the Host Guardian Service enabled and it is not
++Guarded [2]. Or, Hyper-V vTPM feature does not exist in Windows 10 at all, but
++it exists in Windows / Hyper-V Server 2016 and they share the same hypervisor
++version (10.0).
++
++Plus, for cold migration / resize we cannot specify a host for it, meaning
++that we must solely rely on the scheduler to find a proper host. Because of
++this, there are high chances for the chosen host to be inapropriate for the
++instance.
++
++Ideally, the scheduler could to feature-matching instead.
++
++Use Cases
++----------
++
++There are two types of host capabilities:
++
++* **Hypervisor version related capabilities**: newer hypervisor versions can
++  offer new features that can be added to the instances. (e.g.: secure boot,
++  generation 2 VMs, etc.)
++
++* **Undiscoverable capabilities**: cannot be determined easily or at all by
++  the nova-compute service, mostly hardware related capabilites (e.g.: SSD,
++  SR-IOV, fibre channel, etc.)
++
++Project Priority
++-----------------
++
++Yes. TBD.
++
++Proposed change
++===============
++
++A new database table and object model must be implemented. See `Data model
++impact` section.
++
++The method ``get_hypervisor_capabilities`` must be added to virt.ComputeDriver.
++The driver will have to implement this method and return a ``HostCapabilities``
++object containing the "hypervisor version related capabilities" mention in the
++`Use Cases` section.
++
++As for the "undiscoverable capabilities", a config option in the group
++``host_capabilities`` can be defined for each capability.
++
++The capabilities reported by the compute drivers and the capabilities contained
++in the config option will be validated by the ``HostCapabilities`` object
++model: an InvalidHostCapability exception will be raised if there is at least a
++reported capability that does not exist in the ``HostCapabilities`` object
++model.
++
++As for the capabilities present in the ``HostCapabilities`` model, they should
++mirror the properties that can be in the image metadata or flavor extra specs,
++in order to easily match requested features to host capabilites.
++
++For example, the host could have the capability for instance secure boot. The
++``HostCapabilities.os_secure_boot`` field will be set to True. In order to
++request the instance secure boot feature, users will have to define the image
++property ``os_secure_boot`` or flavor extra spec ``os:secure_boot`` as
++``required`` [3].
++More details about the ``HostCapabilities`` fields in the `Data model impact`
++section.
++
++A new filter should be implemented which will match the instance features
++requested with the host capabilities as previously described. It should only
++take into account fields defined in the ``HostCapabilities``. If a field in the
++``HostCapabilities`` instance has not been set, that capability will be
++considered as not present.
++
++For most cases, a host capability is simply a boolean: it is present or not.
++In this case, an instance requiring a certain capability can easily be matched
++with hosts which has that capability present or set to True. For example, the
++instance's image metadata contains the property``os_vtpm`` set to ``required``.
++If the ``HostCapabilities`` instance ``os_vtpm`` field is set to True, then
++that host is appropriate for that instance.
++
++In other cases, a host capability is expressed as a list with different values.
++For instance, the ``hw_machine_type`` capability [4], which can have multiple
++values. In the Hyper-V's case, the mentioned field is used to whether a VM is
++generation 1 or 2. Windows Hyper-V / Server 2012 R2 or newer will report the
++values ['hyperv-gen1', 'hyperv-gen2'] for this capability. For an instance
++with image metadata containing the property ``hw_machine_type`` set to
++``hyperv-gen2``, a host will be considered appropriate if the requested
++capability value exists in the ``HostCapabilities.hw_machine_type`` list.
++
++Host capabilities could be exposed to the users through nova API. See `REST API
++impact` for more details.
++
++Alternatives
++------------
++
++* Image property ``requires_hypervisor_version``: it requires administrators to
++  know which feature requires what hypervisor version, plus there are features
++  that cannot be determined by version alone.
++
++* Host aggregates.
++
++The alternatives only partially solves the scheduling issue for cold migration
++or resize.
++
++Data model impact
++-----------------
++
++New database table ``host_capabilities`` should be added. It should contain any
++and all capabilities acceptable for Nova. A database migration would be
++necessary if a new capability is supported. It should also contain the ID of
++the compute node they are related to.
++
++Alternatively, there could be a new column in the ``compute_node`` table,
++containing all the capabilities, but there would be less control and validation
++on what capabilities drivers report.
++
++New ``HostCapabilities`` object model should be added. If any of of object's
++fields is not set, then that capability will be considered as not present.
++
++Proposed initial fields for ``HostCapabilities``:
++
++* Hypervisor version related capabilities:
++    * hw_machine_type  - values: None, list [4] (merged in Kilo)
++    * os_secure_boot   - values: None, list [3] (proposed for Mitaka)
++    * os_shielded_vms  - values: None, True [2] (approved for Liberty)
++    * os_vtpm          - values: None, True [2] (approved for Liberty)
++
++* Hardware related capabilities:
++    * hw_ssd           - values: None, True
++    * hw_sriov         - values: None, True
++    * hw_fibre_channel - values: None, True
++
++Note: any other proposals for this list?
++
++REST API impact
++---------------
++
++In order to expose the host capabilities through nova API, a microversion bump
++is necessary. Executing ``nova hypervisor-show`` will additionally yield a
++``host_capabilities`` field, containing a dict with all the **existing** host
++capabilities or features (empty, None, or False fields will be ignored as they
++do not present any new valuable information).
++
++A commit for python-novaclient will be necessary for the new nova API
++microversion.
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++None
++
++Performance Impact
++------------------
++
++The scheduler filter will be called once per host, as the host capabilities
++do not change from a request to another.
++
++Entries in the ``host_capabilities`` table will registered / updated once per
++(re)started nova_compute node. Entries will be queried by the scheduler.
++
++Other deployer impact
++---------------------
++
++Proper scheduling will be assured for instances requiring certain host
++capabilities without having the administrator create host aggregates for
++certain host capabilities or set the ``requires_hypervisor_version`` image
++property for certain features which depend on the hypervisor version [2][3][4].
++
++In order to benefit from the new scheduler filter, it must be included in the
++nova scheduler's ``nova.conf`` file.
++
++Developer impact
++----------------
++
++Drivers will have to implement the new ``get_host_capabilities`` method. It
++should return an instance of ``HostCapabilities``.
++
++In order for a new capability to be accepted, a new database migration for the
++table ``host_capabilities`` and a version increment for ``HostCapabilities``
++will be necessary. If the capability's type is `undiscoverable`, it will have
++to be added to the config option group ``host_capabilities``.
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  Claudiu Belu <cbelu@cloudbasesolutions.com>
++
++Work Items
++----------
++
++* ``host_capabilities`` table.
++* ``HostCapabilities`` object model.
++* new scheduler filter.
++* ``nova.virt.driver.ComputeDriver.get_host_capabilities`` method.
++* drivers' ``get_host_capabilities`` implementation.
++* nova API microversion for exposing the host capabilities through nova API.
++* python-novaclient required change for the new microversion.
++
++Dependencies
++============
++
++None
++
++Testing
++=======
++
++* Unit tests.
++* Jenkins.
++* 3rd party CIs.
++
++Documentation Impact
++====================
++
++The new scheduler filter and the host capabilities that can be scheduled using
++the new filter will have to be documented.
++The new config option group ``host_capabilities`` will have to be documented.
++The new nova API microversion will have to be documented.
++The deployer impact will have to be documented.
++
++References
++==========
++
++[1] #openstack-nova IRC discussion:
++  http://eavesdrop.openstack.org/irclogs/%23openstack-nova/%23openstack-nova.2015-09-08.log.html#t2015-09-08T15:30:04
++
++[2] Hyper-V vTPM / shielded VMs spec:
++  https://review.openstack.org/#/c/195068/
++
++[3] Hyper-V UEFI Secure Boot spec:
++  https://review.openstack.org/#/c/190997/
++
++[4] Hyper-V generation 2 VMs spec:
++  https://review.openstack.org/#/c/103945/
++
++History
++=======
+-- 
+2.1.0
+

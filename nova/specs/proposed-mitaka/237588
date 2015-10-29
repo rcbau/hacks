@@ -1,0 +1,161 @@
+From bfc54b7ab64070fa4ef81069e040ee79b2f1ffd6 Mon Sep 17 00:00:00 2001
+From: Marian Horban <mhorban@mirantis.com>
+Date: Mon, 19 Oct 2015 14:00:23 -0400
+Subject: [PATCH] Move WSGI functionality from nova into oslo.services
+
+Change-Id: I4dab65c20fde6b3eee4a8de8c6c8b86705247aa0
+---
+ .../approved/move-wsgi-server-in-oslo-service.rst  | 141 +++++++++++++++++++++
+ 1 file changed, 141 insertions(+)
+ create mode 100644 specs/mitaka/approved/move-wsgi-server-in-oslo-service.rst
+
+diff --git a/specs/mitaka/approved/move-wsgi-server-in-oslo-service.rst b/specs/mitaka/approved/move-wsgi-server-in-oslo-service.rst
+new file mode 100644
+index 0000000..92dc87e
+--- /dev/null
++++ b/specs/mitaka/approved/move-wsgi-server-in-oslo-service.rst
+@@ -0,0 +1,141 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++===================================================
++Move WSGI functionality in oslo.service library
++===================================================
++
++https://blueprints.launchpad.net/oslo.service/+spec/move-wsgi-server-in-oslo-service
++
++Nova like many other projects(cinder, neutron, glance, etc.) contains a WSGI
++server application that uses a pool of eventlet greenthreads to service HTTP
++requests. Implementations of this functionality in many projects are similar
++or even copied and pasted.
++To avoid side effects related with copy-pasted code it should be moved into
++separate library.
++
++First step is adding of WSGI common code in oslo.service.
++The next steps are removing old WSGI from components and reusing oslo.service
++WSGI.
++
++Problem description
++===================
++
++Copy and paste programming usually is bad practice(
++https://en.wikipedia.org/wiki/Copy_and_paste_programming).
++Fixes and improvement of generic code should be duplicated in other projects.
++Since this rule is rarely complied generic code becomes less and less similar.
++As result: to apply trivial fix in WSGI functionality it takes much more time.
++
++
++Use Cases
++----------
++
++This improvement impacts on developers and quality of whole openstack code.
++
++Proposed change
++===============
++
++We will replace the custom Nova WSGI server code with oslo.service WSGI
++handling code.
++
++
++Alternatives
++------------
++
++None
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++None
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++None
++
++Performance Impact
++------------------
++
++None
++
++Other deployer impact
++---------------------
++
++None
++
++Developer impact
++----------------
++
++WSGI functionality will be moved from nova/wsgi.py to oslo.service/wsgi.py.
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  Marian Horban <mhorban@mirantis.com>
++
++
++Work Items
++----------
++
++* Put generic WSGI code in oslo.service library(already done).
++
++* Remove WSGI code from nova.
++
++
++Dependencies
++============
++
++None.
++
++Testing
++=======
++
++Since this BP doesn't add new functionality additional tests are not needed.
++
++Documentation Impact
++====================
++
++WSGI functionality is removed from nova.
++
++References
++==========
++
++None.
++
++History
++=======
++
++None.
++
++.. list-table:: Revisions
++   :header-rows: 1
++
++   * - Release Name
++     - Description
++   * - Mitaka
++     - Introduced
+-- 
+2.1.0
+

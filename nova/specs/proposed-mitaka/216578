@@ -1,0 +1,238 @@
+From f8d290dd18505fdb1c652dc2388f64b8afc21e06 Mon Sep 17 00:00:00 2001
+From: Rui Chen <chenrui.momo@gmail.com>
+Date: Tue, 25 Aug 2015 15:22:05 +0800
+Subject: [PATCH] Task states improvement
+
+Currently when we attach/detach volume and network
+interface from instance, the task state of the instance
+is unchanged, it cause some issues.
+
+This specification purpose to add 4 task states
+(attaching_volume, detaching_volume, attaching_interface,
+detaching_interface) into the instance life cycle.
+
+APIImpact
+
+blueprint task-states-improvement
+
+Change-Id: Ie53c71373269ffe732866da4e6cce7ded3a7b234
+---
+ specs/mitaka/approved/task-states-improvement.rst | 206 ++++++++++++++++++++++
+ 1 file changed, 206 insertions(+)
+ create mode 100644 specs/mitaka/approved/task-states-improvement.rst
+
+diff --git a/specs/mitaka/approved/task-states-improvement.rst b/specs/mitaka/approved/task-states-improvement.rst
+new file mode 100644
+index 0000000..2ecb85b
+--- /dev/null
++++ b/specs/mitaka/approved/task-states-improvement.rst
+@@ -0,0 +1,206 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++========================================================================
++Improve task states for attaching/detaching volume and network interface
++========================================================================
++
++https://blueprints.launchpad.net/nova/+spec/task-states-improvement
++
++Adds 4 task states (attaching_volume, detaching_volume, attaching_interface,
++detaching_interface) into the instance life cycle.
++
++
++Problem description
++===================
++
++Currently when we attach/detach volume and network interface from instance,
++the task state of the instance is unchanged, it cause some issues.
++
++1. The users have no idea about what's happening on the instance when
++   attaching/detaching volume and network interface.
++2. In some API concurrent requests scenarios the operation results are
++   unpredictable and inconclusive, for example: do the concurrent operation
++   rebuilding-instance and detaching-volume for the same instance. Because
++   task_state of instance isn't set when detaching volume,
++   @check_instance_state is bypassed, nova-compute start to execute rebuilding
++   and detaching-volume on one instance at the same time. It cause the
++   unpredictable result, sometimes the operations were successful, but
++   sometimes it would be fails according to the time sequence of concurrent
++   operations. We should do these tasks one by one.
++
++   Think about the following failed case:
++      1. start to detach volume from instance in nova-api
++      2. start to rebuild instance in nova-api, get the instance bdms from db,
++         because the detaching volume don't finish, so the bdms contain the
++         volume that will be detached.
++      3. start to detach volume from instance in nova-compute, and detaching
++         finish successfully, the bdm of this volume is destroyed.
++      4. start to rebuild the instance in nova-compute, try to detach all the
++         volumes according to the bdms that pass through from nova-api and
++         contain the volume had been detached. That would be failed, because
++         the bdm of the volume can't be found. Exception VolumeBDMNotFound was
++         raised.
++      5. rebuilding failed, the instance is set to ERROR.
++
++Use Cases
++---------
++
++1. End users attach/detach volume and network interface to instance, they can
++   know which operation is in progress according to task state of the instance.
++2. Solve the issue of API concurrent requests. If one API operation is underway
++   and have set the instance task state. The other concurrent API requests will
++   be denied, because these API operations can't be executed at the same time.
++   The end users should be notified by raising exception from API, let them
++   know they are doing some wrong things.
++
++
++Proposed change
++===============
++
++Adds 4 task states (attaching_volume, detaching_volume, attaching_interface,
++detaching_interface) into the instance life cycle. Set the instance.task_state
++as 'attaching_volume' in compute/api.py and assert the current task_state is
++None when we attach a volume to the instance, like this::
++
++    instance.task_state = task_states.ATTACHING_VOLUME
++    instance.save(expected_task_state=[None])
++
++Then update the instance.task_state as None when the attaching-volume workflow
++success in compute/manager.py, like this::
++
++    instance.task_state = None
++    instance.save(expected_task_state=task_states.ATTACHING_VOLUME)
++
++If the attaching-volume failed, revert instance.task_state to None by using the
++decorator @reverts_task_state.
++
++Detaching volume and attaching/detaching network interface workflow are same as
++attaching volume, the instance.task_state will be updated to related state.
++
++If the host abnormally died during attaching volume, the task_state of instance
++will be reset to None when nova-compute init, that is same as detaching-volume,
++attaching-interface, detaching-interface.
++
++Alternatives
++------------
++
++None
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++1. Four new task states (attaching_volume, detaching_volume,
++   attaching_interface, detaching_interface) will present in instance life
++   cycle when query instance list or show instance details.
++2. The task state of instance will be set when these operations
++   (attaching_volume, detaching_volume, attaching_interface,
++   detaching_interface) execute, so other concurrent operations will be denied
++   in API concurrent requests scenarios, like: rebuild. That make use of the
++   mechanism @check_instance_state in nova-api, but don't modify any current
++   setting of @check_instance_state, so that the operations execute one by one.
++   List current setting of @check_instance_state, only 4 methods (delete,
++   soft_delete, update_instance_metadata, delete_instance_metadata) allow all
++   task_state, others just allow task_state=None or a set of special
++   task_state, like: reboot, so if we set the four new task_states, that will
++   deny all the concurrent methods exclude the above 4 methods (delete,
++   soft_delete, update_instance_metadata, delete_instance_metadata).
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++Four new task states will be exported to end users, and python-novaclient
++doesn't need to be modified.
++
++Performance Impact
++------------------
++
++None
++
++Other deployer impact
++---------------------
++
++None
++
++Developer impact
++----------------
++
++None
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++
++  Rui Chen <chenrui.momo@gmail.com>
++
++Work Items
++----------
++
++1. Add 4 new task_state into task_states.py (attaching_volume,
++   detaching_volume, attaching_interface, detaching_interface)
++2. Update the instance.task_state to related value at the beginning of
++   attach/detach operation method in compute/api.py. The request had set the
++   instance task state in the first would continue to execute, and the others
++   will be denied according to the setting of decorator 'check_instance_state'
++   in API concurrent requests scenarios.
++3. Update the instance.task_state to None when these operations are successful
++   in compute/manager.py
++4. Add the decorator @reverts_task_state on the attach/detach_* methods.
++5. Update the related unit tests and add some new test cases to cover the new
++   logic.
++6. Reset the task_state of instance to None, if the current task_state is in
++   (attaching_volume, detaching_volume, attaching_interface,
++   detaching_interface) when nova-compute init.
++
++
++Dependencies
++============
++
++None
++
++
++Testing
++=======
++
++The related unit and function test cases will be added and updated.
++
++
++Documentation Impact
++====================
++
++The new task states should be introduced in related documentation.
++
++
++References
++==========
++
++None
++
++
++History
++=======
++
++None
+-- 
+2.1.0
+

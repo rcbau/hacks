@@ -1,0 +1,202 @@
+From b8672df45de1dff305723d0aa19a549551f6bc69 Mon Sep 17 00:00:00 2001
+From: Alexandre Levine <alexandrelevine@gmail.com>
+Date: Tue, 13 Oct 2015 17:38:46 +0400
+Subject: [PATCH] Added a spec for disable-termination and shutdown-termination
+ flags
+
+Implementation review contains JSONs and policy changes:
+https://review.openstack.org/#/c/189112/15
+Implements: blueprint server-termination-behavior
+APIImpact
+
+Change-Id: I32747747e5a19919af504e0a02cedafad893d56a
+---
+ .../approved/server-termination-behavior.rst       | 176 +++++++++++++++++++++
+ 1 file changed, 176 insertions(+)
+ create mode 100644 specs/mitaka/approved/server-termination-behavior.rst
+
+diff --git a/specs/mitaka/approved/server-termination-behavior.rst b/specs/mitaka/approved/server-termination-behavior.rst
+new file mode 100644
+index 0000000..33775c3
+--- /dev/null
++++ b/specs/mitaka/approved/server-termination-behavior.rst
+@@ -0,0 +1,176 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++=====================================================
++Expose flags disable_terminate and shutdown_terminate
++=====================================================
++
++https://blueprints.launchpad.net/nova/+spec/server-termination-behavior
++
++Nova currently supports internally two flags related to termination of a
++server:
++1. disable_terminate - allows or prohibits termination via public APIs.
++2. shutdown_terminate - server is terminated when stopped if this flag is
++set.
++Both flags were required by EC2 API but exposed only partially in nova's
++EC2 API.
++Now full implementation is provided by the new EC2 API implementation on
++stackforge, so nova's public API should start exposing these two flags.
++
++Problem description
++===================
++
++Amazon's EC2 API supports a couple of flags to regulate server's termination
++behavior.
++1. DisableApiTermination - safety lock to protect running servers from being
++accidentaly destroyed by owners or administrators. If you set this parameter
++to true, you can't terminate the instance using the Amazon EC2 console, CLI,
++or API; otherwise, you can. If you set this parameter to true and then later
++want to be able to terminate the instance, you must first change the value of
++the disableApiTermination attribute to false using ModifyInstanceAttribute.
++Alternatively, if you set next flag's value InstanceInitiatedShutdownBehavior
++to terminate, you can terminate the instance by running the shutdown command
++from the instance.
++2. InstanceInitiatedShutdownBehavior - Indicates whether an instance stops or
++terminates when you initiate shutdown from the instance (using the operating
++system command for system shutdown).
++
++Accordingly nova has two flags implemented internally: disable_terminate and
++shutdown_terminate. They implemented this same behavior but the only place
++they were exposed to client (also, not completely) was the EC2 API layer in
++nova.
++
++Now that EC2 API in nova is deprecated this functionality should become
++available for the external EC2 API service, implemented on stackforge.
++
++Use Cases
++----------
++
++1. Administrator or end user wants to protect some running servers from being
++accidentally destroyed. Impacts deployer, end user.
++
++2. Administrator or End user wants its server to get terminated when shutdown.
++Impacts deployer, end user
++
++Project Priority
++-----------------
++
++None
++
++Proposed change
++===============
++
++Add a new microversion for v2.1 API which will allow fetching new attributes
++and changing them for the requests with sufficient microversion specified.
++Add two new attributes to the Servers Extended Attributes (OS-EXT-SRV-ATTR)
++extension: disable_terminate (boolean) and shutdown_terminate (boolean).
++Get them supported in POST, PUT and GET methods to allow creation,
++modification and information retrieval accordingly.
++Change the policy for the extension from rule:admin_api to
++rule:admin_or_owner.
++All of the internal mechanisms are already in place and functional. Only
++API exposure is required.
++
++Alternatives
++------------
++
++Alternatively, a new extension can be created for managing extended server
++attributes available for user. Current extension is admin only.
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++The following methods:
++
++"/v2/​{tenant_id}​/servers"
++"/v2/​{tenant_id}​/servers/​{server_id}​"
++
++With the following method types:
++POST/PUT/GET
++
++will be updated to allow setting and retrieval of extended "server" attributes
++"disable_terminate" and "shutdown_terminate"
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++Any shutdown initiated from inside the server will lead to the server
++termination if shutdown-terminate is set to True.
++
++Performance Impact
++------------------
++
++None
++
++Other deployer impact
++---------------------
++
++None
++
++Developer impact
++----------------
++
++None
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  Andrey Pavlov (andrey.mp@gmail.com)
++
++Other contributors:
++  Alexandre Levine (alexandrelevine@gmail.com)
++
++Work Items
++----------
++
++Single work item.
++
++Dependencies
++============
++
++None
++
++Testing
++=======
++
++Unit tests and functional tests to be created.
++
++Documentation Impact
++====================
++
++Compute API documentation changes
++
++References
++==========
++
++``https://etherpad.openstack.org/p/YVR-nova-contributor-meetup``
++
++``http://docs.aws.amazon.com/AWSEC2/latest/APIReference/
++API_RunInstances.html``
++
++History
++=======
++
++None
+-- 
+2.1.0
+

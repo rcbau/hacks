@@ -1,0 +1,173 @@
+From 2d768e2fd2b42bf8cf66c6038ea988f8d4392f76 Mon Sep 17 00:00:00 2001
+From: jun xu <xujun@cmss.chinamobile.com>
+Date: Sun, 21 Jun 2015 03:32:40 +0800
+Subject: [PATCH] Allow force stop server in nova rest api
+
+Add force-stop-server.rst
+
+Change-Id: I0b8bf23a4373c6b81c3e25956f039d7e8cf36249
+Implements: blueprint nova-api-force-stop-server
+APIImpact: New parameter to os-stop api
+---
+ specs/mitaka/approved/force-stop-server.rst | 149 ++++++++++++++++++++++++++++
+ 1 file changed, 149 insertions(+)
+ create mode 100644 specs/mitaka/approved/force-stop-server.rst
+
+diff --git a/specs/mitaka/approved/force-stop-server.rst b/specs/mitaka/approved/force-stop-server.rst
+new file mode 100644
+index 0000000..c066950
+--- /dev/null
++++ b/specs/mitaka/approved/force-stop-server.rst
+@@ -0,0 +1,149 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++========================================
++Allow force stop server in nova rest api
++========================================
++
++https://blueprints.launchpad.net/nova/+spec/nova-api-force-stop-server
++
++Current nova API does not support to force stop a server.
++
++Problem description
++===================
++
++There is no way for end-user to force stop a server.
++
++Use Cases
++----------
++
++1. User wants to force stop a server.
++
++Project Priority
++-----------------
++
++None
++
++Proposed change
++===============
++
++Add a new microversion allowing force stopping a server via POST method.
++
++Alternatives
++------------
++
++None
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++The method:
++
++"/v2.1/tenant_id}/servers/action"
++
++With the method type POST.
++
++Will include an optional parameter "type" (xsd:string), with possible
++values "hard" and "soft", default value "soft".
++
++The os-stop schema definition will include "type" as well:
++
++::
++
++  stop = {
++      'type': 'object',
++      'properties': {
++          'os-stop': {
++              'type': ['object', 'null'],
++              'properties': {
++                  'type': {
++                      'enum': ['hard', 'soft']
++                  }
++              },
++              'additionalProperties': False
++          }
++      },
++      'required': ['os-stop'],
++      'additionalProperties': False
++  }
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++None
++
++Performance Impact
++------------------
++
++None
++
++Other deployer impact
++---------------------
++
++None
++
++Developer impact
++----------------
++
++None
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  Jun Xu (xujun@cmss.chinamobile.com)
++
++Work Items
++----------
++
++* Add a new microversion
++* python-novaclient support
++* Hyper-V driver support
++
++Dependencies
++============
++
++None
++
++Testing
++=======
++
++Unit tests and functional tests to be created.
++
++Documentation Impact
++====================
++
++The Nova driver documentation for nova stop API and CLI commands usage need
++to be updated.
++
++References
++==========
++
++* Bug https://bugs.launchpad.net/nova/+bug/1465956 requesting this
++  feature.
++
++History
++=======
++
++None
+-- 
+2.1.0
+

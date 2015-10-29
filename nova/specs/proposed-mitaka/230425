@@ -1,0 +1,177 @@
+From 9c8ff331bc0dfb5f0c96436f4073497713c2f1f6 Mon Sep 17 00:00:00 2001
+From: Gary Kotton <gkotton@vmware.com>
+Date: Fri, 2 Oct 2015 06:15:41 -0700
+Subject: [PATCH] VMware: expand opaque network support
+
+The NSXv3 Neutron plugin requires changes in the VMware compute
+driver.
+
+Change-Id: Id049b92caa273fe42c944bd64985090ebb79e5ab
+Blueprint: vmware-expand-opaque-support
+---
+ .../approved/vmware-opaque-network-support.rst     | 153 +++++++++++++++++++++
+ 1 file changed, 153 insertions(+)
+ create mode 100644 specs/mitaka/approved/vmware-opaque-network-support.rst
+
+diff --git a/specs/mitaka/approved/vmware-opaque-network-support.rst b/specs/mitaka/approved/vmware-opaque-network-support.rst
+new file mode 100644
+index 0000000..35f5661
+--- /dev/null
++++ b/specs/mitaka/approved/vmware-opaque-network-support.rst
+@@ -0,0 +1,153 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++==========================================
++VMware: Expand Support for Opaque Networks
++==========================================
++
++https://blueprints.launchpad.net/nova/+spec/vmware-expand-opaque-support
++
++An opaque network was introduced in the vSphere API in version 5.5. This is
++a network that is managed by a control plane outside of vSphere. The identifier
++and name of this network is made know to vSphere so that a host and virtual
++machine ethernet device can be connected to them.
++
++The initial code was added to support the NSX-MH (multi hypervisor) Neutron
++plugin. This was in commit 2d7520264a4610068630d7664eeff70fb5e8c681. That
++support would require the configuration of a global integration bridge and
++ensuring that the network was connected to that bridge.
++
++In the Liberty cycle support for the next generation Neutron plugin, NSXv3,
++was added. The compute integration for this plugin needs to make use of the
++Neutron network ID and not the integration brdige.
++
++This spec will deal with that integration.
++
++Problem description
++===================
++
++This spec will deal with the configuration of the Opaque network for the NSXv3
++Neutron driver.
++
++Use Cases
++----------
++
++This is required for the NSXv3 plugin. Without it Nova will be unable to attach
++a ethernet device to a virtual machine.
++
++Proposed change
++===============
++
++The change is self contained within the VMware driver code and just related to
++how the ethernet device backing is configured. This is only when the Neutron
++virtual port is of the type 'ovs'. When the type is 'ovs' there are two
++different flows:
++
++* If the configuration flag 'integration_bridge' is set. This is for the
++  NSX-MH plugin. This requires that the backing type opaqueNetworkId be set
++  as the 'integration_bridge'; the backing type opaqueNetworkType be set as
++  'opaque'.
++
++* If the flag is not set then this is the the NSXv3 plugin. This requires that
++  the backing value opaqueNetworkId be set as the neutron network UUID; the
++  backing type opaqueNetworkType will have value 'nsx.LogicalSwitch'; and the
++  backing externalId  has the the neutron port UUID.
++
++Alternatives
++------------
++
++None
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++None
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++None
++
++Performance Impact
++------------------
++
++None
++
++Other deployer impact
++---------------------
++
++The NSXv3 installation will be greenfield. So there is no upgrade impact.
++Due to the fact that the NSX-MH will be deprecated and replaced by the NSXv3
++we will set the default 'integration_bridge' value as None. This means that
++a user running the existing NSX-MH will need to make sure that this value
++is set. This is something that will be clearly documented.
++
++Developer impact
++----------------
++
++None
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  garyk
++
++Work Items
++----------
++
++The code has been implemented in the Liberty cycle and can be seen at
++https://review.openstack.org/#/c/165750/.
++
++
++Dependencies
++============
++
++This code depends on the Neutron driver NSXv3 added in the Liberty cycle.
++
++
++Testing
++=======
++
++The code is tested as part of the Neutron CI testing.
++
++
++Documentation Impact
++====================
++
++A deployer is only affected by this.
++
++References
++==========
++
++* https://www.vmware.com/support/developer/converter-sdk/conv55_apireference/vim.OpaqueNetwork.html
++
++* https://review.openstack.org/#/c/165750/
++
++
++History
++=======
++
++None
+-- 
+2.1.0
+

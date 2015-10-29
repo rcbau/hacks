@@ -1,0 +1,278 @@
+From 86b26bcbeaf607b128a1f4d3591b2079af863b06 Mon Sep 17 00:00:00 2001
+From: Matthew Gilliard <matthew.gilliard@hp.com>
+Date: Tue, 5 May 2015 10:59:08 +0100
+Subject: [PATCH] Query and cancel ongoing live migrations
+
+This spec proposes a new API to allow an operator to query and
+cancel ongoing live migrations.
+
+APIImpact
+
+blueprint refresh-abort-live-migration
+
+Change-Id: Ieff68ceec5c59ea1190c1a7e7f8b1d47188565df
+---
+ .../approved/refresh-abort-live-migration.rst      | 251 +++++++++++++++++++++
+ 1 file changed, 251 insertions(+)
+ create mode 100644 specs/mitaka/approved/refresh-abort-live-migration.rst
+
+diff --git a/specs/mitaka/approved/refresh-abort-live-migration.rst b/specs/mitaka/approved/refresh-abort-live-migration.rst
+new file mode 100644
+index 0000000..f6f28ae
+--- /dev/null
++++ b/specs/mitaka/approved/refresh-abort-live-migration.rst
+@@ -0,0 +1,251 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++==========================================================
++Provide a way to query and abort an ongoing live migration
++==========================================================
++
++Blueprint:
++https://blueprints.launchpad.net/nova/+spec/refresh-abort-live-migration
++
++When using live migrations, an operator might want to see which are still
++ongoing, their status and may also wish to cancel them. Currently this
++requires intervention at the hypervisor level. This spec proposes a new
++nova API for listing inspecting and cancelling in-progress live migrations.
++
++Problem description
++===================
++
++It may be that an operator decides, after starting a live migration, that they
++would like to cancel it. Effectively this would mean rolling-back any partial
++migration that has happened and leaving the instance on the source node. It may
++be that the migration is taking too long, or some operational problem is
++discovered with the target node. As the set of operations that can be performed
++on an instance during live migration is restricted (only delete is currently
++allowed), it may be that an instance owner has requested that their instance be
++made available urgently.
++
++Currently aborting a live migration requires intervention at the hypervisor
++level, which Nova recognises and resets the instance state.
++
++In order to refer to a specific live migration, in order to cancel it, an API
++is suggested here to list and fetch details of ongoing live migrations.
++
++
++Use Cases
++----------
++
++As an operator of an OpenStack cloud, I would like the ability to query, stop
++and roll back an ongoing live migration.
++
++Project Priority
++-----------------
++
++None
++
++Proposed change
++===============
++
++A new API method for listing, querying and cancelling ongoing live migrations.
++The Migration object and MigrationList object will be used to establish which
++migrations exist, with additional optional data provided by the compute driver.
++
++This will need an increment to the rpcapi version too.
++
++Alternatives
++------------
++
++One alternative is not doing this, leaving it up to operators to roll up their
++sleeves and get to work on the hypervisor.
++
++The topic of cancelling an ongoing live migration has been mooted before in
++Nova, and has been thought of as being suitable for a "Tasks API" for
++managing long-running tasks [#]_. There is not currently any Tasks API, but if
++one were to be added to Nova, it would be suitable.
++
++Data model impact
++-----------------
++
++None. The Migration objects used are already created and tracked by nova.
++
++REST API impact
++---------------
++
++All to be added in a new microversion.
++
++* The currently-existing API for starting a live migration will be modified.
++  At the moment the response to that request is empty, but we will return
++  the id of the created Migration object.
++
++* Fetch a list of in-progress migrations
++
++  `GET /os-migrations`
++
++  This returns a list of migrations, for example::
++
++    {
++      "migrations" :
++        [
++          { "id" : ...
++            "instance_uuid" : ...
++            "source_compute" : ...
++            "dest_compute" : ...
++            "status" : ...
++            "type" : ...      # "live-migration" or "migration"
++          },
++          ...
++        ]
++    }
++
++  It will be possible to filter this list by instance-uuid, source-compute,
++  dest-compute or type (or any combination of them).
++
++* Fetch details of an individual live migration
++
++  `GET /os-migrations/{id}`
++
++  This returns as much detail as is available about a live migration, for
++  example::
++
++    {
++      "id" : ...
++      "start" : ...            # iso8601 formatted date/time
++      "instance-uuid" : ...
++      "source_compute" : ...
++      "dest_compute" : ...
++      "status" : ...
++      "type" : ...
++      "progress" : ...         # percentage completion, 0-100
++    }
++
++  The "progress" field is intended to allow an operator to provide tooling for
++  monitoring the progress of live migrations, for example to detect cases which
++  are unlikely to complete. Progress will not necessarily be monotonic due to
++  the need to repeatedly sync data from source to target node. Hypervisors
++  which can't provide a value for the "progress" field should omit it.
++
++* Stop an in-progress live migration
++
++  `DELETE /os-migrations/{id}`
++
++  No request body is necessary
++
++  Normal http response code: `204 No Content`
++  No response body is needed
++
++  Expected error http response code: `404 Not Found`
++  - the migration does not exist, perhaps it has finished
++
++  Expected error http response code: `405 Method not supported`
++  - it is not possible to even attempt to cancel the live migration. Likely to
++  be because the hypervisor does not support cancellation of live migrations.
++
++Policy: This does not need a separate policy control. It can be called by
++anyone who could have started the live migration, so can inherit that action's
++policy.
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++None
++
++Performance Impact
++------------------
++
++Rolling back a live migration should be very quick, as the source host is still
++active until the migration finishes.
++
++Other deployer impact
++---------------------
++
++Deployers who have tooling around live migration may want to rewrite.
++
++Developer impact
++----------------
++
++None
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++Matthew Gilliard (irc: gilliard)
++
++Other assignees:
++Claudiu Belu
++
++Work Items
++----------
++
++* Getting lists and details about live migrations
++* Cancelling a live migration per hypervisor
++  libvirt
++  hyper-v
++  vmware
++* DELETE method on a live migration
++* python-novaclient operations
++
++Dependencies
++============
++
++None
++
++Testing
++=======
++
++* Unit and Functional tests in Nova
++
++* Tempest tests
++
++  Currently the multinode jobs can test live migration. I expect the devstack
++  setup used by those tests to be able to complete a live migration very
++  quickly, so it may be necessary to use a fake virt driver to simulate a live
++  migration slow enough that cancelling it reliably is possible. Ideally we
++  would use a live migration which never completes. This will probably not be
++  feasible in tempest, so functional tests in nova's tree should be used.
++
++Documentation Impact
++====================
++
++New API needs to be documented:
++
++* Compute API extensions documentation.
++  http://developer.openstack.org/api-ref-compute-v2.1.html
++
++* nova.compute.api documentation
++  http://docs.openstack.org/developer/nova/api/nova.compute.api.html
++
++References
++==========
++
++Some details of how this can be done with libvirt:
++https://www.redhat.com/archives/libvirt-users/2014-January/msg00008.html
++
++.. [#] http://lists.openstack.org/pipermail/openstack-dev/2015-February/055751.html
++
++History
++=======
++
++.. list-table:: Revisions
++   :header-rows: 1
++
++   * - Release Name
++     - Description
++   * - Mitaka
++     - Introduced
+-- 
+2.1.0
+

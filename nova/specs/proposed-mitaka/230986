@@ -1,0 +1,155 @@
+From 97be37399fcfac6856ca678df2c72e6f6dc26f7b Mon Sep 17 00:00:00 2001
+From: jichenjc <jichenjc@cn.ibm.com>
+Date: Sun, 4 Oct 2015 23:47:01 +0800
+Subject: [PATCH] add return_httpforbidden_if_over_quota
+
+add return_httpforbidden_if_over_quota
+
+Change-Id: I0f7420a0f04bcccb683a1513da240002c2d46a37
+---
+ .../return_HTTPForbidden_if_over_quota.rst         | 133 +++++++++++++++++++++
+ 1 file changed, 133 insertions(+)
+ create mode 100644 specs/mitaka/approved/return_HTTPForbidden_if_over_quota.rst
+
+diff --git a/specs/mitaka/approved/return_HTTPForbidden_if_over_quota.rst b/specs/mitaka/approved/return_HTTPForbidden_if_over_quota.rst
+new file mode 100644
+index 0000000..53a4d13
+--- /dev/null
++++ b/specs/mitaka/approved/return_HTTPForbidden_if_over_quota.rst
+@@ -0,0 +1,133 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++==========================================
++return_httpforbidden_if_over_quota
++==========================================
++
++https://blueprints.launchpad.net/nova/+spec/return_HTTPForbidden_if_over_quota
++
++Return HTTPForbidden if over quota
++
++According to following guide line
++https://github.com/openstack/api-wg/blob/master/guidelines/http.rst
++we should return HTTPForbidden instead of HTTPBadRequest
++if the quota is over.
++
++Problem description
++===================
++
++Nova API returns HTTPBadRequest instead of HTTPForbidden when over quota
++in tenant_networks.py
++
++Use Cases
++----------
++
++End user use this API check return error code when over quota.
++
++Project Priority
++-----------------
++
++N/A
++
++Proposed change
++===============
++
++Bump a microverison to change the return value from
++HTTPBadRequest to HTTPForbidden.
++
++Alternatives
++------------
++
++No change, user will be confused about why identical data succeed last
++time while got a HTTPBadRequst later.
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++No API change, but the microversion will be bumped and error code
++will be changed.
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++None
++
++Performance Impact
++------------------
++
++None
++
++Other deployer impact
++---------------------
++
++None
++
++Developer impact
++----------------
++
++None
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  jichenjc@cn.ibm.com
++
++Work Items
++----------
++
++One patch to bump microversion and change error return code.
++
++
++Dependencies
++============
++
++None
++
++Testing
++=======
++
++Unit test.
++
++Documentation Impact
++====================
++
++The return code when over quota.
++
++References
++==========
++
++https://review.openstack.org/#/c/180469
++
++History
++=======
++
++.. list-table:: Revisions
++   :header-rows: 1
++
++   * - Release Name
++     - Description
++   * - Mitaka
++     - Introduced
+-- 
+2.1.0
+

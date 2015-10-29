@@ -1,0 +1,275 @@
+From d159b3bbe947f31767b745abe908266f4f27257b Mon Sep 17 00:00:00 2001
+From: abhishekkekane <abhishek.kekane@nttdata.com>
+Date: Wed, 12 Nov 2014 11:54:08 -0800
+Subject: [PATCH] Improve performance of UnShelve API
+
+The aim of this feature is to improve the performance of unshelve
+instance by eliminating downloading/copying snapshot time for
+shared storage deployment. All instance files will be retained in
+the instance store backed by shared or non-shared storage on the
+compute node when an instance is shelved.
+
+blueprint: improve-unshelve-performance
+Change-Id: I2476574f664f5a87a51bec5fac344c839e14b6d1
+---
+ .../approved/improve-unshelve-performance.rst      | 248 +++++++++++++++++++++
+ 1 file changed, 248 insertions(+)
+ create mode 100644 specs/mitaka/approved/improve-unshelve-performance.rst
+
+diff --git a/specs/mitaka/approved/improve-unshelve-performance.rst b/specs/mitaka/approved/improve-unshelve-performance.rst
+new file mode 100644
+index 0000000..ae60b57
+--- /dev/null
++++ b/specs/mitaka/approved/improve-unshelve-performance.rst
+@@ -0,0 +1,248 @@
++========================================
++Improve performance of unshelve instance
++========================================
++
++https://blueprints.launchpad.net/nova/+spec/improve-unshelve-performance
++
++We are introducing new configuration parameter shelved_offload_disk
++True/False. Service provider should set shelved_offload_disk as False to
++retain instance files backed by shared storage on the compute node when an
++instance is shelved.
++
++When an instance is unshelved, it will then check whether the instance files
++are present in the instance path on the destination compute node or not. If
++yes, then it will simply start the instance or else it will set the instance
++to error state.
++
++Problem description
++===================
++
++When you unshelve hundreds of instances at the same time, instance spawning
++time varies and it mainly depends on the size of the instance snapshot and
++the network speed between glance and nova servers.
++
++If you have configured file store (shared storage) as a backend in Glance for
++storing images/snapshots, then it's possible to improve the performance of
++unshelve instance dramatically by configuring nova.image.download.FileTransfer
++in nova. In this case, it simply copies the instance snapshot as if it is
++stored on the local filesystem of the compute node. But then again in this
++case, it is observed the network traffic between shared storage servers and
++nova increases enormously resulting in slow spawning of
++the instances.
++
++If glance uses ceph as a backend, then there won't be any performance hit for
++downloading instance snapshot compared to all other supported backends except
++file store because nova allows you to configure glance file store backend to
++act as local store on the compute nodes and it unshelves instance faster
++than ceph.
++
++
++Use Cases
++----------
++
++1. User wants unshelving instance to be faster irrespective of how the
++   instance is booted (EBS volume or image), mainly when the instance is
++   booted from image.
++2. Service provider wants to use compute capacity of shelved instances for
++   launching new instances on the shelved compute host.
++
++Today, for use case #2, service provider can use compute capacity of shelved
++instances by configuring 'shelved_offload_time' parameter to 0 in nova.conf.
++This frees up cpu/memory/disk resources for use by other instances on the
++compute node, but this may slow down unshelving instance as it needs to
++download instance snapshot from glance.
++
++
++Project Priority
++-----------------
++
++None
++
++Proposed change
++===============
++
++Add new configuration parameter "shelved_offload_disk" default to True.
++
++* shelved_offload_disk = False
++
++  In this case, if shelved_offload_time is 0 or > 0 then instance files will
++  be retained in the instance path during shelving instance. CPU and memory
++  will be released back to the hypervisor which would be made available
++  to the nova scheduler for launching new instances.
++
++The new configuration parameter shelved_offload_disk will not have any
++impact if instance is booted from volume. In this case, it will function
++similar to shelved_offload_time is -1, 0 or > 0.
++
++**Shelve api call:**
++
++* Take instance snapshot.
++
++* shelved_host (host where the instance is running) will be set to
++  instance_system_metadata.
++
++* Disk resources (instance files) will not be destroyed
++
++* CPU/Memory will be released.
++
++* Instance host and node will be set to None similar to SHELVE_OFFLOAD case.
++
++* VM state will be set to SHELVED_OFFLOADED.
++
++**Unshelve api call:**
++
++Compute Manager:
++
++If shelved_offload_disk is False then call Virt driver instance_on_disk method
++to check whether instance files exists in the instance path. If yes, that means
++the instance path is mounted on the shared storage.
++
++1. If instance files exists
++
++   * Power on the instance on the destination compute host
++   * Delete instance snapshot.
++   * Delete shelved information from instance system metadata.
++   * VM state will be set to ACTIVE.
++
++2. If instance files not exists
++
++   * VM state will be set to Error.
++   * Instance snapshot will be retained for a backup
++
++If shelved_offload_disk is True then it will function similar to
++shelved_offload_time is 0 or > 0 i.e. spawn the instance using snapshot.
++
++**Deleting instance in shelve_offload state:**
++
++* Instance host stored in the 'shelved_host' from instance system_metadata
++  will be retrieved and assigned to the instance.
++
++* Instance will be destroyed from the shelved host. It will ensure instance
++  files are deleted properly.
++
++
++Alternatives
++------------
++
++If we want unshelving instance to be fast, then it is possible today if you
++have booted the instance from volume. But in order to reach to this point,
++each of the tenant first needs to copy the public image to volume, take a
++snapshot of it and finally use that snapshot (internally it will create
++another volume from it) for launching new instances. This is a very tedious
++and time consuming process.
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++None
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++None
++
++Performance Impact
++------------------
++
++* Unshelve instance performance will be improved in case instance_path is
++  mounted on shared storage on the compute nodes when shelve_offload_disk
++  is set to False.
++
++Other deployer impact
++---------------------
++
++Add new configuration parameter "shelved_offload_disk" default to True.
++
++* shelved_offload_disk = False
++
++  In this case, if shelved_offload_time is 0 or > 0 then instance files will
++  be retained in the instance path during shelving instance. CPU and memory
++  will be released back to the hypervisor which would be made available
++  to the nova scheduler for launching new instances.
++
++Developer impact
++----------------
++
++None
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  abhishekkekane
++
++Other contributors:
++  None
++
++Work Items
++----------
++
++* Modify shelving instance code
++* Modify unshelving instance code
++* Add unit tests for code coverage
++
++
++Dependencies
++============
++
++* https://launchpad.net/bugs/1436187
++
++
++Testing
++=======
++
++Existing tests will be modified to cover the shelve_offload_partial case.
++
++* tempest/api/compute/servers/test_delete_server.py:
++  def test_delete_server_while_in_shelved_state(self)
++
++* tempest/api/compute/servers/test_server_actions.py:
++  def test_shelve_unshelve_server(self)
++
++* tempest/api/compute/v3/servers/test_server_actions.py:
++  def test_shelve_unshelve_server(self)
++
++
++Documentation Impact
++====================
++
++Please refer 'Other deployer impact' section.
++
++
++References
++==========
++
++None
++
++
++History
++=======
++
++.. list-table:: Revisions
++   :header-rows: 1
++
++   * - Release Name
++     - Description
++   * - Kilo
++     - Introduced
++   * - Liberty
++     - Updated
+-- 
+2.1.0
+

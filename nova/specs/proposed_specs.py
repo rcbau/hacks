@@ -9,7 +9,7 @@ import subprocess
 import sys
 
 
-RELEASE_TARGET = 'kilo'
+RELEASE_TARGET = 'mitaka'
 
 
 def runcmd(cmd):
@@ -27,6 +27,9 @@ if __name__ == '__main__':
     kilo_spec_re = re.compile('.*specs/kilo/.*\.rst.*')
     kilo_impl_re = re.compile('.*specs/kilo/implemented/.*\.rst.*')
 
+    mitaka_spec_re = re.compile('.*specs/mitaka/.*\.rst.*')
+    mitaka_impl_re = re.compile('.*specs/mitaka/implemented/.*\.rst.*')
+    
     merged = []
     abandoned = []
 
@@ -56,14 +59,19 @@ if __name__ == '__main__':
             m = kilo_impl_re.match(line)
             if m:
                 implemented = True
+            m = mitaka_impl_re.match(line)
+            if m:
+                implemented = True
 
             m = juno_spec_re.match(line)
             if m:
                 spec_match.append('juno')
-
             m = kilo_spec_re.match(line)
             if m:
                 spec_match.append('kilo')
+            m = mitaka_spec_re.match(line)
+            if m:
+                spec_match.append('mitaka')
 
         if implemented:
             continue

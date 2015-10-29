@@ -1,0 +1,229 @@
+From 18905f30ab90ad6b75eba6928d28f3f994ee9371 Mon Sep 17 00:00:00 2001
+From: Sergey Nikitin <snikitin@mirantis.com>
+Date: Sun, 25 Oct 2015 22:32:18 +0300
+Subject: [PATCH] Get set of instances by set of UUIDs
+
+Blueprint specification for a new search filter
+for getting set of instances by set of UUIDs.
+
+APIImpact
+
+Change-Id: I68775f064cf942ed9590749093d00a8b6b0c8390
+Blueprint: get-multi-servers-filter
+---
+ specs/mitaka/approved/get-multi-servers-filter.rst | 202 +++++++++++++++++++++
+ 1 file changed, 202 insertions(+)
+ create mode 100644 specs/mitaka/approved/get-multi-servers-filter.rst
+
+diff --git a/specs/mitaka/approved/get-multi-servers-filter.rst b/specs/mitaka/approved/get-multi-servers-filter.rst
+new file mode 100644
+index 0000000..9b12f0a
+--- /dev/null
++++ b/specs/mitaka/approved/get-multi-servers-filter.rst
+@@ -0,0 +1,202 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++======================================================
++Add new filter for getting a set of instances by uuids
++======================================================
++
++https://blueprints.launchpad.net/nova/+spec/get-multi-servers-filter
++
++This blueprint aims to add new filter 'server_ids' to the GET /servers/detail
++request to allow getting a set of instances by uuids.
++
++Problem description
++===================
++
++Right now there are two ways to get detailed information about instances:
++
++ 1. ask for information about a specific instance passing its UUID
++ 2. ask for information about all instances of this tenant
++
++These two ways don't allow to get detailed information about *several* servers
++quickly. A way to solve this problem is to extend Nova API, so that it would be
++possible to pass multiple UUIDs of instances a user is interested in to Servers
++REST API controller in one API query.
++
++Use Cases
++---------
++
++The scale testing of Horizon faced several problems with a lot of data being
++received from Nova side when Horizon actually doesn't need so much data [1].
++
++The first case is getting the volumes list from Cinder. All the instances are
++being requested from Nova side by Horizon just to show the names of Instances
++that Cinder volumes are attached to. In cases when the total number of
++Instances is much bigger than the number of Volumes this causes a serious
++performance issues in Horizon where it shouldn't.
++
++The second case is getting Floating IPs list from Neutron. We again request all
++the instances from Nova just to show their names for some Floating IPs
++(which number could be much less than the number of Instances).
++
++Both cases could be avoided if we were able to request details for a limited
++set of instances (specified by their UUIDs) from Nova.
++
++Proposed change
++===============
++
++Add an API microversion that allows to get a set of instances by set of UUIDs
++with the help of search filter `server_ids` in request GET /servers/detail.
++
++Alternatives
++------------
++
++If one was to get information about multiple instances he/she would have to
++either:
++
++ 1. do a separate API request for each instance
++ 2. or ask for all instances and pick the ones he/she is interested in
++
++The first would possibly cause a multiple round trips to API (i.e. be slow).
++And the second would potentially load a large amount of data from the DB and
++transfer it over a network, when only a subset of that data is actually needed
++(i.e. be slow and cause unnecessary load on disks and network).
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++This proposal would add an API microversion for searching a set of instances by
++a set of UUIDs. The new `server_ids` search filter for GET /servers/detail
++request will be created.
++
++Example of using this filter ::
++
++    GET /servers/detail?server_ids={uuid1},{uuid2},{uuid3}
++
++Response ::
++
++    {
++        'servers': [
++            {
++                'id': {uuid1},
++                'name': inst1,
++                ... other server resource properties ...
++            },
++            {
++                'id': {uuid2},
++                'name': some_other_name,
++                ... other server resource properties ...
++            },
++            {
++                'id': {uuid3},
++                'name': inst3,
++                ... other server resource properties ...
++            }
++    }
++
++Also this filter can be used with other search filters ::
++
++    GET /servers/detail?server_ids={uuid1},{uuid2},{uuid3}&name=inst
++
++Response ::
++
++    {
++        'servers': [
++            {
++                'id': {uuid1},
++                'name': inst1,
++                ... other server resource properties ...
++            },
++            {
++                'id': {uuid3},
++                'name': inst3,
++                ... other server resource properties ...
++            }
++    }
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++None
++
++Performance Impact
++------------------
++
++This change will help to improve performance of some horizon pages.
++New API microversion will allow to escape unnecessary/irrational DB queries.
++
++Other deployer impact
++---------------------
++
++None
++
++Developer impact
++----------------
++
++None
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  snikitin
++
++Work Items
++----------
++
++The only thing that should be done is to create a new API microversion with a
++new search filter.
++
++Dependencies
++============
++
++None
++
++Testing
++=======
++
++Would need new Tempest, functional and unit tests.
++
++Documentation Impact
++====================
++
++Docs needed for new API microversion and usage.
++
++References
++==========
++
++Nova bug describes the problem:
++
++[1] https://bugs.launchpad.net/nova/+bug/1442310
++
++History
++=======
++
++.. list-table:: Revisions
++   :header-rows: 1
++
++   * - Release Name
++     - Description
++   * - Mitaka
++     - Introduced
+\ No newline at end of file
+-- 
+2.1.0
+

@@ -1,0 +1,200 @@
+From 8e377492ec4cf461c3bb115e59d6f000076d0fe2 Mon Sep 17 00:00:00 2001
+From: jichenjc <jichenjc@cn.ibm.com>
+Date: Thu, 22 Oct 2015 17:03:02 +0800
+Subject: [PATCH] Add add-api-block-device-mapping.rst
+
+Add add-api-block-device-mapping.rst, which propose a
+change on API layer to enable return volume info of an instance.
+
+APIImpact
+
+Change-Id: I7d64af08939e39ad507b5fadb0974c1eeb75a89b
+---
+ .../approved/add-api-block-device-mapping.rst      | 175 +++++++++++++++++++++
+ 1 file changed, 175 insertions(+)
+ create mode 100644 specs/mitaka/approved/add-api-block-device-mapping.rst
+
+diff --git a/specs/mitaka/approved/add-api-block-device-mapping.rst b/specs/mitaka/approved/add-api-block-device-mapping.rst
+new file mode 100644
+index 0000000..a1b0e7d
+--- /dev/null
++++ b/specs/mitaka/approved/add-api-block-device-mapping.rst
+@@ -0,0 +1,175 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++==================================================
++Add API to return block device mapping of instance
++==================================================
++
++https://blueprints.launchpad.net/nova/+spec/add-api-block-device-mapping.rst
++
++Add API to return block device mapping of instance.
++
++Problem description
++===================
++
++Currently nova don't have a way to query volumes of a given instance, on the
++other side, end user need to query all volumes then filter them themselves,
++also, as http://developer.openstack.org/api-ref-compute-v2.1.html#list-ips
++mentioned, end user is able to query ips of given instance, so we need to
++so a way to provide APIs for volumes of an instance is needed.
++
++Use Cases
++----------
++
++As an end user, I want to know the volume status of an instance.
++
++Proposed change
++===============
++
++Add volumes info under servers resource, so user can query the volume info
++by using the API.
++
++Alternatives
++------------
++
++None
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++The operations of API microversion would look like the following:
++
++A list of volumess for the specified server returns with the server details
++information ::
++
++    GET /servers/{server_id}/volumes
++
++Response ::
++
++    {
++       "block_device_mapping": [
++       {
++         'id' 1,
++         'uuid': uuid,
++         'source_type': 'image',
++         'destination_type': 'volume',
++         'guest_format': 'ext4',
++         'device_type': 'disk',
++         'disk_bus': 'scsi',
++         'boot_index': 0,
++         'device_name': '/dev/sda',
++         'delete_on_termination': true,
++         'snapshot_id': '1',
++         'volume_id': '1',
++         'volume_size': 1,
++         'image_id': '1',
++         'connection_info': 'info1',
++       },
++       {
++         'id' 2,
++         'uuid': uuid,
++         'source_type': 'image',
++         'destination_type': 'volume',
++         'guest_format': 'ext3',
++         'device_type': 'disk',
++         'disk_bus': 'scsi',
++         'boot_index': -1,
++         'device_name': '/dev/sdb',
++         'delete_on_termination': false,
++         'snapshot_id': '0',
++         'volume_id': '2',
++         'volume_size': 2,
++         'image_id': '2',
++         'connection_info': 'info2',
++       }
++    }
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++python-novaclient will be updated by adding an option to ``nova show``
++command ::
++
++  nova show --block-device-mapping <server>
++
++will print all the info get from API layer.
++
++Performance Impact
++------------------
++
++None
++
++Other deployer impact
++---------------------
++
++None
++
++Developer impact
++----------------
++
++None
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  jichenjc <jichenjc@cn.ibm.com>
++
++Work Items
++----------
++
++Add API to return volumes info at API layer.
++Update python-novaclient to address the proposed change above.
++
++Dependencies
++============
++
++None
++
++Testing
++=======
++
++Tempest need to be updated to include API test.
++
++Documentation Impact
++====================
++
++API document need to be update especially on following link
++http://developer.openstack.org/api-ref-compute-v2.1.html
++
++References
++==========
++
++None
++
++History
++=======
++
++.. list-table:: Revisions
++   :header-rows: 1
++
++   * - Release Name
++     - Description
++   * - Mitaka
++     - Introduced
+-- 
+2.1.0
+

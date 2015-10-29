@@ -1,0 +1,203 @@
+From 8d11377357c8c75d628c138d18ae8c5d171cc808 Mon Sep 17 00:00:00 2001
+From: Cale Rath <ctrath@us.ibm.com>
+Date: Tue, 28 Jul 2015 21:53:28 +0000
+Subject: [PATCH] Get quota and usage from neutron for limit APIs spec
+
+Blueprint URL:
+https://blueprints.launchpad.net/nova/+spec/limits-quota-usage-from-neutron
+
+Change-Id: I6744899193293de68ede50e12e51fd5949c973c3
+---
+ .../approved/limits-quota-usage-from-neutron.rst   | 180 +++++++++++++++++++++
+ 1 file changed, 180 insertions(+)
+ create mode 100644 specs/mitaka/approved/limits-quota-usage-from-neutron.rst
+
+diff --git a/specs/mitaka/approved/limits-quota-usage-from-neutron.rst b/specs/mitaka/approved/limits-quota-usage-from-neutron.rst
+new file mode 100644
+index 0000000..3a9b292
+--- /dev/null
++++ b/specs/mitaka/approved/limits-quota-usage-from-neutron.rst
+@@ -0,0 +1,180 @@
++..Get quota and usage from neutron for limit APIs limits-quota-usage-from-neutron
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++===============================================
++Get quota and usage from neutron for limit APIs
++===============================================
++
++https://blueprints.launchpad.net/nova/+spec/limits-quota-usage-from-neutron
++
++On a system configured to use Neutron, for the limits API, we should retrieve
++quota and usage for floating IPs and security groups from Neutron,
++rather than Nova DB.
++
++Problem description
++===================
++
++If Neutron is configured in an Openstack installation and the Nova quota and
++usage APIs are called, incorrect data from the Nova database will be returned
++to the caller, since Nova is not currently proxying Neutron to get the correct
++information.
++
++Use Cases
++----------
++
++As a cloud administrator, I need accurate networking information returned
++from the Nova limits API, whether or not if Neutron is configured in my
++cloud.
++
++Project Priority
++-----------------
++
++None
++
++Proposed change
++===============
++
++This change will be made in the v3 limits and used_limits controllers.  The
++v2 API will not be changed and will operate the same as it always has
++operated.
++
++v2.1 will operate as it currently does also.  A new microversion, starting
++at version 2.2 will be used for the UsedLimitsController and LimitsController.
++In this microversion, a check will be made to determine if Neutron is configured.
++If it is configured, a proxy call will be made to the following Neutron APIs:
++* list_floatingips
++* list_security_groups
++* show_quota
++
++A previous patch implementation can be found here:
++https://review.openstack.org/#/c/43822/
++
++The plan is to update the above patch, so comment and change history is persisted.
++The following changes need to be made in the patch:
++* The above patch is coded using the v2 API.  This will be moved to v3 instead
++* v2 limits and used_limits controllers changes will be reverted
++* Tests will be updated to call the 2.2 microversion
++* All stale, unmerged method calls will be updated to use the latest APIs
++  
++Alternatives
++------------
++
++* 1. fail - Patch located here: https://review.openstack.org/#/c/199604/
++    - Since we already return data, which is incorrect, it is more consistent
++        to continue returning data, but the correct data
++* 2. return -1 or some other indicator for floating ips and security groups 
++        indicating that Nova doesn't know the information without going to
++        Neutron.
++    - Not a great solution since we don't give a reason why we aren't
++        returning the data
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++Addition of microversion 2.2 for UsedLimitsController and LimitsController
++controllers.
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++None
++
++Performance Impact
++------------------
++
++There will be a small amount of overhead while calling the Neutron API, but
++the performance impact should be minimal.
++
++Other deployer impact
++---------------------
++
++None
++
++Developer impact
++----------------
++
++None
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++
++Primary assignee:
++  * Cale Rath <ctrath@us.ibm.com>
++
++Other contributors:
++  * Matt Riedemann <mriedem@us.ibm.com>
++  * GuoHui Liu <guohliu@cn.ibm.com>
++
++Work Items
++----------
++
++* Add v2.2 microversion
++* Update original patch - rebase with master and update accordingly to
++  any code changes that can't be merged
++* Remove code from v2 API
++* Move API proxy code to v2.2 UsedLimitsController and LimitsController
++* Add additional microversion tests
++
++
++Dependencies
++============
++
++None
++
++
++Testing
++=======
++
++* Test v2.2 with Neutron configured
++* Test v2.2 without Neutron configured
++* Test v2 and v2.1 to ensure Neutron data is not returned
++* Test passthru of errors from Neutron
++
++
++Documentation Impact
++====================
++
++API documentation for the Nova limits API should be updated
++to state the 2.2 microversion updates
++
++References
++==========
++
++* Original patch - https://review.openstack.org/#/c/43822/
++* Alternative 1 patch - https://review.openstack.org/#/c/43822/
++* http://docs.openstack.org/developer/nova/devref/api_microversions.html
++* Microversion example - https://review.openstack.org/#/c/168966/
++
++History
++=======
++
++.. list-table:: Revisions
++   :header-rows: 1
++
++   * - Release Name
++     - Description
++   * - Mitaka 
++     - Introduced
+-- 
+2.1.0
+

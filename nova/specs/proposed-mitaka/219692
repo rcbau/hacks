@@ -1,0 +1,189 @@
+From a3f5b09c6318e9bec2e2db3d9d2808ad536e5a73 Mon Sep 17 00:00:00 2001
+From: Sahid Orentino Ferdjaoui <sahid.ferdjaoui@redhat.com>
+Date: Wed, 2 Sep 2015 09:10:41 -0400
+Subject: [PATCH] virt: dedicated CPUs placement policy
+
+Spec which defines new feature "dedicated CPUs
+placement policy".
+
+Change-Id: Ia40275092fdd9c62248ef3255de3f3dc3e4db0e4
+---
+ .../virt-dedicated-cpus-placement-policy.rst       | 166 +++++++++++++++++++++
+ 1 file changed, 166 insertions(+)
+ create mode 100644 specs/mitaka/approved/virt-dedicated-cpus-placement-policy.rst
+
+diff --git a/specs/mitaka/approved/virt-dedicated-cpus-placement-policy.rst b/specs/mitaka/approved/virt-dedicated-cpus-placement-policy.rst
+new file mode 100644
+index 0000000..5a2642e
+--- /dev/null
++++ b/specs/mitaka/approved/virt-dedicated-cpus-placement-policy.rst
+@@ -0,0 +1,166 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++===============================
++Dedicated CPUs placement policy
++===============================
++
++https://blueprints.launchpad.net/nova/+spec/virt-dedicated-cpus-placement-policy
++
++This feature aims to enhance the libvirt driver to provide dedicated
++CPUs placement policy for guests. Give opportunity to split emulator
++threads from vCPUs or make them running together on pCPUs dedicated.
++
++Problem description
++===================
++
++Emulator is term used to define a subset of a running guest which does
++not include I/O threads and vCPUs. In some workflows like realtime or
++NFV we may want to dedicate pCPUs to handle emulator and dedicated
++pCPUs to handle vCPUs (I/O threads is not currently take into account).
++
++Use Cases
++----------
++
++End user may wants to dedicate exclusively vCPUs to pCPUs and so limit
++noise from other parties.
++
++Project Priority
++-----------------
++
++None
++
++Proposed change
++===============
++
++The flavor extra specs will support the specification of guest vCPUs
++placement policy.
++
++* hw:cpu_policy.N = <cpu|emulator|cpu, emulator>
++
++With N refer to a guest vCPU.
++
++If no CPU policy is configured the current and default implementation
++will continue, means pCPUs will be dedicated to vCPUs and emulator
++threads will be pinned to union of all pCPUs.
++
++If a CPU policy placement is requested a topology should be defined
++according the examples:
++
++For flavor requesting 1 vCPU:
++
++ * hw:cpu_policy = dedicated
++ * hw:cpu_policy.0 = cpu, emulator
++
++In this example a pCPU will be dedicated to handle guest vCPU +
++emulator threads
++
++For flavor requesting 2 vCPUs:
++
++ * hw:cpu_policy = dedicated
++ * hw:cpu_policy.0 = cpu
++ * hw:cpu_policy.1 = emulator
++
++In this example a pCPU will be didicated to handle guest vCPU and an
++other pCPU will be dedicated to handle emulator theads.
++
++Alternatives
++------------
++
++None
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++None
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++End user have opportunity to control where vCPUs and emulator threads
++will run on pCPUs.
++
++Performance Impact
++------------------
++
++None
++
++Other deployer impact
++---------------------
++
++None
++
++Developer impact
++----------------
++
++None
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  <sahid-ferdjaoui>
++
++Work Items
++----------
++
++* Implement cpu policy placement topology
++
++Dependencies
++============
++
++None
++
++Testing
++=======
++
++Unit tests should cover most of that work, also functionnal tests will
++be added.
++
++Documentation Impact
++====================
++
++We need to refer that new property cpu_policy.N with the possible
++options (cpu, emulator).
++
++References
++==========
++
++None
++
++History
++=======
++
++Optional section for Mitaka intended to be used each time the spec
++is updated to describe new design, API or any database schema
++updated. Useful to let reader understand what's happened along the
++time.
++
++.. list-table:: Revisions
++   :header-rows: 1
++
++   * - Release Name
++     - Description
++   * - Mitaka
++     - Introduced
+-- 
+2.1.0
+

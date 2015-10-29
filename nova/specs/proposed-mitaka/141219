@@ -1,0 +1,333 @@
+From d865563d270bd03b78c5f3fb64896443506c4866 Mon Sep 17 00:00:00 2001
+From: Claudiu Belu <cbelu@cloudbasesolutions.com>
+Date: Fri, 12 Dec 2014 01:53:19 +0200
+Subject: [PATCH] Adds spec for instance live resize
+
+https://blueprints.launchpad.net/nova/+spec/instance-live-resize
+
+Hyper-V, KVM, VMWare and Xen allows users to resize both memory
+and local disks of the VMs while they are still running. Because
+of this, no down time is needed for the spawned instances when
+live resize is performed on the same host.
+
+Implements: blueprint instance-live-resize
+
+Change-Id: Ic7b798da05ba89958b46f6e3f32ea1e788b6288e
+---
+ specs/mitaka/approved/instance-live-resize.rst | 304 +++++++++++++++++++++++++
+ 1 file changed, 304 insertions(+)
+ create mode 100644 specs/mitaka/approved/instance-live-resize.rst
+
+diff --git a/specs/mitaka/approved/instance-live-resize.rst b/specs/mitaka/approved/instance-live-resize.rst
+new file mode 100644
+index 0000000..40f088c
+--- /dev/null
++++ b/specs/mitaka/approved/instance-live-resize.rst
+@@ -0,0 +1,304 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++====================
++Instance live resize
++====================
++
++https://blueprints.launchpad.net/nova/+spec/instance-live-resize
++
++Hyper-V, KVM, VMWare and Xen allows users to resize both memory and local disks
++of the VMs while they are still running. Because of this, no down time is
++needed for the spawned instances when live resize is performed on the same
++host.
++
++Problem description
++===================
++
++The main disadvantage for resizing an instance is the required down time
++necessary to do so. This spec will allow users to resize their instances while
++they are still running.
++
++Use Cases
++----------
++
++The Support Matrix for online resize is as follows:
++
+++-------------------+-------------+----------+--------+
++|                   |    Disk     |  Memory  | VCPUs  |
+++===================+=============+==========+========+
++| **Hyper-V**       | ✓ [1][2][3] | ✓ [3][4] | X      |
+++-------------------+-------------+----------+--------+
++| **KVM + Libvirt** | ✓ [5]       | ✓ [6][7] | ✓ [8]  |
+++-------------------+-------------+----------+--------+
++| **VMWare**        | ✓ [9]       | ✓ [10]   | ✓ [11] |
+++-------------------+-------------+----------+--------+
++| **XenServer**     | ✓ [12][13]  | ✓ [14]   | ✓ [15] |
+++-------------------+-------------+----------+--------+
++
++Minimum hypervisor version required:
++
++* Hyper-V: Windows Hyper-V / Server 2012 R2: 6.3
++* KVM / Libvirt: 2.1
++* VMWare: 5.1
++* Xen: 5.5.0
++
++As it can be observed from the Support Matrix above, live resize for disk and
++memory is supported by all the drivers and this feature can be introduced in
++their respective virt Driver.
++
++Resizing is meant to scale instances vertically. Using the "pets vs cattle"
++metaphor, this feature is not meant for cattle, which can and should scale
++horizontally, it is meant for pets, which are typically unique and can only
++scale up. Live-resize is useful when stopping an instance is undesirable and
++the instances must have ~100% uptime.
++
++Project Priority
++-----------------
++
++None
++
++Proposed change
++===============
++
++This blueprint will be implemented into 3 phases.
++
++**Phase I.** Live resize on the same instance.
++
++* In this phase, live resize will only be possible on the same host. If there
++  are not enough resources available, live resize should not be performed.
++* If the resize occurs on the same host, avoid calling finish_resize through
++  compute_rpcapi and call the method locally.
++
++**Phase II.** Live migrate, then live resize.
++
++* The ComputeManager receives a Migration object, which contains the host where
++  the instance was scheduled for resize. In order to perform live resize on
++  that host, a live migration to that host should be performed first.
++
++**Phase III.** Live migration resize.
++
++* This concept combines both ideas of live migrate and live resize. The
++  instance should be resized while live migrating (WIP).
++
++In order to perform live resize, the following criterias must be met:
++
++* The image should contain a property called ``os_live_resize``, which will
++  contain a list of resizable resources. This is required, as not all guests
++  support live resize (or they support it only partly, for example, only live
++  memory resize).
++  e.g.: os_live_resize=disk,memory,vcpu
++* The given flavor must have a larger or equal disk, unless the instance was
++  created with boot from volume.
++* The given flavor must have a larger or equal memory, as live downsizing is
++  not supported by all hypervisors.
++* The number of vCPUs must remain the same, as live adding vCPUs is not
++  supported by all hypervisors.
++* The allow_resize_to_same_host config option must be set to True in the
++  Nova compute node's ``nova.conf`` file (Phase I).
++* The allow_live_resize‏ config option must be set to True in the
++  Nova compute node's nova.conf file. This config option will be introduced by
++  this blueprint and will have the default value False. The reason is that not
++  all the compute nodes will be able to support this feature (e.g.: compute
++  nodes that that not meet the minimum hypervisor version).
++
++Live downsizing will be proposed and implemented later.
++
++In order to implement this feature, the following changes are necessary:
++
++nova API:
++  See `REST API impact` section.
++
++python-novaclient:
++  Live resize feature will be used as such:
++    nova resize --live [--poll] <server> <flavor>
++
++  This blueprint will impact python-novaclient (adding --live flag for resize)
++  and will also require a microversion increment, as the API will be impacted,
++  adding the live boolean.
++
++nova DB:
++  See `Data model impact` section.
++
++nova objects:
++  See `Data model impact` section.
++
++nova ComputeManager:
++  If a live resize is appropriate, during resize, the virt drivers must:
++    * Avoid stopping and destroying the instance.
++    * Perform live resize.
++    * Avoid creating a new instance and attaching a config drive to it, since
++      it was never destroyed.
++    * Avoid creating another ephemeral disk.
++    * Avoid starting the instance, since it was never stopped.
++    * It should not terminate the connection for any of the instance's volumes,
++      since they are still in use and the instance can actively use them.
++
++  At the ComputeManager level, if the given 'live' boolean is False, then a
++  cold resize will be performed; the behaviour doesn't change. If it True, then
++  it will call the virt driver's 'live_resize' method instead.
++
++nova ComputeDriver:
++  ``live_resize`` method will be added, which will be implemented by the virt
++  drivers.
++
++Alternatives
++------------
++
++None
++
++Data model impact
++-----------------
++
++`live-resize` enum value should be added to the ``migration_type`` field of the
++Migration database model and it will require a migration script.
++
++`live-resize` enum value should be added to the migration_type field of the
++Migration object and it will require a object version bump.
++
++REST API impact
++---------------
++
++To use this feature, users will have to use the nova resize --live command.
++Changes to nova-api will have to be made in order to accept this new flag.
++In order for the nova resize API to accept the new flag, a new microversion
++increment will be needed.
++
++If live resize is not applicable because of the restrictions defined in the
++above, an exception should be raised and a HTTP response with status code 406
++(HTTPNotAcceptable) should be returned.
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++The guest OS must have a mechanism to detect when the disk size changes in
++order to do a `growroot` style operation. At the moment, cloud-init and
++cloudbase-init performs this check on boot.
++
++Performance Impact
++------------------
++
++None
++
++Other deployer impact
++---------------------
++
++To use this feature, the users will have to enable it from the compute node's
++nova.conf, setting the config option allow_live_resize‏ to True. Also, this
++feature cannot be used if the allow_resize_to_same_host config option is set
++to False (Phase I).
++Users will have to add the image properties ``os_live_resize`` and in order to
++properly use this feature.
++
++Developer impact
++----------------
++
++``live_resize`` method will be added to the nova.virt.ComputeDriver class,
++which will have to be implemented by the Nova drivers. When the exposing the
++host capabilities blueprint [16] merges, the drivers will also have to report
++the ``os_live_resize`` capability appropriately, depending on the hypervisor
++version.
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  <cbelu@cloudbasesolutions.com>
++
++Work Items
++----------
++
++As described in the 'Proposed change' section. The blueprint will be split over
++several commits, in order to make it easier to review, test and implement.
++
++Dependencies
++============
++
++None
++
++Testing
++=======
++
++Unit tests, functional API tests.
++CI testing will be performed by Hyper-V CI.
++
++Documentation Impact
++====================
++
++The possibility to perform live resize on instances will be documented,
++as well as the allow_live_resize‏ config option.
++The 3 phases this blueprint will have will also be uploaded to nova as a
++devref.
++The ``os_live_resize`` image property and possible values will have to be
++documented.
++
++References
++==========
++
++**Hyper-V**:
++  [1] Resizing virtual hard disks while the VM is running
++    https://technet.microsoft.com/en-us/library/dn282278.aspx#bkmk_resize
++
++  [2] Online virtual hard disk resizing benefits and requirements
++    https://technet.microsoft.com/en-us/library/dn282286.aspx
++
++  [3] Linux support for online VHDX resize in Windows Server 2012 R2
++    https://technet.microsoft.com/en-us/library/dn282278.aspx#bkmk_linux
++
++  [4] Live memory resize
++    https://technet.microsoft.com/en-us/library/dn765471.aspx#BKMK_hot
++
++**KVM**:
++  [5] Online Resizing of Guest Block Devices
++    https://www.suse.com/documentation/sles-12/book_virt/data/sec_libvirt_storage_resize.html
++
++  [6] Memory hotplug for QEMU guests
++    https://www.redhat.com/archives/libvir-list/2014-July/msg01265.html
++
++  [7] Memory hotplug introduced in QEMU 2.1
++    http://wiki.qemu.org/ChangeLog/2.1
++
++  [8] qemu-kvm CPU hotplug
++    http://www.linux-kvm.org/page/CPUHotPlug
++
++**VMWare**:
++  [9] Live disk resize steps and demo
++    http://www.virtualizationadmin.com/articles-tutorials/vmware-esx-and-vsphere-articles/storage-management/how-extend-vsphere-windows-vm-disk-volume.html
++
++  [10] Memory hot add prerequisites and and procedure
++    https://pubs.vmware.com/vsphere-50/index.jsp?topic=%2Fcom.vmware.vsphere.vm_admin.doc_50%2FGUID-223C31D1-181D-4E3B-99EA-9165764A151C.html
++
++  [11] Memory and CPU hot add steps and demo
++    http://www.virtualizationadmin.com/blogs/lowe/news/vsphere-51-hot-add-ram-and-cpu.html
++
++**Xen**:
++  [12] VDI resize_online documentation
++    http://docs.vmd.citrix.com/XenServer/5.5.0/1.0/en_gb/api/docs/html/API/Classes/VDI/Explicit/resize_online.html
++
++  [13] Live disk resize discussion
++    http://discussions.citrix.com/topic/293389-resize-a-xenserver-windows-vm-virtual-disk-without-shutdown/
++
++  [14] Live memory resize via DMC (Dynamic Memory Control)
++    http://docs.vmd.citrix.com/XenServer/6.2.0/1.0/en_gb/reference.html#ch_dynamic_memory_control
++
++  [15] VM vCPU hotplug for Linux guests
++    http://docs.vmd.citrix.com/XenServer/6.2.0/1.0/en_gb/reference.html#cli-xe-commands_vm-vcpu-hotplug
++
++[16] Expose host capabilities spec
++  https://review.openstack.org/#/c/222200/
+-- 
+2.1.0
+

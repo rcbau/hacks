@@ -1,0 +1,193 @@
+From fb08567d946df4c059723a44518346d6babb8e64 Mon Sep 17 00:00:00 2001
+From: Vladik Romanovsky <vromanso@redhat.com>
+Date: Tue, 25 Aug 2015 09:47:10 -0400
+Subject: [PATCH] libvirt: support pvpanic device
+
+Add support for a pvpanic device for instances.
+
+blueprint libvirt-enable-pvpanic
+
+Change-Id: I80c4ed30b5b5895c6fa7ee5126fd915679a8246f
+---
+ specs/mitaka/approved/libvirt-pvpanic.rst | 169 ++++++++++++++++++++++++++++++
+ 1 file changed, 169 insertions(+)
+ create mode 100644 specs/mitaka/approved/libvirt-pvpanic.rst
+
+diff --git a/specs/mitaka/approved/libvirt-pvpanic.rst b/specs/mitaka/approved/libvirt-pvpanic.rst
+new file mode 100644
+index 0000000..13c35a9
+--- /dev/null
++++ b/specs/mitaka/approved/libvirt-pvpanic.rst
+@@ -0,0 +1,169 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++============================================================
++Libvirt: Enable Panic Device Notification
++============================================================
++
++https://blueprints.launchpad.net/nova/+spec/libvirt-enable-pvpanic
++
++
++
++Problem description
++===================
++
++A Panic device has been introduced to QEMU and has Libvirt support since
++version 1.2.1 Using this device, the guest can notify the host once a guest
++panic has occurred, by sending an event to qemu, that in it's turn will notify
++Libvirt. Libvirt has controls for how it can react to such an event; either by
++restarting or shunting down the guest.
++
++In addition, Libvirt has a mechanism to automatically save guest crash dumps
++to a dedicated location on a host. Enabling the panic device for guest
++instances will allows a crash dump of it to be taken, without the need of
++kdump running within the guest.
++
++If kdump and pvpanic are both enabled for the same guest, kdump takes
++precedence over pvpanic.
++
++
++Use Cases
++----------
++
++Operators and anyone who is interested in debugging guest instances crushes,
++will benefit from the additional flexibility in obtaining these core dump files
++directly from the server hosting these instance or from a configurable central
++location.
++This location can be set in the configuration file /etc/libvirt/qemu.conf
++The auto_dump_path parameter specifies the path name to the directory where
++dump files will be stored. The default is /var/lib/libvirt/qemu/dump.
++
++
++Project Priority
++-----------------
++
++None
++
++Proposed change
++===============
++
++Add an image property setting for controlling the Panic device for instances.
++
++    Ex: hw_panic_device=enabled
++
++
++
++Alternatives
++------------
++
++Currently, in order to efficiently capture a panic event, linux users must
++run kdump in the instances, which will reserve memory and disk space for crash
++dumps.
++
++
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++None
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++None
++
++Performance Impact
++------------------
++
++None
++
++Other deployer impact
++---------------------
++
++No Impact in general. However, deployers maybe interested in changing the
++default core dumps location to a central storage instead of a local host
++directory.
++
++Developer impact
++----------------
++
++None
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  Vladik Romanovsky <vromanso@redhat.com>
++
++
++Work Items
++----------
++
++* Update a ImageMetaProps object to add the panic device option
++
++* Add a libvirt configuration for the panic device
++
++* Enable the use of the device in the libvirt driver
++
++
++Dependencies
++============
++
++None
++
++
++Testing
++=======
++
++Additional unit tests to cover this functionality.
++
++Documentation Impact
++====================
++
++Documentation for the Panic device features and it's configuration options
++in libvirt is required.
++
++References
++==========
++
++* https://github.com/qemu/qemu/blob/master/docs/specs/pvpanic.txt
++* https://libvirt.org/formatdomain.html#elementsPanic
++
++
++History
++=======
++
++Optional section for Mitaka intended to be used each time the spec
++is updated to describe new design, API or any database schema
++updated. Useful to let reader understand what's happened along the
++time.
++
++.. list-table:: Revisions
++   :header-rows: 1
++
++   * - Release Name
++     - Description
++   * - Mitaka
++     - Introduced
+-- 
+2.1.0
+

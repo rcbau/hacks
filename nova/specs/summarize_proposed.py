@@ -2,6 +2,7 @@
 
 import json
 import os
+import random
 import sys
 
 
@@ -27,7 +28,9 @@ for topic in data:
 print 'Already seen patches: %s (%d in total)' %(patches, len(patches))
 
 
-for patch in os.listdir('proposed-%s' % release):
+targets = os.listdir('proposed-%s' % release)
+random.shuffle(targets)
+for patch in targets:
     if patch in ['__merged__', '__abandoned__', '__implemented__', '__spec_exception__']:
         continue
     

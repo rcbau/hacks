@@ -1,0 +1,151 @@
+From fa2cfa511a77d78a6a7d421ceba22588ff791de0 Mon Sep 17 00:00:00 2001
+From: Tang Chen <tangchen@cn.fujitsu.com>
+Date: Thu, 1 Oct 2015 15:25:31 +0800
+Subject: [PATCH] Support soft reboot and poweroff in nova ironic driver.
+
+This spec aims at enhancing 2 power interfaces in nova ironic driver.
+1. Support server soft reboot
+2. Support server soft poweroff
+
+Change-Id: Ic49a6b782cb39aad38bb86fe08b585222f62298e
+Implements: blueprint soft-reboot-poweroff
+Signed-off-by: Tang Chen <tangchen@cn.fujitsu.com>
+---
+ specs/mitaka/approved/soft-reboot-poweroff.rst | 125 +++++++++++++++++++++++++
+ 1 file changed, 125 insertions(+)
+ create mode 100644 specs/mitaka/approved/soft-reboot-poweroff.rst
+
+diff --git a/specs/mitaka/approved/soft-reboot-poweroff.rst b/specs/mitaka/approved/soft-reboot-poweroff.rst
+new file mode 100644
+index 0000000..6bc7768
+--- /dev/null
++++ b/specs/mitaka/approved/soft-reboot-poweroff.rst
+@@ -0,0 +1,125 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++=======================================================
++Support soft reboot and poweroff in nova ironic driver.
++=======================================================
++
++https://blueprints.launchpad.net/nova/+spec/soft-reboot-poweroff
++
++This spec proposes to enhance 2 power interfaces in nova ironic driver.
++1. Support server soft reboot
++2. Support server soft poweroff
++
++Problem description
++===================
++In nova/virt/ironic/driver.py:
++1. reboot() ignores reboot_type because ironic does not support soft reboot.
++
++    def reboot(self, context, instance, network_info, reboot_type,
++               block_device_info=None, bad_volumes_callback=None):
++
++        :param reboot_type: Either a HARD or SOFT reboot. Ignored by
++            this driver.
++
++2. power_off() does not support soft power off.
++
++    def power_off(self, instance, timeout=0, retry_interval=0):
++
++        NOTE: Ironic does not support soft-off, so this method ignores
++              timeout and retry_interval parameters.
++
++According to ironic blueprint enhance-power-interface-for-soft-reboot-and-nmi
++(https://blueprints.launchpad.net/ironic/+spec/enhance-power-interface-for-soft-reboot-and-nmi),
++ironic will soon support reboot/poweroff a server softly. So we need to
++improve nova ironic driver to be able to use these functionalities.
++
++Use Cases
++----------
++Users will be able to reboot/poweroff servers softly (from OS level) through
++ironic driver.
++
++Project Priority
++-----------------
++None
++
++Proposed change
++===============
++This spec proposes adding an new API for injecting an NMI and implementing a
++method to inject an NMI on drivers. After receiving the NMI, the instance
++acts as configured by the end user.
++
++Alternatives
++------------
++None
++
++Data model impact
++-----------------
++None
++
++REST API impact
++---------------
++None
++
++Security impact
++---------------
++None
++
++Notifications impact
++--------------------
++None
++
++Other end user impact
++---------------------
++None
++
++Performance Impact
++------------------
++None
++
++Other deployer impact
++---------------------
++None
++
++Developer impact
++----------------
++None
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  Tang Chen (tangchen)
++
++Other contributors:
++  None
++
++Work Items
++----------
++* Make IronicDriver.reboot() do soft reboot by default.
++
++* Make IronicDriver.power_off() do soft poweroff by default.
++
++Dependencies
++============
++This spec is related to the blueprint in ironic.
++
++* https://blueprints.launchpad.net/ironic/+spec/enhance-power-interface-for-soft-reboot-and-nmi
++
++Testing
++=======
++Unit tests will be added.
++
++Documentation Impact
++====================
++None
++
++References
++==========
++None
+-- 
+2.1.0
+

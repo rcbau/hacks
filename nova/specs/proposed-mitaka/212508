@@ -1,0 +1,299 @@
+From c9ecc040da8d3cb957104dfba49d3aea5d47a93b Mon Sep 17 00:00:00 2001
+From: Ildiko Vancsa <ildiko.vancsa@ericsson.com>
+Date: Thu, 13 Aug 2015 14:39:06 +0200
+Subject: [PATCH] Add support for shared volumes between guests
+
+This blueprint proposes a change to Nova to support
+attaching a cinder volume to more than one instance.
+
+Co-Authored-By: Tobias Engelbert <tobias.engelbert@ericsson.com>
+Co-Authored-By: Krisztian Gacsal <krisztian.gacsal@ericsson.com>
+
+bp multi_attach_volume
+
+Change-Id: If728575e19aa1c553682b04f26d01dc66e467a47
+---
+ specs/mitaka/approved/multi-attach-volume.rst | 271 ++++++++++++++++++++++++++
+ 1 file changed, 271 insertions(+)
+ create mode 100644 specs/mitaka/approved/multi-attach-volume.rst
+
+diff --git a/specs/mitaka/approved/multi-attach-volume.rst b/specs/mitaka/approved/multi-attach-volume.rst
+new file mode 100644
+index 0000000..43cc2eb
+--- /dev/null
++++ b/specs/mitaka/approved/multi-attach-volume.rst
+@@ -0,0 +1,271 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++==================================
++Support Cinder Volume Multi-attach
++==================================
++
++https://blueprints.launchpad.net/nova/+spec/multi-attach-volume
++
++Currently, Nova only allows a volume to be attached to a single
++host or instance.  There are times when a user may want to be able
++to attach the same volume to multiple instances.
++
++Problem description
++===================
++
++Currently, Nova only allows a volume to be attached to one instance
++and or host at a time.  Nova makes an assumption in a number of places
++that assumes the limitation of a single volume to a single instance.
++
++* cinderclient only has volume as a parameter to the detach() call.  This
++  makes the assumption that a volume is only attached once.
++
++* nova assumes that if a volume is attached, it can't be attached again.
++  see nova/volume/cinder.py: check_attach()
++
++Use Cases
++---------
++Allow users to share volumes between multiple guests using either
++read-write or read-only attachments. Clustered applications
++with two nodes where one is active and one is passive. Both
++require access to the same volume although only one accesses
++actively. When the active one goes down, the passive one can take
++over quickly and has access to the data.
++
++
++Project Priority
++----------------
++None
++
++Proposed change
++===============
++
++The changes needed in Nova are related to attach time and detach time.
++
++At attach time, Nova has to remove the assumption that it can only attach
++a volume if it's not 'in-use'. A Cinder volume can now be attached if it's
++'available' and/or 'in-use'. Cinder will only allow a volume to be attached
++more than once if it's 'sharable' flag is set on the volume at create time.
++
++At detach time, Nova needs to pass a new parameter to the cinderclient
++to tell cinder which specific attachment it's requesting cinder to detach.
++Since a volume can be attached to an instance and/or a host, a new
++attachment uuid is added at detach time.  Passing only an instance uuid
++is insufficient. The attachment_id will be optional in the cinderclient.
++If it isn't passed in and there are multiple attachments, then cinder will
++fail because it won't know which attachment to detach.
++
++By default libvirt assumes all disks are exclusively used for a single guest.
++If you want to share disks between instances, you need to tell libvirt
++when configuring the guest XML for that disk via setting the sharable flag
++for the disk. This means that the hypervisor will not try to take an exclusive
++lock on the disk, that all I/O caching is disabled, and any SELinux labeling
++allows use by all domains.
++
++Nova needs to set this sharable flag for the multi-attach disks of the
++instances.
++
++
++Alternatives
++------------
++
++For the use case described above the failover scenario can be handled by
++attaching the volume to the passive/standby instance. This means that the
++standby instance is not a hot standby anymore as the volume attachment
++requires time, which means that the new primary instance is without volume
++for the time of re-attaching, which can vary in the sense of marking the
++volume free after the failure of the primary instance.
++
++Another alternative is to clone a volume and attach the clone to the second
++instance. The downside to this is any changes to the original volume don't
++show up in the mounted clone so this is only a viable alternative if the
++volume is read-only.
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++Adding "multiattach" flag to the API exposes the volume's capability for
++supporting multiple attachments at the same time.
++
++The "multiattach" flag will be introduced with new microversion in the
++v2.1 API.
++
++Add multiattach flag to response for GET /v2.1/{tenant_id}/os-volumes as well
++as for GET /v2.1/{tenant_id}/os-volumes/detail and GET os-volumes/{volume_id}.
++Example response::
++
++  {
++    "volumes": [
++        {
++            "id": "521752a6-acf6-4b2d-bc7a-119f9148cd8c",
++            "display_name": "vol-001",
++            "display_description": "Another volume.",
++            "size": 30,
++            "volume_type": "289da7f8-6440-407c-9fb4-7db01ec49164",
++            "metadata": {
++                "contents": "junk"
++            },
++            "availability_zone": "us-east1",
++            "snapshot_id": null,
++            "attachments": [],
++            "created_at": "2012-02-14T20:53:07Z",
++            "multiattach": false
++        },
++        {
++            "id": "76b8950a-8594-4e5b-8dce-0dfa9c696358",
++            "display_name": "vol-002",
++            "display_description": "Yet another volume.",
++            "size": 25,
++            "volume_type": "96c3bda7-c82a-4f50-be73-ca7621794835",
++            "metadata": {},
++            "availability_zone": "us-east2",
++            "snapshot_id": null,
++            "attachments": [],
++            "created_at": "2012-03-15T19:10:03Z",
++            "multiattach": true
++        }
++    ]
++  }
++
++Add multiattach flag to request and response for
++POST /v2.1/{tenant_id}/os-volumes/{volume_id}. Response has the multiattach
++flag in the same form as the response example above.
++Updated JSON schema for the request::
++
++  {
++      'type': 'object',
++      'properties': {
++          'volume': {
++              'type': 'object',
++              'properties': {
++                  'volume_type': {'type': 'string'},
++                  'metadata': {'type': 'object'},
++                  'snapshot_id': {'type': 'string'},
++                  'size': {
++                      'type': ['integer', 'string'],
++                      'pattern': '^[0-9]+$',
++                      'minimum': 1
++                  },
++                  'availability_zone': {'type': 'string'},
++                  'display_name': {'type': 'string'},
++                  'display_description': {'type': 'string'},
++                  'multiattach': {'type': 'boolean'}
++              },
++              'additionalProperties': False,
++          },
++      },
++      'required': ['volume'],
++      'additionalProperties': False,
++  }
++
++
++Security impact
++---------------
++
++In the libvirt driver, the disk is given a shared SELinux label,
++and so that disk has no longer strong sVirt SELinux isolation.
++
++The OpenStack volume encryption capability is supposed to work out of the
++box with this use case also, it should not break how the encryptor works
++below the clustered file system, by using the same key for all connections.
++The issues, if there will be any will be handled on the run.
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++The command line will now allow you to call Nova volume-attach for a volume
++to multiple instances.
++
++Performance Impact
++------------------
++
++None
++
++Other deployer impact
++---------------------
++
++None
++
++Developer impact
++----------------
++
++Any time new code is added to Nova that requires a call to detach
++a volume, the developer must get the volume attachment uuid for
++the instance. This information is embedded in the cinder volume
++volume_attachments list.
++
++
++Implementation
++==============
++
++Based on the work from Walter Boring and Charlie Zhou.
++Agreed with Walter to start the work again.
++
++Assignee(s)
++-----------
++
++Primary assignee:
++    ildiko-vancsa
++
++
++Work Items
++----------
++
++1. Update the use of cinderclient to extract the new list of volume
++   attachments when Nova fetches a volume.
++2. Update all calls to cinderclient.detach() to include the attachment uuid.
++3. Update libvirt driver to generate proper domain XML for instances with
++   multi-attach volumes
++4. REST API update.
++
++Dependencies
++============
++
++* This requires the version 1.3.1 or above of the python-cinderclient.
++  Corresponding blueprint:
++  https://blueprints.launchpad.net/python-cinderclient/+spec/multi-attach-volume
++
++* Corresponding, implemented spec in Cinder:
++  https://blueprints.launchpad.net/cinder/+spec/multi-attach-volume
++
++* Fix the bug in detach volume in Cinder which removes the target even if
++  it still has attachments:
++  https://bugs.launchpad.net/cinder/+bug/1471278
++
++
++Testing
++=======
++
++We'll have to add new Tempest tests to support the new Cinder volume sharable
++flag. The new cinder sharable flag is what allows a volume to be attached
++more than once or not. Have to look into a tempest test for attaching the
++same volume to multiple instances.
++
++
++Documentation Impact
++====================
++
++We will have to update the documentations to discuss the new ability to
++attach a volume to multiple instances if the cinder sharable flag is set on a
++volume.
++
++
++References
++==========
++
++* This is the cinder wiki page that discusses the approach to multi-attach
++  https://wiki.openstack.org/wiki/Cinder/blueprints/multi-attach-volume
+-- 
+2.1.0
+

@@ -1,0 +1,176 @@
+From e7d0f8e45f14d0ebf1ecfb656d02d1e0eedd2868 Mon Sep 17 00:00:00 2001
+From: jichenjc <jichenjc@cn.ibm.com>
+Date: Sun, 20 Sep 2015 12:21:06 +0800
+Subject: [PATCH] Add change-return-code-api-20x.rst
+
+Add change-return-code-api-20x.rst.
+
+DocImpact
+APIImpact
+
+Change-Id: Ibf0865e4a8d9eb169716090634da551e46ae9635
+---
+ .../mitaka/approved/change-return-code-api-20x.rst | 151 +++++++++++++++++++++
+ 1 file changed, 151 insertions(+)
+ create mode 100644 specs/mitaka/approved/change-return-code-api-20x.rst
+
+diff --git a/specs/mitaka/approved/change-return-code-api-20x.rst b/specs/mitaka/approved/change-return-code-api-20x.rst
+new file mode 100644
+index 0000000..28189c1
+--- /dev/null
++++ b/specs/mitaka/approved/change-return-code-api-20x.rst
+@@ -0,0 +1,151 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++======================================================
++Use microversion to change return code from 200 to 20x
++======================================================
++
++https://blueprints.launchpad.net/nova/+spec/change-return-code-api-20x
++Change the return code from 200 to 201-204 by using microversion.
++
++Problem description
++===================
++
++Some API code using 200 as return code directly, but according to
++http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html
++201-204 should be returned.
++
++Use Cases
++----------
++
++As a end user, I expect API response to be align to HTTP definition
++as much as nova can.
++
++Proposed change
++===============
++
++Check nova/api/openstack/compute folder and update v2.1 API code to
++return 201-204 for all occurance.
++
++Alternatives
++------------
++
++None
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++No input changed.
++
++The original return 200 case will return 201-204 respectively,
++see work items for detail.
++
++Take keypair existing code as an example, after the implementation of this
++spec, the response code for all work items will looks like:
++
++.. code::
++
++  @wsgi.Controller.api_version("2.2", "2.9")  # noqa
++  @wsgi.response(201)
++  @extensions.expected_errors((400, 403, 409))
++  @validation.schema(keypairs.create_v22)
++  def create(self, req, body):
++     ......
++
++  @wsgi.Controller.api_version("2.1", "2.1")  # noqa
++  @extensions.expected_errors((400, 403, 409))
++  @validation.schema(keypairs.create_v20, "2.0", "2.0")
++  @validation.schema(keypairs.create, "2.1", "2.1")
++  def create(self, req, body):
++     ......
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++None (python-novaclient don't need change)
++
++Performance Impact
++------------------
++
++None
++
++Other deployer impact
++---------------------
++
++None
++
++Developer impact
++----------------
++
++None
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++None
++
++Work Items
++----------
++
++1) change os-agents/delete success code from 200 to 204
++2) change os-agents/create success code from 200 to 201
++3) change os-quota-sets/delete success code from 202 to 204
++4) change os-rescue/rescue success code from 200 to 202
++5) change os-admin-password/changePassword success code from 202 to 204
++6) change os-volumes-attachments/create success code from 200 to 202
++7) change os-evacuate/evacuate success code from 200 to 202
++
++All items will be done in one patch so only one microversion
++bump is needed.
++
++Dependencies
++============
++
++None
++
++Testing
++=======
++
++Both Unit test and functional test.
++
++Documentation Impact
++====================
++
++Document for API will be updated to indicate that new microversion
++impacted return code.
++
++References
++==========
++
++None
++
++History
++=======
++.. list-table:: Revisions
++   :header-rows: 1
++
++   * - Release Name
++     - Description
++   * - Mitaka
++     - Introduced
+-- 
+2.1.0
+

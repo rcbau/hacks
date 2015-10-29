@@ -1,0 +1,183 @@
+From 3ff23b616f3a724c3dc5e727a0a3d45de6975d7d Mon Sep 17 00:00:00 2001
+From: Bharath Thiruveedula <bharath_ves@hotmail.com>
+Date: Thu, 20 Aug 2015 21:27:55 +0530
+Subject: [PATCH] Returning Compute Node IP address in hypervisor list
+
+APIImpact
+adds new attribute to hypervisor-list API
+
+blueprint os-hypervisors-ipaddress
+
+Change-Id: I8363474dc82f5705727825c91a23007ec5721560
+---
+ specs/mitaka/approved/os-hypervisors-ipaddress.rst | 158 +++++++++++++++++++++
+ 1 file changed, 158 insertions(+)
+ create mode 100644 specs/mitaka/approved/os-hypervisors-ipaddress.rst
+
+diff --git a/specs/mitaka/approved/os-hypervisors-ipaddress.rst b/specs/mitaka/approved/os-hypervisors-ipaddress.rst
+new file mode 100644
+index 0000000..31b4908
+--- /dev/null
++++ b/specs/mitaka/approved/os-hypervisors-ipaddress.rst
+@@ -0,0 +1,158 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++====================================================
++Returning Compute Node IP address in hypervisor list
++====================================================
++
++https://blueprints.launchpad.net/nova/+spec/os-hypervisors-ipaddress
++
++This spec provides the host_ip of the compute nodes in 'nova hypervisor-list'
++api call.
++
++Problem description
++===================
++
++As part of the blueprint https://blueprints.launchpad.net/nova/+spec/no-
++compute-fanout-to-scheduler we store the 'host_ip' and 'supported_instances'
++into compute_nodes table. But while getting the  hypervisor-list we get only
++the  ID and  hostname.
++
++Use Cases
++----------
++
++None
++
++Project Priority
++-----------------
++
++None
++
++Proposed change
++===============
++
++We are not modifying the DB as the data is already stored in compute_nodes
++table. We are changing nova API to add one more attribute to the JSON it
++returns. The attribute name is 'host_ip'.
++
++And we also require to change Nova client to display the Host IP column in the
++table as follows.
++
+++----+---------------------+-------------------+
++| ID | Hypervisor hostname | Host IP           |
+++----+---------------------+-------------------+
++| 1  | PRINHYLTPHP0334     | 192.168.122.23    |
+++----+---------------------+-------------------+
++
++Alternatives
++------------
++
++None
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++The proposed change just updates the GET response data in the
++HypervisorManager.list API.
++
++Request:
++
++GET --header "X-OpenStack-Nova-API-Version: 2.xx"
++/v2/{tenant-id}/os-hypervisors
++
++Response ::
++
++    {
++        'hypervisors':[
++            {
++                'status': 'enabled',
++                'state': 'up',
++                'id': 1,
++                'hypervisor_hostname': 'PRINHYLTPHP0334',
++                'host_ip': '192.168.122.23'
++            }
++        ]
++    }
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++* The python-novaclient hypervisor-list command could be updated to show the
++  host_ip  in it's output.
++
++Performance Impact
++------------------
++
++None
++
++Other deployer impact
++---------------------
++
++None
++
++Developer impact
++----------------
++
++None
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  Bharath Thiruveedula<bharath_ves@hotmail.com>
++
++Work Items
++----------
++
++* Return 'host_ip' attribute in addition to ID and Hypervisor hostname.
++* Add column for 'HOST IP' in python novaclient.
++
++Dependencies
++============
++
++None
++
++
++Testing
++=======
++
++* Unit tests and API samples functional tests in the nova tree.
++
++
++Documentation Impact
++====================
++
++The nova/api/openstack/rest_api_version_history.rst document will be updated.
++
++
++References
++==========
++
++None
++
++
++History
++=======
++
++None
+-- 
+2.1.0
+

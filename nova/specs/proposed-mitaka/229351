@@ -1,0 +1,190 @@
+From 6bf1aa2a0386f8be28e4f9df12bb3990c26a730b Mon Sep 17 00:00:00 2001
+From: jianghua wang <jianghua.wang@citrix.com>
+Date: Wed, 30 Sep 2015 11:44:30 +0100
+Subject: [PATCH] XenAPI: Add spec to support Virtual GPU (VGPU)
+
+Add the function in xenapi to support Virtual GPU (VGPU) in VMs which
+run on the hosts which have the capacity of Virtual GPU.
+
+Change-Id: Ide1f2626987c5fa57fec9d3c97ed238dd7e399a8
+---
+ .../approved/xenapi-add-support-for-vgpu.rst       | 167 +++++++++++++++++++++
+ 1 file changed, 167 insertions(+)
+ create mode 100644 specs/mitaka/approved/xenapi-add-support-for-vgpu.rst
+
+diff --git a/specs/mitaka/approved/xenapi-add-support-for-vgpu.rst b/specs/mitaka/approved/xenapi-add-support-for-vgpu.rst
+new file mode 100644
+index 0000000..ade88b4
+--- /dev/null
++++ b/specs/mitaka/approved/xenapi-add-support-for-vgpu.rst
+@@ -0,0 +1,167 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++==========================================
++XenAPI: Add support for Virtual GPU (VGPU)
++==========================================
++
++https://blueprints.launchpad.net/nova/+spec/xenapi-add-support-for-vgpu
++
++Add the function in xenapi to support Virtual GPU (VGPU) in VMs which
++run on the hosts which have the capacity of Virtual GPU.
++
++Problem description
++===================
++
++Current nova implement is NOT supporting VGPU; but the end-user may
++expect that function for graphics acceleration in VMs. And it can't be
++achieved by the PCI passthough case as no PCI device exists for VGPU.
++
++Use Cases
++----------
++
++The end-user may create a VM  instance to equiped with a VGPU. The user can
++specify the VGPU's model type in flavor with the property of extra_specs.
++Nova schedules hosts basing on the remaininig VGPU capacity and boot a VM
++with a VGPU equipped.
++
++Project Priority
++-----------------
++
++None
++
++Proposed change
++===============
++
++1. Add function to query the VGPU capacity information from the host;
++2. Add a new field of 'vgpus' in to the table of compute_nodes to hold
++   the VGPU capacity information.
++3. No change is needed for the scheduler; but the existing function of
++   compute_capabilities_filter will be used to filter hosts basing on
++   the key(capabilities:vgpus:<VGPU model>) specified in the flavor
++   extra_specs.
++4. Add new funtions to xenapi's instance spawn function to check the
++   flavor's extra_specs. If a VGPU is required, it creates a VGPU with
++   the requested model and attaches it to the new VM instance.
++
++Alternatives
++------------
++
++None
++
++Data model impact
++-----------------
++
++Need add a new text field to the class of ComputeNode and HostState to hold
++the vgpu capacity information;
++Need add a new Text typed column in the DB table of compute_nodes to save the
++vgpu capacity information in nova database.
++
++REST API impact
++---------------
++
++The change is transparent to REST API.
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++If the end user wants to create a VM which has the GPU capability; the user
++should add the key=value pair into the flavor's extra_specs properity:
++
++.. code::
++
++  e.g. set the key=value pair as 'capabilities:vgpus:<VGPU model-name>'='> 0'
++  ,
++
++which means the VM to be created by using this flavor should have a VGPU with
++the model-name as <VGPU model-name>.
++
++Performance Impact
++------------------
++
++A trivial impact on starting a VM might occur, due to the additional setup
++steps for VGPU.
++
++Other deployer impact
++---------------------
++
++None
++
++Developer impact
++----------------
++
++None
++
++
++Implementation
++==============
++
++See `Proposed change`_ section above.
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  bobba
++
++Other contributors:
++  jianghuaw
++
++Work Items
++----------
++
++Changes would be made, in order to:
++
++1. retrieve the remaining VGPU capacity from the host;
++2. create a new field into the DB table of compute_nodes;
++3. check the extra_specs to determine whether and which type of VGPU should
++   be created for the VM instance;
++4. check the host's VGPU capacity and create requested VGPU when spawn a VM.
++
++Dependencies
++============
++
++None
++
++Testing
++=======
++
++Would need new unit tests to cover host filter basing VGPU capacity and VM
++generation with VGPU.
++
++
++Documentation Impact
++====================
++
++May need document how to specify the VGPU model in the flavor extra_specs.
++It should be similar as:
++
++.. code::
++
++  'capabilities:vgpus:<VGPU model-name>'='> 0'
++
++
++References
++==========
++
++The prototype code:
++https://review.openstack.org/#/c/223426/
++
++
++History
++=======
++
++
+-- 
+2.1.0
+

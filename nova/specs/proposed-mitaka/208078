@@ -1,0 +1,201 @@
+From 40cbf6e038cb11eef12d51cf839e5a4c61dd1b71 Mon Sep 17 00:00:00 2001
+From: Vilobh Meshram <vilobhmm@yahoo-inc.com>
+Date: Fri, 31 Jul 2015 15:43:43 -0700
+Subject: [PATCH] Snapshot failure makes instance unusable
+
+Not every private cloud deployment has the facility to opt for remote
+storage. When using local storage, if the hypervisor does not have
+enough storage space to store the snapshot, the instance might go into
+unusable state. Protecting user data is one of the most important aspect
+in providing better user experience.
+
+Change-Id: I48b85944d24a89447700628c6e5946a26834f831
+Implements: blueprint instance-snapshot-vm-unusable-insufficient-storage-space
+---
+ ...shot-vm-unusable-insufficient-storage-space.rst | 174 +++++++++++++++++++++
+ 1 file changed, 174 insertions(+)
+ create mode 100644 specs/mitaka/approved/instance-snapshot-vm-unusable-insufficient-storage-space.rst
+
+diff --git a/specs/mitaka/approved/instance-snapshot-vm-unusable-insufficient-storage-space.rst b/specs/mitaka/approved/instance-snapshot-vm-unusable-insufficient-storage-space.rst
+new file mode 100644
+index 0000000..8419100
+--- /dev/null
++++ b/specs/mitaka/approved/instance-snapshot-vm-unusable-insufficient-storage-space.rst
+@@ -0,0 +1,174 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++===============================================================================
++Instance unusable if instance snapshot fails due to in-sufficient storage space
++===============================================================================
++`bp instance-snapshot-vm-unusable-insufficient-storage-space
++<https://blueprints.launchpad.net/nova/+spec/
++instance-snapshot-vm-unusable-insufficient-storage-space>`_
++
++Problem description
++===================
++
++Creating an instance snapshot is a two step process :-
++  1. Nova with the help of underlying virtualization technology creates the
++     snapshot.
++  2. Glance uploads the created instance snapshot in step #1 to glance store.
++
++If step #1 fails, lets say, due to in-sufficient storage space, nova fails to
++create the snapshot. The instance is also put in "PAUSED" state. This makes the
++instance unusable for the user, without admin intervention.  The focus of this
++spec will be step #1. Step #2 covering Glance upload of the instance snapshot
++and error handling is handled in a `separate spec
++<https://blueprints.launchpad.net/glance/+spec/glance-quota-enhancements>`
++
++Not every deployment stores instance data on a remote storage. Snapshots are
++the only way for users to backup their instances. Hence this problem is
++critical since it makes the instance unusable, without providing a way for the
++user to recover the instance. This problem is present in every release of
++OpenStack till date.  The spec aims to solve the problem and enhance User
++experience by displaying proper message if instance snapshot cannot be created
++at that particular moment preventing any data loss if not done so.
++
++Use Cases
++---------
++
++Bob, is an admin of the private cloud and Alex is the user of the cloud.  Alex
++creates the instances and uses them for his daily development, testing,
++production work. Alex wants to protect his data and decides to create an
++instance snapshot. Alex, just being a consumer of the private cloud is un-aware
++of the disk consumption of the particular Hypervisor on which his VM instance
++is residing. It happens that there is not enough free space on the Hypervisor
++where Alex's VM instance resides. Alex issues nova image-create to create the
++snapshot. The command return successfully and Alex believes that the snapshot
++will be created and he will be able to see the snapshot. In fact the snapshot
++doesn't get created and Alex ends up loosing his VM instance as the VM instance
++goes into "PAUSED" state. Its not straighforward to recover the VM instance.
++
++The user whose intention was to protect data ends up with an unusable instance.
++This could potentially result in data loss.
++
++
++Project Priority
++-----------------
++
++None
++
++
++Proposed change
++===============
++
++1. The proposed change is to add a RPC `validate_task` and should be executed
++   before each task which plans to update/write to the disk. Example of such
++   tasks can be snapshot, backups, instance creation, etc.
++
++2. The `validate_task` RPC will help to validate whether there is enough free
++   space on the respective target where the update/write is to be targetted at.
++
++3. For example when a user wants to create an instance snapshot,
++   `snapshot_instance` RPC is invoked. This gets the snapshot location, does
++   the intermediate image conversion from RAW to QCOW2(say), and then calls
++   glance to store the snapshot. This RPC call does not take into account
++   whether the path pointed by CONF.snapshots_directory has enough storage
++   space. Even the disk utility methods exposed are centered around
++   CONF.instance_path and the parameters reported by the resource tracker are
++   more centered around the CONF.instance_path. But the
++   CONF.snapshots_directory need not be on the same partition, under same mount
++   point or same disk.
++
++
++Alternatives
++------------
++
++Resource Tracker depends on compute utility modules to fetch the usage and
++availability details, which eventually gets populated to the Nova database via
++the Nova Conductor layer. But the calculations of Resource Tracker revolve
++around CONF.instance_path and those values can't be relied upon if
++CONF.instance_path and CONF.snapshots_directory are not under same mount point,
++different disks, different parititions etc.
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++None
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++None
++
++Performance Impact
++------------------
++
++None
++
++Other deployer impact
++---------------------
++
++None
++
++Developer impact
++----------------
++
++None
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  vilobhmm
++
++Other contributors:
++  krt, balajin
++
++Work Items
++----------
++
++1. Write a new RPC `validate_task`.
++
++2. Write compute utilities which can report the needed information.
++
++3. Include the validation logic at the compute API layer.
++
++4. Include proper exceptions for better user experience.
++
++Dependencies
++============
++
++None
++
++Testing
++=======
++
++
++Documentation Impact
++====================
++
++
++References
++==========
++
++- https://blueprints.launchpad.net/glance/+spec/glance-quota-enhancements
+-- 
+2.1.0
+

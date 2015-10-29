@@ -1,0 +1,118 @@
+From afde1674d714b734338eba3caefa4b62b0c1f24c Mon Sep 17 00:00:00 2001
+From: Balazs Gibizer <balazs.gibizer@ericsson.com>
+Date: Thu, 13 Aug 2015 15:05:08 +0200
+Subject: [PATCH] Add REST API impact to the multi-attach spec
+
+Blueprint multi-attach-volume
+
+Change-Id: I2f271640218cca3ee3944d4a09c12ea32498db1c
+---
+ specs/mitaka/approved/multi-attach-volume.rst | 78 ++++++++++++++++++++++++++-
+ 1 file changed, 76 insertions(+), 2 deletions(-)
+
+diff --git a/specs/mitaka/approved/multi-attach-volume.rst b/specs/mitaka/approved/multi-attach-volume.rst
+index f799609..495e774 100644
+--- a/specs/mitaka/approved/multi-attach-volume.rst
++++ b/specs/mitaka/approved/multi-attach-volume.rst
+@@ -80,7 +80,80 @@ None
+ REST API impact
+ ---------------
+ 
+-None
++Adding "multiattach" flag to the API exposes the volume's capability for
++supporting multiple attachments at the same time.
++
++The "multiattach" flag will be introduced with new microversion in the
++v2.1 API.
++
++Add multiattach flag to response for GET /v2.1/{tenant_id}/os-volumes as well
++as for GET /v2.1/{tenant_id}/os-volumes/detail and GET os-volumes/{volume_id}.
++Example response::
++
++  {
++    "volumes": [
++        {
++            "id": "521752a6-acf6-4b2d-bc7a-119f9148cd8c",
++            "display_name": "vol-001",
++            "display_description": "Another volume.",
++            "size": 30,
++            "volume_type": "289da7f8-6440-407c-9fb4-7db01ec49164",
++            "metadata": {
++                "contents": "junk"
++            },
++            "availability_zone": "us-east1",
++            "snapshot_id": null,
++            "attachments": [],
++            "created_at": "2012-02-14T20:53:07Z",
++            "multiattach": false
++        },
++        {
++            "id": "76b8950a-8594-4e5b-8dce-0dfa9c696358",
++            "display_name": "vol-002",
++            "display_description": "Yet another volume.",
++            "size": 25,
++            "volume_type": "96c3bda7-c82a-4f50-be73-ca7621794835",
++            "metadata": {},
++            "availability_zone": "us-east2",
++            "snapshot_id": null,
++            "attachments": [],
++            "created_at": "2012-03-15T19:10:03Z",
++            "multiattach": true
++        }
++    ]
++  }
++
++Add multiattach flag to request and response for
++POST /v2.1/{tenant_id}/os-volumes/{volume_id}. Response has the multiattach
++flag in the same form as the reponse example above.
++Updated JSON schema for the request::
++
++  {
++      'type': 'object',
++      'properties': {
++          'volume': {
++              'type': 'object',
++              'properties': {
++                  'volume_type': {'type': 'string'},
++                  'metadata': {'type': 'object'},
++                  'snapshot_id': {'type': 'string'},
++                  'size': {
++                      'type': ['integer', 'string'],
++                      'pattern': '^[0-9]+$',
++                      'minimum': 1
++                  },
++                  'availability_zone': {'type': 'string'},
++                  'display_name': {'type': 'string'},
++                  'display_description': {'type': 'string'},
++                  'multiattach': {'type': 'boolean'}
++              },
++              'additionalProperties': False,
++          },
++      },
++      'required': ['volume'],
++      'additionalProperties': False,
++  }
++
+ 
+ Security impact
+ ---------------
+@@ -128,7 +201,7 @@ Assignee(s)
+ -----------
+ 
+ Primary assignee:
+-  Tobias Engelbert
++  Krisztian Gacsal
+ 
+ 
+ Work Items
+@@ -138,6 +211,7 @@ Work Items
+    attachments when Nova fetches a volume.
+ 2. Update all calls to cinderclient.detach() to include the attachment uuid.
+ 3. Libvirt volume driver.
++4. REST API update.
+ 
+ Dependencies
+ ============
+-- 
+2.1.0
+

@@ -1,0 +1,259 @@
+From beed0426e6a4ce4cd2f1198ce616961f8c1e7009 Mon Sep 17 00:00:00 2001
+From: Mark Doffman <mjdoffma@us.ibm.com>
+Date: Tue, 20 Oct 2015 14:11:20 -0500
+Subject: [PATCH] Proposal to create pluggable scheduler report API.
+
+Change-Id: I94f6f59e47cc7b7866127806c1b9edc3e05366cc
+---
+ .../approved/pluggable-scheduler-reporting.rst     | 239 +++++++++++++++++++++
+ 1 file changed, 239 insertions(+)
+ create mode 100644 specs/mitaka/approved/pluggable-scheduler-reporting.rst
+
+diff --git a/specs/mitaka/approved/pluggable-scheduler-reporting.rst b/specs/mitaka/approved/pluggable-scheduler-reporting.rst
+new file mode 100644
+index 0000000..26c6cbe
+--- /dev/null
++++ b/specs/mitaka/approved/pluggable-scheduler-reporting.rst
+@@ -0,0 +1,239 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++==========================================
++Pluggable scheduler reporting
++==========================================
++
++https://blueprints.launchpad.net/nova/+spec/pluggable-scheduler-reporting
++
++Reporting compute node information to the scheduler is currently done
++via the SchedulerClient API. This is a fixed method that uses  RPC for
++the Instance and Aggregate information, and Database for the ComputeNode
++information.
++
++We intend to make Scheduler reporting a pluggable interface which could
++then use different methods for reporting ComputeNode, Aggregate and Instance
++information to the Scheduler.
++
++Problem description
++===================
++
++There has been much discussion amongst Developers and Cloud operators about
++scheduler evolution and experimentation.
++
++See: http://markmail.org/message/syztqte2fcqsfcav
++
++Future scheduler evolution should see the Scheduler de-coupled from the
++compute nodes.
++
++The SchedulerClient API currently uses a mixture of RPC and Database access to
++report information about compute nodes to the Scheduler. As a fixed method
++of reporting this prevents experimentation with the Scheduler such as adding
++zookeeper reporting.
++
++Use Cases
++----------
++
++A developer in conjunction with a cloud operator wishes to attempt
++reporting ComputeNode information to the Scheduler using Zookeeper.
++
++A developer wishes to try an experimental Scheduler that does not rely
++on continuously updated resource information. For an example see:
++
++http://www.eecs.berkeley.edu/~keo/publications/sosp13-final17.pdf
++
++
++Proposed change
++===============
++
++We propose to create a pluggable API for reporting compute node information
++to the Scheduler. This API would be used to pass Instance, Aggregate and
++ComputeNode information. A driver will be created for this API that matches
++the current functionality and methods.
++
++The API would be created in:
++
++'nova/schedulerreport'
++
++The API will be structurally similar to the SchedulerClient API where methods
++in that class relate to reporting information to the Scheduler.
++
++Drivers for this API will be placed in:
++
++'nova/schedulerreport/drivers'
++
++Some prototype code which explains how this work is available here:
++
++https://review.openstack.org/#/c/237659/
++
++Initially a driver will be created that makes use of the SchedulerClient
++making the SchedulerReport class a pluggable level of indirection for the
++current implementation.
++
++The current driver passes information to the Sceduler using RPC and Database
++access.
++
++                      +-----------------+
++               +----> |                 +------+
++               |      |   Database      |      |
++               |      +-----------------+      |
++               |                               |
+++--------------|------+                 +------v-----+
++| +-----------------+ |  Aggregate RPC  |            |
++| |                 +--------------------->          |
++| | SchedulerReport | |                 |            |
++| | API - Default   | |  Instance RPC   |            |
++| |                 +--------------------->          |
++| +-----------------+ |                 |            |
++| Compute Node        |                 | Scheduler  |
+++---------------------+                 +------------+
++
++
++When replacing the driver with a zookeeper version data will be passed
++thusly:
++                      +-----------------+
++               +----> |                 +------+
++               |      |   Zookeeper     |      |
++               |      +-----------------+      |
++               |                               |
+++--------------|------+                 +------v-----+
++| +-----------------+ |                 |            |
++| |                 | |                 |            |
++| | SchedulerReport | |                 |            |
++| | API - Zookeeper | |                 |            |
++| |                 | |                 |            |
++| +-----------------+ |                 |            |
++| Compute Node        |                 | Scheduler  |
+++---------------------+                 +------------+
++
++We do not propose to cover the implementation of zookeeper or more exotic
++drivers in this specification. These will be covered in further specifications
++and will involve the joint creation of a SchedulerReport driver and new
++Scheduler or HostManager.
++
++We do not propose how to further de-couple the scheduler and compute nodes
++using the default driver. Proposals to version the exisiting RPC interface
++and create a scheduler database are separate, and if this spec is approved
++would take place using the deafult RPC driver for the SchedulerReport API.
++
++Alternatives
++------------
++
++Alternatives appreciated. If scheduler de-coupling and experimentation is
++to take place in the future I believe that something like this pluggable
++interface will be required. The scheduler reporting methods are likely to be
++varied. A stable python interface on the compute nodes with pluggable
++drivers that match the experimental schedulers seems like the best (only?)
++proposition.
++
++It is possible that we may want to have scheduler experimentation take place
++outside of a pluggable API by deployers and developers creating their own
++patches. This ad-hoc experimentaiton may lead to a single scheduler and
++reporting solution that meets the needs of all deployments.
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++None
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++None
++
++Performance Impact
++------------------
++
++None
++
++Other deployer impact
++---------------------
++
++Additional configuration options will be added to configure which
++SchedulerReport drivers are used. Deployers may need to be aware of these
++options as new drivers and experimental schedulers are added. This change
++will have no immediate impact after merged. New drivers and schedulers
++will have to be explicitly enabled.
++
++Methods will be made available for continuous deployment and upgrade. The
++plan is to allow multiple reporting drivers to be enabled. This way compute
++nodes can be upgraded in a rolling manner while the scheduler remains on
++an older version. When all compute nodes have been upgraded schedulers using
++the new reporting methods can be deployed.
++
++Multiple reporting drivers running concurrently should be safe as reporting
++operations should be separate. Even if they share some storage in the
++scheduler reporting operations should also be idempotent.
++
++Developer impact
++----------------
++
++None
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  mjdoffma
++
++Work Items
++----------
++
++* Create the SchedulerReport API.
++* Create the initial SchedulerReport driver that makes use of the
++   SchedulerClient API.
++* Switch to using the SchedulerReport API throughout the nova codebase.
++
++Dependencies
++============
++
++None
++
++Testing
++=======
++
++Unit testing will be added for the SchedulerReport API and initial driver.
++
++Functional testing should initally be largely untouched and functionality
++will not have been modified.
++
++Documentation Impact
++====================
++
++Developers are affected most by this change. Users will be oblivious.
++Deployers will initially be unconcerned. Developer documentation about
++scheduler evolution may need to be modified.
++
++References
++==========
++
++None
++
++
++History
++=======
++
++None
+-- 
+2.1.0
+

@@ -1,0 +1,576 @@
+From 4cdc17da9b46529410b9d35462a85a91a89d1fbf Mon Sep 17 00:00:00 2001
+From: Meghal Gosalia <meghal@yahoo-inc.com>
+Date: Mon, 27 Jul 2015 17:30:26 +0000
+Subject: [PATCH] Quota by Flavor, Quota by AZ or Quota by (Flavor and AZ)
+
+There are multiple ways to slice an Openstack cloud - availability
+zones, aggregates exposed via flavors and special flavors being the
+most common amongst all the available options. These options are used
+for better operability, managebility and providing specific
+features to enhance performance. But even though we have a way to
+segregate the cloud as per these options, at present, there is
+no option provided for an Openstack admin to set and manage Quota
+by Flavor, Quota by AZ or both.
+
+This spec plans to solve this problem by introducing the concept
+of dynamic resources. A dynamic resource can be a combination of
+availability zone, flavor or hardware type aggregate exposed via
+a flavor which can help for effective quota management in these
+common deployment scenarios.
+
+Co-Authored-By: Vilobh Meshram <vilobhmm@yahoo-inc.com>
+Co-Authored-By: Joshua Harlow <harlowja@yahoo-inc.com>
+blueprint dynamic-quota-resource
+Change-Id: I13b8e15896ffcb7d3aafe6bffb394ef1c8f487ca
+---
+ specs/mitaka/approved/dynamic-quota-resource.rst | 538 +++++++++++++++++++++++
+ 1 file changed, 538 insertions(+)
+ create mode 100644 specs/mitaka/approved/dynamic-quota-resource.rst
+
+diff --git a/specs/mitaka/approved/dynamic-quota-resource.rst b/specs/mitaka/approved/dynamic-quota-resource.rst
+new file mode 100644
+index 0000000..20e9f39
+--- /dev/null
++++ b/specs/mitaka/approved/dynamic-quota-resource.rst
+@@ -0,0 +1,538 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++====================================================
++Provide support for creating dynamic quota resources
++====================================================
++
++https://blueprints.launchpad.net/nova/+spec/dynamic-quota-resource
++
++There are multiple ways to slice an Openstack cloud - availability
++zones, aggregates exposed via flavors and special flavors being the
++most common amongst all the available options. These options are used
++for better operability, managebility and providing specific
++features to enhance performance. But even though we have a way to
++segregate the cloud as per these options, at present, there is
++no option provided for an Openstack admin to set and manage Quota
++by Flavor, Quota by AZ or both. This spec plans to solve this
++problem by introducing the concept of dynamic resources. A dynamic
++resource can be a combination of availability zone, flavor or
++hardware type aggregate exposed via a flavor which can help to provide
++effective quota management in these common deployment scenarios.
++
++Problem description
++===================
++
++During creation or deletion of an instance, quota needs to be calculated
++and claimed or released accordingly. Currently, quota calculations
++are based on 14 static resources hardcoded in the quota module. These
++static resources are cores, ram, disk, instances and so on. As stated
++above there are multiple ways to slice the cloud - availability zones,
++aggregates exposed via flavors and special flavors. Quota for
++managing resources are associated based on the way the cloud is
++segregated. Since these are the common deployment patterns used
++there needs to be a provision to set and manage quota according to the
++segregation pattern used, which doesn't seem to be the case in the
++current state of art as there is no option available to set Quota
++by AZ, Quota by Flavor or Quota by (Flavor and AZ).
++
++Use Cases
++---------
++
++**Actors**
++
++* Alice - Cloud Admin
++* Bob - End User
++* Charles - End User
++
++* Alice is a Cloud Admin who is responsible for assigning quota to onboarding
++  tenants.
++* Bob and Charles are end users who will be able to create instances based on
++  the quota assigned to them.
++* Both Bob and Charles are assigned quota of -
++   20 cores
++   20 GB RAM
++   1 TB disk
++   20 instances
++* Total number of flavors in the cloud -
++   tiny: 1 core, 1 GB RAM, 128 GB standard disk
++   small: 2 cores, 2 GB RAM, 256 GB standard disk
++
++1. Alice has assigned quota to different tenants based on standard static
++   quota resources like Cores, RAM, disk etc. But, in addition to static
++   quota resources, Alice also wants to track the total number of instances
++   being created based on following use cases.
++
++  a. Alice has special hardware containing SSDs and has created a host
++     aggregate containing all SSD machines. Alice has exposed the SSD host
++     aggregate using special flavors.
++     For example -
++     SSD Flavors:
++
++       ssd.tiny: 1 core, 1 GB RAM, 128 GB SSD
++       ssd.small: 2 cores, 2 GB RAM, 256 GB SSD
++
++     Alice has already assigned quota to Bob using standard resources like
++     cores, RAM and disk.
++     Bob will be able to boot instances with SSD disk using ssd.tiny
++     or ssd.small. Bob will also be able to use tiny and small flavors if he
++     wants to boot non-SSD instances.
++     For both SSD and non-SSD instances, Bob's quota will be tracked on the
++     basis of cores, RAM and disks.
++
++     he will be able to create -
++
++       * 10 instances of small or 20 instances of tiny or 10 instances of
++         tiny and 5 instances of small
++       * 10 instances of SSD.tiny and 5 instances of small
++       * 20 instances of SSD.tiny
++
++     But, there is a cost involved with using SSD flavors and hence Alice
++     wants to track the total number of instances Bob is spawning with SSD.tiny
++     and SSD.small flavors.
++     Alice does not want Bob to create more than 2 instances of SSD.tiny and
++     SSD.small flavor each.
++
++     Currently, the assigned quota for Bob (based on cores, ram and disk) does
++     not reflect the flavor with which Bob is spawning instances.
++     So, Alice creates a dynamic quota resource corresponding to SSD.tiny and
++     SSD.small flavor and assignes quota of 2 instances each to Bob for
++     SSD.tiny and SSD.small flavors.
++     With this Bob will not be able to boot more than 2 instances of SSD.tiny
++     or SSD.small.
++
++     This relates to quota per flavor.
++
++  b. Alice has a different use case than (a) where she wants to slice her cloud
++     into different availability zones az1 and az2 based on separate networks.
++     Both Bob and Charles are assigned quota based on cores, RAM and disk.
++     Because of special access requirements, Bob is allowed to boot only
++     in az1 and not in az2.
++     Charles is allowed to boot in both az1 and az2.
++
++     Currently, based on assigned quota as explained above, Bob and Charles
++     will be able to boot all 20 instances in either or both of az1 and az2.
++
++     But Alice does not want Bob to be creating instances in az2.
++     So, Alice creates a dynamic quota resource corresponding to az1 and az2.
++     She assignes quota of 20 instances to Bob in az1 and 0 instances in az2.
++     So, Bob will have to use up his 20 instances quota only in az1 and will
++     not be able to create any instance in az2.
++
++     For Charles, she will assign quota of 20 instances each for both az1
++     and az2.
++     Originally, since Charles had a total quota of 20 instances and since
++     Alice assigned 20 instances each for dynamic quota resources az1 and az2
++     to Charles, he will be able to create all 20 instances in az1, az2 or
++     spread his 20 instances across az1 and az2.
++
++     This also implies that this quota per AZ resource will apply to all
++     flavors in the cloud.
++     So, it relates to quota per (AZ and (all flavors in cloud))
++
++  c. Alice has a third use case, where she wants to restrict quota for Bob
++     based on a particular flavor ssd.tiny in a particular availability zone
++     az1. There are two AZs in the cloud - az1 and default_az.
++     ssd.tiny corresponds to 1 core, 1 GB RAM, 128 GB SSD disk.
++     So, based on quota assigned to Bob, he will be able to boot all 20
++     instances in az1 or default_az. Also, he will be able to create 20
++     instances with SSD.tiny in az1 or default_az.
++
++     But, Alice wants to restrict Bob's usage to 5 instances of ssd.tiny in az1
++     and 5 instances of ssd.tiny in default_az.
++     So, Alice will create a dynamic quota resource called ssd.tiny_az1 and
++     will assign quota to Bob for ssd.tiny_az1 to 5 instances. Similarly, Alice
++     will create one more dynamic quota resource called ssd.tiny_default_az and
++     will assign quota of 5 instances to ssd.default_az.
++     Hence if Bob uses ssd.tiny flavor in az1 or default_az, he will be able
++     to create only 5 instances each. Versus, if he uses tiny flavor in az1 or
++     default_az, he will be able to create more than 5 instances.
++
++     This relates to quota per (flavor and AZ).
++     If Alice has an use case of quota per (flavor and AZ) in her cloud, it
++     would be good if Alice assigns quota per flavor in each existing AZ in
++     the cloud, so that Alice can track the flavor usage in each AZ
++     separately.
++
++   Each of (a), (b) and (c) should be looked at separately and not tied
++   together. Some admins will have use case of quota per AZ only, while
++   some will have an use case of quota per flavor only and in certain cases,
++   there will be a requirement of quota per (flavor and AZ) which is used
++   a lot in Ironic (baremetal cloud), where you want to track the exact flavor
++   being used in a particular AZ.
++
++2. Bob and Charles will continue passing flavor and AZ for instance creation,
++   as they normally would. But, if Alice has assigned quota per flavor, or
++   quota per AZ or quota per (flavor and AZ); Alice will expect openstack code
++   to decrement the appropriate quota resource based on Bob's input of flavor
++   and AZ during instance creation.
++
++Project Priority
++-----------------
++
++None
++
++
++Proposed change
++===============
++
++In order to support dynamic quota resources, we need to modify quota extension
++to allow creation of resources other than static resource like cores, ram, etc.
++Also, admin needs an ability to update quota resource to be associated with a
++flavor, an AZ or both.
++
++When end-user is trying to create an instance, we need to be able to derive
++as to which dynamic quota resource should the quota be calculated against.
++Similarly quota for dynamic quota resource needs to be updated when an
++instance is deleted.
++
++Steps below describe each of these changes in detail.
++
++1. A dynamic resource will be created at first. A new extension to create,
++   update, delete and show dynamic resource details will be added. Each
++   dynamic resource will have a name and the set of key-value pairs
++   which this resource is composed of. Unique resource-uuid will be
++   generated for each dynamic resource as the dynamic resource is created.
++   For future operations on dynamic resource like update, show etc
++   dynamic resource uuid can be used. The nova-client interface might look
++   like :-
++
++   a. For create:
++   nova dynamic-resource-create <dynamic-resource-name>
++   --availability-zone <az-name>
++   --flavor <flavor-name>
++
++   dynamic-resource-name is a mandatory field and the admin will
++   have to specify it. Ideally it should be named as 'az-name_flavor-name',
++   and will be included in the help for this CLI. If not the cloud
++   admin is free to provide any dynamic-resource-name but internally
++   it will be tracked by a dynamic-resource-uuid which will be generated
++   as part of create().
++
++   b. For update:
++   nova dynamic-resource-update <dynamic-resource-uuid>
++   --availability-zone <az-name>
++   --flavor <flavor-name>
++
++   This az, flavor combination for a respective dynamic resource can
++   be passed to the dynamic-resource extensions update method. Multiple
++   entries corresponding to each dynamic resource can be specified.
++
++2. In order to assign quota for dynamic quota resources, os-quota-sets wsgi
++extension needs to be modified to accept dynamic quota resource key and its
++associated value. It could be sent as individual key-value pairs in the
++quota-set dictionary.
++
++ a. Currently nova quota-update calls os-quota-sets wsgi extension with
++    following payload
++
++    nova quota-update --tenant <tenant-id> --cores 12
++
++  * -d '{"quota_set": {"tenant_id": "7c0d996ce4e14d86aca38878eb765a68",
++    "cores": "12" }}'
++
++ b. Cloud admin will be able to name the dynamic quota resource with any
++    arbitrary name he/she wants. We will make sure that dynamic quota resource
++    is not named as one of the existing static resources like cores, ram, disk.
++    We will also validate if the type of value is integer and accept values
++    greater than -1. -1 would mean infinite quota.
++    So, we will need to update the extension to accept key value pairs.
++    For example -
++
++    nova quota-update --tenant <tenant-id>
++    --cores 12
++    --dynamic-resource ssd.tiny 5 ssd.tiny_az1 5
++
++  * -d '{"quota_set": {"tenant_id": "7c0d996ce4e14d86aca38878eb765a68",
++    "cores": "12", "ssd.tiny": "5", "az1": "5",
++    "ssd.tiny_az1": "1" }}'
++
++    This means that particular tenant is assigned quota of 5 instances
++    in az1, 5 instances using ssd.tiny flavor and 1 instance using ssd.tiny
++    flavor in az1 or booting an instance up to 12 cores.
++
++    Note - Usually an admin would have only 1 of the 3 use cases above
++    and so admin would only be assigning either quota per flavor, quota
++    per AZ or quota per (flavor and AZ).
++    Examples below are just to show how data will be represented in DB
++    and APIs.
++
++
++3. Currently, static quota resources are stored in quotas table as::
++
++    *************************** 1. row ***************************
++    id: 1
++    created_at: 2015-07-15 02:47:32
++    updated_at: NULL
++    deleted_at: 2015-07-21 04:26:24
++    project_id: 7c0d996ce4e14d86aca38878eb765a68
++    resource: cores
++    hard_limit: 12
++    deleted: 0
++
++4. Now, dynamic quota resources will also be stored along with static quota
++   resources in the table. For example::
++
++    *************************** 1. row ***************************
++    id: 1
++    created_at: 2015-07-15 02:47:32
++    updated_at: NULL
++    deleted_at: 2015-07-21 04:26:24
++    project_id: 7c0d996ce4e14d86aca38878eb765a68
++    resource: cores
++    hard_limit: 12
++    deleted: 0
++    *************************** 2. row ***************************
++    id: 2
++    created_at: 2015-07-15 02:47:32
++    updated_at: NULL
++    deleted_at: 2015-07-21 04:26:24
++    project_id: 7c0d996ce4e14d86aca38878eb765a68
++    resource: ssd.tiny
++    hard_limit: 5
++    deleted: 0
++    *************************** 3. row ***************************
++    id: 3
++    created_at: 2015-07-15 02:47:32
++    updated_at: NULL
++    deleted_at: 2015-07-21 04:26:24
++    project_id: 7c0d996ce4e14d86aca38878eb765a68
++    resource: az1
++    hard_limit: 5
++    deleted: 0
++    *************************** 4. row ***************************
++    id: 4
++    created_at: 2015-07-15 02:47:32
++    updated_at: NULL
++    deleted_at: 2015-07-21 04:26:24
++    project_id: 7c0d996ce4e14d86aca38878eb765a68
++    resource: ssd.tiny_az1
++    hard_limit: 1
++    deleted: 0
++
++5. We will also track dynamic quota resources in a separate
++   dynamic_quota_resource table. For example::
++
++    *************************** 1. row ***************************
++    id: 1
++    resource: ssd.tiny
++    flavor: ssd.tiny
++    availability_zone: NULL
++    deleted: 0
++    *************************** 2. row ***************************
++    id: 2
++    resource: az1
++    flavor: NULL
++    availability_zone: az1
++    deleted: 0
++    *************************** 3. row ***************************
++    id: 3
++    resource: ssd.tiny_az1
++    flavor: ssd
++    availability_zone: az1
++    deleted: 0
++
++6. os-quota-sets extension will have to be modified or a new extension will
++   have to be added for allowing a cloud admin to update AZ and flavor keys
++   for the newly added dynamic quota resource.
++
++7. When a user does a nova quota-show or uses the API, he/she will get
++   information on the dynamic quota resources for which his/her project has
++   been assigned quota for.
++   For example,
++
+++---------------------+-------+
++| Quota               | Limit |
+++---------------------+-------+
++| ssd.tiny            | 5     |
+++---------------------+-------+
++| az1                 | 5     |
+++---------------------+-------+
++| ssd.tiny_az1        | 1     |
+++---------------------+-------+
++| cores               | 12    |
+++---------------------+-------+
++
++8. During instance creation, user will be passing flavor and/or
++   availability_zone.
++   We will have to derive dynamic quota resource against which quota should
++   be calculated. So, we will do following lookup -
++
++   1. Lookup dynamic_quota_resource table based on flavor=<flavor passed by
++      user> and availability_zone=<AZ passed by user>
++      AZ will be default_scheduling_zone if user has not passed any AZ.
++      if default_scheduling_zone is NULL, AZ will be NULL.
++      This will cover (quota per flavor) and (quota per (flavor and AZ))
++      use cases.
++   2. If above lookup fails, we will lookup dynamic quota based on
++      flavor=<NULL> and AZ=<AZ passed by user>
++      This is because admin might have wanted to set quota per AZ and so
++      it should apply to all flavors in the cloud.
++      This will cover (quota per AZ) use case, which implies
++      quota per (AZ and (all flavors in cloud))
++   3. If (1) and (2) fails, then admin did not intend to set quota per
++      flavor, quota per AZ or quota per (flavor and AZ).
++      So, we will not consider any dynamic quota resource during quota
++      calculations.
++
++    Also, as mentioned in the Note above, admin will usually have 1 of the 3
++    use cases amongst quota per flavor, quota per AZ or quota per
++    (flavor and AZ).
++    And in an scenario where an admin sets quota per flavor as well
++    as quota per (flavor and AZ), then as explained in derivation above,
++    preference will be given to quota per (flavor and AZ) resource. So, it
++    could happen that his calculation is flawed for quota per flavor values.
++
++9. Once dynamic quota resource name is obtained, it will be used while creating
++   quota reservations. Value of the dynamic quota resource will be decremented
++   by 1.
++
++10. Also, we will store the resource-id of the dynamic quota resource
++    during instance creation. This will help us during instance deletion and we
++    will be able to increment quota value of appropriate dynamic quota
++    resource associated with the instance.
++    Instance object will also be modified to include resource-id field. For
++    tasks which will not involve dynamic resources this value will be set to
++    None by default. Whereas for tasks which involve dynamic resource,
++    appropriate resource-id will be populated.
++
++11. Currently, for all quota calculations, all the static resources are
++    hard-coded and the resource dictionary is formed at the time of service
++    initialization. So, multiple api workers form the same resource
++    dictionary. With quota resources being created dynamically, we will have
++    to query the DB (dynamic_quota_resources table) before every quota
++    operation, to get the latest resource dictionary.
++
++Alternatives
++------------
++
++None
++
++Data model impact
++-----------------
++
++* Create a new table dynamic_quota_resources with following spec::
++
++    CREATE TABLE `dynamic_quota_resource` (
++      `id` int(11) NOT NULL AUTO_INCREMENT,
++      `resource` varchar(255) NOT NULL,
++      `flavor` varchar(255),
++      `availability_zone` varchar(255),
++      `deleted` int(11) DEFAULT NULL,
++      PRIMARY KEY (`id`))
++
++* Create a new column called quota_resource_id in instances table.
++
++REST API impact
++---------------
++
++None
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++Cloud-admin will now be able to assign quota for flavor, AZ or flavor and AZ.
++
++Performance Impact
++------------------
++
++* DB query will have to made for every quota calculation to grab all dynamic
++  quota resources.
++
++Other deployer impact
++---------------------
++
++None
++
++Developer impact
++----------------
++
++None
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  meghal
++
++Other contributors:
++  vilobhmm, harlowja
++
++Work Items
++----------
++
++1. A new extension will be added to create,update, delete and display
++   dynamic resource. A separate table known as
++   nova.dynamic_quota_resources will be introduced in Nova database to keep
++   track of the dynamic resources created.
++
++2. os-quota-sets extension needs to be updated to allow create, update,
++   deletion and display of dynamic quota resources. Nova.quotas table
++   will maintain an entry for the hard-limit for each dynamic-resource
++   created as part of step #1. A row for each dynamic resource will be
++   added to nova.quotas and depending on the usage/consumption in the
++   nova.quota_usages. This row for the dynamic resource in nova.quotas
++   will keep track of the hard_limit for this particular resource on
++   a per project basis.
++
++3. DB scripts need to be added to create nova.dynamic_quota_resources
++   table.
++
++4. QuotaEngine and DBQuotaDriver needs to be updated to account for dynamic
++   resources during quota calculations.
++
++5. Instance object will be modified to keep track of dynamic resource
++   resource-id. The usage count will be incremented for this dynamic
++   resource during boot and will be decremented when an instance is
++   deleted. This is needed to accurately keep track of quota allocation
++   during instance creation/deletion.
++
++6. A column named 'resource-id' will be added in nova.instances to keep
++   track of the dynamic resource. This column will be set to None when
++   dynamic resource is not used otherwise will be populated with the
++   resource-id of the respective dynamic resource.
++
++Dependencies
++============
++
++None
++
++Testing
++=======
++
++1. Apart from unit tests, functional tests will be added related to items
++   below:
++
++* test creation, update, deletion and show, of dynamic quota
++  resources during os-quota-sets api call.
++* increment/decrement dynamic quota resource value during
++  creation/deletion of instance using dynamic quota resource.
++
++Documentation Impact
++====================
++
++* Documentation will have to be updated to reflect creation of dynamic quota
++  resource for cloud-admins and setting flavor and availability zone
++  information for a particular resource.
++
++References
++==========
++
++None
+-- 
+2.1.0
+

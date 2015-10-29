@@ -1,0 +1,170 @@
+From 3fdeb622df968b6d5d6afd2ff745979fd478ceb3 Mon Sep 17 00:00:00 2001
+From: Balazs Gibizer <balazs.gibizer@ericsson.com>
+Date: Wed, 7 Oct 2015 11:25:52 +0200
+Subject: [PATCH] Remove service management from nova-manage
+
+The service command of nova-manage tool provides duplicated functionality
+with the nova REST API so this spec proposes to remove the service command.
+
+Implements: blueprint remove-service-management-from-nova-manage
+Change-Id: I5baaf42c0d9f0aaf56ee611d96478289e1357c6a
+---
+ .../remove-service-management-from-nova-manage.rst | 146 +++++++++++++++++++++
+ 1 file changed, 146 insertions(+)
+ create mode 100644 specs/mitaka/approved/remove-service-management-from-nova-manage.rst
+
+diff --git a/specs/mitaka/approved/remove-service-management-from-nova-manage.rst b/specs/mitaka/approved/remove-service-management-from-nova-manage.rst
+new file mode 100644
+index 0000000..8919698
+--- /dev/null
++++ b/specs/mitaka/approved/remove-service-management-from-nova-manage.rst
+@@ -0,0 +1,146 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++==========================================
++Remove service management from nova-manage
++==========================================
++
++https://blueprints.launchpad.net/nova/+spec/remove-service-management-from-nova-manage
++
++The service command of nova-manage tool provides duplicated functionality
++with the nova REST API so this spec proposes to remove the service command.
++
++Problem description
++===================
++
++Currently there are four operations under services command of nova-manage tool:
++
++* nova-manage service list
++* nova-manage service disable
++* nova-manage service enable
++* nova-manage service describe-resources
++
++The nova-manage tool is intended for critical db operation only and all of the
++above operations can be done via the REST API already by calling:
++
++* GET /v2.1/{tenant_id}/os-services
++* PUT /v2.1/{tenant_id}/os-services/disable
++* PUT /v2.1/{tenant_id}/os-services/enable
++* GET /v2.1/{tenant_id}/os-hosts/{host_name}
++
++
++Therefore this spec proposes to remove the service command from the
++nova-manage tool.
++
++Use Cases
++---------
++
++No new use case will be supported.
++
++Proposed change
++===============
++
++Remove the duplicated functionality from nova-manage by completely removing the
++service command from the tool.
++
++Alternatives
++------------
++
++Keep the service command in nova-manage which means continue to support the
++duplicated functionality and code.
++
++Data model impact
++-----------------
++
++None.
++
++REST API impact
++---------------
++
++None.
++
++Security impact
++---------------
++
++None. The REST API has proper default policy settings.
++
++Notifications impact
++--------------------
++
++None.
++
++Other end user impact
++---------------------
++
++Users has to use the nova REST API or the python-novaclient to manage nova
++services.
++
++Performance Impact
++------------------
++
++None.
++
++Other deployer impact
++---------------------
++
++Deployer has to use the nova REST API oir the python-novaclient instead of
++nova-manage to manage nova services.
++
++Developer impact
++----------------
++
++None.
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++
++Primary assignee:
++  balazs-gibizer
++
++
++Work Items
++----------
++
++* Remove the ServiceCommands class from the nova.cmd.manage module.
++* Update documentation.
++
++Dependencies
++============
++
++None.
++
++Testing
++=======
++
++No new tests are needed as we are only removing functionality.
++
++Documentation Impact
++====================
++
++* update nova-manage man page
++* update openstack operations guide to use nova client instead of nova-manage
++  for service listing in Scaling and Crypt chapters
++
++References
++==========
++
++None.
++
++
++History
++=======
++
++.. list-table:: Revisions
++   :header-rows: 1
++
++   * - Release Name
++     - Description
++   * - Mitaka
++     - Introduced
+-- 
+2.1.0
+

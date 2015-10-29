@@ -1,0 +1,337 @@
+From 527e1d0f9095ac84727820943cdfe274a4ef3d71 Mon Sep 17 00:00:00 2001
+From: Ian Wells <iawells@cisco.com>
+Date: Thu, 11 Jun 2015 21:46:20 -0700
+Subject: [PATCH] Add a binding type negotiation between Nova and Neutron
+
+Change the Nova-Neutron interface in a backward compatible way so that
+Neutron ports are bound using Nova's expressed preference of APIs.
+
+This allows Neutron to select the appropriate binding_type according
+to its abilities and the preference of supporting hypervisor
+drivers.
+
+Change-Id: Iad1c76240680d8415a0f433483cc8b33817382ae
+---
+ .../approved/nova-neutron-binding-negotiation.rst  | 310 +++++++++++++++++++++
+ 1 file changed, 310 insertions(+)
+ create mode 100644 specs/mitaka/approved/nova-neutron-binding-negotiation.rst
+
+diff --git a/specs/mitaka/approved/nova-neutron-binding-negotiation.rst b/specs/mitaka/approved/nova-neutron-binding-negotiation.rst
+new file mode 100644
+index 0000000..da86c60
+--- /dev/null
++++ b/specs/mitaka/approved/nova-neutron-binding-negotiation.rst
+@@ -0,0 +1,310 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++=====================================================
++Improve Nova-Neutron port binding through negotiation
++=====================================================
++
++https://blueprints.launchpad.net/nova/+spec/nova-neutron-binding-negotiation
++
++Nova currently requests that Neutron bind a port and then attaches a
++VM to the results of the binding.  We would like to make this a
++negotiated process (while maintaining backward compatibility) to make
++it easier for Neutron drivers to select the right binding type for the
++circumstances, and we would like to make Neutron be more explicit in
++what it is doing in its return value to Nova.
++
++Problem description
++===================
++
++The binding process is mainly driven by a lot of tacitly agreed information:
++
++    - Neutron knows which binding type to give Nova to suit Nova's
++      hypervisor backend (as different hypervisors support different
++      binding types)
++    - Nova can predict, when it's told that a binding has happened,
++      many pieces of information, including the names of bridges and
++      veths that Neutron will create
++
++This leaves three problems:
++    1. Nova cannot say that binding types are sometimes available and
++       sometimes not - for instance, vhostuser is available when a VM
++       is started with a hugepage flavor and not otherwise, or
++       vhostuser with a compute host running KVM and something else
++       for a different compute host running a different hypervisor.
++    2. Neutron cannot easily provide different binding types in
++       different circumstances - for instance, vhostuser in some cases
++       and virtio in others based on a user expressed preference on
++       the port or network that Nova does not know or recognise
++    3. Nova must have code added for new binding types that is in
++       perfect sync with Neutron; Neutron has to be correctly
++       configured to dodge absent binding_types
++
++[For the unfamiliar, vhostuser is a binding type that relates to using
++shared memory between the softswitch that Neutron controls and the
++VM that Nova runs.  It works with QEMU and uses a socket to
++negotiate the shared memory, and in order to work requires that the
++memory is in a file that can be mmap()'ed by the switch.  This only
++happens in Nova at present when hugepages are used.  In other cases
++the binding cannot succeed and, at present, another binding type
++cannot be chosen because Neutron is unaware that it will fail.]
++
++Use Cases
++----------
++
++When using a driver that supports vhostuser, you want it to use
++vhostuser in some circumstances and fall back to virtio in others.
++For instance:
++
++    - vhostuser when hugepages are on, but
++    - virtio when it's off, and
++    - virtio when the hw_vif_type is set to an unsuitable value on the
++      image (since vhostuser compels a VM to use the virtio VIF type
++      internally)
++
++In this case, Nova would be able to express its preference - vhostuser
++when it's possible, virtio in all cases - and Neutron's code would be
++able to choose from the available options based on what it could
++implement.  The interface would be the best available to both sides
++that satisfies the requirement.
++
++When using a plugging type that creates an interface, the interface
++name should be returned from Neutron to Nova, which should use it in
++preference to guessing the name.  This means that rather than having
++two perfectly synced pieces of code to create arbitrary name values on
++both sides, the name generation is the sole responsibility of Neutron.
++This actually works today, but the older plugging types don't make use
++of the facility; we propose making this the default.
++
++Project Priority
++-----------------
++
++None.
++
++Proposed change
++===============
++
++When Nova calls Neutron it will populate the vif binding:profile with
++a 'preferred_binding_types' field containing a comma separated list,
++(with optional, ignored spaces) of binding types it can make use of
++to Neutron.  The Neutron driver should treat this list of types as the
++supported and preferred list of types.  It should recognise that the
++binding types are specific to each binding - they will not necessarily
++be identical from one binding to the next, based on information
++available to Nova about (for instance) which binding types will work.
++
++The binding types in the list will consist of a list
++containing binding_type strings.  The name of the binding_type
++indicates the contract between Nova and Neutron that determines where
++packets will land (e.g. a TAP device, a bridge, an OVS port; and
++potentially, agreement on the naming of that element or other
++identifying information), as it does now.
++
++
++The format will look like (in JSON)::
++
++    "binding_profile": {
++        ... current information
++        "preferred_binding_types": ["vhostuser", "ovs", "ivs"]
++    }
++
++The preferred_binding_types are a recommendation and not a requirement
++to Neutron.  As such, Nova should assume that it may be ignored,
++resulting in the following three rules:
++
++    - Older Neutron implementations will ignore this and return a
++      binding type from the currently existing set. Nova must reject
++      any binding that is not in the list and otherwise bind using
++      that binding_type.  Nova can assume that Neutron has chosen its
++      first supported value from the list of preferences provided.
++      In summary: Neutron will return whatever it returns and Nova
++      will confirm that it's acceptable and not evil.
++      This maintains current behaviour.
++
++    - Newer Neutron implementations will change behaviour.  When they
++      see this value, they will use this in determining a binding type
++      to use.  They will choose the first binding type they support.
++      Note that the binding types supported by Neutron may change due
++      to additional information in the binding:profile; for instance,
++      if the binding:profile expresses a desire for SR-IOV then the
++      Neutron driver may choose to only support an SR-IOV binding and
++      return that preference (providing Nova is willing to accept it).
++      In summary: Neutron will respect the will of Nova in all things.
++
++    - Neutron will return binding_failed if no type given is
++      supported.  In summary: dammit.
++
++Neutron can be trusted to use a preconfigured binding_type if no
++preference is passed, maintaining historical behaviour in the face of
++a hypervisor driver that does not support the new protocol, or an
++older version of Nova.  That is, no expression of preference is read
++as 'use your own best judgement'.  In summary: Neutron has an opinion
++in reserve in case Nova is too old to express a preference.
++
++This list of behaviours means that a newer Neutron will work with
++older Novas (this happens regularly at upgrade time and may be
++an operator choice for an extended period) and vice-versa.
++
++A notable example of what could be done: with libvirt/kvm, the 'vhostuser'
++binding type will only appear in the preferred_binding_types preferences
++list if the memory of the VM is going to be stored in a shared file that
++qemu will hold open (at the moment, this implies that hugepages are set in
++the flavor).  This is a requirement for a successful vhostuser binding.
++The adjustment of preferences according to circumstance ensures that
++Neutron does not use a vhostuser binding when the Nova VM cannot make
++use of it.
++
++In a future change (for which a separate spec will be added), we will
++propose a set of more modern binding_types that simplify the Nova
++code.  These will be listed as preferential.  Thanks to this
++negotiation, they will be used if and only if both sides support them.
++At some point in the future, the old types may then be deprecated.
++
++The code change will involve changing the drivers to pass the
++preferred_binding_type information to Neutron during the binding
++process.
++
++Alternatives
++------------
++
++This is a means to improve communication between Nova and Neutron, and
++as such is not essential.  A valid alternative is to do nothing.
++Other options have not been considered.  Until Nova actually declares
++valid options to Neutron, the vhostuser binding type will not work in
++many cases.
++
++Data model impact
++-----------------
++
++None.
++
++REST API impact
++---------------
++
++This has no impact on Nova's REST APIs.
++
++Nova will pass information in the binding:profile dictionary to be
++consumed by neutron.  Neutron's port binding extension will modified
++to define the optional 'preferred_binding_types' within
++binding:profile.  Neutron L2 plugins supporting
++preferred_binding_types will choose the first binding_type listed that
++they support and return a port binding of that type.  Historical
++plugins, or old Neutron versions, will return a binding type as
++today. If the binding type is not within the set that Nova requested,
++Nova will log the fact and treat the binding as failed.
++
++Security impact
++---------------
++
++Care must be taken to ensure that incorrect Neutron-returned values
++are within the valid set, or Nova may take inappropriate actions that
++could in the worst case pose a security risk.
++
++Notifications impact
++--------------------
++
++None.
++
++Other end user impact
++---------------------
++
++The end user may end up with a different binding type if both
++Nova and Neutron support this negotiation.  This could affect
++the choice of virtual hardware used within the VM.
++
++Performance Impact
++------------------
++
++None.
++
++Other deployer impact
++---------------------
++
++If Neutron tries to use a binding type that Nova doesn't support,
++previously the error was somewhat obscure.  The error can now make
++clear that Nova and Neutron don't agree on binding types, and is
++also less likely to happen.
++
++
++Developer impact
++----------------
++
++When changing the virt drivers developers must consider changes to the
++preferred binding type list.
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  ijw-ubuntu
++
++Other contributors:
++  sean-k-mooney
++  mleroy
++
++Work Items
++----------
++
++1. develop a binding_type list for the libvirt driver
++2. adapt the binding_type list for the present vhostuser issues
++3. Elsewhere, add respect to at least one driver in Neutron for
++   the preferred_binding_type list, along with the ML2 driver
++   interface and the plugin interface
++4. test
++5. do other hypervisors
++6. In the Other Place, fix all remaining in tree code
++7. extol the virtues of the new interface to the out of tree
++   Neutron driver maintainers
++
++Dependencies
++============
++
++We do not depend on, but must be wary of, the currently active
++refactoring of the Nova code for Neutron binding.
++
++We absolutely do *not* depend on Neutron changes for this to
++continue functioning as it does, due to the aforementioned
++backward compatibility.  It will only have an active effect when
++Neutron also gets changed.
++
++Testing
++=======
++
++Confirm that Nova is passing an accepted binding type list during
++binding and that it is respected.
++
++Confirm that Nova accepts and reacts correctly to supported,
++unsupported and out-of-list but known binding types.
++
++Intel will ensure that the hugepage dependent change mentioned
++above will be tested by their 3rd party CI.
++
++Documentation Impact
++====================
++
++The Nova-Neutron interface is poorly documented and should be
++comprehensively documented as a part of this change, in dev
++documentation.
++
++References
++==========
++
++None.
++
++History
++=======
++
++.. list-table:: Revisions
++   :header-rows: 1
++
++   * - Release Name
++     - Description
++   * - Liberty
++     - Introduced
++
+-- 
+2.1.0
+

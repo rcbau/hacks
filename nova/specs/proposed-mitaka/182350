@@ -1,0 +1,224 @@
+From 046c90b8fa881fcf227215a05a3cf3a7b854264b Mon Sep 17 00:00:00 2001
+From: Balazs Gibizer <balazs.gibizer@ericsson.com>
+Date: Thu, 30 Apr 2015 15:55:42 +0200
+Subject: [PATCH] Add notification for service status change
+
+Today external system cannot get notification based information about the nova
+service status. Nova service status can be changed administratively via
+via os-services/disable API.
+Having such a notification helps to measure the length of maintenance windows
+or indirectly notify users about maintenance actions that possibly effect the
+operation of the infrastructure.
+
+bp service-status-notification
+
+Change-Id: Ib040cbb2917a99bc3164aa7efd09059f3318df1f
+---
+ .../approved/service-status-notification.rst       | 195 +++++++++++++++++++++
+ 1 file changed, 195 insertions(+)
+ create mode 100644 specs/mitaka/approved/service-status-notification.rst
+
+diff --git a/specs/mitaka/approved/service-status-notification.rst b/specs/mitaka/approved/service-status-notification.rst
+new file mode 100644
+index 0000000..d8246e0
+--- /dev/null
++++ b/specs/mitaka/approved/service-status-notification.rst
+@@ -0,0 +1,195 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++=========================================================
++Add notification for administrative service status change
++=========================================================
++
++https://blueprints.launchpad.net/nova/+spec/service-status-notification
++
++Today external system cannot get notification based information about the nova
++service status. Nova service status can be changed administratively via
++os-services/disable API.
++Having such a notification helps to measure the length of maintenance windows
++or indirectly notify users about maintenance actions that possibly effect the
++operation of the infrastructure.
++
++
++Problem description
++===================
++
++Use Cases
++---------
++
++Deployer wants to measure the time certain nova services were disable
++administratively due to troubleshooting or maintenance actions as this
++information might be part of the agreement between Deployer and End User.
++
++Deployer wants to measure the time certain nova services was forced down due
++to an externally detected error as this information might be part of the
++agreement between Deployer and End User.
++
++Proposed change
++===============
++
++An easy solution for the problem above is to add oslo.messaging notification
++for the following actions:
++
++* /v2/{tenant_id}/os-services/disable
++
++* /v2/{tenant_id}/os-services/enable
++
++* /v2/{tenant_id}/os-services/disable-log-reason
++
++* /v2/{tenant_id}/os-service/force-down
++
++Then ceilometer can receive these notifications and the length of the
++maintenance window can be calculated via ceilometer queries.
++
++Alternatively other third party tools like StackTach can receive the new
++notifications via AMQP.
++
++
++Alternatives
++------------
++
++The only alternative is to poll /v2/{tenant_id}/os-services/ API periodically
++however it means slower information flow and creates load on the nova API
++and DB services.
++
++Data model impact
++-----------------
++None
++
++REST API impact
++---------------
++None
++
++Security impact
++---------------
++None
++
++Notifications impact
++--------------------
++A new notification service.status.update will be introduced with INFO priority
++and the payload of the notification will be the serialized form of the already
++existing Service versioned object.
++
++For more information on the initiative to use versioned object as notification
++payloads see [3].
++
++This way the work in this spec will be compatible with [3] but not directly
++depends on it.
++
++For example after the following API call::
++
++    PUT /v2/{tenant_id}/os-services/disable-log-reason
++        {"host": "Devstack",
++         "binary": "nova-compute",
++         "disabled_reason": "my reason"}
++
++
++The notification would contain the following payload::
++
++       {
++            "nova_object.version":"1.19",
++            "nova_object.name":"Service",
++            "nova_object.namespace":"nova",
++            "nova_object.data":{
++                "id": 1,
++                "host": "Devstack"
++                "binary": "nova-compute",
++                "topic": "compute",
++                "report_count": 32011,
++                "disabled": true,
++                "disabled_reason": "my reason,
++                "availability_zone": "nova",
++                "last_seen_up": "2015-10-15 07:29:13",
++                "forced_down": false,
++                "version": 2,
++            }
++           "nova_object.changes":[
++                "disabled",
++                "disabled_reason",
++                ]
++       }
++
++Please note that the compute_node field will not be serialized into the
++notification payload as that will bring in a lot of additional data not needed
++here.
++
++Other end user impact
++---------------------
++None
++
++Performance Impact
++------------------
++None
++
++Other deployer impact
++---------------------
++None
++
++Developer impact
++----------------
++None
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  balazs-gibizer
++
++
++Work Items
++----------
++
++* Send a new notification if the disabled disabled_reson or forced_down field
++  of the Service object is updated
++
++
++Dependencies
++============
++None
++
++
++Testing
++=======
++Besides unit test new functional test cases will be added to cover the
++new notification
++
++
++Documentation Impact
++====================
++None
++
++
++References
++==========
++
++[1] This idea has already been discussed on ML
++    http://lists.openstack.org/pipermail/openstack-dev/2015-April/060645.html
++
++[2] This work is related to but not depends on the bp mark-host-down
++    https://blueprints.launchpad.net/nova/+spec/mark-host-down
++
++[3] Versioned notification spec https://review.openstack.org/#/c/224755/
++
++
++History
++=======
++
++.. list-table:: Revisions
++   :header-rows: 1
++
++   * - Release Name
++     - Description
++   * - Mitaka
++     - Introduced
+-- 
+2.1.0
+

@@ -1,0 +1,240 @@
+From 5f0cc412d23646a0694e2ccd74201156b6613fc7 Mon Sep 17 00:00:00 2001
+From: ShaoHe Feng <shaohe.feng@intel.com>
+Date: Mon, 8 Dec 2014 17:31:36 +0800
+Subject: [PATCH] Attach/detach SR-IOV interface
+
+This spec describes the blueprint sriov-interface-attach-detach
+
+Change-Id: Ie35558cfc6a8a49df3ec230c18b35a54940d2698
+---
+ .../approved/sriov-interface-attach-detach.rst     | 218 +++++++++++++++++++++
+ 1 file changed, 218 insertions(+)
+ create mode 100644 specs/mitaka/approved/sriov-interface-attach-detach.rst
+
+diff --git a/specs/mitaka/approved/sriov-interface-attach-detach.rst b/specs/mitaka/approved/sriov-interface-attach-detach.rst
+new file mode 100644
+index 0000000..6c5a9ac
+--- /dev/null
++++ b/specs/mitaka/approved/sriov-interface-attach-detach.rst
+@@ -0,0 +1,218 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++==========================================
++support sriov interface attach/detach
++==========================================
++
++https://blueprints.launchpad.net/nova/+spec/sriov-interface-attach-detach
++
++SR-IOV makes it possible for a VM to directly send packets to the VIC (virtual
++interface card) without having the hypervisor involved.
++Normal network adapter hotplug [NETWORK_ADAPTER_HOTPLUG]_ is supported in Feb,
++2014. And in Juno release, the libvirt driver is enhanced to support SR-IOV
++networking by [LIBVIRT_SUPPORT_SR-IOV]_. Also [PCI_PASSTHROUGH_SRIOV]_ enables
++a nova instance to be booted up with neutron SRIOV ports.
++Now we can support attach or detach SR-IOV interfaces to an active VM if host
++supports SR-IOV base on the above patches.
++
++There are two variants in connecting a SR-IOV port to its corresponding VF.
++A SR-IOV port may be directly connected to its VF [DIRECT_SR-IOV]_. Or it may
++be connected with a macvtap device that resides on the host, which is then
++connected to the corresponding VF [MACVTAP_SR-IOV]_. Both connecting types will
++be supported.
++
++Problem description
++===================
++
++Right now it is possible to attach/detach a normal interface for an active VM
++by nova attach_interface/detach_interface API.
++However, it's not possible to request access to virtual network dynamically via
++SR-IOV NICs at present.
++
++
++For example we can create a direct SR-IOV port by:
++  neutron port-create <net-id> --binding:vnic-type direct
++
++Then we can do the following to attach interface to a VM:
++  nova interface-attach [--port-id <port_id>] [--fixed-ip <fixed_ip>] <server>
++
++Nova attach interface api hotplug an interface to an existing server.
++The normal pci allocation has already finished after the server boot up.
++If the port to be hotplugged for this server is "direct' or 'macvtap', it just
++not works because no pci device allocated for it yet.
++
++The Nova interface-attach API needs be enhanced to support SR-IOV.
++We need to translate the port to pci request in the 'nova attach-interface' API
++stage, and allocate the pci devices on host to support the hotplug a SRIOV
++port.
++
++
++Use Cases
++----------
++
++Alice wants certain virtual machines to have access to faster networking
++interfaces. She configures her virtual machine instance as normal.
++After launch, Alice wishes to add a new network interface to her virtual
++machine that has better performance than the network interface already on her
++VM. She calls an API to attach a new network interface, passing in some tag
++that indicates a better tier of performance for the interface.
++
++Project Priority
++-----------------
++None
++
++Proposed change
++===============
++
++attach_interface
++----------------
++For attach interface there is only 2 things that need to be addressed.
++
++First one is converting the port/network information from attach interface API
++to a pci request. The API to create a PCI request already exists.
++
++The second thing is alloc the pci device on the host (nova/compute/manager).
++Libvirt has already supported generating the pci xml for server, and it can
++attach allocated SR-IOV port correctly, if the port is available.
++
++The unavailability of a suitable PCI device seems like it will be the most
++common pitfall here. So need a clear way via the instance actions API to
++indicate failure to the user.
++Particularly given that the user will have no visibility into whether there are
++any free PCI devices on the host their VM is placed on.
++
++detach_interface
++----------------
++We need to refresh PCI status to free the device object after detach a SR-IOV
++port.
++
++It is safe to detach an directly connected PCI passthrough device, but it is
++not guaranteed to succeed. What happens is that the hypervisor injects an ACPI
++request to unplug the device. The guest OS must co-operate by releasing the
++device, before the hypervisor will complete the action of physically removing
++it. So when require a guest OS that supports ACPI unplug of course, and if the
++guest is crashed or being malicious there is no guarantee the unplug will
++succeed. Libvirt will wait a short while for success, but nova must monitor for
++libvirt events to see if/when it finally completes. This delayed release has
++implications for when Nova can mark the PCI device as unused and available for
++other guests to assign.
++
++
++Alternatives
++------------
++
++None
++
++
++Data model impact
++-----------------
++
++None
++
++
++REST API impact
++---------------
++None
++
++
++Security impact
++---------------
++
++None
++
++
++Notifications impact
++--------------------
++
++None
++
++
++Other end user impact
++---------------------
++
++None
++
++
++Performance Impact
++------------------
++
++Additional pci request will be called, that will bring slightly performance
++impact.
++
++
++Other deployer impact
++---------------------
++
++No known deployer impact other than configuring the PCI whitelist for SR-IOV
++networking devices.
++
++
++Developer impact
++----------------
++
++None
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  <shaohefeng>
++
++
++Work Items
++----------
++
++* nova compute API
++
++
++Dependencies
++============
++
++None
++
++
++Testing
++=======
++
++It can be run the existing vif plug/unplug scripts for unit tests. Tempest
++tests need to be created to ensure proper functioning of SR-IOV networking.
++For tempest testing, given the nature of SR-IOV depending on hardware.
++
++Now intel has set up a PCI CI [INTEL_PCI_CI]_ and a SR-IOV CI
++[INTEL_SRIOV_CI]_ to ensure the SR-IOV related feature.
++
++
++Documentation Impact
++====================
++
++* a user guide/wiki on how to use SR-IOV networking in openstack
++
++
++References
++==========
++
++.. [LIBVIRT_SUPPORT_SR-IOV] `Support SR-IOV networking in libvirt
++  <https://review.openstack.org/#/c/107466/>`_
++.. [PCI_PASSTHROUGH_SRIOV] `enable a nova instance to be booted up with
++  neutron SRIOV ports
++  <https://blueprints.launchpad.net/nova/+spec/pci-passthrough-sriov>`_
++.. [NETWORK_ADAPTER_HOTPLUG] `support network adapter hotplug
++  <https://blueprints.launchpad.net/nova/+spec/network-adapter-hotplug>`_
++.. [DIRECT_SR-IOV] `PCI network device passthrough
++  <http://www.libvirt.org/formatdomain.html#elementsNICSHostdev>`_
++.. [MACVTAP_SR-IOV] `Direct attachment to physical interface
++  <http://www.libvirt.org/formatdomain.html#elementsNICSDirect>`_
++.. [ENHANCE_PCI_WHITELIST] `Enhance PCI whitelist
++  <https://review.openstack.org/#/c/99043/>`_
++.. [INTEL_PCI_CI] `Intel PCI CI
++  <https://wiki.openstack.org/wiki/ThirdPartySystems/Intel-PCI-CI>`_
++.. [INTEL_SRIOV_CI] `Intel SRIOV CI
++  <https://wiki.openstack.org/wiki/ThirdPartySystems/Intel-SRIOV-CI>`_
+-- 
+2.1.0
+

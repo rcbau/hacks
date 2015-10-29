@@ -1,0 +1,228 @@
+From 7cd2c9e89a128c1b5377192376e0445618c8f51b Mon Sep 17 00:00:00 2001
+From: Maxime Leroy <maxime.leroy@6wind.com>
+Date: Tue, 20 Oct 2015 12:32:43 +0200
+Subject: [PATCH] Specs to extend vhostuser type in libvirt driver to support
+ ovs-fp
+
+Change-Id: I8067b36b35452484fb5879e15bea96e7bc59f2db
+---
+ .../approved/libvirt-vif-vhostuser-ovs-fp.rst      | 207 +++++++++++++++++++++
+ 1 file changed, 207 insertions(+)
+ create mode 100644 specs/mitaka/approved/libvirt-vif-vhostuser-ovs-fp.rst
+
+diff --git a/specs/mitaka/approved/libvirt-vif-vhostuser-ovs-fp.rst b/specs/mitaka/approved/libvirt-vif-vhostuser-ovs-fp.rst
+new file mode 100644
+index 0000000..f99ddc1
+--- /dev/null
++++ b/specs/mitaka/approved/libvirt-vif-vhostuser-ovs-fp.rst
+@@ -0,0 +1,207 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++===================================================
++Add plug/unplug method for ovs-fp in libvirt driver
++===================================================
++
++https://blueprints.launchpad.net/nova/+spec/libvirt-vif-vhostuser-ovs-fp
++
++Fast path technology is an user-space stack for high performance packet
++offloading Linux kernel scenarios including acceleration of ip routing, linux
++bridge, OVS, iptables, conntrack... Fast path is deployed on the compute nodes
++to offload the packet processing. It can be configured with standard linux
++commands (i.e. iproute2, ovs-vsctl, ...), allowing to support Neutron Mechanism
++Driver/Agents based on Linux bridge or openvswitch.
++
++To benefit from the offloading, a VM needs to use vhost-user instead of
++vhost-net backend for virtio interfaces.
++
++As a consequence, this blueprint proposes to extends the vhost-user support in
++libvirt to support plug/unplug for the ovs-fp Mechanism Driver. [1]
++
++Problem description
++===================
++
++A new vif type VIF_VHOSTUSER has been added in kilo release [2]. This new vif
++type is used by two types of vSwitches: snabb switch [3] and ovs dpdk [4].
++
++This VIF type is enabled by neutron drivers by using portbindings extension
++and setting the vif_type to VIF_VHOSTUSER.
++
++For ovs dpdk, 'vhost_user_ovs_plug' is set to True in the vif_details,
++which allows to add/remove a dpdk vhostuser port into an ovs bridge.
++
++Unfortunately, we are facing two problems.
++
++1. The way to create/remove an ovs-fp switch port is different from an ovs dpdk
++   port.
++
++   For ovs dpdk, an ovs port is created like this::
++
++     # ovs-vsctl add-port br0 vhost-user1 -- set Interface vhost-user1 \
++         type=dpdkvhostuser
++
++   For ovs-fp, a linux netdevice is created, and must then be added to an ovs
++   bridge::
++
++     # fp-vdev add tap-xxx --sockpath /tmp/vhost_socket
++     # ovs-vsctl add-port br0 tap-xxxx
++
++#. The ovs-fp switch also supports linux bridge and iptables. This would allow
++   to setup security groups, but the hybrid plug method is not supported by
++   VIF_VHOSTUSER.
++
++Use Cases
++---------
++
++This change will allow ovs-fp to avoid using a monkey patch on Nova to
++plug/unplug a port into the switch [5].
++
++Proposed change
++===============
++
++We propose to add a new key in 'binding:vif_details':
++VIF_DETAILS_VHOSTUSER_OVS_TYPE.
++
++The possible values for VIF_DETAILS_VHOSTUSER_OVS_TYPE are: ovs-dpdk
++and ovs-fp. The default value is: ovs-dpdk.
++
++If VIF_DETAILS_VHOSTUSER_OVS_PLUG is True and the
++VIF_DETAILS_VHOSTUSER_OVS_TYPE is equals to ovs-dpdk or not set, plug/unplug
++method will execute the same code that before.
++
++If VIF_DETAILS_VHOSTUSER_OVS_PLUG is True and the
++VIF_DETAILS_VHOSTUSER_OVS_TYPE is equals to ovs-fp, plug/unplug
++method will execute some specific code to delete/create the tap device for the
++vhostuser socket and plug/unplug this one into the ovs bridge.
++
++Alternatives
++------------
++
++Before Juno release, the option vif_driver could be used to load external
++vif driver. This option has been removed. Thus it's not anymore possible to
++have an external vif driver for the ovs-fp ML2 mechanism driver.
++
++In kilo cycle, a new plugging mechanism for VIF driver has been proposed to
++allow loading vendor external vif driver [6]. It is similar to vif_driver
++option with some enhancements (i.e able to load multiple vif drivers).
++
++This spec has been rejected in favor of using an external script to plug/unplug
++a port into a bridge in nova. A spec [7] has been proposed in the liberty
++cycle.
++
++This one has been rejected in favor of the os-vif-library. [8]
++
++So, alternatively the os-vif-library could be used to support the plug/unplug
++method for ovs-fp mechanism driver. But, this library is not yet available.
++
++Data model impact
++-----------------
++
++None.
++
++REST API impact
++---------------
++
++None.
++
++Security impact
++---------------
++
++None.
++
++Notifications impact
++--------------------
++
++None.
++
++Other end user impact
++---------------------
++
++None.
++
++Performance Impact
++------------------
++
++None.
++
++Other deployer impact
++---------------------
++
++VIF_DETAILS_VHOSTUSER_OVS_TYPE does not have to be configured by the deployer.
++Neutron drivers will set this value via port binding.
++
++Developer impact
++----------------
++
++VIF_DETAILS_VHOSTUSER_OVS_TYPE only have to be provided for ovs-fp Mechanism
++ML2 driver. The ovs dpdk Mechanism Driver doesn't need to provided this one,
++because the default value is 'ovs-dpdk'.
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++   maxime-leroy <maxime.leroy@6wind.com> irc:mleroy
++
++Other contributors:
++   francesco-santoro <francesco.santoro@6wind.com>
++
++Work Items
++----------
++
++* Add plug/unplug method for ovs-fp in libvirt driver. [9]
++
++Dependencies
++============
++
++None.
++
++Testing
++=======
++
++* Unit tests will be added to validate these modifications.
++
++* Third party tests for neutron are being developed:
++  http://openstack-ci.6wind.com/networking-6wind-ci/
++
++Documentation Impact
++====================
++
++No documentation changes for Nova are anticipated.
++
++References
++==========
++
++[1] Neutron ovs fp mechanism driver:
++    https://github.com/openstack/networking-6wind/blob/master/networking_6wind/ml2_drivers/mech_ovs_fp.py
++
++[2] libvirt_vif_vhostuser spec:
++    https://blueprints.launchpad.net/nova/+spec/libvirt-vif-vhost-user
++
++[3] Snabb NFV (initial vswitch supporting vhost-user): http://snabb.co/nfv.html
++
++[4] Neutron ovs dpdk mechanism driver:
++    https://github.com/openstack/networking-ovs-dpdk
++
++[5] ovs-fp nova monkey patch:
++    https://github.com/openstack/networking-6wind/blob/master/networking_6wind/monkey_patch/vif.py
++
++[6] Spec for libvirt vif driver plugin
++    https://blueprints.launchpad.net/nova/+spec/libvirt-vif-driver-plugin
++
++[7] Spec for vif plug script
++    https://blueprints.launchpad.net/nova/+spec/vif-plug-script
++
++[8] Spec for os-vif-library
++    https://review.openstack.org/#/c/193668/
++
++[9] Proof of concept implemented this spec
++    https://review.openstack.org/237680
+-- 
+2.1.0
+

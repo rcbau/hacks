@@ -1,0 +1,193 @@
+From 3728d4e6e9855510b1dae5f084ee354b94967a21 Mon Sep 17 00:00:00 2001
+From: Fei Long Wang <flwang@catalyst.net.nz>
+Date: Fri, 12 Jun 2015 16:55:45 +1200
+Subject: [PATCH] Add spec for volume backed backup
+
+Change-Id: I8490e70ba795bbb3f6fff76004e177b912531736
+---
+ .../approved/backup-volume-backed-instance.rst     | 173 +++++++++++++++++++++
+ 1 file changed, 173 insertions(+)
+ create mode 100644 specs/mitaka/approved/backup-volume-backed-instance.rst
+
+diff --git a/specs/mitaka/approved/backup-volume-backed-instance.rst b/specs/mitaka/approved/backup-volume-backed-instance.rst
+new file mode 100644
+index 0000000..19951b3
+--- /dev/null
++++ b/specs/mitaka/approved/backup-volume-backed-instance.rst
+@@ -0,0 +1,173 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++=============================
++Backup Volume Backed Instance
++=============================
++
++https://blueprints.launchpad.net/nova/+spec/backup-volume-backed-instance
++
++Nova backup is a good function for user who want to do a regular backup
++for their instance. It can help user create instance backup and will remove
++the old images based on the rotation config set by user automatically.
++
++
++Problem description
++===================
++
++Currently, the problem is Nova backup only supports instances created based
++image. That said, Nova will always fail to backup a volume backed instance.
++
++
++Use Cases
++----------
++
++* User want to backup an instance which is volume backed.
++
++Project Priority
++-----------------
++
++Priorities have not been decided for Liberty.
++
++
++Proposed change
++===============
++
++1. Image Create: When there is a call to Nova to backup a volume backed
++instance, we can check if it's volume backed. If it is, then call the existing
++volume snapshot function.
++
++2. Rotation: We need another change for the rotation of backup. Because
++currently the existing rotation function only call Glance image delete to
++remove the image. However, if the instance is volume backed, then image
++delete won't remove the volume snapshoted by backup. So new change will
++be added to remove the snapshoted volume.
++
++3. RPC: Because this is a new feature, so we have to add a new version for
++RPC to avoid Nova API sends the request to the compute node which can't
++support it. And throw an explicit exception if the target doesn't support.
++
++4. Microversion: This change doesn't need a micro version. Because it's not a
++change to the API extensions, it's a change in the nova.compute.api module
++which would make it work for v2 and v2.1.
++
++And there are some other considerations should be noted at here:
++1. If there are more than one volume for the instance, and if the first
++snapshot is failed to be deleted, then other snapshots will be deleted
++continually.
++
++2. Currently, when Cinder returns a response of snapshot create call, it has
++created just a snapshot object with 'creating' state and asynchronously called
++a backend to create the snapshot. After a time (depending on used backend,
++volume size and so on) the creating is finished and state of the snapshot
++object is changed to 'available' or 'error'. I.e. the process finishes later
++than a caller receives the response. That said, the backup action may return
++with complete status but the snapshot is still in creating status. This is a
++known limitation of snapshot_volume_backend, see
++https://github.com/openstack/nova/blob/master/nova/compute/api.py#L2245. For
++backup volume backed instance, we're reusing the snapshot_volume_backend, so
++for now, we will leave it as it is and add a note/log in code.
++
++Alternatives
++------------
++
++User have to call snapshot manually to do a regularly backup for volume backed
++instances.
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++None
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++The max number of volume snapshots will be consumed by the backup logic is
++(max_backup_count + 1) * instance_volumes_count. It's important for a user to
++understand how many backups he can have per his quota.
++
++Performance Impact
++------------------
++
++None
++
++Other deployer impact
++---------------------
++
++None.
++
++Developer impact
++----------------
++
++None
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  flwang (Fei Long Wang)
++
++Other contributors:
++  None
++
++Work Items
++----------
++
++  * Implement nova backup for volume backed instance in Nova
++
++  * Add new test cases for this in Tempest.
++
++
++Dependencies
++============
++
++None
++
++
++Testing
++=======
++
++  * Unit test will be added for this new feature
++
++  * New test case will be added in Tempest to cover this. Because Tempest is
++    branchless so Tempest would have to be configured to know if it can run
++    this test or not. And given we won't introduce a microversion for this
++    change, so we will add a config in Tempest to indicate if volume backed
++    backup is supported or not. By default it's False, so that it's compatible
++    with old releases, like Kilo and Juno. And then, we will need another
++    change in Devstack master branch to set it as True to test it. As part of
++    the test, the case will run the verification of the rotated backup for the
++    Glance image and the Cinder volume so we know the rotations are working
++    properly.
++
++Documentation Impact
++====================
++
++Documentation should be updated to reflect this new support.
++
++
++References
++==========
++
+-- 
+2.1.0
+

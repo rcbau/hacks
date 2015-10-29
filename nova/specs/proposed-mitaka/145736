@@ -1,0 +1,261 @@
+From 8b97642af541ad9daa55e80d1567cfd846e47b28 Mon Sep 17 00:00:00 2001
+From: jichenjc <jichenjc@cn.ibm.com>
+Date: Fri, 10 Apr 2015 08:57:13 +0800
+Subject: [PATCH] Allow adjust ephemeral disks during resize
+
+Allow increase ephemeral disk during resize operation if the disk
+is created from --ephemeral param when nova boot the instance.
+
+Change-Id: I206d3312907148b832ebd63c366213fc675b6512
+---
+ ...allow_increase_ephemeral_disk_during_resize.rst | 238 +++++++++++++++++++++
+ 1 file changed, 238 insertions(+)
+ create mode 100644 specs/mitaka/approved/allow_increase_ephemeral_disk_during_resize.rst
+
+diff --git a/specs/mitaka/approved/allow_increase_ephemeral_disk_during_resize.rst b/specs/mitaka/approved/allow_increase_ephemeral_disk_during_resize.rst
+new file mode 100644
+index 0000000..b14e40c
+--- /dev/null
++++ b/specs/mitaka/approved/allow_increase_ephemeral_disk_during_resize.rst
+@@ -0,0 +1,238 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++==================================================
++Allow increase ephemeral disk during resize
++==================================================
++
++https://blueprints.launchpad.net/nova/+spec/allow_increase_ephemeral_disk_during_resize
++
++Allow increase ephemeral disk during resize
++
++NOTE: this bp is in early stage, only want to collect info and opinion
++on whether it's worthy to do so and additional work will be done on the bp
++such as API changes and work items etc.
++
++
++Problem description
++===================
++
++Currently we allow resize an instance to a flavor with bigger ephemeral
++disk size. However, if the previous disks are created through
++--ephemeral parameter, the resize operation will not affect them and
++user have no way to update those disks.
++
++step 1: create a flavor with ephemeral disk 20G ::
++
++  $ nova flavor-create --ephemeral 20 jit2 122 512 1 1
++  +-----+------+-----------+------+-----------+------+-------+-------------+
++  | ID  | Name | Memory_MB | Disk | Ephemeral | Swap | VCPUs | RXTX_Factor |
++  +-----+------+-----------+------+-----------+------+-------+-------------+
++  | 122 | jit2 | 512       | 1    | 20        |      | 1     | 1.0         |
++  +-----+------+-----------+------+-----------+------+-------+-------------+
++
++step 2 ::
++  nova boot --image e088edb0-5109-4d1c-896d-4b2937522007 --flavor 122
++  --nic net-id=71bda547-4346-438b-b494-06f257d8f749 --ephemeral size=1
++  --ephemeral size=1 j4
++
++  nova list
++  +--------------------------------------+----+---------+-------------------+
++  | ID                                   | N  | Status  | Networks          |
++  +--------------------------------------+----+---------+-------------------+
++  | aab7d856-c9a5-4fc3-b646-82c23c96f049 | j1 | SHUTOFF | private=10.0.0.3  |
++  | 36d101fd-6f43-4ad6-840f-e1208c0dfc7c | j4 | ACTIVE  | private=10.0.0.13 |
++  +--------------------------------------+----+---------+-------------------+
++
++step 3 ::
++
++  create another flavor with following command
++  nova flavor-create --ephemeral 30 jit3 123 512 1 1
++
++  use following resize command to resize instance:
++  nova resize 36d101fd-6f43-4ad6-840f-e1208c0dfc7c 123
++
++  Return back to the folder and check the disk size.
++  /opt/stack/data/nova/instances/36d101fd-6f43-4ad6-840f-e1208c0dfc7c
++  disk.eph0 and disk.eph1 are there and the disk size is 1G
++
++  So resize didn't make change to ephemeral disk and nova can't change
++  the size of the existing ephemeral disk.
++
++Use Cases
++----------
++
++This bp suggest to allow input params to resize operation
++so that the ephemeral disk size can be changed
++if the ephemeral disk is created through --ephemeral parameter or
++additional ephemeral disk can be created if quota and size limit allow.
++
++Project Priority
++-----------------
++
++Not applicable
++
++Proposed change
++===============
++
++1) Accept --ephemeral parameter when resize
++if a block device mapping is sent as parameter, then the new created
++instance will have this additional disk created. Compute layer will
++validate whether it's acceptable or not then create disks during resize
++operation; in this case, even if it's same flavor the operations will
++still be accepted
++
++2) Accept --ephemeral vdb=5G parameter when resize
++Assume this is a 'resize' to the ephemeral disk we already created.
++The vdb is a parameter that nova will use it to determine which disk
++is going to be used. If the disk can't be found, a HTTPBadRequest
++error will be returned.
++
++If we get a vdb, we compare the records in block_device_mapping table,
++if this disk name is invalid or not able to find the disk or this
++disk is not an ephemeral disk, a invalid input exception will be raise;
++if the disk makes ephemeral disk exceed ,also raise exception.
++Also, if the original vdb is 10G (above case), then the new action
++will report an error because it's a shrink, this is identical to
++nova doing now. Thus, this is expand only.
++
++This will be done on libvirt for this patch. The other can decide to
++adopt this feature or ignore the params with their own implementation.
++
++Alternatives
++------------
++
++we can ask user to delete the instance and recreate with the updated
++ephemeral disk size.
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++There is already a param call extra_instance_updates in resize function
++at compute/api.py:resize function, leverage this to get the input param
++just like we did at API layer function for create:
++nova/api/openstack/compute/block_device_mapping.py,
++A block_device_mapping will be created and send to following resize function.
++
++
++* Specification for the method
++
++  * Method type
++
++    * POST
++
++  * Normal http response code
++
++    * 202: Accepted
++
++  * Expected error http response code
++
++    * 400: Bad Request
++
++      * When the resize is not an expand operation
++
++      * When the disk specified can't be found
++
++  * URL for the resource
++
++    * /v2.1/servers/{server_id}/action
++
++  * JSON schema definition for the body data, device_name is '' means
++    a new ephemeral disk will be created.
++
++    ::
++
++      {
++         "block_device_mapping": [
++           {
++             'device_name': 'vdb',
++             'volume_size': 10
++           }
++           {
++             'device_name': '',
++             'volume_size': 2
++           }
++         ],
++      }
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++End user is able to resize ephemeral disk as they want.
++
++Performance Impact
++------------------
++
++None
++
++Other deployer impact
++---------------------
++
++None
++
++Developer impact
++----------------
++
++None
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++    jichenjc <jichenjc@cn.ibm.com>
++
++Work Items
++----------
++
++1) Create API layer function to parse input param as block_device_mapping,
++   by referring to existing 'create' function code.
++2) Do Check at compute layer and reject if it's not valid or exceed disk
++   size limit.
++3) Create or resize the ephemeral disk accordingly at virt layer, only
++   disk increase will be allowed, the shrink action will report an error
++   just like we did now.
++4) Because some virt driver layer might not support this kind of disk
++   increase, a new capability will be added to mark whether this virt
++   can 'dynamic' increase the disk size or not.
++5) python-novaclient need to be updated accordingly as well.
++
++Dependencies
++============
++
++None
++
++Testing
++=======
++
++Functional cases for resize an ephemeral disk
++created from --ephemeral param.
++
++Documentation Impact
++====================
++
++Doc need to be updated to indicate API changes.
++
++References
++==========
+-- 
+2.1.0
+

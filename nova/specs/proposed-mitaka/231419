@@ -1,0 +1,152 @@
+From 0d873200891b8ea4d6216b941560dee5018dd90b Mon Sep 17 00:00:00 2001
+From: Claudiu Belu <cbelu@cloudbasesolutions.com>
+Date: Tue, 6 Oct 2015 14:07:52 +0300
+Subject: [PATCH] Moves Hyper-V Fibre Channel support spec to Mitaka
+
+Previously-approved: Liberty
+
+Implements: blueprint hyperv-fibre-channel
+
+Change-Id: Ib3d1eeb8486a8b3baa9126ef94e5e53c7647b5ec
+---
+ specs/mitaka/approved/hyperv-fibre-channel.rst | 128 +++++++++++++++++++++++++
+ 1 file changed, 128 insertions(+)
+ create mode 100644 specs/mitaka/approved/hyperv-fibre-channel.rst
+
+diff --git a/specs/mitaka/approved/hyperv-fibre-channel.rst b/specs/mitaka/approved/hyperv-fibre-channel.rst
+new file mode 100644
+index 0000000..12c4c1c
+--- /dev/null
++++ b/specs/mitaka/approved/hyperv-fibre-channel.rst
+@@ -0,0 +1,128 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++==========================================
++Hyper-V: Fibre channel support
++==========================================
++
++https://blueprints.launchpad.net/nova/+spec/hyperv-fibre-channel
++
++This blueprint proposes adding Fibre Channel support for the Hyper-V driver.
++
++Problem description
++===================
++
++At the moment, the Hyper-V driver supports attaching volumes only via iSCSI
++or SMB. In many cases, using FC based topologies might be desired.
++
++Use Cases
++----------
++
++This blueprint addresses deployers possessing FC based infrastructure.
++
++This will enable attaching volumes exported by Cinder FC based backends using
++the retrieved target informations such as WWN and LUN.
++
++Project Priority
++-----------------
++
++None
++
++Proposed change
++===============
++
++A new volume driver will be introduced, having a workflow similar to the iSCSI
++volume driver. This means that the volumes will be attached to the instances
++as pass-through disks, making this transparent to the guest.
++
++Alternatives
++------------
++
++An alternative would be exposing virtual HBAs to guests. Although this has
++some benefits in terms of performance, it requires the guest to take part in
++the volume attach proccess.
++
++Also, another limitation is that this scenario would be supported only in case
++of Windows Server guests.
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++None
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++None
++
++Performance Impact
++------------------
++
++This will enable using high performance FC based storage.
++
++Other deployer impact
++---------------------
++
++The deployer will be responsible of properly configuring the HBA.
++
++Developer impact
++----------------
++
++None
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  plucian
++
++Work Items
++----------
++
++* Implement the Fibre Channel volume driver
++
++Dependencies
++============
++
++None
++
++Testing
++=======
++
++This will be tested by the Hyper-V CI.
++
++Documentation Impact
++====================
++
++This feature will be documented.
++
++References
++==========
++
++None
++
++History
++=======
++
++None
+-- 
+2.1.0
+

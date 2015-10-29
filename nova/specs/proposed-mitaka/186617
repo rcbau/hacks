@@ -1,0 +1,549 @@
+From fd044fc84cb32ee00a2b03b8bab322bf404a0059 Mon Sep 17 00:00:00 2001
+From: Kevin Fox <kevin@efox.cc>
+Date: Thu, 28 May 2015 17:29:13 -0700
+Subject: [PATCH] Instance Users for Cloud Interaction
+
+Instances have need to some times interact with the cloud that it is
+running under. This can include getting keys from Barbican, putting
+messages in a Zaqar queue, getting a file from Swift, etc. All of
+these services require a fresh Keystone token.
+
+APIImpact
+
+Change-Id: Iae2d45d87fc11f6918d93ff032d4a5b5a19f88c0
+---
+ specs/mitaka/approved/instance-users.rst | 522 +++++++++++++++++++++++++++++++
+ 1 file changed, 522 insertions(+)
+ create mode 100644 specs/mitaka/approved/instance-users.rst
+
+diff --git a/specs/mitaka/approved/instance-users.rst b/specs/mitaka/approved/instance-users.rst
+new file mode 100644
+index 0000000..13b1029
+--- /dev/null
++++ b/specs/mitaka/approved/instance-users.rst
+@@ -0,0 +1,522 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++==========================================
++Instance Users for Cloud Interaction
++==========================================
++
++https://blueprints.launchpad.net/nova/+spec/instance-users
++
++Instances have need to some times interact with the cloud that it is running
++under. This can include getting keys from Barbican, putting messages in a
++Zaqar queue, getting a file from Swift, etc. All of these services require
++a fresh Keystone token.
++
++
++Problem description
++===================
++
++Instances need a secure way of getting fresh Keystone Tokens so that they can
++talk to other OpenStack services.
++
++It is very challenging to get secrets securely to Instances today. Especially
++in light of AutoScaling. Barbican is the official OpenStack secret store, but
++it needs a Keystone Token for an account with appropriate permissions to
++download a secret. This leads to a major problem. "How do you get a secret
++securely to the Instance in order to get a Secret from the Secret store?"
++
++Another need is getting a secret to an Instance in order for it to connect to
++a Zaqar queue in order to process requests directed to a Guest Agent running
++on that Instance. Zaqar only allows you to talk to it with a Keystone Token.
++Heat for example needs to bind its Guest Agent to Zaqar to enable Software
++Deployments to work securely and with low overhead.
++
++In addition, the user that launches the Instance needs a way to associate
++resources they control with the Instance User so that the Instance's Tokens
++have the authorization it needs to fetch resources or utilize them as needed.
++By having a user per Instance that needs Tokens, the Instance only is granted
++access to just the secrets that it needs.
++
++Other considerations:
++ * Keystone is moving away from being an Identity provider due to scaling
++   issues. They therefore have strongly requested instance users be
++   implemented with some form of federated identity. They are implementing a
++   simple x509 based federation, and would prefer it to be used.
++ * Barbican provides an x509 CA.
++ * Nova UserData's not very secure. It outlasts an Instances deletion due to
++   Soft Deletes.
++ * Instances can exist for a very long time. (Pets. Years...)
++ * Instances can be shut down, suspended or shelved for significant periods of
++   time. (Can't refresh certificates before they expire)
++ * Instances can be snapshotted. Secrets stored on the root drive will get
++   copied to new instances.
++ * Non root ephemeral drives arn't snapshotted.
++ * Heat would like to use Zaqar for its Guest Agent. This means Heat Software
++   Deployments can not be relied upon.
++ * While the Nova MD server is arguably secure for VM's, It is not for Bare
++   Metal.
++ * The Nova MD servver is not trusted by many so can't be the only mechanism.
++   ConfigDrive can be an alternative.
++ * ConfigDrive data's cant be refreshed.
++ * Technologies change. The API should be abstract enough to allow the
++   Authentication mechanism to change without the user knowing.
++ * If the CA is ever compromised or the certificate algorithm is, there needs
++   to be a way to reissue all the certificates.
++ * Because so many different hypervisors exist, perhaps part of the
++   authentication mechanism should be left up to the driver. That way, the
++   driver can decide which of the tradeoffs are best to make for it.
++ * The app catalog needs instance users to be ubiquitous to make more Cloud
++   enabled software to be easily written.
++ * To be ubiquitous, instance users must be easy to implement by operators. As
++   few new services as possible should be added.
++ * CRL's don't scale well. Need to decouple the invalidation logic from the
++   certificate lifetime. OCSP Perhaps?
++
++Some Driver specific Phase 1 Authentication options:
++ * IPMI Console: Authenticated side channel between physical machine and
++   Instance.
++ * Hypervisor -> VM:
++   * IP based Service in network namespace on Hypervisor attached only to VM.
++   * Extra ephemeral disk created/written by Hypervisor.
++ * Nova Metadata service (Has authentication by IP address and Antispoofing
++   rules.)
++
++Amazon ran into the same exact issue and have details of their implementation
++here:
++http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/iam-roles-for-amazon-ec2.html
++
++They mention the same issues with AutoScaling.
++
++In summary, they have extended their Nova equivalent API:
++ * To take in IAM Profile on boot,
++   (aws ec2 run-instances --iam-instance-profile role_name ...)
++ * Extended their metadata server to hand out fresh tokens to the Instance upon
++   request with that role.
++   (curl http://169.254.169.254/latest/meta-data/iam/security-credentials/role_name)
++
++Use Cases
++----------
++
++Developers will use this when writing generic heat templates to allow Instances
++to securely fetch secrets they need to properly operate from Barbican without
++storing secrets in the Nova and/or Heat database. This allows contributing such
++templates to the app-catalog.
++
++Various OpenStack services that launch Instances with Guest Agents can use
++this to allow communication between controller nodes and the guest agent via
++Zaqar.
++
++Such services include:
++ * Heat
++ * Sahara
++ * Trove
++ * Murano
++ * Octavia
++ * Any other that uses a Guest Agent
++
++Various new applications can be created that interact with OpenStack services.
++ * A website VM that stores/retrieves stuff in Swift
++ * A Nagios application could be written that uses credentials to monitor the
++   VM's in the tenant its running on automatically.
++
++An application on a Instance may know its malfunctioning and need a Keystone
++Token to tell LBaaS to administratively disable itself from the Pool.
++
++There are many many other use cases.....
++
++Project Priority
++-----------------
++
++None
++
++Proposed change
++===============
++
++Do to considerations in the Problem Description there should be two phases to
++the Authentication:
++
++1. Driver specific authentication from Instance to Instance User Service to
++   get a fresh Keystone Certificate for the Instance.
++2. A certificate issued for the Instance so that it can authenticate with
++   Keystone and get a Keystone Token.
++
++
++Initial Phase 1 workflow with Serial Console:
++ * Instance fetches initial Instance User information from the Nova Meta Data
++   server or ConfigDrive. This includes endpoint and auth type="SerialConsole".
++ * Instance contacts the Instance User Service endpoint with its instance ID
++   asking for a Certificate.
++ * Instance User Service generates a tempurl and a random token returning it to
++   the Instance.
++ * The Instance prints out a specially formatted message to the serial console
++   including the random token.
++ * The Instance User Service connects to the Instances serial console and waits
++   for the random token timing out after a while. If token found and matches,
++   the certificate is provisioned and the tempurl becomes authorized for
++   certificate retrieval.
++ * The Instance keeps trying to fetch the certificate from the tempurl until it
++   becomes authorized or a specified timeout happens.
++ * Certificate is retrieved by the Instance.
++
++Phase 2, Instance already has certificate, wants a token:
++ * Instance contacts the Meta Data server and retrieves the Keystone endpoint
++   or fetches the Keystone endpoint from ConfigDrive.
++ * Instance contacts Keystone using the Instance User Certificate it obtained
++   through Phase 1, getting back a token.
++
++
++------------------------------------------
++
++For the initial implementation, to ensure the maximum number of hypervisors are
++supported, the Phase 1 Serial Console Log authentication type will be chosen.
++
++Three OpenStack services will be combined to solve the ultimate problem.
++ * Barbican being a Certificate Authority for issuing instance certificates.
++ * Keystone for authentication. Nova Instance Users will have its own domain
++   configured with x509 federated authentication using the Barbican CA. This
++   solution is compatible with clouds that have a read only LDAP domain.
++ * Nova, see next line.
++
++The Instance User Service mentioned above will be provided as part of Nova
++itself due to:
++
++ * Nova knows when instances are created and deleted.
++ * Nova has the hypervisor plugins and has direct access to the backchannels
++   for Phase 1 Authentication.
++ * The App Catalog and Operators need to be able to easily install this, and
++   already need to install the additional Barbican Service. Too many additional
++   services are undesirable.
++
++Diagram showing basic workflow. It shows:
++ * User getting a user getting back the instance user id (To allow its use with
++   setting up acl's. not shown in diagram,
++ * Phase 1 Authentication using SerialConsoleLog plugin
++ * Phase 2 Authentication to let the Instance get a Token that can be used to
++   contact other OpenStack services such as Barbican or Zaqar
++
++::
++
++ User              Nova         Instance        Barbican       Keystone
++  + Create Instance +             +                +               +
++  | & precreate     |             |                | Get User ID   |
++  | User ID         |             |                | From Instance |
++  +----------------->             |                | ID            |
++  |                 +---------------------------------------------->
++  |                 <----------------------------------------------+
++  |                 | User ID     |                |               |
++  <-----------------+             |                |               |
++  | User ID         |             |                |               |
++  |                 | Create      |                |               |
++  |                 +------------->                |               |
++  |                 |             |                |               |
++  |                 |             |                |               |
++  |                 | Get TmpURL  |                |               |
++  |                 <-------------+                |               |
++  |                 +------------->                |               |
++  |                 |   TmpURL +  |                |               |
++  |                 |   RandomStr |                |               |
++  |                 |             |                |               |
++  |                 |             |                |               |
++  |                 | RandomStr   |                |               |
++  |                 | Via         |                |               |
++  |                 | Console     |                |               |
++  |                 <-------------+                |               |
++  |                 |             |                |               |
++  |                 | Get         |                |               |
++  |                 | Certificate |                |               |
++  |                 <-------------+    Create      |               |
++  |                 |             |    Certificate |               |
++  |                 +------------------------------>               |
++  |                 |             |                |               |
++  |                 |   Call Back |                |               |
++  |                 |   Later     |                |               |
++  |                 +------------->                |               |
++  |                 |             |                |               |
++  |                 | Get         |                |               |
++  |                 | Certificate |                |               |
++  |                 <-------------+    Get         |               |
++  |                 |             |    Certificate |               |
++  |                 +------------------------------>               |
++  |                 <------------------------------+               |
++  |                 | Return      |                |               |
++  |                 | Certificate |                |               |
++  |                 |             |                |               |
++  |                 +------------->                |               |
++  |                 |  Return     |                |   Get Token   |
++  |                 |  Certificate|                |   Using       |
++  |                 |             |                |   Certificate |
++  |                 |             +-------------------------------->
++  |                 |             <--------------------------------+
++  |                 |             | Token          |               |
++
++
++The following changes will therefore be needed to be made to Nova:
++ * The DB will be modified to add the following fields to an instance
++   * instance_user_id - The instance_user_id associated with an Instance. Its
++   nullable. It is null if an instance user has not been created yet.
++ * A new flag will be added to the Nova Server Create API to enable the
++   server's instance_user_id to be allocated at the time of server create and
++   returned synchronously from the create call. This will be used by
++   orchestration systems such as Heat to enable the Instance User permissions
++   to resources it needs. For example, via Barbican Container ACL's.
++   The instance_user_id will be fetched from Keystone synchronously.
++   The user will not be explicitly created. Nova will basically hand the
++   instance id to keystone and it will return the keystone user id that
++   will be associated with the instance via a certificate at some future point.
++ * The instance delete code will be extended to notify Keystone when an
++   instance_user_id is set and needs deleting.
++ * The Nova Meta Data server and Config Drive data are extended to contain the
++   file /openstack/latest/keystone.json containing the following fields:
++   * keystone_url,
++   * region,
++   * instance_id,
++   * instance_user_id,
++   * auth_type
++   This data will be retrieved via a new base class InstanceUserMetaData. Other
++   Meta Data plugins can add other static data specific to their
++   implementation.
++   Note: The data only shows in Config Drive if the instance user flag was
++   specified on server create.
++ * A new InstanceUserMetaData plugin named SerialConsoleLogInstanceUserMetaData
++   inheriting from InstanceUserMetaData will be created. It will add the
++   "instance_user_url" key with a url value and set the value of "auth_type" to
++   "SerialConsoleLog".
++ * The nova-api will be extended with another server similar to the Meta Data
++   server called the Instance User server. It has the following features:
++   * Restricted ip subnet access. Only the cloud external networks need to be
++   able to access it.
++   * It will support posting to the endpoint:
++   /v1/auth/<plugintype>/<instanceid>
++   * Each auth plugin type will have its own implementation. The only initial
++   plugin will be SerialConsoleLog. Its function will be described later.
++ * A nova specific plugin will be written for Keystone to validate
++   its x509 certificates. This will entail making an RPC call to nova conductor
++   that validates the instance is still in state="Active". This means no
++   scalability problem is created by using a CRL. The certificate is
++   invalidated the moment the instance is deleted.
++
++The initial phase 1 authentication plugin to the Instance User server will have
++the following behavior:
++
++ * On contact it will generate a random string, place it in the nova db in its
++   own table:
++   SerialConsoleLog(instance_id, random_string, state, timestamp)
++   setting state = "to_verify", timestamp=now() and both instance_id and
++   random_string.
++   The random string and url to fetch the certificate is then returned.
++ * The Instance is expected to print to the console:
++   "*** Instance User Auth: <therandomstring> ***"
++ * The instance can then contact the url given back to it using the random
++   string for authentication.
++   On contact, the endpoint will:
++   Fetch the corresponding row from the nova database. If the state is still
++   "to_verify" the endpoint will fetch the last 20 lines of the instances
++   console logs. It will look for the last occurrence of the string
++   "*** Instance User Auth: <therandomstring> ***". It will then compare the
++   random string stored in the database. If a match is found, the state in the
++   database is updated to be "verified".
++   If the state is still unverified after the log check, the return value will
++   be 503. The client will then wait and retry. It may take some time for the
++   console logs to be updated.
++   If the state is "verified", then the randomstring provided by the instance
++   will be checked against the one in state. If they do not match a 401 will
++   be returned.
++   Barbican will be contacted to fetch the certificate and returned to the
++   instance if it exists. If it doesn't, Barbican will be contacted to create
++   the certificate.
++   In either case, if the certificate is not yet ready because it gets
++   asynchronously created by Barbican, 503 is returned and the client is
++   expected to wait a few seconds and try again.
++   Once the certificate is retrieved, the row in the nova database will be
++   deleted, preventing further retrieval without a fresh Phase 1 pass.
++
++The following features will be needed from Keystone:
++ * x509 Federation with a Barbican CA.
++ * Plugable validation on the x509 Federation endpoint.
++ * An API to call, passing information contained in the certificate and
++   synchronously retrieve the Keystone User ID associated with it. Optionally
++   it should advertise a User Creation notification event for others to
++   consume.
++ * The delete method called on a Federated User ID should remove any roles
++   assigned and optionally advertise a User Deletion notification event.
++
++The following features will be needed from Barbican:
++ * A single CA managed by an admin account associated with the Instance User
++   Server that is able to provision x509 user certificates based on a DN
++   containing the nova instance uuid.
++ * Certificate Storage
++
++The following features will be needed from Ironic:
++ * Serial Console Log support. This is expected to be complete by the time of
++   implementation.
++ * Alternately, other Ironic plugins can be provided by the teams creating
++   Ironic drivers.
++
++Alternatives
++------------
++
++Example Phase 1 workflow with Trusted Meta Data Server:
++ * Instance fetches initial Instance User information from the Nova Meta Data
++   server. This includes Instance User Server endpoint and auth
++   type="TrustedMetadata".
++ * Instance contacts the endpoint url returned which will be the Nova Meta Data
++   server.
++ * Meta Data server relays the request to the Instance User Service, adding a
++   preshared secret for authentication and specifying the Instances ID.
++ * Instance User Server validates the Meta Data server's secret, provisions and
++   then returns the appropriate Instance Certificate.
++
++Example Phase 1 workflow with Special Disk Support:
++ * Instance fetches initial Instance User information from the Nova Meta Data
++   server or ConfigDrive. This includes endpoint and auth type="SpecialDisk".
++ * Instance contacts the Instance User Service endpoint with its Instance ID
++   asking for a Certificate.
++ * Instance User Service generates a tempurl and a random token.
++ * Instance User Service contacts a Nova API extension that passes the random
++   token/tempurl to the nova-compute node running the Instance.
++ * Nova Compute gets the message, creates a 1M dos file system containing the
++   tempurl and the token in a file. It then gets attached to the VM.
++ * The Instance waits for the temporary file system to show up, contacts the
++   tempurl using the token specified in the file.
++ * The Instance User Service provisions the certificate and returns it.
++
++
++A more specific, Barbican only solution is specified here:
++https://blueprints.launchpad.net/barbican/+spec/vm-integration
++
++The Barbican team has expressed its preference towards the instance-user spec
++over the vm-integration spec.
++
++Data model impact
++-----------------
++
++<TODO>
++
++REST API impact
++---------------
++
++<TODO>
++
++Security impact
++---------------
++
++This change allows Instances to discover the Keystone endpoint associated
++with their Instance, what Region, and a certificate that allows keystone
++authentication.
++
++No initial privileges will be granted to the User so in theory, it won't be
++able to do anything unless some other user associates a trust with the
++Instance User or ACL's on Barbican resources.
++
++This change is a net security enhancement since users today must create a
++Keystone User manually, handling a password, pass it through Heat and/or Nova,
++storing it in those databases unencrypted and storing the password permanently
++in the Instance. With this change, all of those things are avoided. No one can
++login to the Instance and copy its credentials since it is never given direct
++access to them.
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++This change will probably will impact the OpenStack unified client to enable
++it to easily fetch its user certificate itself.
++
++Adding the server create flag to the python-novaclient will also be needed.
++
++Performance Impact
++------------------
++
++The new code will be called once when an Instance needs to retrieve its
++initial certificate.
++
++Other deployer impact
++---------------------
++
++To enable the feature, a new Keystone Domain will need to be created by the
++deployer and passed in the config to Nova. Barbican will need to be setup
++with a CA, and the CA registered with the Keystone Domain.
++
++Developer impact
++----------------
++
++None
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  kevpn
++
++Work Items
++----------
++
++* Add new Config Options
++* Implement Metadata Server API additions.
++* Extend the API to support the new parameter.
++
++Dependencies
++============
++
++None currently. More specs will be added in Barbican, Keystone, Keystone
++Client, Heat, Barbican, Barbican Client, OpenStackClient and Nova Client to
++make this feature truly useful to the community.
++
++
++Testing
++=======
++
++I think unit testing the new endpoint is easily done.
++
++
++Documentation Impact
++====================
++
++This change will impact the documentation related to the new Metadata Server
++API, and Server Create API, but it is a minimal change.
++
++
++References
++==========
++
++* A lot of discussion with various folks at the Vancouver Summit.
++
++
++History
++=======
++
++Optional section for liberty intended to be used each time the spec
++is updated to describe new design, API or any database schema
++updated. Useful to let reader understand what's happened along the
++time.
++
++.. list-table:: Revisions
++   :header-rows: 1
++
++   * - Release Name
++     - Description
++   * - Liberty
++     - Introduced
++   * - Liberty
++     - Added the Server Create Stopped workflow
++   * - Liberty
++     - Removed the Server Create Stopped workflow. Heat doesnt need it.
++   * - Liberty
++     - Password authentication to x509 as suggested by the Keystone team.
++   * - Liberty
++     - Switched to certificate passing as suggested by the Keystone team.
++       Switched to barbican storing the cert as suggested by the Barbican team.
++   * - Liberty
++     - Greatly enhanced the problem description section. Restarted the
++       implementation section from scratch. partially filled it out so we can
++       discuss it.
+-- 
+2.1.0
+

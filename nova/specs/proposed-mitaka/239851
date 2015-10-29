@@ -1,0 +1,140 @@
+From a1562f9d5b60b2964d3a47075fce67904cbc8fc5 Mon Sep 17 00:00:00 2001
+From: Dmitry Guryanov <dguryanov@virtuozzo.com>
+Date: Wed, 28 Oct 2015 15:59:06 +0900
+Subject: [PATCH] Use os-brick in remotefs volume drivers in libvirt
+
+Change-Id: I6cd3e3aa8fac8758dc372f74f0c1bde1c03e19c5
+Implements: blueprint libvirt-os-brick-in-remotefs-volumes
+---
+ .../libvirt-os-brick-in-remotefs-volumes.rst       | 119 +++++++++++++++++++++
+ 1 file changed, 119 insertions(+)
+ create mode 100644 specs/mitaka/approved/libvirt-os-brick-in-remotefs-volumes.rst
+
+diff --git a/specs/mitaka/approved/libvirt-os-brick-in-remotefs-volumes.rst b/specs/mitaka/approved/libvirt-os-brick-in-remotefs-volumes.rst
+new file mode 100644
+index 0000000..b211b23
+--- /dev/null
++++ b/specs/mitaka/approved/libvirt-os-brick-in-remotefs-volumes.rst
+@@ -0,0 +1,119 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++==================================================
++Use os-brick in remotefs volume drivers in libvirt
++==================================================
++
++https://blueprints.launchpad.net/nova/+spec/libvirt-os-brick-in-remotefs-volumes
++
++A set of drivers which use remote filesystem interface can be dramatically
++simplified by using os-brick library.
++
++Problem description
++===================
++
++The code, which knows how to mount different remote filesystems was moved from
++cinder to os-brick library. Remotefs drivers (nfs, smbfs, scality and quobyte)
++do the same thing in connect_volume methods. So there is a code duplication,
++which can be avoided by using os-brick.
++
++Use Cases
++----------
++
++No use cases, this is refactoring.
++
++Proposed change
++===============
++
++Implement common connect_colume method in volume.remotefs.RemoteFilesystem
++with help of os-brick's RemoteFsClient class and remote custom implementation
++from each derived class.
++
++Alternatives
++------------
++
++Don't write common connect_volume method, but use os-brick in each driver.
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++None
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++None
++
++Performance Impact
++------------------
++
++None
++
++Other deployer impact
++---------------------
++
++None
++
++Developer impact
++----------------
++
++None
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++dguryanov
++
++Work Items
++----------
++
++* Implement connect volume method in fs.LibvirtBaseFileSystemVolumeDriver.
++* Use in in derived classes.
++* Fix unit tests.
++
++Dependencies
++============
++
++None
++
++Testing
++=======
++
++Cinder's vendor CI systems will be checking this code.
++
++Documentation Impact
++====================
++
++None
++
++References
++==========
++
++None
++
++History
++=======
++
++None
+-- 
+2.1.0
+

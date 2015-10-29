@@ -1,0 +1,241 @@
+From 13ed984bee4a16d95c730f05cddd6093e1b4394d Mon Sep 17 00:00:00 2001
+From: Alexandre Levine <alexandrelevine@gmail.com>
+Date: Tue, 13 Oct 2015 18:48:12 +0400
+Subject: [PATCH] delete_on_termination modification spec
+
+Implements: blueprint delete-on-termination-modification
+APIImpact
+
+Change-Id: Iefcd532343f216466678aaa56aa2f112d03b134f
+---
+ .../delete-on-termination-modification.rst         | 218 +++++++++++++++++++++
+ 1 file changed, 218 insertions(+)
+ create mode 100644 specs/mitaka/approved/delete-on-termination-modification.rst
+
+diff --git a/specs/mitaka/approved/delete-on-termination-modification.rst b/specs/mitaka/approved/delete-on-termination-modification.rst
+new file mode 100644
+index 0000000..b3f4026
+--- /dev/null
++++ b/specs/mitaka/approved/delete-on-termination-modification.rst
+@@ -0,0 +1,218 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++=====================================================
++Allow delete_on_termination modification
++=====================================================
++
++https://blueprints.launchpad.net/nova/+spec/delete-on-termination-modification
++
++Nova currently allows setting during instance booting and fetching the
++delete_on_termination flag per each volume.
++EC2 API allows setting the flag during new volume attaching and modification
++afterwards. It's suggested to add this functionality to nova in order to
++satisfy EC2 API compatibility.
++
++Problem description
++===================
++
++Amazon's EC2 API supports a flag delete_on_termination for each volume
++attached to an instance. Nova currently doesn't allow such flag to be
++specified when a new volume is attached to an existing instance and it doesn't
++allow it's later modification.
++As a result EC2 API standalone project (stackforge/ec2-api) cannot provide
++such a functionality to it's client without it being available in nova.
++
++Use Cases
++----------
++
++1. End user is attaching a new volume to an instance and wants to set
++delete_on_termination property to True. Impacts end user.
++
++2. End user wants to modify value of delete_on_termination for an
++attached volume of existing instance.
++
++Project Priority
++-----------------
++
++None
++
++Proposed change
++===============
++
++Add a new microversion for v2.1 API in os-volume-attachments extension
++which will allow:
++1. specifying delete_on_termination flag as a property of a new volume
++attachment to existing instance,
++2. modify delete_on_termination flag for an existing attached volume.
++Allow modification of the corresponding property for the specified volume
++internally.
++
++Alternatives
++------------
++
++None
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++The proposed change:
++
++1. Updates the attaching volumes request.
++
++* Specification for the method
++
++  * Attaches a volume to the specified server.
++
++  * Method type: POST
++
++  * "/v2/​{tenant_id}​/servers/​{server_id}​/os-volume_attachments"
++
++  * Normal and error response codes do not change
++
++  * Request schema change:
++
++::
++
++    create_volume_attachment = {
++        'type': 'object',
++        'properties': {
++            'volumeAttachment': {
++                'type': 'object',
++                'properties': {
++                    'volumeId': parameter_types.volume_id,
++                    'device': {
++                        'type': 'string',
++                        # NOTE: The validation pattern from match_device() in
++                        #       nova/block_device.py.
++                        'pattern': (
++                            '(^/dev/x{0,1}[a-z]{0,1}d{0,1})([a-z]+)[0-9]*$')
++                    },
++                    'deleteOnTermination': parameter_types.boolean
++                },
++                'required': ['volumeId'],
++                'additionalProperties': False,
++            },
++        },
++        'required': ['volumeAttachment'],
++        'additionalProperties': False,
++    }
++
++  * Response:
++
++::
++
++    {
++        "volumeAttachment": {
++            "device": "/dev/vdd",
++            "id": "a26887c6-c47b-4654-abb5-dfadf7d3f803",
++            "serverId": "0c92f3f6-c253-4c9b-bd43-e880a8d2eb0a",
++            "volumeId": "a26887c6-c47b-4654-abb5-dfadf7d3f803",
++            "deleteOnTermination": false
++        }
++    }
++
++* There should not be any impacts to policy.json files for this change.
++
++1. Introduces the PUT method for volume attachments
++
++* Specification for the method
++
++  * Changes properties of an attached volume.
++
++  * Method type: PUT
++
++  * "/v2/​{tenant_id}​/servers/​{server_id}​/os-volume_attachments"
++
++  * Normal response code: 200
++
++  * Error response codes: computeFault (400, 500, …),
++    serviceUnavailable (503), badRequest (400), unauthorized (401),
++    forbidden (403), badMethod (405), overLimit (413), itemNotFound (404),
++    badMediaType (415), NetworkNotFound (400), buildInProgress (409)
++
++  * Request schema: create_volume_attachment is reused
++
++  * Response: the same response as from create_volume_attachment
++
++* There should not be any impacts to policy.json files for this change.
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++None
++
++Performance Impact
++------------------
++
++None
++
++Other deployer impact
++---------------------
++
++None
++
++Developer impact
++----------------
++
++None
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  Alexandre Levine (alexandrelevine@gmail.com)
++
++Work Items
++----------
++
++Single work item.
++
++Dependencies
++============
++
++None
++
++Testing
++=======
++
++Unit tests and functional tests to be created.
++
++Documentation Impact
++====================
++
++Compute API documentation changes
++
++References
++==========
++
++``https://etherpad.openstack.org/p/YVR-nova-contributor-meetup``
++
++``http://docs.aws.amazon.com/AWSEC2/latest/APIReference/
++API_ModifyInstanceAttribute.html``
++
++History
++=======
++
++None
+-- 
+2.1.0
+

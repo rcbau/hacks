@@ -1,0 +1,211 @@
+From 4bf8f8f82b0ff17e807d95d53dd9c9ac65af00e6 Mon Sep 17 00:00:00 2001
+From: Jim Rollenhagen <jim@jimrollenhagen.com>
+Date: Mon, 19 Oct 2015 09:13:51 -0700
+Subject: [PATCH] Tenant networking support for Ironic driver.
+
+Currently, Ironic only works on a flat network shared between control
+plane and tenants. There's an ongoing effort to allow for arbitrary
+networks to be connected to Ironic nodes in various configurations. Some
+changes in Nova are required to support this effort.
+
+Implements: blueprint ironic-networks-support
+Change-Id: Ifa3fc9c07f2518285d26bc8e9caed404301e6ad7
+---
+ specs/mitaka/approved/ironic-networks-support.rst | 185 ++++++++++++++++++++++
+ 1 file changed, 185 insertions(+)
+ create mode 100644 specs/mitaka/approved/ironic-networks-support.rst
+
+diff --git a/specs/mitaka/approved/ironic-networks-support.rst b/specs/mitaka/approved/ironic-networks-support.rst
+new file mode 100644
+index 0000000..cebc767
+--- /dev/null
++++ b/specs/mitaka/approved/ironic-networks-support.rst
+@@ -0,0 +1,185 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++===========================================
++Tenant networking support for Ironic driver
++===========================================
++
++https://blueprints.launchpad.net/nova/+spec/ironic-networks-support
++
++Currently, Ironic only works on a flat network shared between control plane and
++tenants. There's an ongoing effort to allow for arbitrary networks to be
++connected to Ironic nodes in various configurations.[0][1] Some changes in Nova
++are required to support this effort.
++
++Problem description
++===================
++
++Ironic currently supports a single flat network shared between the control
++plane and tenants. This causes Ironic to be unusable in multitenant
++environments, or by users that wish to have an isolated network.
++
++* Multitenant deployments
++
++* Deployments that wish to secure the control plane from tenants
++
++* Deployments that wish to use "advanced" network configurations such as LAG,
++  MLAG, bonding, VLAN/VXLAN
++
++
++
++Use Cases
++----------
++
++* Deployers that wish to deploy a multitenant environment.
++
++* Deployers that wish to isolate the control plane from tenants.
++
++* Deployers that wish to deploy baremetal hosts using "advanced" network
++  configurations such as LAG, MLAG, bonding, VLAN/VXLAN.
++
++* Users that wish to use isolated networks with Ironic instances.
++
++Proposed change
++===============
++
++* The port-create calls to Neutron need to be made with a null binding:host_id.
++  This signals to Neutron that it shouldn't bind the port yet. To keep the
++  provisioning process away from the tenant network, we need to wait for the
++  deployment to complete before binding the port, which only Ironic can
++  control. After completing the deployment, Ironic will make a port-update call
++  with: 1) a binding:host_id value of "baremetal:$node_uuid", and 2) physical
++  switchport information necessary to connect the port.
++
++* The ironic driver will need updates to be able to handle Ironic's "port
++  groups" as well as "ports". A port group is a single logical connection
++  comprised of multiple physical NICs; used in LAG and MLAG configurations.
++
++* A BAREMETAL vnic type will be added to support the BAREMETAL vnic type that
++  was previously added in Neutron.
++
++This will support the basic tenant networking support we've built out in
++Ironic; some thought should be put into the future of this integration. For
++example, in the future we'll want to support multiple networks via VLAN or
++VXLAN over a pair of bonded NICs (currently Nova enforces a 1:1 mapping of NICs
++to networks, as in the virtual world NICs can be created on the fly).
++
++Alternatives
++------------
++
++One alternative is to subclass the NeutronAPI to have it do what we want. This
++may help make the future work noted above easier. However, as this is used at
++the API and conductor layers, doing this may break multi-hypervisor
++deployments.
++
++Data model impact
++-----------------
++
++None.
++
++REST API impact
++---------------
++
++None.
++
++Security impact
++---------------
++
++This enables users and deployers to improve the network security for the
++control plane and Ironic instances.
++
++Notifications impact
++--------------------
++
++None.
++
++Other end user impact
++---------------------
++
++Users will be able to use arbitrary networks with Ironic instances. In the
++future, we should investigate how to allow the user to specify which physical
++connection gets connected to which network; however, that is outside the scope
++of this spec.
++
++Performance Impact
++------------------
++
++None.
++
++Other deployer impact
++---------------------
++
++TODO(jroll): we'll need to come up with some sort of signal for Nova to tell
++if it's using the old flat network configuration, or if it's using the new
++configuration. I believe an attribute on the node can do what we need here,
++but need to investigate further. Should have no other deployer impact on the
++Nova side.
++
++Developer impact
++----------------
++
++None.
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  jroll
++
++Other contributors:
++  Sukhdev
++  lazy_prince
++
++Work Items
++----------
++
++* Cause port-create calls to send a null binding:host_id.
++
++* Add the BAREMETAL vnic type.
++
++* Make changes to the Ironic driver to handle Ironic "port groups" in addition
++  to Ironic "ports".
++
++
++Dependencies
++============
++
++This depends heavily on work being done in Ironic.[0][1]
++
++Testing
++=======
++
++CI jobs that exercise this code are being created as part of the Ironic work;
++we should also have those jobs run against Nova.
++
++Documentation Impact
++====================
++
++There is substantial documentation work to be done on the Ironic side, however
++there isn't any work to do on the Nova side.
++
++References
++==========
++
++[0] https://blueprints.launchpad.net/ironic/+spec/network-provider
++
++[1] https://blueprints.launchpad.net/ironic/+spec/ironic-ml2-integration
++
++
++History
++=======
++
++.. list-table:: Revisions
++   :header-rows: 1
++
++   * - Release Name
++     - Description
++   * - Mitaka
++     - Introduced
+-- 
+2.1.0
+

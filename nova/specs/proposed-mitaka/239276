@@ -1,0 +1,148 @@
+From d59b238a268fc2b8936f520efe394c30345fba7e Mon Sep 17 00:00:00 2001
+From: Yalei Wang <yalei.wang@intel.com>
+Date: Mon, 26 Oct 2015 06:37:06 +0800
+Subject: [PATCH] VM boot with unaddressed port
+
+This BP proposes to remove the checking code for port with IP and network with
+subnet when creating VM.
+
+Change-Id: Ic7519a605935bccf34c339b86a77c1c21f33f3cd
+Blueprint: vm-boot-with-unaddressed-port
+---
+ .../approved/vm-boot-with-unaddressed-port.rst     | 124 +++++++++++++++++++++
+ 1 file changed, 124 insertions(+)
+ create mode 100644 specs/mitaka/approved/vm-boot-with-unaddressed-port.rst
+
+diff --git a/specs/mitaka/approved/vm-boot-with-unaddressed-port.rst b/specs/mitaka/approved/vm-boot-with-unaddressed-port.rst
+new file mode 100644
+index 0000000..e8e934c
+--- /dev/null
++++ b/specs/mitaka/approved/vm-boot-with-unaddressed-port.rst
+@@ -0,0 +1,124 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++====================================
++Allow VM boot with unaddressed port
++====================================
++
++https://blueprints.launchpad.net/nova/+spec/vm-boot-with-unaddressed-port
++
++This blueprint aims to remove the limit that VM only could bind with port with
++IP and network with subnets.
++
++Problem description
++===================
++
++Neutron and nova create interfaces with the assumption that the interface L2
++and L3 assigned addresses are intrinsic attributes. But assume
++for a firewall service VM, the port for forwarding all the traffic do not need
++a IP. Assigning a IP address is waste and bring a pointless burden.
++
++Use Cases
++---------
++
++When a user wishes to deploy a VM which accepts traffic that is neither IPv4
++nor IPv6 in nature, one that accepts is a superset of v4 and v6 traffic, or one
++that accepts traffic for a very wide address range (for either forwarding or
++termination) and where the port has no primary address.
++In such cases, the VM is not a conventional application VM.
++
++
++Proposed change
++===============
++
++Remove the checking code for port with IP and network with subnet, and
++carefully deal with the err path when creating VM port, make sure roll back
++all the ports including this kind of port.
++
++
++Alternatives
++------------
++
++None.
++
++Data model impact
++-----------------
++
++None.
++
++REST API impact
++---------------
++
++None
++
++Security impact
++---------------
++
++Some spoofing check based on IP would be removed, but the check based on MAC
++would still be reserved.
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++None
++
++Performance Impact
++------------------
++
++None
++
++Other deployer impact
++---------------------
++
++None
++
++Developer impact
++----------------
++
++None
++
++Implementation
++==============
++
++See `Work Items`_ section below.
++
++Assignee(s)
++-----------
++ yalei-wang
++
++Work Items
++----------
++
++1. Remove the code of IP checking and subnet checking when creating VM.
++   
++2. Add unit test cases.
++
++Dependencies
++============
++
++None.
++
++Testing
++=======
++
++Would need new Tempest and unit tests.
++
++Documentation Impact
++====================
++
++Docs needed.
++
++References
++==========
++
++http://specs.openstack.org/openstack/neutron-specs/specs/liberty/unaddressed-port.html
++
++https://review.openstack.org/#/c/202882/
+-- 
+2.1.0
+

@@ -1,0 +1,168 @@
+From f2a3ceaf10e6dc53a7fd4bc8d422726d0b18f8ef Mon Sep 17 00:00:00 2001
+From: Tang Chen <tangchen@cn.fujitsu.com>
+Date: Wed, 30 Sep 2015 10:02:20 +0800
+Subject: [PATCH] Host maintenance mode
+
+Provide a default host maintenance mode handling to enable compute node
+machines to upgrade OS or hardware without pausing running instances in
+Nova compute, independant to drivers.
+
+Implements: blueprint host-maintenance-mode
+Change-Id: Icd4a3e40c8f3aa0af7729a868ebc64f84a7857c9
+---
+ specs/mitaka/approved/host-maintenance-mode.rst | 143 ++++++++++++++++++++++++
+ 1 file changed, 143 insertions(+)
+ create mode 100644 specs/mitaka/approved/host-maintenance-mode.rst
+
+diff --git a/specs/mitaka/approved/host-maintenance-mode.rst b/specs/mitaka/approved/host-maintenance-mode.rst
+new file mode 100644
+index 0000000..5ce4a9e
+--- /dev/null
++++ b/specs/mitaka/approved/host-maintenance-mode.rst
+@@ -0,0 +1,143 @@
++
++==========================================
++Host maintenance mode
++==========================================
++
++https://blueprints.launchpad.net/nova/+spec/host-maintenance-mode
++
++Implement "nova host-update XXX --maintenance enable/disable" command, which
++is used to do OS and hardware upgrade without pausing running instances.
++
++Problem description
++===================
++
++When executing the following command on a KVM box:
++    nova host-update XXX --maintenance enable
++
++it returns the following error:
++    ERROR (HTTPNotImplemented): Virt driver does not implement host
++    maintenance mode.
++
++Since Nova compute does not provide a default host maintenance handling
++process, it passes the request to driver. But libvirt driver has not
++implemented host maintenance mode either. So on a KVM box, it returns
++HTTPNotImplemented. As a result, we cannot run host maintenance command
++on a KVM box.
++
++Use Cases
++----------
++
++In a workload cloud, nova compute nodes need to be maintained (such as system
++or hardware upgrade) from time to time. But the service or VMs running on the
++nodes cannot be paused to minimize the effect to users. So we need this
++functionality to put a compute node to maintenance mode so that no VM will be
++scheduled to run on this node and no new instance will be create on this node.
++
++Project Priority
++-----------------
++
++None
++
++Proposed change
++===============
++
++When "nova host-update XXX --maintenance enable" is executed, host maintenance
++mode process should work as below:
++1. Disable the compute service on the compute node.
++2. Migrate all instances on the compute node.
++It is more like two novaclient commands: "nova service-disable" and
++"nova host-evacuate-live".
++
++So this functionality should be implement like this:
++1. On Nova side, host_maintenance_mode() API in Nova is not implemented. It
++pass the request to driver directly. In order to keep Nova as a low level
++infrastructure API, implement a default host_maintenance_mode() API to simply
++enable/disable compute service, so that drivers who have not implemented one
++could fall back to it.
++Refer to: http://docs.openstack.org/developer/nova/project_scope.html#no-more-orchestration
++
++2. On Nova client side, improve "host-update" command as below:
++a) Disable compute service.
++b) Call evacuation or migration process to migrate all instances.
++
++Alternatives
++------------
++
++None
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++None
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++None
++
++Performance Impact
++------------------
++
++None
++
++Other deployer impact
++---------------------
++
++None
++
++Developer impact
++----------------
++
++None
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++Tang Chen (tangchen@cn.fujitsu.com)
++
++Work Items
++----------
++
++* On Nova side, implement a default host_maintenance_mode() API to enable
++  and disable compute service.
++* On Nova client side, improve "nova host-update" so that it can disable
++  compute service and migrate all instances.
++
++Dependencies
++============
++
++None
++
++Testing
++=======
++
++* Unit tests will be added.
++
++Documentation Impact
++====================
++
++None
++
++References
++==========
++
++None
+-- 
+2.1.0
+

@@ -1,0 +1,241 @@
+From 1878b6c7a8a341d0dfb58e6e54b7f169e213730b Mon Sep 17 00:00:00 2001
+From: Takashi NATSUME <natsume.takashi@lab.ntt.co.jp>
+Date: Tue, 13 Oct 2015 16:17:55 +0900
+Subject: [PATCH] Add new filter 'ShelveAggregateAffinityFilter'
+
+Add a new scheduler filter to schedule a shelved instance
+on the compute node from the same hostaggregate group
+in case you have configured multiple host aggregate groups
+with same metadata properties.
+
+Change-Id: I2d21328558120feb46ddb5c7198f10b9c6b59fae
+Implements: blueprint shelve-aggregate-affinity-filter
+---
+ .../approved/shelve-aggregate-affinity-filter.rst  | 215 +++++++++++++++++++++
+ 1 file changed, 215 insertions(+)
+ create mode 100755 specs/mitaka/approved/shelve-aggregate-affinity-filter.rst
+
+diff --git a/specs/mitaka/approved/shelve-aggregate-affinity-filter.rst b/specs/mitaka/approved/shelve-aggregate-affinity-filter.rst
+new file mode 100755
+index 0000000..3af05a5
+--- /dev/null
++++ b/specs/mitaka/approved/shelve-aggregate-affinity-filter.rst
+@@ -0,0 +1,215 @@
++==============================================
++Add new filter 'ShelveAggregateAffinityFilter'
++==============================================
++
++https://blueprints.launchpad.net/nova/+spec/shelve-aggregate-affinity-filter
++
++Add a new scheduler filter to schedule a shelved instance on the compute node
++from the same hostaggregate group in case you have configured multiple
++host aggregate groups with same metadata properties.
++
++Problem description
++===================
++
++As per the design proposed in 'improve-unshelve-performance' [1] specs,
++if 'shelve_offload_disk' parameter is set to False, then it looks for the
++instance files in the instance path of the selected compute node when an
++instance is unshelved. If the instance files are not present, then it sets the
++instance to the 'error' state. This scenario is less likely to happen unless
++you have completely messed up with configuring 'shelve_offload_disk' parameter
++on the compute nodes. But in case, if you have configured multiple host
++aggregate groups with same metadata properties (each host aggregate group is
++using it's own cache for storing instance files), then there is a high
++possibility scheduler might select compute node from another group in which
++case it won't find instance files in the cache and the instance will be set to
++the 'error' state.
++
++Use Cases
++----------
++
++When utilizing the 'improve-unshelve-performance' function[1] and
++'shelved_offload_disk' is false, the suggested scheduling filter improves the
++performance of unshelving an instance by scheduling the instance to the compute
++node that have access to the instance files 'cache' in case of multiple host
++aggregate groups sharing same metadata properties (image properties/instance
++type etc).
++
++Proposed change
++===============
++
++Add a new filter 'ShelveAggregateAffinityFilter' to schedule shelved instance
++on the compute node which belongs to the same host aggregate group.
++
++**Deployment Scenarios:**
++Multiple hostAggregate groups configured with same meta properties with each
++group using its own shared storage server for storing instance files.
++
++Example of multiple HostAggregate groups:
++
++* AggregateImagePropertiesIsolation filter
++
++  OS Type: Windows/Ubuntu
++
++* AggregateInstanceExtraSpecsFilter filter
++
++  Instance Type: High/Normal
++
++Configuration example:
++
++  HAG-1 (OS Type: Windows, Instance Type: High), com1, com2, com3 ..
++  (shared storage server - SSS1)
++
++  HAG-2 (OS Type: Windows, Instance Type: High), com4, com5, com6 ..
++  (shared storage server - SSS2)
++
++  HAG-3 (OS Type: Ubuntu, Instance Type: High), com7, com8, com9 ..
++  (shared storage server - SSS3)
++
++  NAG-4 (OS Type: Windows, Instance Type: Normal), com10, com11, com12 ..
++  (shared storage server - SSS4)
++
++  NAG-5 (OS Type: Ubuntu, Instance Type: Normal), com13, com14, com15 ..
++  (shared storage server - SSS5)
++
++Shelve/Unshelve scenario explained:
++
++  a) Instance spawned (OS type: Windows, Instance Type: High) in HAG-1, com1
++  b) User calls shelve api
++  c) User calls unshelve api, in this case scheduler might choose compute node
++     from one of these groups HAG-1 and HAG-2.
++
++  If it chooses compute host from HAG-2, then the instance will be set to
++  error state as instance files will not be present in the instance path.
++  We don't want this to happen, hence scheduler should check if compute
++  hosts are available from HAG-1. If not, then scheduler will return
++  "No hosts available" error.
++
++Shelve api call:
++
++* shelved_host (host where the instance is running) will be set to
++  instance_system_metadata.
++
++Unshelve api call:
++
++Conductor (unshelve_instance method, in case vm_state is
++SHELVED_OFFLOADED)
++
++* If 'shelved_host' is present in the instance system metadata,
++  then set it to filter_properties.
++
++* Call select_destinations method of scheduler, newly added filter
++  "ShelveAggregateAffinityFilter" host_passes method will iterate through host
++  aggregate groups from host_state object to check if any of the compute nodes
++  from the group matches with the 'shelved_host' which is set to the
++  filter_properties parameter. If it matches, host_passes method will return
++  True or else False. If 'shelved_host' is not present in the
++  filter_properties, then this method will always return True.
++
++Alternatives
++------------
++
++1. If all compute nodes are sharing the same shared storage then there is
++   no need to add "ShelveAggregateAffinityFilter" filter on the scheduler node.
++   But it is not possible to ensure the scalability.
++
++2. If host aggregate groups' meta properties are configured uniquely
++   with each group configured to use it's own shared storage server
++   for storing instance files, then in that case there is no need
++   to add "ShelveAggregateAffinityFilter" filter on the scheduler node.
++   But it is not possible to ensure the scalability.
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++None
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++
++None
++
++Performance Impact
++------------------
++
++* Unshelve instance performance will be improved in case compute node
++  selected by "ShelveAggregateAffinityFilter" is sharing same shared storage.
++
++Other deployer impact
++---------------------
++
++If multiple HostAggregate groups are created with same metadata properties
++with each group having it's own shared storage, then add
++'ShelveAggregateAffinityFilter' in the 'scheduler_default_filters'
++configuration parameter as mentioned below:
++
++scheduler_default_filters=ShelveAggregateAffinityFilter,RetryFilter,...
++
++Developer impact
++----------------
++
++None
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  natsume-takashi
++
++Work Items
++----------
++
++* Implementation for a scheduling filter.
++
++Dependencies
++============
++
++* https://blueprints.launchpad.net/nova/+spec/improve-unshelve-performance
++
++Testing
++=======
++
++Add unit tests for the scheduling filter.
++
++
++Documentation Impact
++====================
++
++Please refer 'Other deployer impact' section.
++
++
++References
++==========
++
++[1] https://blueprints.launchpad.net/nova/+spec/improve-unshelve-performance
++
++[2] https://review.openstack.org/#/c/135387/
++
++History
++=======
++
++.. list-table:: Revisions
++   :header-rows: 1
++
++   * - Release Name
++     - Description
++   * - Mitaka
++     - Introduced
+-- 
+2.1.0
+

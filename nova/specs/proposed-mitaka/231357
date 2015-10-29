@@ -1,0 +1,57 @@
+From 69e706acba7e7803066687e41a3a726e855eea57 Mon Sep 17 00:00:00 2001
+From: Flavio Percoco <flaper87@gmail.com>
+Date: Tue, 6 Oct 2015 17:30:36 +0900
+Subject: [PATCH] (follow up) Nova Image v1 -> v2
+
+This patch addresses comments from the previous patch, which was
+fast-tracked.
+
+Change-Id: I99692e37801d02931b30e3b2168b8379046cd320
+---
+ specs/mitaka/approved/use-glance-v2-api.rst | 16 ++++++++++------
+ 1 file changed, 10 insertions(+), 6 deletions(-)
+
+diff --git a/specs/mitaka/approved/use-glance-v2-api.rst b/specs/mitaka/approved/use-glance-v2-api.rst
+index 9d37854..a5f52dd 100644
+--- a/specs/mitaka/approved/use-glance-v2-api.rst
++++ b/specs/mitaka/approved/use-glance-v2-api.rst
+@@ -63,7 +63,6 @@ It is assumed that Nova's lack of support for Glance v2 is causing confusion
+ that is holding people back from deploying Glance v2. This in turn is causing
+ some problems for the DefCore effort.
+ 
+-
+ Proposed change
+ ===============
+ 
+@@ -88,11 +87,13 @@ v1. Eventually, all drivers should support v2 and Glance's v1 should be turned
+ off by default. The expected deadline for this switch is N.
+ 
+ This spec doesn't intend to change the value of the existing Nova
+-configurations for Glance - which include the version in the URL - but rather
+-notify the deployer that the new expected value has changed and the
+-configuration file should be updated. During the Mitaka cycle, we can strip the
+-verion from the URL to discover what versions of the API are deployed and favor
+-2 over 1 when possible.
++configurations for Glance - which include the version in the URL - but
++rather notify the deployer that the new expected value has changed and
++the configuration file should be updated. During the Mitaka cycle,
++we'll support both, versioned and unversioned, URLs to give deployers
++enough time to switch over. This will also allow us to have Glance v1
++and Glance v2 specific gates to thoroughly test the changes being
++made.
+ 
+ Alternatives
+ ------------
+@@ -185,6 +186,9 @@ Full support for Glance v2 by the Nova Image API is dependent on:
+ 
+ https://blueprints.launchpad.net/glance/+spec/v2-additional-filtering
+ 
++This will require deployers to have Glance Mitaka deployed and it
++won't be backwards compatible with regards to the Glance's API.
++
+ Testing
+ =======
+ 
+-- 
+2.1.0
+

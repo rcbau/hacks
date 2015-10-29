@@ -1,0 +1,140 @@
+From 5c1fafddda3bd50a45b1c8fa3620269dc88644c3 Mon Sep 17 00:00:00 2001
+From: Tang Chen <tangchen@cn.fujitsu.com>
+Date: Thu, 1 Oct 2015 17:21:52 +0800
+Subject: [PATCH] Introduce inject NMI interface in nova ironic driver.
+
+This spec adds a new API to nova ironic driver, which injects an NMI
+(Non-maskable Interruption) to an instance managed by ironic for
+triggering a special function such as the kernel crash dump mechanism.
+
+Change-Id: Ic324d12a109bd93099542dfd3bcd609c81ee09d7
+Implements: blueprint inject-nmi-ironic
+Signed-off-by: Tang Chen <tangchen@cn.fujitsu.com>
+---
+ specs/mitaka/approved/inject-nmi-ironic.rst | 114 ++++++++++++++++++++++++++++
+ 1 file changed, 114 insertions(+)
+ create mode 100644 specs/mitaka/approved/inject-nmi-ironic.rst
+
+diff --git a/specs/mitaka/approved/inject-nmi-ironic.rst b/specs/mitaka/approved/inject-nmi-ironic.rst
+new file mode 100644
+index 0000000..a863d7e
+--- /dev/null
++++ b/specs/mitaka/approved/inject-nmi-ironic.rst
+@@ -0,0 +1,114 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++=====================================================
++Introduce inject NMI interface in nova ironic driver.
++=====================================================
++
++https://blueprints.launchpad.net/nova/+spec/inject-nmi-ironic
++
++This spec adds a new API to nova ironic driver, which injects an NMI
++(Non-maskable Interruption) to an instance managed by ironic for
++triggering a special function such as the kernel crash dump mechanism.
++
++Problem description
++===================
++NMI(Non-maskable Interruption) is used to trigger a special function. For
++example, in the mission critical area, it is necessary to trigger the kernel
++crash dump mechanism.
++
++When blueprint https://blueprints.launchpad.net/nova/+spec/inject-nmi is
++implemented, there will be an API to inject NMI to instance in nova. But ironic
++driver does not have any interface corresponding to that API yet. So this spec
++aims at adding an API to ironic driver so that NMI can be injected to instances
++managed by ironic.
++
++Use Cases
++----------
++Users could send NMI to servers managed by ironic through nova ironic driver.
++
++By sending NMI, special functions like the kernel crash dump mechanism could
++be triggered though ironic driver.
++
++Project Priority
++-----------------
++None
++
++Proposed change
++===============
++
++
++Alternatives
++------------
++None
++
++Data model impact
++-----------------
++None
++
++REST API impact
++---------------
++None
++
++Security impact
++---------------
++None
++
++Notifications impact
++--------------------
++None
++
++Other end user impact
++---------------------
++Users will be able to inject NMI to instance when using nova ironic driver.
++
++Performance Impact
++------------------
++None
++
++Other deployer impact
++---------------------
++None
++
++Developer impact
++----------------
++This spec will implement the new API in nova ironic driver.
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  Tang Chen (tangchen)
++
++Other contributors:
++  None
++
++Work Items
++----------
++* Implement an inject NMI API in nova ironic driver.
++
++Dependencies
++============
++This spec is related to the following blueprints:
++
++* https://blueprints.launchpad.net/ironic/+spec/enhance-power-interface-for-soft-reboot-and-nmi
++
++* https://blueprints.launchpad.net/nova/+spec/inject-nmi
++
++Testing
++=======
++Unit tests will be added.
++
++Documentation Impact
++====================
++The new API should be added to the documentation.
++
++References
++==========
++None
+-- 
+2.1.0
+

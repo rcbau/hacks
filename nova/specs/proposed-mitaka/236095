@@ -1,0 +1,401 @@
+From 43c7640747c3f872fa0552d62d6a64d218da7edb Mon Sep 17 00:00:00 2001
+From: Drew Thorstensen <thorst@us.ibm.com>
+Date: Fri, 16 Oct 2015 16:50:57 -0400
+Subject: [PATCH] PowerVM Driver Integration into Nova
+
+The IBM PowerVM driver has been developed in the StackForge over the
+past year.  As it has matured, this proposal seeks to integrate it into
+the OpenStack Nova tree.
+
+Implements: blueprint powervm-nova-compute-driver
+Change-Id: I931b6f211c0f974f1192f154555d2c4d378cf32d
+---
+ .../approved/powervm-nova-compute-driver.rst       | 376 +++++++++++++++++++++
+ 1 file changed, 376 insertions(+)
+ create mode 100644 specs/mitaka/approved/powervm-nova-compute-driver.rst
+
+diff --git a/specs/mitaka/approved/powervm-nova-compute-driver.rst b/specs/mitaka/approved/powervm-nova-compute-driver.rst
+new file mode 100644
+index 0000000..c3906e7
+--- /dev/null
++++ b/specs/mitaka/approved/powervm-nova-compute-driver.rst
+@@ -0,0 +1,376 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++======================================
++PowerVM Driver from StackForge to Nova
++======================================
++
++https://blueprints.launchpad.net/nova/+spec/powervm-nova-compute-driver
++
++The IBM PowerVM hypervisor provides virtualization on the POWER hardware
++platform. IT administrators of PowerVM can achieve significant benefits by
++being able to include PowerVM in a standard OpenStack management environment.
++This driver (along with a Neutron ML2 compatible agent and Ceilometer agent)
++provides the capability for operators of PowerVM to manage directly through
++OpenStack.
++
++The purpose of this blue print is to take the open source `nova-powervm`_
++driver and integrate it into core Nova.
++
++.. _nova-powervm: https://launchpad.net/nova-powervm
++
++It is important to note that PowerVM is a separate hypervisor from KVM on
++POWER.  Both are independent hypervisors, each with their own unique benefits.
++Much like x86 supports various hypervisors, this is also an important aspect
++for POWER.  KVM for POWER is already supported by the existing libvirt
++driver.  This provides choice for operators to determine which hypervisor best
++fits the needs of their users and workload.
++
++
++
++Problem description
++===================
++
++The PowerVM driver meets the following criteria:
++
++* Built within the community
++
++* Standardized on OpenStack's management model
++
++* Utilizes automated functional and unit tests
++
++* Enables management of PowerVM systems through the OpenStack APIs
++
++* Allows attachment of Cinder volumes utilizing supported protocols
++
++This driver has been developed in StackForge over the past year with input
++from the community (Note: as of Oct 19th, it was moved to the
++openstack/nova-powervm namespace).
++
++Two central tenets around development of this driver are alignment with
++OpenStack architecture and ongoing community commitment. The IBM PowerVM
++NovaLink support enables the OpenStack agents to drive virtualization commands
++on the system, which aligns with the standard OpenStack compute driver model.
++
++The nova-powervm driver is currently used by products such as IBM's Power
++Virtualization Center (PowerVC). The next step is to integrate this driver
++into the core Nova project.
++
++It should also be noted that there was a previous PowerVM driver supported by
++OpenStack.  This driver was removed from the tree as it did not have
++consumers.  It was not complete and did not support the direction of OpenStack
++to run directly on the compute node.
++
++Given the importance of doing it correctly, the PowerVM team has done
++significant work to rectify the issues of the past.  This includes reworking
++the hypervisor itself to be tuned for OpenStack.  This is done via the
++NovaLink feature, which enables management of a PowerVM system directly on the
++hypervisor.  This allows the nova-compute (as well as networking-powervm and
++ceilometer-powervm) agent to run directly on the system to match the OpenStack
++design.
++
++Additionally, IBM has built products directly on top of the StackForge drivers
++(such as PowerVC).  IBM is committed to this architecture and has publicly
++announced the new direction (https://ibm.biz/BdHsWS).  We have shifted
++development to the open-source OpenStack development model.  The activity of
++the nova-powervm project alone is currently over `400`_ commits.
++
++.. _400: https://github.com/openstack/nova-powervm
++
++
++Use Cases
++----------
++
++This driver makes the following use cases available for PowerVM:
++
++* As a deployer, all of the standard lifecycle operations (start, stop,
++  reboot, migrate, destroy, etc.) are supported on a PowerVM-based
++  instance.
++
++* VM Capture to Glance Image.
++
++* VM Deploy from Glance Image.
++
++* VNC console to instances deployed.
++
++* Migration of virtual machines that are attached to a common storage
++  backend.
++
++* Fibre Channel attached storage through standard Cinder operations.
++
++
++Proposed change
++===============
++
++Promote the PowerVM open source driver that is currently in
++openstack/nova-powervm into the Nova project. The driver code contributions
++will be decomposed into logical sections such that they are reasonably
++consumable for review.
++
++While the integration is continuing, the driver will continue to be worked and
++supported in the openstack/nova-powervm tree.
++
++It is requested that the core Nova team provide reviews for the change sets
++and the IBM POWER driver team will provide the associated code updates.
++
++The IBM POWER Systems team has made a firm commitment to long term
++development, maintenance, and support for this driver. Furthermore, this
++driver has been integrated into existing IBM products and will continue to be
++enhanced and supported.
++
++It should be noted that there are existing supported `networking-powervm`_ (a
++neutron ML2 compliant agent) and `ceilometer-powervm`_ (a telemetry component)
++agents that operators can make use of.
++
++The driver team is also working with the Chef deployment team to ensure that
++there is an open deployment model for the PowerVM drivers.
++
++.. _networking-powervm: https://launchpad.net/neutron-powervm/
++.. _ceilometer-powervm: https://launchpad.net/ceilometer-powervm/
++
++We also met with the Nova core team at previous summits and the Liberty
++mid-cycle meetup.  The approach proposed here was the recommendation from the
++Nova team at that time.  We believe that this solution meets the maturity
++requirements set forth by the Nova team:
++
++* Meets a minimum set of driver functions.
++
++* Provides a third party CI system with a non-gating vote
++
++* Has active consumers of the driver
++
++* Understanding and agreement from the PowerVM drivers team to provide ongoing
++  development and support
++
++
++Alternatives
++------------
++
++Alternatives were discussed with the Nova core team at previous summits and
++at the Liberty mid-cycle meeting. None were deemed appropriate.
++
++Alternatives to the proposal here are:
++
++* Leave the driver as a unofficial, third party driver in StackForge
++
++* Have the Nova project support an official, third-party driver model similar
++  to the "Big Tent" model in Neutron today.
++
++* Force an existing driver (e.g. Libvirt) to work against the NovaLink API
++
++* Use KVM on POWER via the libvirt driver.
++
++The first alternative is an unacceptable model for both operators and for
++OpenStack, as it creates a situation where the PowerVM driver is not held
++to the same standards as the other Group B drivers. The second option is
++something the Nova team does not support today. The third model is technically
++feasible, but greatly reduces the flexibility and function support for PowerVM
++and adds another layer of complexity to the PowerVM management stack that
++would fall on the operator.
++
++Running KVM on POWER is a viable alternative for certain workloads.  However,
++as noted in the problem description, PowerVM as a hypervisor may offer
++different benefits for operators to take advantage of within their cloud
++infrastructure.
++
++Nothing about the PowerVM driver will restrict the operator from having a
++heterogenous cloud.  As per the OpenStack Nova design, the PowerVM driver
++comfortably co-exists with other compute nodes of any hypervisor type.
++
++
++Data model impact
++-----------------
++
++No new data model fields.
++
++One of the deploy options does make use of an instance's system_metadata.
++This is due to how Cinder volumes are attached to the VM.
++
++There are two ways to connect a Cinder volume.  The first is Virtual SCSI,
++which takes a hard disk presented to the system and virtually connects it to
++the VM.  The second is N-Port ID Virtualization (NPIV), which connects a Fibre
++Channel disk directly to the VM.  The NPIV volume connector does make use of
++instance system metadata, to keep track of its Fibre Channel Fabric
++Connections (as the I/O is directly connected).  This is not a new field
++however, and seemed appropriate to use given that it is metadata directly
++about virtual adapters on the VM.
++
++
++REST API impact
++---------------
++
++None.
++
++
++Security impact
++---------------
++
++None.
++
++
++Notifications impact
++--------------------
++
++None.
++
++
++Other end user impact
++---------------------
++
++None.
++
++
++Performance Impact
++------------------
++
++It is a goal of the driver to deploy systems with similar speed and agility
++as other compute drivers within the OpenStack ecosystem.
++
++The driver is written and tested to support concurrent operations.  It has
++been validated while performing 10 concurrent deploys to given compute nodes.
++
++
++Other deployer impact
++---------------------
++
++The cloud administrator will need to refer to documentation on how to
++configure OpenStack for use with a PowerVM hypervisor.
++
++A 'powervm' configuration group is used to contain all the PowerVM specific
++configuration settings. Existing configuration file attributes are
++reused as much as possible (e.g. ``vif_plugging_timeout``). This reduces the
++number of PowerVM-specific items that will be needed.
++
++It is the goal of the project to only require minimal additional attributes.
++The deployer may specify additional attributes to fit their configuration.
++
++There is no impact to customers upgrading their cloud stack as this is a
++genesis driver and does not have database impacts.
++
++The PowerVM driver team will provide updates to the dev-ref and other
++documentation to assist the operator in configuration.  These can be evaluated
++in the nova-powervm `dev-ref`_.
++
++.. _dev-ref: https://github.com/openstack/nova-powervm/blob/master/doc/source
++
++
++Developer impact
++----------------
++
++The code will be proposed to the ``/nova/virt/powervm/ package``.  The PowerVM
++driver team will propose all of the changes there.  Other sections of Nova
++should not be impacted.
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  thorst (thorst@us.ibm.com)
++
++Other contributors:
++  kyleh (kyleh@us.ibm.com)
++  efried (efried@us.ibm.com)
++  chhagarw (chhagarw@in.ibm.com)
++  ijuwang (ijuwang@us.ibm.com)
++
++The team will have members in the Nova IRC.  A new #openstack-powervm channel
++will also be available that the team members will sit in for driver development
++discussion, so as not to add unnecessary noise to the overall Nova IRC.  The
++team will reach out to the core Nova team in the standard Nova IRC however for
++integration questions.
++
++
++Work Items
++----------
++
++* Define the new folder and incorporate pypowervm dependency (see below).
++
++* Break the existing driver into logical components (e.g. code to create a VM,
++  destroy a VM, connect a volume, migrate a VM, etc.)
++
++* Propose logical components as independent changes.  Incorporate review
++  comments from team back into current nova-powervm project while merge is
++  ongoing.
++
++* Enable CI system to provide non-gating vote on proposed Nova changes.
++
++
++
++Dependencies
++============
++
++* Utilizes the PowerVM REST API specification for management.  Will
++  utilize future versions of this specification as it becomes available:
++  http://ibm.co/1lThV9R
++
++* Builds on top of the `pypowervm library`_.  This is a prerequisite to
++  utilizing the driver.
++
++.. _pypowervm library: https://github.com/pypowervm
++
++
++
++Testing
++=======
++
++A 3rd party CI system is in development.  Along with this, the PowerVM Drivers
++team will provide a set of maintainers for the CI.  This will provide a
++non-gating vote for all proposed changes to nova master.  The CI has been in
++development over the past several months, and plan to have it online soon.
++
++The tempest tests are generally implementation-agnostic; the existing
++tempest tests will be able to run against the PowerVM driver without issue.
++Certain tests may not run against the implementation, if the platform does
++not support the function.  E.g. iSCSI attached Cinder volumes (Fibre Channel
++is supported).
++
++Thorough unit tests exist within the project to validate specific functions
++within this implementation.
++
++
++Documentation Impact
++====================
++
++The existing `dev-ref`_ provides information on how to configure PowerVM
++driver.  This information will be refactored and merged in with the standard
++Nova documentation.
++
++The PowerVM Drivers team has also reached out to the OpenStack docs PTL.  The
++PowerVM Drivers team is proposing a blueprint for the PowerVM docs.  The
++intent is that the PowerVM team will update the documentation for operators,
++add to the hypervisor matrix, and appropritate surrounding documentation.
++These will be reviewed via the standard doc update process.  The doc blueprint
++will not be approved until the Nova blueprint is approved.
++
++.. _dev-ref: https://github.com/openstack/nova-powervm/blob/master/doc/source
++
++References
++==========
++
++* Project Design & Structure:
++  https://github.com/openstack/nova-powervm/blob/master/doc/source/devref/project_structure.rst
++
++* pypowervm library: https://github.com/pypowervm
++
++* networking-powervm: git://git.openstack.org/openstack/networking-powervm
++
++* ceilometer-powervm: git://git.openstack.org/openstack/ceilometer-powervm
++
++* PowerVM REST API Specification (may require newer versions as they
++  become available): http://ibm.co/1lThV9R
++
++* PowerVM Virtualization Introduction and Configuration:
++  http://www.redbooks.ibm.com/abstracts/sg247940.html
++
++* PowerVM Best Practices: http://www.redbooks.ibm.com/abstracts/sg248062.html
++
++* Launchpad Blueprint:
++  https://blueprints.launchpad.net/nova/+spec/powervm-nova-compute-driver
++
+-- 
+2.1.0
+

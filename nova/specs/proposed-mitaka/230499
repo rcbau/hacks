@@ -1,0 +1,108 @@
+From d39bcd8781f0ec67432c1fb9f434764e25936e82 Mon Sep 17 00:00:00 2001
+From: Dan Smith <dansmith@redhat.com>
+Date: Fri, 2 Oct 2015 08:47:09 -0700
+Subject: [PATCH] Fix misspellings of "scheduler"
+
+We had several examples of "schedular", which this patch corrects.
+
+Change-Id: I0f0ae9635796ae3fd3680b4376eacdc6a2a2e043
+---
+ specs/juno/approved/virt-driver-cpu-pinning.rst       |  8 ++++----
+ specs/juno/implemented/virt-driver-numa-placement.rst |  2 +-
+ specs/mitaka/approved/libvirt-real-time.rst           | 10 +++++-----
+ 3 files changed, 10 insertions(+), 10 deletions(-)
+
+diff --git a/specs/juno/approved/virt-driver-cpu-pinning.rst b/specs/juno/approved/virt-driver-cpu-pinning.rst
+index 24a0269..6e62fee 100644
+--- a/specs/juno/approved/virt-driver-cpu-pinning.rst
++++ b/specs/juno/approved/virt-driver-cpu-pinning.rst
+@@ -71,7 +71,7 @@ This will only be honoured if the flavor does not already have a threads
+ policy set. This ensures the cloud administrator can have absolute control
+ over threads policy if desired.
+ 
+-The schedular will have to be enhanced so that it considers the usage of CPUs
++The scheduler will have to be enhanced so that it considers the usage of CPUs
+ by existing guests. Use of a dedicated CPU policy will have to be accompanied
+ by the setup of aggregates to split the hosts into two groups, one allowing
+ overcommit of shared pCPUs and the other only allowing dedicated CPU guests.
+@@ -147,7 +147,7 @@ that their guest should have more predictable CPU execution latency.
+ Performance Impact
+ ------------------
+ 
+-The schedular will incur small further overhead if a threads policy is set
++The scheduler will incur small further overhead if a threads policy is set
+ on the image or flavor. This overhead will be negligible compared to that
+ implied by the enhancements to support NUMA policy and huge pages. It is
+ anticipated that dedicated CPU guests will typically be used in conjunction
+@@ -158,7 +158,7 @@ Other deployer impact
+ 
+ The cloud administrator will gain the ability to define flavors which offer
+ dedicated CPU resources. The administrator will have to place hosts into groups
+-using aggregates such that the schedular can separate placement of guests with
++using aggregates such that the scheduler can separate placement of guests with
+ dedicated vs shared CPUs. Although not required by this design, it is expected
+ that the administrator will commonly use the same host aggregates to group
+ hosts for both CPU pinning and large page usage, since these concepts are
+@@ -190,7 +190,7 @@ Work Items
+ * Enhance libvirt to support setup of strict CPU pinning for guests when the
+   appropriate policy is set in the flavor
+ 
+-* Enhance the schedular to take account of threads policy when choosing
++* Enhance the scheduler to take account of threads policy when choosing
+   which host to place the guest on.
+ 
+ Dependencies
+diff --git a/specs/juno/implemented/virt-driver-numa-placement.rst b/specs/juno/implemented/virt-driver-numa-placement.rst
+index eba3a00..7c4af3d 100644
+--- a/specs/juno/implemented/virt-driver-numa-placement.rst
++++ b/specs/juno/implemented/virt-driver-numa-placement.rst
+@@ -285,7 +285,7 @@ Work Items
+ * Enhance libvirt driver to support setup of guest NUMA nodes.
+ * Enhance libvirt driver to look at NUMA node availability when launching
+   guest instances and pin all guests to best NUMA node
+-* Add support to schedular for picking hosts based on the NUMA availability
++* Add support to scheduler for picking hosts based on the NUMA availability
+   instead of simply considering the total RAM/vCPU availability.
+ 
+ Dependencies
+diff --git a/specs/mitaka/approved/libvirt-real-time.rst b/specs/mitaka/approved/libvirt-real-time.rst
+index 2033fe3..1b35f2b 100644
+--- a/specs/mitaka/approved/libvirt-real-time.rst
++++ b/specs/mitaka/approved/libvirt-real-time.rst
+@@ -32,7 +32,7 @@ have sub-optimal characteristics that will cause latency spikes in QEMU,
+ as may underling host hardware. Avoiding these problems requires that the
+ host kernel and operating system be configured in a particular manner, as
+ well as the careful choice of which QEMU features to exercise. It also
+-requires that suitable schedular policies are configured for the guest
++requires that suitable scheduler policies are configured for the guest
+ vCPUs.
+ 
+ Assigning huge pages to a guest ensures that guest RAM cannot be swapped out
+@@ -49,9 +49,9 @@ actually demands it.
+ 
+ As an indication of the benefits and tradeoffs of realtime, it is useful
+ to consider some real performance numbers. With bare metal and dedicated
+-CPUs but non-realtime schedular policy, worst case latency is on the order
++CPUs but non-realtime scheduler policy, worst case latency is on the order
+ of 150 microseconds, and mean latency is approx 2 microseconds. With KVM
+-and dedicated CPUs and a realtime schedular policy, worst case latency
++and dedicated CPUs and a realtime scheduler policy, worst case latency
+ is 14 microseconds, and mean latency is < 10 microseconds. This shows
+ that while realtime brings significant benefits in worst case latency,
+ the mean latency is still significantly higher than that achieved on
+@@ -169,10 +169,10 @@ be run on a host pCPU that is completely separate from those
+ running the vCPUs. This would, for example, allow for running
+ of guest OS, where all vCPUs must be real-time capable, and so
+ cannot reserve a vCPU for real-time tasks. This would require
+-the schedular to treat the emulator threads as essentially being
++the scheduler to treat the emulator threads as essentially being
+ a virtual CPU in their own right. Such an enhancement is considered
+ out of scope for this blueprint in order to remove any dependency
+-on schedular modifications. It will be dealt with in a new blueprint
++on scheduler modifications. It will be dealt with in a new blueprint
+ 
+ * https://blueprints.launchpad.net/nova/+spec/libvirt-emulator-threads-policy
+ 
+-- 
+2.1.0
+

@@ -1,0 +1,181 @@
+From 60a4e318bde3ce4752809c81a35645a607e7058a Mon Sep 17 00:00:00 2001
+From: Vladik Romanovsky <vromanso@redhat.com>
+Date: Wed, 28 Oct 2015 17:32:44 +0900
+Subject: [PATCH] Enable SR-IOV physical functions assignment with Neutron port
+
+Relying on the sriov-physical-function-passthrough spec
+add network awareness to the physical functions passthough
+by associating it with a Neutron port.
+
+Implements blueprint sriov-pf-passthrough-neutron-port
+
+Change-Id: I9aebc1bce867916f5bf5b5139850b67a151da123
+---
+ specs/mitaka/approved/sriov_pf_neutron_port.rst | 155 ++++++++++++++++++++++++
+ 1 file changed, 155 insertions(+)
+ create mode 100644 specs/mitaka/approved/sriov_pf_neutron_port.rst
+
+diff --git a/specs/mitaka/approved/sriov_pf_neutron_port.rst b/specs/mitaka/approved/sriov_pf_neutron_port.rst
+new file mode 100644
+index 0000000..d0f5244
+--- /dev/null
++++ b/specs/mitaka/approved/sriov_pf_neutron_port.rst
+@@ -0,0 +1,155 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++=============================================================
++Enable SR-IOV physical functions assignment with Neutron port
++=============================================================
++
++https://blueprints.launchpad.net/nova/+spec/sriov-pf-passthrough-neutron-port
++
++Relying on the sriov-physical-function-passthrough spec [1], which describes
++an implementation of a SR-IOV physical functions passthough support in Nova;
++This spec will address the need for SR-IOV physical functions to be
++associated with Neutron ports.
++
++
++Problem description
++===================
++
++Current implementation of the Physical Function (PF) passthrough lacks
++network awareness. It is exposing the physical hardware to the instances
++without integration with Neutron, unlike the way it is implemented for the
++SR-IOV Virtual Functions (VFs).
++
++Physical Function can only be exposed as libvirt's <hostdev>
++definition in the domain XML and not as a "<interface type='hostdev'..."
++element that can receive a MAC address and a virtual port definition.
++
++In general, it is not possible to configure a MAC address for a PF, nor assign
++a VLAN tag via it's driver on the host.
++
++In some cases, during instance network configuration, Neutron will provide nova
++with a port, which will contain a MAC and VLAN tag to be set on the function.
++While it is easy to do, in the case of VFs, additional steps should be taken to
++coordinate these settings with Neutron.
++
++
++Use Cases
++----------
++
++Workloads requiring to have full access to a physical function will
++also need to have the ability to manipulate the network settings, in the
++same manner and flexibility that is currently available for VFs.
++
++
++Project Priority
++-----------------
++
++None
++
++Proposed change
++===============
++
++Allow the users to specify a new vnic_type, with the neutron port creation,
++which would be used by Nova to select a Physical Function on a host and
++properly passthrough it to a guest, using a new VIF type.
++Nova will update the neutron port with a MAC address of the selected PF
++on the host.
++
++Alternatives
++------------
++None
++
++Data model impact
++-----------------
++None
++
++REST API impact
++---------------
++None
++
++Security impact
++---------------
++
++None
++
++Notifications impact
++--------------------
++
++None
++
++Other end user impact
++---------------------
++None
++
++Performance Impact
++------------------
++None
++
++Other deployer impact
++---------------------
++None
++
++Developer impact
++----------------
++
++None
++
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  Vladik Romanovsky <vromanso@redhat.com>
++
++Other contributors:
++  Nikola Đipanov <ndipanov@redhat.com>
++
++Work Items
++----------
++
++* Introduce a new vnic_type to request PF selection.
++* Introduce a new vif type to configure the PF attachment with as a hostdev.
++* Update the Neutron port with a MAC of a selected PF.
++
++
++Dependencies
++============
++
++None
++
++
++Testing
++=======
++New unit and functional tests will be written to cover the changes.
++
++Documentation Impact
++====================
++
++Documentation of a new vnic_type should be documented.
++
++References
++==========
++[1] https://review.openstack.org/#/c/212472
++
++History
++=======
++
++Optional section for Mitaka intended to be used each time the spec
++is updated to describe new design, API or any database schema
++updated. Useful to let reader understand what's happened along the
++time.
++
++.. list-table:: Revisions
++   :header-rows: 1
++
++   * - Release Name
++     - Description
++   * - Mitaka
++     - Introduced
+-- 
+2.1.0
+

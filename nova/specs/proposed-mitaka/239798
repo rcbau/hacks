@@ -1,0 +1,159 @@
+From 3b7f9355f696ee948bdabcaf00ad05c108570543 Mon Sep 17 00:00:00 2001
+From: Zoltan Arnold Nagy <nag@zurich.ibm.com>
+Date: Wed, 28 Oct 2015 11:45:32 +0900
+Subject: [PATCH] Encryption support for rbd-backed volumes
+
+This spec covers enablement of the adding support for encrypted rbd-backed
+volumes.
+
+Change-Id: If1967a60c26babdb901f85ba7d66dd615e9c5ee0
+Implements: blueprint rbd-volume-encryption
+---
+ specs/mitaka/approved/rbd-volume-encryption.rst | 135 ++++++++++++++++++++++++
+ 1 file changed, 135 insertions(+)
+ create mode 100644 specs/mitaka/approved/rbd-volume-encryption.rst
+
+diff --git a/specs/mitaka/approved/rbd-volume-encryption.rst b/specs/mitaka/approved/rbd-volume-encryption.rst
+new file mode 100644
+index 0000000..15eb824
+--- /dev/null
++++ b/specs/mitaka/approved/rbd-volume-encryption.rst
+@@ -0,0 +1,135 @@
++..
++ This work is licensed under a Creative Commons Attribution 3.0 Unported
++ License.
++
++ http://creativecommons.org/licenses/by/3.0/legalcode
++
++=============================================
++Add encryption support for RBD-backed volumes
++=============================================
++
++https://blueprints.launchpad.net/nova/+spec/rbd-volume-encryption
++
++Instead of using qemu's librbd driver to access ceph volumes we need to attach
++the volume to the hypervisor using the in-kernel rbd driver.
++
++Problem description
++===================
++
++When attaching a ceph-backed volume to a virtual machine, currently we are
++using qemu's built-in ceph support (which is done using librbd). However,
++qemu doesn't support native encryption at all at the moment. In order to
++be able to put any actual encryptors in-between the ceph rbd volume and VM,
++we need to attach the volume first to the hypervisor using the kernel's rbd
++driver (krdb), build the encryption layer on top and give libvirt this newly
++created, encrypted block device.
++
++Use Cases
++----------
++
++Anybody who wants to attach encrypted ceph volumes to VMs. Currently this is
++not support at all.
++
++Proposed change
++===============
++
++The change modifies the rbd libvirt driver's get_config() to check if the
++volume is encrypted. If it is, then it configures the libvirt configuration
++to pass through a block device instead of the usual ceph path.
++We also need to implement connect_volume() and disconnect_volume() which has
++been no-ops so far and for encrypted volumes they will handle krdb mappingi and
++unmapping the volumes.
++
++Nothing changes for the non-encrypted case.
++
++Alternatives
++------------
++
++None.
++
++Data model impact
++-----------------
++
++None
++
++REST API impact
++---------------
++
++None
++
++Security impact
++---------------
++
++None.
++
++Notifications impact
++--------------------
++
++Logging will note if it's mapping/unmapping an encrypted volume.
++
++Other end user impact
++---------------------
++
++None.
++
++Performance Impact
++------------------
++
++The krdb driver does not support caching, however, given it's the only way
++to get encrypted volumes working currently, there are no alternatives.
++
++Other deployer impact
++---------------------
++
++For this functionality the hypervisor's kernel needs to support krdb, the
++in-kernel rbd driver. It has been upstream for ages so should not be a problem.
++
++Developer impact
++----------------
++
++We will have two different methods to handle ceph volumes based on the
++encryption flag which introduces two code paths.
++
++Implementation
++==============
++
++Assignee(s)
++-----------
++
++Primary assignee:
++  zoltan (Zoltan Arnold Nagy)
++
++Work Items
++----------
++
++* break out the rbd libvirt driver from the net libvirt driver as per
++  the current libvirt cleanup effort
++* implement connect_volume()/disconnect_volume() and unit tests
++* re-enable the tempest scenario for encrypted volume in the ceph gate
++
++Dependencies
++============
++
++None
++
++Testing
++=======
++
++All existing testing will stay as-is to cover the unencrypted case.
++For the encrypted case unit tests will be added to verify mapping/unmapping.
++There is already a tempest encrypted rbd volume test which had been failing,
++so is disabled at the moment but will get re-enabled as soon as this
++change gets merged (has to be in two commits in order to not get the gate
++failing)
++
++Documentation Impact
++====================
++
++The usage of krbd for the encrypted use case needs to be documented to let
++operations know about the kernel dependency.
++
++References
++==========
++
++In the code review the consensus was that it needs a spec, but otherwise
++the code has already been implemented.
+-- 
+2.1.0
+
