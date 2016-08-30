@@ -1,4 +1,4 @@
 hacks
 =====
 
-Random hacks we find useful
+Random hacks we find useful, probably not production ready.
