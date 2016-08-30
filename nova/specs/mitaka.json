@@ -14,9 +14,15 @@
         ]
     }, 
     "Administrative": {
+        "Allow quota usage to be recalculated": [
+            "226925"
+        ], 
         "Remove service manament commands from nova-manage, as they have been replaced by calls in the REST API": [
             "231918"
-        ]
+        ],
+        "Allow an operator to query the state of and halt live migrations": [
+            "228828"
+        ] 
     }, 
     "Feature": {
         "Allow increase ephemeral disk during resize": [
@@ -27,9 +33,7 @@
         ], 
         "Virtual instance rescue with stable disk devices": [
             "230442"
-        ]
-    }, 
-    "Features": {
+        ],
         "Nested quotas": [
             "209989"
         ]
@@ -54,6 +58,7 @@
     "__previously_approved__": [
         "229034", 
         "231417", 
-        "209989"
+        "209989", 
+        "226925"
     ]
 }

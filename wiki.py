@@ -120,3 +120,24 @@ class Wiki(object):
             print response
         if not 'nochange' in response['edit']:
             print 'Modified %s' % title
+
+    def create_account(self, username, password, email, realname):
+        response = self.wiki.call({'action': 'createaccount',
+                                   'name': username,
+                                   'password': password,
+                                   'email': email,
+                                   'realname': realname})
+        if DEBUG:
+            print response
+
+        response = self.wiki.call({'action': 'createaccount',
+                                   'name': username,
+                                   'password': password,
+                                   'email': email,
+                                   'realname': realname,
+                                   'token': response['createaccount']['token']})
+
+        if DEBUG:
+            print response
+
+        return 'error' not in response
