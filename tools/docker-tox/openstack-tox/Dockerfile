@@ -1,4 +1,4 @@
-FROM dockerfile/python
+FROM python
 MAINTAINER Angus Lees <gus@inodes.org>
 
 RUN adduser --disabled-login --home /user \
@@ -30,11 +30,7 @@ WORKDIR /app
 RUN chown user:user /app
 USER user
 
-ONBUILD COPY tox.ini /app/
-ONBUILD COPY setup.py /app/
-# FIXME(gus): This needs to use a docker1.3 glob to be useful
-ONBUILD COPY requirements.txt /app/
-ONBUILD COPY test-requirements.txt /app/
+ONBUILD COPY tox.ini setup.py *requirements.txt /app/
 
 # The idea here is that the above files change rarely, and we'd like
 # docker to setup+cache+reuse the venv as much as possible.
