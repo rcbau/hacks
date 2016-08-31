@@ -30,6 +30,7 @@ import json
 import mimetypes
 import os
 import random
+import re
 import requests
 import smtplib
 import string
@@ -49,6 +50,7 @@ with open(os.path.expanduser('~/.eventbrite2mediawiki_%s' % sys.argv[1]),
 base_url = ('https://www.eventbriteapi.com/v3/events/%s'
             % conf['eventbrite']['event_id'])
 password_chars = string.ascii_letters + string.digits + '!@#$%^&*()'
+username_chars = string.ascii_letters + string.digits + '-'
 
 random.seed(os.urandom(1024))
 
@@ -79,12 +81,14 @@ def send_email(email, username, password):
     s.quit()
 
 
+def make_wiki_name(proposed):
+    return re.sub('[^%s]' % username_chars, '', proposed)
+
+
 def process_attendee(profile):
     # Generate a random password
     password = ''.join(random.choice(password_chars) for i in range(13))
 
-    print '%s %s -> %s %s' %(profile['first_name'], profile['last_name'],
-                             profile['email'], password)
     username = '%s%s' %(profile['first_name'], profile['last_name'])
     success = w.create_account(
         username,
@@ -93,8 +97,6 @@ def process_attendee(profile):
         '%s %s' %(profile['first_name'], profile['last_name']))
     if success:
         send_email(profile['email'], username, password)
-    else:
-        print 'Account creation failed'
 
 
 if __name__ == '__main__':
@@ -106,4 +108,9 @@ if __name__ == '__main__':
         )
 
     for attendee in response.json()['attendees']:
+        attendee['profile']['first_name'] = make_wiki_name(
+            attendee['profile']['first_name'])
+        attendee['profile']['last_name'] = make_wiki_name(
+            attendee['profile']['last_name'])
+
         process_attendee(attendee['profile'])
