@@ -35,8 +35,8 @@ def fetch_icon(url):
     return img_filename
 
 
-X_MARGIN = 10
-Y_MARGIN = 10
+X_MARGIN = 5
+Y_MARGIN = 5
 
 
 if __name__ == '__main__':
@@ -106,14 +106,14 @@ if __name__ == '__main__':
     outimg.blit(img, (X_MARGIN, Y_MARGIN))
 
     label = big_font.render('%s' % now['temp_c'], 1, (0, 0, 0))
-    outimg.blit(label, (60 + X_MARGIN, Y_MARGIN))
+    outimg.blit(label, (55 + X_MARGIN, Y_MARGIN - 5))
 
     label = small_font.render('%s humidity' % now['relative_humidity'],
                               1, (0, 0, 0))
-    outimg.blit(label, (180 + X_MARGIN, Y_MARGIN + 5))
+    outimg.blit(label, (160 + X_MARGIN, Y_MARGIN + 3))
 
     label = small_font.render('%s kph wind' % now['wind_kph'], 1, (0, 0, 0))
-    outimg.blit(label, (180 + X_MARGIN, Y_MARGIN + 25))
+    outimg.blit(label, (160 + X_MARGIN, Y_MARGIN + 23))
 
     for day in range(1, 4):
         print '%s %s: %s to %s with %s%% rain' %(
@@ -124,20 +124,20 @@ if __name__ == '__main__':
             dayforecast[day]['pop'])
 
         img = pygame.image.load(dayforecast[day]['icon'])
-        outimg.blit(img, (((day - 1) * 100) + X_MARGIN, 60 + Y_MARGIN))
+        outimg.blit(img, (((day - 1) * 90) + X_MARGIN, 50 + Y_MARGIN))
 
         label = small_font.render(
             '%s %s' %(dayforecast[day]['date/day'],
                       calendar.month_name[dayforecast[day]['date/month']][0:3]),
             1, (0, 0, 0))
-        outimg.blit(label, (((day - 1) * 100) + X_MARGIN, 110 + Y_MARGIN))
+        outimg.blit(label, (((day - 1) * 90) + X_MARGIN, 100 + Y_MARGIN))
 
         label = small_font.render(
             '%s-%s %s%%' %(dayforecast[day]['low/celsius'],
                            dayforecast[day]['high/celsius'],
                            dayforecast[day]['pop']),
             1, (0, 0, 0))
-        outimg.blit(label, (((day - 1) * 100) + X_MARGIN, 110 + Y_MARGIN + 20))
+        outimg.blit(label, (((day - 1) * 90) + X_MARGIN, 100 + Y_MARGIN + 20))
 
     label = small_font.render('Data from wunderground.com', 1, (0, 0, 0))
     outimg.blit(label, (X_MARGIN, Y_MARGIN + 160))
