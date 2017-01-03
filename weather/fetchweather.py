@@ -40,6 +40,11 @@ Y_MARGIN = 5
 
 
 if __name__ == '__main__':
+    conf['output_filename'] = 'output.png'
+    if len(sys.argv) > 1:
+        conf['location'] = sys.argv[1]
+        conf['output_filename'] = 'output-%s.png' % sys.argv[1]
+
     pygame.init()
 
     outimg = pygame.Surface((320, 196), pygame.SRCALPHA)
@@ -100,8 +105,8 @@ if __name__ == '__main__':
         dayforecast[day['period']]['icon'] = \
             fetch_icon(dayforecast[day['period']]['icon_url'])
 
-    print '%s %skph %s' %(now['temp_c'], now['wind_kph'],
-                          now['relative_humidity'])
+    print 'Now: %s %skph %s humidity' %(now['temp_c'], now['wind_kph'],
+                                        now['relative_humidity'])
     img = pygame.image.load(now['icon'])
     outimg.blit(img, (X_MARGIN, Y_MARGIN))
 
@@ -142,5 +147,4 @@ if __name__ == '__main__':
     label = small_font.render('Data from wunderground.com', 1, (0, 0, 0))
     outimg.blit(label, (X_MARGIN, Y_MARGIN + 160))
 
-    pygame.image.save(outimg, 'output.png')
-    pygame.image.save(outimg, 'output.bmp')
+    pygame.image.save(outimg, conf['output_filename'])
