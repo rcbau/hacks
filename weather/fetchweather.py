@@ -11,7 +11,10 @@ import pygame.font
 import pygame.image
 import pygame.surface
 import requests
+import six
 import sys
+
+from prometheus_client import CollectorRegistry, Gauge, push_to_gateway
 
 with open(os.path.expanduser('~/.weather'), 'r') as f:
     conf = json.loads(f.read())
@@ -53,6 +56,10 @@ if __name__ == '__main__':
     small_font = pygame.font.Font('fonts/Montserrat-Regular.ttf', 15)
     big_font = pygame.font.Font('fonts/Montserrat-Bold.ttf', 45)
 
+    registry = CollectorRegistry()
+    Gauge('job_last_success_unixtime', 'Last time the weather job ran',
+          registry=registry).set_to_current_time()
+
     # Find weather stations near that location
     url = ('http://api.wunderground.com/api/%(apikey)s/geolookup/q/'
            '%(location)s.json' % conf)
@@ -82,7 +89,23 @@ if __name__ == '__main__':
               ['icon_url']]
     now = {}
     for field in fields:
-        now['/'.join(field)] = extract_field(weather, field)
+        value = extract_field(weather, field)
+
+        now['/'.join(field)] = value
+
+        # Mungle some values to work in prometheus
+        if isinstance(value, six.text_type) and value.endswith('%'):
+            value = float(value[:-1]) / 100.0
+
+        if isinstance(value, six.text_type):
+            try:
+                value = float(value)
+            except:
+                pass
+
+        if isinstance(value, float) or isinstance(value, int):
+            Gauge('_'.join(field), '', registry=registry).set(value)
+
     now['icon'] = fetch_icon(now['icon_url'])
 
     # Get a 10 day forecast as well
@@ -148,3 +171,5 @@ if __name__ == '__main__':
     outimg.blit(label, (X_MARGIN, Y_MARGIN + 160))
 
     pygame.image.save(outimg, conf['output_filename'])
+
+    push_to_gateway('localhost:9091', job='weather', registry=registry)

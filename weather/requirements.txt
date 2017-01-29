@@ -1,2 +1,4 @@
 requests
 pygame
+prometheus_client
+six
